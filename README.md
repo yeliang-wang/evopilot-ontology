@@ -7,10 +7,11 @@ Additional public subpaths:
 - `@evopilot-next/ontology/compat`: historical calculation, classification and catalog namespaces. See [core](docs/legacy-core.md), [classification](docs/legacy-classification.md), [catalog](docs/legacy-catalog.md) and the [export inventory](src/compat/index.mjs). Some catalog APIs use explicit caller-selected storage; there is no implicit workspace or running service.
 - `@evopilot-next/ontology/migration`: `inspectLegacySource` and `deriveLegacyModel`, an explicit derivation bridge preserving original semantics and unresolved gaps. See [migration guide](docs/legacy-migration.md).
 - `@evopilot-next/ontology/sources`: `listPublicSources` and `readPublicSource` for four preserved public ontology sources. See [source guide](docs/public-assets.md) and [provenance](provenance/public-assets.json).
+- `@evopilot-next/ontology/service`: `createOntologyService({workspaceRoot,workspaceId})` provides the first M2 durable local asset lifecycle. Explicit initialization, scoped requests, SQLite transactions and separate human decisions are described in the [service guide](docs/service.md).
 
 Historical wire identities remain compatibility data; native v1 validation does not automatically convert them. These libraries do not implement full OWL/RDF/SHACL/PROV or complete operational migration.
 
-All root APIs also expose `PRODUCT`, `VERSION` and `capabilities()`. Readiness remains false and reports convey no acceptance, execution or publication authority. Persistent lifecycle/services, workspace integration, CLI/MCP and unified Expert/plugin delivery remain under construction. This source is not stable 1.0 or production-ready, and does not establish M1 or full acceptance.
+All root APIs also expose `PRODUCT`, `VERSION` and `capabilities()`. Existing root readiness remains false and reports convey no acceptance, execution or publication authority. The separate service implements only the first M2 local lifecycle slice; legacy source import/derivation service operations, all 45 old producer operations, CLI/MCP and unified Expert/plugin delivery remain pending. This source is not stable 1.0 or production-ready, and does not establish M1 or full acceptance.
 
 Use Node 24.14.0. In this independent source checkout, install from its own committed lock with `npm ci --ignore-scripts --no-audit --no-fund`, then:
 

@@ -1,0 +1,19 @@
+{
+  "schema": "evopilot-ontology-state-adoption/v1",
+  "stage": "M2_FIRST_SLICE",
+  "requestDigest": "sha256:8783032ce98e9ff7341973e71d9daaa5378ec8eadf0e68ed978b4de8871ad4d8",
+  "storage": "product-owned external workspace SQLite; node:sqlite DatabaseSync",
+  "targetNode": "24.14.0",
+  "prerequisiteSQLite": "3.51.2",
+  "prerequisiteEvidence": "Operator prerequisite probe; independent actual-service tests remain pending",
+  "sourceLifecycleRequestDigest": "sha256:edb947a301ffeab5184c81b69c8fb812854df96fe6fe82188e71ff8b0f7b0d32",
+  "supportedServiceTarget": "Node 24.14.0 built-in SQLite",
+  "authority": false,
+  "acceptance": false,
+  "softwareRelease": false,
+  "legacyStateAdopted": false,
+  "legacyApprovalInferred": false,
+  "preserved": ["existing APIs", "v1 fixtures", "legacy schemas", "raw public sources", "pinned vendor bytes"],
+  "pending": ["independent filesystem and child-process test execution", "parent packaging check update", "45 legacy producer operations", "CLI", "MCP"],
+  "limits": ["experimental SQLite API", "local single-user security", "orphan blobs possible", "no production or power-loss claim"]
+}
