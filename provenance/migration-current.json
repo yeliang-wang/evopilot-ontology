@@ -1,0 +1,865 @@
+{
+  "schema": "evopilot-ontology-migration-current/v1",
+  "status": "CURRENT_LOCAL_IMPLEMENTATION_SUMMARY",
+  "requestDigest": "sha256:7bcaf55a7ddba248fcb05a7060e2922dce74b25f3e00f9b88e6cf504d54d198e",
+  "supplements": [
+    "provenance/service-migration.json",
+    "provenance/legacy-core.json",
+    "provenance/legacy-classification.json",
+    "provenance/legacy-catalog.json",
+    "provenance/legacy-schema-sources.json",
+    "provenance/state-adoption.json",
+    "provenance/public-assets.json"
+  ],
+  "historyPolicy": "Historical provenance is immutable. Older pending counts and test notes describe their recorded baseline; this additive summary records current bounded facts.",
+  "historicalSource": {
+    "product": "evopilot-harness",
+    "version": "4.8.2",
+    "commit": "372733fd7b67ec3bee9efe6322f0229db77b160d",
+    "qualification": "Retained provenance and workspace reference evidence only; no old or sibling source reads."
+  },
+  "currentProduct": {
+    "name": "@evopilot-next/ontology",
+    "product": "ontology",
+    "version": "0.1.0",
+    "specVersion": "v1",
+    "implementationStage": "M2_OWNED_SERVICE",
+    "reportedVerificationCommit": "f3c70f92f380ca3131dbc0e326d5219bf09d36eb",
+    "qualification": "Current package version and owned source inventories inspected locally; file hashes qualify this source snapshot, not a release or whole-source migration closure."
+  },
+  "ownership": {
+    "retainedModules": [
+      {
+        "original": "src/v3/constants.mjs",
+        "destination": "src/compat/v3/constants.mjs",
+        "currentSha256": "sha256:e2d7fa38ca9c76a052b49a28775e75e95ef30876ff21bf55882d7c3cbe58b304",
+        "historicalProof": "provenance/legacy-core.json"
+      },
+      {
+        "original": "src/v3/schema.mjs",
+        "destination": "src/compat/v3/schema.mjs",
+        "currentSha256": "sha256:619fd179366fc4681538444286052301c6b1a7c33adb0854a61ef864266b523d",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "src/v3/utils.mjs",
+        "destination": "src/compat/v3/utils.mjs",
+        "currentSha256": "sha256:dde43cdb2bfba484c6d22f0a05a85791f4bc7249b509736afec413b8aef87838",
+        "historicalProof": "provenance/legacy-core.json"
+      },
+      {
+        "original": "src/v4/classification/advisor.mjs",
+        "destination": "src/compat/v4/classification/advisor.mjs",
+        "currentSha256": "sha256:47ad5ca764f981158a7204b23d235e9b61786bdeb04f7c3634727ad3effa6746",
+        "historicalProof": "provenance/legacy-classification.json"
+      },
+      {
+        "original": "src/v4/classification/classifier.mjs",
+        "destination": "src/compat/v4/classification/classifier.mjs",
+        "currentSha256": "sha256:09f5bb2afa47f73007746946781d24ca9daab59b3b04cd621e405c77fc410eb7",
+        "historicalProof": "provenance/legacy-classification.json"
+      },
+      {
+        "original": "src/v4/classification/engine.mjs",
+        "destination": "src/compat/v4/classification/engine.mjs",
+        "currentSha256": "sha256:f2bdc99011be625a7d41b4f463f32e0902775811f1d2cecc9fa94e505494e55a",
+        "historicalProof": "provenance/legacy-classification.json"
+      },
+      {
+        "original": "src/v4/classification/evaluation.mjs",
+        "destination": "src/compat/v4/classification/evaluation.mjs",
+        "currentSha256": "sha256:35cecf02b9c2447ba8728066f80597e4d32fd18272343e49bbc578bb98787e73",
+        "historicalProof": "provenance/legacy-classification.json"
+      },
+      {
+        "original": "src/v4/classification/source-concept.mjs",
+        "destination": "src/compat/v4/classification/source-concept.mjs",
+        "currentSha256": "sha256:d4388a349be8c25e7f1009e913d104f693a6f05d80e3abb18f967b24077a164b",
+        "historicalProof": "provenance/legacy-classification.json"
+      },
+      {
+        "original": "src/v4/classification/source-descriptor.mjs",
+        "destination": "src/compat/v4/classification/source-descriptor.mjs",
+        "currentSha256": "sha256:3f0e57558b80833c2b676bc39ec9ecd1a8dbc4da7b4fe0c3376a12c7cb3cc8ff",
+        "historicalProof": "provenance/legacy-classification.json"
+      },
+      {
+        "original": "src/v4/classification/taxonomy.mjs",
+        "destination": "src/compat/v4/classification/taxonomy.mjs",
+        "currentSha256": "sha256:e821207f6a8c3877f8941a2196c30d8c9c020aa6ed5e1b8b967606faab13a9e4",
+        "historicalProof": "provenance/legacy-core.json"
+      },
+      {
+        "original": "src/v4/constants.mjs",
+        "destination": "src/compat/v4/constants.mjs",
+        "currentSha256": "sha256:dd8279a68fd76be835ffc98c40e1573d258d248850e97fb7a9334207be21498a",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "src/v4/security/sensitive.mjs",
+        "destination": "src/compat/v4/security/sensitive.mjs",
+        "currentSha256": "sha256:af4f69ea44a025c614b3ff9feb55942495895e517dc5fa4c511242eb541a4917",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "src/v4/semantics/catalog-budget.mjs",
+        "destination": "src/compat/v4/semantics/catalog-budget.mjs",
+        "currentSha256": "sha256:c32e3bb66012470faede9f1c1aea9c6c37e7bc671e5d682124bd8bffd8012aaa",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "src/v4/semantics/catalog-contract.mjs",
+        "destination": "src/compat/v4/semantics/catalog-contract.mjs",
+        "currentSha256": "sha256:1da5044af4a906f44ce929b816568bf3f5645f708f9fd576259d727f514a0c4f",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "src/v4/semantics/catalog-generation.mjs",
+        "destination": "src/compat/v4/semantics/catalog-generation.mjs",
+        "currentSha256": "sha256:4f8a396006218cd0676091291494f9658435e80b7b6522a1ef584b047c9f5349",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "src/v4/semantics/catalog-materials.mjs",
+        "destination": "src/compat/v4/semantics/catalog-materials.mjs",
+        "currentSha256": "sha256:48c48dabb7365ea1e9930d78f00f4b3cf5c82d51be31d4d94346a75b6483003b",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "src/v4/semantics/catalog-store.mjs",
+        "destination": "src/compat/v4/semantics/catalog-store.mjs",
+        "currentSha256": "sha256:234b3ee93c20245c9acb12cb0517d93b54c7233032697d9c7103a448343a6f56",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "src/v4/semantics/catalog-supply.mjs",
+        "destination": "src/compat/v4/semantics/catalog-supply.mjs",
+        "currentSha256": "sha256:52ef7f8109fb20b854ad697080b9f79b80966a5febbefd53b216b73c80f06f42",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "src/v4/semantics/ontology-grounding.mjs",
+        "destination": "src/compat/v4/semantics/ontology-grounding.mjs",
+        "currentSha256": "sha256:5350cfd6400125e4d7ddf64108e13c7b7c72e2dccebafb1ffc2765d9c28b344b",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "src/v4/semantics/professional-packs.mjs",
+        "destination": "src/compat/v4/semantics/professional-packs.mjs",
+        "currentSha256": "sha256:cf4b1672ed1d3bb7e3c5171e68490bc04f414811ec6a7075d7de3506be9b08b4",
+        "historicalProof": "provenance/legacy-core.json"
+      },
+      {
+        "original": "src/v4/semantics/project-ontology.mjs",
+        "destination": "src/compat/v4/semantics/project-ontology.mjs",
+        "currentSha256": "sha256:e477fe5878e6d2fc4fba11df9cac4d889c455901096066f12985b4ed5e6bc0ba",
+        "historicalProof": "provenance/legacy-core.json"
+      },
+      {
+        "original": "src/v4/semantics/semantic-interoperability.mjs",
+        "destination": "src/compat/v4/semantics/semantic-interoperability.mjs",
+        "currentSha256": "sha256:c725501e9c8b6ec218e400efc7c7799b7f08010b37e0d72c1122cde505e4bdc8",
+        "historicalProof": "provenance/legacy-core.json"
+      },
+      {
+        "original": "src/v4/source/path-policy.mjs",
+        "destination": "src/compat/v4/source/path-policy.mjs",
+        "currentSha256": "sha256:c569f04e9d6214b6bb8584b5e2da8229f1943d8b99fbb32d2a183606f9bfbc9e",
+        "historicalProof": "provenance/legacy-classification.json"
+      },
+      {
+        "original": "src/v4/source/static-text.mjs",
+        "destination": "src/compat/v4/source/static-text.mjs",
+        "currentSha256": "sha256:b16ae63cdf4eee971353f8176d787ca767a3b5faf55070089dff6bef0570c18b",
+        "historicalProof": "provenance/legacy-classification.json"
+      }
+    ],
+    "compatibilityExport": "src/compat/index.mjs",
+    "schemaMaps": [
+      {
+        "path": "schemas/legacy/v1.json",
+        "sha256": "sha256:f9a495857bed24cd97ce32979dc623be6a3e676e902f8229798bdf9c370f2a6c",
+        "count": 46,
+        "keys": [
+          "affected-subgraph-v1.schema.json",
+          "classification-analysis-receipt-v1.schema.json",
+          "classification-evaluation-report-v1.schema.json",
+          "classification-handoff-v1.schema.json",
+          "classification-session-v1.schema.json",
+          "external-semantic-evidence-adapter-v1.schema.json",
+          "external-semantic-evidence-v1.schema.json",
+          "federated-pack-discovery-v1.schema.json",
+          "harness-asset-v3.schema.json",
+          "harness-semantic-requirements-v1.schema.json",
+          "ontology-foundation-v1.schema.json",
+          "ontology-grounding-result-v1.schema.json",
+          "ontology-pack-v1.schema.json",
+          "ontology-reasoning-profile-v1.schema.json",
+          "pack-benchmark-v1.schema.json",
+          "pack-certification-v1.schema.json",
+          "pack-gold-case-v1.schema.json",
+          "pack-lifecycle-record-v1.schema.json",
+          "professional-pack-inspection-v1.schema.json",
+          "professional-pack-v1.schema.json",
+          "project-ontology-artifact-lifecycle-v1.schema.json",
+          "project-ontology-artifact-set-v1.schema.json",
+          "project-ontology-projection-set-v1.schema.json",
+          "project-ontology-proposal-v1.schema.json",
+          "project-ontology-skill-v1.schema.json",
+          "resolved-professional-pack-set-v1.schema.json",
+          "resolved-project-ontology-snapshot-v1.schema.json",
+          "resolved-taxonomy-snapshot-v1.schema.json",
+          "semantic-candidate-set-v1.schema.json",
+          "semantic-catalog-lock-v1.schema.json",
+          "semantic-catalog-pointer-v1.schema.json",
+          "semantic-catalog-policy-v1.schema.json",
+          "semantic-catalog-receipt-v1.schema.json",
+          "semantic-catalog-recovery-v1.schema.json",
+          "semantic-catalog-v1.schema.json",
+          "semantic-compatibility-report-v1.schema.json",
+          "semantic-computation-v1.schema.json",
+          "semantic-index-v1.schema.json",
+          "semantic-interoperability-projection-set-v1.schema.json",
+          "semantic-round-trip-report-v1.schema.json",
+          "source-concept-hypothesis-v1.schema.json",
+          "source-descriptor-v1.schema.json",
+          "taxonomy-analysis-result-v1.schema.json",
+          "taxonomy-v1.schema.json",
+          "terminal-semantic-closure-v1.schema.json",
+          "terminal-semantic-slice-v1.schema.json"
+        ],
+        "role": "Retained compatibility schemas, including read-only foreign material validation; not native v1."
+      }
+    ],
+    "nativeContract": {
+      "specification": "specifications/v1/README.md",
+      "schema": "specifications/v1/asset.schema.json",
+      "frozen": true,
+      "implicitLegacyConversion": false
+    },
+    "currentOwnedSource": [
+      {
+        "path": "src/service.mjs",
+        "sha256": "sha256:462e3034156252f73c8295ad74c5e117c313f3f727ccecfd5644d6aed132459c"
+      },
+      {
+        "path": "src/state.mjs",
+        "sha256": "sha256:e212a2ee7791f4ced1e0305f72e07ab1394af5156f271f3ea1be11e2ebc9b9cf"
+      },
+      {
+        "path": "src/cli.mjs",
+        "sha256": "sha256:798a0a51b7e24484509185796d294dfe1cdec2672761bdc4dcd286dbf9b088b3"
+      },
+      {
+        "path": "src/native-operations.mjs",
+        "sha256": "sha256:51534a9f67213ddf1214a0b993ede9a1416c53e25b0f97d8c64d678ea3be10cf"
+      },
+      {
+        "path": "src/import-operations.mjs",
+        "sha256": "sha256:bbc9986784cf6642ef0331f72ac94f8c85e3d55f15cb8bf18800374090390d37"
+      },
+      {
+        "path": "src/legacy-queries.mjs",
+        "sha256": "sha256:88be921585febd7711dff381d8d6b0337bad3cb007ad65cadb389c0fde332040"
+      },
+      {
+        "path": "src/producer-operations.mjs",
+        "sha256": "sha256:3fe9522febe6d79d5ed426ce052eb4e20e585466cd33424f9c7b7a0d558f2f4f"
+      },
+      {
+        "path": "src/catalog-operations.mjs",
+        "sha256": "sha256:8a48a521d976033a2eced48da085e011147d61753fd61ff6237de1faaa2e6797"
+      },
+      {
+        "path": "src/catalog-materials.mjs",
+        "sha256": "sha256:56e7cb4a3bae4d763d156af1fd10787f6eea69b0d01e9772c00a41d9e3dbfc29"
+      },
+      {
+        "path": "src/classification-operations.mjs",
+        "sha256": "sha256:b543406d61fe5ac09cd44dbd38b2976d8967269e8ff8041ccd34976585327fc6"
+      },
+      {
+        "path": "src/classification-runner.mjs",
+        "sha256": "sha256:b84049544842bf16ca9d8a40a2f1aea741c0e98289650a539c1cb88f8261555b"
+      },
+      {
+        "path": "src/migration.mjs",
+        "sha256": "sha256:cef2f9b5c5feaea4a38041e15b5120e6ab207193c53d953bfa6dc68a26e4e530"
+      },
+      {
+        "path": "src/asset-sources.mjs",
+        "sha256": "sha256:c45853aae367c82a03689ed931deda6a6025150605e293e622aa07225dc88d52"
+      },
+      {
+        "path": "src/index.mjs",
+        "sha256": "sha256:37f2b4f6054e5c8ae41dfa176f8fde8006b1784c6b592384ba7d49a37fc7651c"
+      },
+      {
+        "path": "src/specification.mjs",
+        "sha256": "sha256:2b5271bfdb995f87caac84875a070ab95650a6ea742afda72489bdef3a8c7d81"
+      },
+      {
+        "path": "src/instances.mjs",
+        "sha256": "sha256:d1578bda1fcc5fd040aa41ae3d78647f9c1e7e9e421b0b15f79712a6fdf2b78d"
+      },
+      {
+        "path": "src/delivery.mjs",
+        "sha256": "sha256:d88dce2d1c2fede62a295c2a8853e17125907f5d33dbb48eb0eb0c6b285e0cf4"
+      }
+    ],
+    "replacement": {
+      "originatingCLI": "Replaced by src/cli.mjs and the evopilot-next-ontology bin.",
+      "originatingWorkspace": "Replaced by explicit src/service.mjs and src/state.mjs SQLite ownership; no ambient legacy workspace.",
+      "originatingSessionStore": "Replaced by src/classification-operations.mjs and src/classification-runner.mjs with durable claims, attempts and scoped receipts.",
+      "legacyApprovalsImported": false
+    },
+    "retainedSupportingFiles": [
+      {
+        "original": "LICENSE",
+        "destination": "LICENSE",
+        "currentSha256": "sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+        "historicalProof": "provenance/legacy-core.json"
+      },
+      {
+        "original": "NOTICE",
+        "destination": "NOTICE",
+        "currentSha256": "sha256:03b31ef10aa94ae367989f28ef17e324bf02bf4627be8be5913580faf28e822e",
+        "historicalProof": "provenance/legacy-core.json"
+      },
+      {
+        "original": "tests/v4.8.1-semantic-catalog-contract.test.mjs",
+        "destination": "tests/e2e/legacy-catalog-contract.test.mjs",
+        "currentSha256": "sha256:8b1c87ecf3969b70b779e58272287bc3c54581ec47c800bdfe18cf4cfc35d54a",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "tests/v4.8.1-semantic-catalog-materials.test.mjs",
+        "destination": "tests/e2e/legacy-catalog-materials.test.mjs",
+        "currentSha256": "sha256:aa6a6001eb94bd8189e9e2b2d3b2e9095119800f5107dafa3eeaa991bbdd4720",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "tests/v4.8.1-semantic-catalog-store.test.mjs",
+        "destination": "tests/e2e/legacy-catalog-store.test.mjs",
+        "currentSha256": "sha256:9bfcc71d827a9d1bb53b79a97e9b2fbed74dcbe15d595ee6cf5d763daa2633af",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "tests/fixtures/prepared-semantic-supply.mjs",
+        "destination": "tests/e2e/legacy-catalog-supply.test.mjs",
+        "currentSha256": "sha256:f17bc71fb659a40884450bd0b5576e7279ba2057a6cd0a26c0ce2008cddbe749",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "tests/fixtures/semantic-catalog-contender.mjs",
+        "destination": "tests/fixtures/semantic-catalog-contender.mjs",
+        "currentSha256": "sha256:8b4ddf990135a3ca2908eb3c2cca134331de540c78f40797f1acd288d168057d",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "tests/fixtures/semantic-supply-crash.mjs",
+        "destination": "tests/fixtures/semantic-supply-crash.mjs",
+        "currentSha256": "sha256:868654af82c03662e0d671865f3751b61ce4d31627dffacb9a370ba25f9224d7",
+        "historicalProof": "provenance/legacy-catalog.json"
+      },
+      {
+        "original": "tests/fixtures/semantic-supply.mjs",
+        "destination": "tests/fixtures/semantic-supply.mjs",
+        "currentSha256": "sha256:2c708065bff8316543857decb0264a30f5643b048145bbb3a3eea2782e248a49",
+        "historicalProof": "provenance/legacy-catalog.json"
+      }
+    ]
+  },
+  "operations": {
+    "derivation": "Directly read exported operation arrays from current owned source modules; groups below are disjoint and exhaustive.",
+    "total": 73,
+    "retained": {
+      "total": 45,
+      "queries": {
+        "owner": "src/legacy-queries.mjs",
+        "count": 28,
+        "names": [
+          "semantic.foundation.inspect",
+          "semantic.candidates.inspect",
+          "semantic.grounding.inspect",
+          "semantic.reasoning-profile.inspect",
+          "semantic.index.inspect",
+          "semantic.affected-subgraph.inspect",
+          "semantic.compute.inspect",
+          "semantic.compute.compare",
+          "semantic.federation.discover",
+          "semantic.interoperability.inspect",
+          "semantic.round-trip.inspect",
+          "semantic.closure.inspect",
+          "semantic.closure.slice",
+          "pack.scaffold.inspect",
+          "pack.inspect",
+          "pack.resolve.inspect",
+          "pack.benchmark.inspect",
+          "pack.gold-case.inspect",
+          "pack.certification.inspect",
+          "semantic.evidence-adapter.inspect",
+          "semantic.evidence.import.inspect",
+          "project-ontology.proposal.inspect",
+          "project-ontology.snapshot.resolve",
+          "project-ontology.projections.inspect",
+          "project-ontology.skill.inspect",
+          "ontology.inspect",
+          "ontology.validate",
+          "ontology.diff"
+        ]
+      },
+      "producers": {
+        "owner": "src/producer-operations.mjs",
+        "count": 7,
+        "names": [
+          "ontology.publish",
+          "pack.lifecycle.create",
+          "pack.lifecycle.transition",
+          "project-ontology.proposal.transition",
+          "project-ontology.artifact.publish",
+          "project-ontology.artifact.transition",
+          "semantic.closure.publish"
+        ]
+      },
+      "catalog": {
+        "owner": "src/catalog-operations.mjs",
+        "count": 10,
+        "names": [
+          "semantic.catalog.preview",
+          "semantic.catalog.inspect",
+          "semantic.catalog.readback",
+          "semantic.catalog.publish",
+          "semantic.catalog.transition-preview",
+          "semantic.catalog.rollback",
+          "semantic.catalog.revoke",
+          "semantic.catalog.recovery-inspect",
+          "semantic.catalog.recovery-readback",
+          "semantic.catalog.recover"
+        ]
+      }
+    },
+    "classification": {
+      "owners": [
+        "src/classification-operations.mjs",
+        "src/classification-runner.mjs"
+      ],
+      "count": 7,
+      "names": [
+        "classification.start",
+        "classification.inspect",
+        "classification.resume",
+        "classification.reanalyze",
+        "classification.list",
+        "classification.continue_to_harness",
+        "classification.close"
+      ]
+    },
+    "newControlAndProposalHelpers": {
+      "count": 8,
+      "names": [
+        "producer.prepare",
+        "producer.decide",
+        "producer.inspect",
+        "producer.list",
+        "catalog.prepare",
+        "catalog.decide",
+        "catalog.plan-inspect",
+        "project-ontology.proposal.create"
+      ]
+    },
+    "sourceImportAndDerivation": {
+      "owner": "src/import-operations.mjs",
+      "count": 5,
+      "names": [
+        "source.install",
+        "source.inspect",
+        "source.list",
+        "legacy.import",
+        "legacy.derive"
+      ]
+    },
+    "nativeAndWorkspace": {
+      "owner": "src/native-operations.mjs",
+      "count": 8,
+      "names": [
+        "workspace.inspect",
+        "receipt.inspect",
+        "asset.put",
+        "asset.inspect",
+        "asset.list",
+        "asset.review",
+        "asset.decide",
+        "asset.publish"
+      ]
+    },
+    "mutations": [
+      "classification.start",
+      "classification.reanalyze",
+      "classification.continue_to_harness",
+      "classification.close",
+      "semantic.catalog.publish",
+      "semantic.catalog.rollback",
+      "semantic.catalog.revoke",
+      "semantic.catalog.recover",
+      "catalog.prepare",
+      "catalog.decide",
+      "ontology.publish",
+      "pack.lifecycle.create",
+      "pack.lifecycle.transition",
+      "project-ontology.proposal.create",
+      "project-ontology.proposal.transition",
+      "project-ontology.artifact.publish",
+      "project-ontology.artifact.transition",
+      "semantic.closure.publish",
+      "producer.prepare",
+      "producer.decide",
+      "source.install",
+      "legacy.import",
+      "legacy.derive",
+      "asset.put",
+      "asset.review",
+      "asset.decide",
+      "asset.publish"
+    ]
+  },
+  "historicalDigitalExpertSchemas": {
+    "count": 38,
+    "status": "EXACT_EQUIVALENT_ORIGINALS_ALREADY_CATALOGED",
+    "localProof": ".local/guidance-context/schema-copy-proof.json",
+    "localProofSha256": "sha256:dcdbb75be41a217e426175a31bbfeb714a9889eb3b7a0e74acb8788ad6ede938",
+    "differentCount": 0,
+    "interpretation": "38 historical duplicate originals are already mapped to the owned legacy schema map. Declared strict-AJV adaptations remain recorded; this does not assert byte identity for adapted destination JSON or native-v1 equivalence.",
+    "entries": [
+      {
+        "key": "affected-subgraph-v1.schema.json",
+        "sourceSha256": "643f501333831587cbe9ba8e1d37ced662e27d12593099069f5e26b5252e3c9c",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "external-semantic-evidence-adapter-v1.schema.json",
+        "sourceSha256": "a6fd6439d92f6e67e7c24e369b1c7fdaf07a3ebceede03339a8c3ffe0f878c99",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "external-semantic-evidence-v1.schema.json",
+        "sourceSha256": "0c45ae2a9dc7bf7adbff831c7ce532b92a90bccad5827df0460ed95a4ef72d53",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "federated-pack-discovery-v1.schema.json",
+        "sourceSha256": "c0e8ca572b173684e95145ef5b996acd7278a400361a7e81da08e23f860fce54",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "harness-semantic-requirements-v1.schema.json",
+        "sourceSha256": "98c6864f796da774cfaa68f43bacb23fe7720db1531a87817e1f53d655cd9236",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "ontology-foundation-v1.schema.json",
+        "sourceSha256": "396c7d80ea930f022adbd164e39c16139e658d6156d1e3dbbaa9e9448f97c018",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "ontology-grounding-result-v1.schema.json",
+        "sourceSha256": "43f09e089c83389bdbcab7f0e0b8d85a095432f88f6fd6815da7c54501bc4d7c",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "ontology-reasoning-profile-v1.schema.json",
+        "sourceSha256": "45424fc9b600286db45628df81e9cf41106f3c5a86e2bff0b147da11abf964f2",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "pack-benchmark-v1.schema.json",
+        "sourceSha256": "fd44d16b96e89292cc331342c600539b52beb55c7cc28ca34ace05f9ab0bc666",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "pack-certification-v1.schema.json",
+        "sourceSha256": "d54a1b2400da88a4f224c97becf3b287839eb931d3fc6b03dd195bf5b5542334",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "pack-gold-case-v1.schema.json",
+        "sourceSha256": "1eacda6152a29e06b69ff983a2ec49215c172efaee0318b0ad8b19b326287147",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "pack-lifecycle-record-v1.schema.json",
+        "sourceSha256": "10670bbf6463d62053ef01bdf41df1e12b696177f0dbc38b30cd4c32a9781b1f",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "professional-pack-inspection-v1.schema.json",
+        "sourceSha256": "89793919163a596b3cba28213b1e1bed483083beeb627d4d995b47b15d11c021",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "professional-pack-v1.schema.json",
+        "sourceSha256": "3ae204a1890e3a65d3543fc4952b74b2b59b9f40fbff91e56632b155515c92a7",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "project-ontology-artifact-lifecycle-v1.schema.json",
+        "sourceSha256": "f7991c6f8dad618e7fa6ab25335136f94ac02ef9a9bf4f0a3fdb5c5501ecb323",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "project-ontology-artifact-set-v1.schema.json",
+        "sourceSha256": "0454842260731d5b7b79cb8b749b2829cee234db7e8e6d8cd1a353b9e2045bc2",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "project-ontology-projection-set-v1.schema.json",
+        "sourceSha256": "8ce9c020373c78bef06512951632ac5aa1c0f2ffccfa386305b2660b85d905b0",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "project-ontology-proposal-v1.schema.json",
+        "sourceSha256": "cf4f43b183ca0815c60479100855bb235e0569193ad06ad6b96d4385bae86ebf",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "project-ontology-skill-v1.schema.json",
+        "sourceSha256": "0c5834b1f176b0ac6e7496ea49ca49256185d3e08f589adf31e0f41e76dc91b7",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "resolved-professional-pack-set-v1.schema.json",
+        "sourceSha256": "9850184c88f336361f1200e989f6d24acf18529b19e8192743d2499c0f72de52",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "resolved-project-ontology-snapshot-v1.schema.json",
+        "sourceSha256": "6dc13a110230abbe1c7e6a0b18b6e392910aafd80a65c85bd2afb23ecf7e360d",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "semantic-candidate-set-v1.schema.json",
+        "sourceSha256": "c69c1b71ff19db1a112c5a8e7929008ff09935b55f31048bd4754dc6f9d4dbf4",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "semantic-compatibility-report-v1.schema.json",
+        "sourceSha256": "5f77a34f013e46539f2fcf3e9b20dbf6ece5353b53adb43b250445298989d166",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "semantic-computation-v1.schema.json",
+        "sourceSha256": "8d4fb79d5928c4e601d6674c4e5484238da24bca1858a18c26355cb5df06fe90",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "semantic-index-v1.schema.json",
+        "sourceSha256": "5b5b9831e5537dbd32d2860661a4636041fcd68b734dcb86b548460e64316568",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "semantic-interoperability-projection-set-v1.schema.json",
+        "sourceSha256": "79e5fbb89f1b31e16a431578e2058b6f709a440837f28516d994f4cd3ebab85b",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "semantic-round-trip-report-v1.schema.json",
+        "sourceSha256": "6fa78f9a1861abe2a83442302cdc50c6d5b0ef7cb89808bee838fa0bdebbf521",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "taxonomy-v1.schema.json",
+        "sourceSha256": "78469fddd47dbbbcead133eb8965bf0cade00e41a14dabb7c5517c2995f32008",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "terminal-semantic-closure-v1.schema.json",
+        "sourceSha256": "6318e53b2b584d2738345ecfb6e3b8638319000b2273a4db3e556c9071e6eb19",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "terminal-semantic-slice-v1.schema.json",
+        "sourceSha256": "f3338eb301742e86ccac8ed53defbf688168a9fbac81620d2d3a6cccb2e1bb17",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-catalog.json",
+        "adaptations": []
+      },
+      {
+        "key": "classification-analysis-receipt-v1.schema.json",
+        "sourceSha256": "c0e9ff548e16c17ea77616f7e6bb1629a8716d8df010cbca194cdab47eae9b64",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-schema-sources.json",
+        "adaptations": []
+      },
+      {
+        "key": "classification-evaluation-report-v1.schema.json",
+        "sourceSha256": "89f510404dc59aa7726319e8c5280267aa6819d79ab16f1a43c92b997c22db8b",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-schema-sources.json",
+        "adaptations": []
+      },
+      {
+        "key": "classification-handoff-v1.schema.json",
+        "sourceSha256": "96970380bb31ff6ca2668c2f7c86c3d2f830d3f6ab30bba0dac45aab19662455",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-schema-sources.json",
+        "adaptations": [
+          {
+            "pointer": "/properties/authority",
+            "change": "Declare unconstrained required properties explicitly for strict AJV; same accepted data."
+          }
+        ]
+      },
+      {
+        "key": "classification-session-v1.schema.json",
+        "sourceSha256": "6a4fee89c4d01f914c1463d0ec698e9f73e6b00b7c6003d82a3629fe6a598f3f",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-schema-sources.json",
+        "adaptations": []
+      },
+      {
+        "key": "resolved-taxonomy-snapshot-v1.schema.json",
+        "sourceSha256": "b11141b342118ab20f38b71240fd47665b6054c6326d1058be91fd347addcbca",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-schema-sources.json",
+        "adaptations": [
+          {
+            "pointer": "/properties/axes",
+            "change": "Declare unconstrained required properties explicitly for strict AJV; same accepted data."
+          }
+        ]
+      },
+      {
+        "key": "source-concept-hypothesis-v1.schema.json",
+        "sourceSha256": "5fc66d3143c681daa7f2477220c1c24235477c55b35d82a6142f6c5c3084c002",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-schema-sources.json",
+        "adaptations": []
+      },
+      {
+        "key": "source-descriptor-v1.schema.json",
+        "sourceSha256": "ec5aa3a7a4e40927ed486a6dc18e460fab8169c373f6c7cdc9b876b455af6042",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-schema-sources.json",
+        "adaptations": []
+      },
+      {
+        "key": "taxonomy-analysis-result-v1.schema.json",
+        "sourceSha256": "072a87fa37295f96697fcca46ae37b5daec98a60b4f66619777dfcf9eec40f1e",
+        "destination": "schemas/legacy/v1.json",
+        "proof": "provenance/legacy-schema-sources.json",
+        "adaptations": [
+          {
+            "pointer": "/properties/axes",
+            "change": "Declare unconstrained required properties explicitly for strict AJV; same accepted data."
+          }
+        ]
+      }
+    ]
+  },
+  "providers": {
+    "callbackRoutesImplemented": true,
+    "automaticallyConfiguredPluginProvider": false,
+    "classification": [
+      "resolveClassificationSource",
+      "classificationAdvisor",
+      "classificationModel"
+    ],
+    "catalog": [
+      "resolveLegacyHarness"
+    ],
+    "configurationBoundary": "Trusted embedding application code only; no request JSON, credential or path-based provider configuration. Standalone CLI supplies no providers. Missing prerequisites fail before dispatch; Catalog requires actual verified exact foreign material."
+  },
+  "verification": {
+    "source": ".local/guidance-context/verification.json",
+    "sourceSha256": "sha256:b89dfdad79a4dfa94d7686bdb612d024ebb1083706cf41375ff5e7971e7bc9e5",
+    "kind": "Retained independent local verification; not rerun during documentation edit.",
+    "ownProductTests": 201,
+    "allOwnTests": "PASS",
+    "check": "PASS",
+    "build": "PASS",
+    "offlineArtifactSmoke": "PASS",
+    "coverage": [
+      "classification persistence/replay/restart/scope/CAS/handoff",
+      "timeout/UNKNOWN/late completion",
+      "resolver descriptor safety",
+      "successful reanalysis history",
+      "corrupt retained evidence and Catalog material",
+      "CLI discovery/input/persistence/scope/provider failures"
+    ],
+    "fullAcceptance": "PENDING"
+  },
+  "fullMigration": false,
+  "E03": "PENDING",
+  "E10": "PENDING",
+  "hostReady": false,
+  "productionReady": false,
+  "acceptance": false,
+  "authority": false,
+  "softwareRelease": false,
+  "pending": [
+    "MCP transport and unified Host routing",
+    "Host Expert/plugin integration and actual provider composition",
+    "Final source classification and source-ledger closure",
+    "Full migration and independent acceptance"
+  ],
+  "uncertaintyPolicy": "Inspect exact scoped receipts and retained state after unknown/timeout; never redispatch uncertain work. Catalog recovery reconciles; classification resume reads only.",
+  "formatBoundary": "Native v1 deliveries and legacy Catalog generations remain separate wire formats; legacy.derive is an explicit partial projection with coverage and unresolved issues, not an implicit conversion."
+}

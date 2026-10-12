@@ -1,5 +1,7 @@
 # EvoPilot Ontology 0.1.0
 
+New users: start with [concepts and asset workflows](docs/asset-workflows.md#concepts-and-format-choices). Developers: use the [CLI](docs/cli.md) and [service contract](docs/service.md). Retained capability users: see [Legacy API](docs/legacy-api.md), [Catalog service](docs/catalog-service.md) and [Classification service](docs/classification-service.md). The [documentation index](docs/README.md) routes the packaged guides.
+
 Ontology owns semantic modeling and instance validation. Public root APIs are `inspectArtifactReference`, `validateOntology`, `validateInstances`, `buildDelivery` and `verifyDelivery`. See the [native v1 specification and API guide](specifications/v1/README.md), [schema](specifications/v1/asset.schema.json) and [synthetic examples](examples/synthetic-models.json).
 
 Additional public subpaths:
@@ -11,7 +13,7 @@ Additional public subpaths:
 
 Historical wire identities remain compatibility data; native v1 validation does not automatically convert them. These libraries do not implement full OWL/RDF/SHACL/PROV or complete operational migration.
 
-The service also implements seven finite retained producers and an owned proposal-create helper through separate preparation and local operator decisions. See the [producer API](docs/legacy-api.md#finite-retained-producers). Historical approvals are never imported as current authority; no Runtime/Harness software release or activation occurs. Filesystem producer tests await operator execution.
+The service also implements seven finite retained producers and an owned proposal-create helper through separate preparation and local operator decisions. See the [producer API](docs/legacy-api.md#finite-retained-producers). Historical approvals are never imported as current authority; no Runtime/Harness software release or activation occurs. Current independent local evidence reports 201 passing product tests, check/build and offline artifact smoke, including producer, Catalog, classification and CLI coverage. See the [current migration summary](provenance/migration-current.json); historical provenance remains unchanged.
 
 All root APIs also expose `PRODUCT`, `VERSION` and `capabilities()`. Discovery describes `M2_OWNED_SERVICE`: local business operations and persistence are implemented through the separate service export; Host and production readiness remain false. Source import/derivation and [28 historical preview queries](docs/legacy-api.md), scoped [Catalog routes](docs/catalog-service.md), seven persistent [classification operations](docs/classification-service.md) and the [standalone CLI](docs/cli.md) are implemented. Classification and foreign Catalog material require explicit trusted application callbacks; the CLI supplies none and returns unavailable errors when they are needed. MCP, Expert/plugin integration and actual provider wiring remain pending. Reports convey no acceptance, execution or publication authority.
 
