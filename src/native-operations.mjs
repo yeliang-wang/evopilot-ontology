@@ -6,9 +6,10 @@ import { importOperations, importMutations, importFields, operateImport } from '
 import { producerOperations, producerMutations, validateProducerRequest, operateProducer } from './producer-operations.mjs';
 
 import { legacyQueryOperations, validateLegacyQuery, operateLegacyQuery } from './legacy-queries.mjs';
+import { catalogOperations, catalogMutations, validateCatalogRequest, operateCatalog } from './catalog-operations.mjs';
 
-export const operations = Object.freeze([...producerOperations, ...legacyQueryOperations, ...importOperations, 'workspace.inspect', 'receipt.inspect', 'asset.put', 'asset.inspect', 'asset.list', 'asset.review', 'asset.decide', 'asset.publish']);
-export const mutations = Object.freeze([...producerMutations, ...importMutations, 'asset.put', 'asset.review', 'asset.decide', 'asset.publish']);
+export const operations = Object.freeze([...catalogOperations, ...producerOperations, ...legacyQueryOperations, ...importOperations, 'workspace.inspect', 'receipt.inspect', 'asset.put', 'asset.inspect', 'asset.list', 'asset.review', 'asset.decide', 'asset.publish']);
+export const mutations = Object.freeze([...catalogMutations, ...producerMutations, ...importMutations, 'asset.put', 'asset.review', 'asset.decide', 'asset.publish']);
 export function validateRequest(r) {
   if (!operations.includes(r.operation)) fail('UNSUPPORTED_OPERATION', 'Operation is outside this service slice');
   const write = mutations.includes(r.operation);
@@ -19,6 +20,7 @@ export function validateRequest(r) {
     slug(r.requestId);
     if (!Number.isSafeInteger(r.expectedRevision) || r.expectedRevision < 0) fail('INVALID_REQUEST', 'Expected nonnegative revision');
   }
+  if (catalogOperations.includes(r.operation)) { validateCatalogRequest(r); return write; }
   if (producerOperations.includes(r.operation)) { validateProducerRequest(r); return write; }
   if (legacyQueryOperations.includes(r.operation)) { validateLegacyQuery(r); return false; }
   const fields = { ...importFields,
@@ -35,6 +37,7 @@ export function validateRequest(r) {
   return write;
 }
 export function operate(store, state, r) {
+  if (catalogOperations.includes(r.operation)) return operateCatalog(store, state, r);
   if (producerOperations.includes(r.operation)) return operateProducer(store, state, r);
   if (legacyQueryOperations.includes(r.operation)) return operateLegacyQuery(store, state, r);
   if (importOperations.includes(r.operation)) return operateImport(store, state, r, operate);

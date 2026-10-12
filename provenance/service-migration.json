@@ -1,7 +1,7 @@
 {
   "schema": "evopilot-ontology-service-migration/v1",
-  "requestDigest": "sha256:9ad47356381ea890892daa2a593439223c23b15500663525bcfbfc7b7a2895bb",
-  "status": "BOUNDED_PRODUCER_VALIDATION_SOURCE_EDIT",
+  "requestDigest": "sha256:f0d2522c56d89477f1cdd1a903688c340375302d82a3face6f13e4d6609b69a9",
+  "status": "BOUNDED_CATALOG_SOURCE_EDIT",
   "compatibility": "evopilot-harness@4.8.2",
   "sourceCommit": "372733fd7b67ec3bee9efe6322f0229db77b160d",
   "sourceIdentityNote": "Retained source commit from staged routing data; not a single-file SHA or a new tree qualification.",
@@ -545,22 +545,91 @@
       "previewOnly": false,
       "authority": false,
       "authorization": "fresh scoped producer plan decision"
+    },
+    {
+      "operation": "semantic.catalog.preview",
+      "owner": "ontology",
+      "module": "catalog-operations",
+      "function": "operateCatalog",
+      "authority": false,
+      "authorization": "scoped read or receipt reconciliation"
+    },
+    {
+      "operation": "semantic.catalog.inspect",
+      "owner": "ontology",
+      "module": "catalog-operations",
+      "function": "operateCatalog",
+      "authority": false,
+      "authorization": "scoped read or receipt reconciliation"
+    },
+    {
+      "operation": "semantic.catalog.readback",
+      "owner": "ontology",
+      "module": "catalog-operations",
+      "function": "operateCatalog",
+      "authority": false,
+      "authorization": "scoped read or receipt reconciliation"
+    },
+    {
+      "operation": "semantic.catalog.publish",
+      "owner": "ontology",
+      "module": "catalog-operations",
+      "function": "operateCatalog",
+      "authority": false,
+      "authorization": "exact local catalog plan decision"
+    },
+    {
+      "operation": "semantic.catalog.transition-preview",
+      "owner": "ontology",
+      "module": "catalog-operations",
+      "function": "operateCatalog",
+      "authority": false,
+      "authorization": "scoped read or receipt reconciliation"
+    },
+    {
+      "operation": "semantic.catalog.rollback",
+      "owner": "ontology",
+      "module": "catalog-operations",
+      "function": "operateCatalog",
+      "authority": false,
+      "authorization": "exact local catalog plan decision"
+    },
+    {
+      "operation": "semantic.catalog.revoke",
+      "owner": "ontology",
+      "module": "catalog-operations",
+      "function": "operateCatalog",
+      "authority": false,
+      "authorization": "exact local catalog plan decision"
+    },
+    {
+      "operation": "semantic.catalog.recovery-inspect",
+      "owner": "ontology",
+      "module": "catalog-operations",
+      "function": "operateCatalog",
+      "authority": false,
+      "authorization": "scoped read or receipt reconciliation"
+    },
+    {
+      "operation": "semantic.catalog.recovery-readback",
+      "owner": "ontology",
+      "module": "catalog-operations",
+      "function": "operateCatalog",
+      "authority": false,
+      "authorization": "scoped read or receipt reconciliation"
+    },
+    {
+      "operation": "semantic.catalog.recover",
+      "owner": "ontology",
+      "module": "catalog-operations",
+      "function": "operateCatalog",
+      "authority": false,
+      "authorization": "scoped read or receipt reconciliation"
     }
   ],
-  "pendingLegacyServiceOperationCount": 10,
-  "pendingLegacyServiceOperations": [
-    "Catalog inspect",
-    "Catalog preview",
-    "Catalog publish",
-    "Catalog readback",
-    "Catalog transition preview",
-    "Catalog rollback",
-    "Catalog revoke",
-    "Catalog recovery inspect",
-    "Catalog recovery readback",
-    "Catalog recover"
-  ],
-  "pendingInventoryNote": "Ten Catalog service operations remain; Catalog generation resolution remains a pure compat calculation, not a new registered producer. Seven persistent classification operations and CLI/MCP remain pending.",
+  "pendingLegacyServiceOperationCount": 0,
+  "pendingLegacyServiceOperations": [],
+  "pendingInventoryNote": "Ten catalog routes implemented in owned SQLite service; seven persistent classification operations, CLI/MCP, Expert integration and trusted Harness provider wiring pending.",
   "pendingPersistentClassification": [
     "start",
     "inspect",
@@ -576,11 +645,17 @@
   ],
   "validation": {
     "syntax": "PASSED",
-    "filesystemFreeTests": 1,
-    "filesystemFreeCoverage": "Expanded producer state machine: required imports, false pins, valid referenced dependency publication, optional imports, retained-material tamper and semantic revalidation, MATERIAL_REQUIRED, canonical and custom foundation binding",
-    "operatorReportedBaselineTests": 181,
+    "sourceCheck": "PASSED",
+    "discoveryTest": "PASSED",
+    "materialAssemblyDiagnostic": "PASSED: real producer calculations and owned history, 17 complete generation entries; filesystem-free diagnostic only",
+    "operatorReportedBaselineTests": 184,
+    "operatorReportedBaselinePassed": 183,
+    "operatorReportedBaselineFailed": 1,
+    "operatorReportedPublicCatalogScenario": "PASSED before repair",
     "baselineRerun": false,
-    "filesystemPublicServiceTests": "OPERATOR_RUN_PENDING"
+    "filesystemPublicServiceTests": "REPAIR_OPERATOR_RERUN_PENDING: local two-file run had 2 passes and 11 EPERM failures at mkdtemp before initialization",
+    "repairDescriptorSafetyTest": "PASSED",
+    "repairCalculationDiagnostic": "PASSED: real producer/Catalog calculations for two complete generations, rollback, cumulative revocation and private generation; no filesystem persistence exercised"
   },
   "validationGaps": {
     "arbitraryFoundationDigest": "SOURCE_FIXED_OPERATOR_PUBLIC_SERVICE_VERIFICATION_PENDING",
@@ -588,7 +663,7 @@
     "foundationMaterial": "Owned normalization and full canonical equality; full material and digest in plan dependencies, immutable blob, record and history",
     "packMaterial": "Owned inspection and full set resolution on create and every transition; server-derived pins with optional exact caller assertions; immutable retained material and prepared dependency binding",
     "historicalPackRecords": "Readable; transitions without retained complete material fail MATERIAL_REQUIRED; no backfill",
-    "remainingScope": "All Catalog service operations, persistent classification lifecycle and CLI/MCP remain pending"
+    "remainingScope": "Ten catalog routes implemented in owned SQLite service; seven persistent classification operations, CLI/MCP, Expert integration and trusted Harness provider wiring pending."
   },
   "authority": false,
   "fullMigration": false,
@@ -599,5 +674,26 @@
     "producer.inspect",
     "producer.list",
     "producer.decide"
-  ]
+  ],
+  "catalogControlOperations": [
+    "catalog.prepare",
+    "catalog.decide",
+    "catalog.plan-inspect"
+  ],
+  "catalogRecovery": "Atomic SQL receipt reconciliation only; never republishes or unlocks; safely validated unresolved recovery failures report UNKNOWN. Malformed requests before validation remain INVALID_REQUEST.",
+  "boundedRepair": {
+    "requestDigest": "sha256:64cdea71dcab65f30d85a7ed08b729ebbf5c7b5229220d1a73297a674e2b81f0",
+    "historicalR31": {
+      "timeoutSeconds": 600,
+      "receiptStatus": "UNCERTAIN_RETAINED",
+      "process": "ABSENT_OPERATOR_REPORTED",
+      "verifiedSourceAfter": "sha256:a938a0c82ab0a9dd45ed01bbf6598b14b9c840308b26d1eb9a6f0c5df3882da8",
+      "oldBinding": "CANCELLED_AFTER_OPERATOR_REVIEW",
+      "replayed": false,
+      "nativeSucceededClaim": false
+    },
+    "scope": "Eight authorized source/test/documentation files; frozen v1 and compatibility code unchanged",
+    "operatorFullSuiteRerun": "PENDING",
+    "acceptance": false
+  }
 }

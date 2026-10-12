@@ -1,28 +1,37 @@
 import { exactFields, frozenClone, sha256, stableSerialize } from '../vendor/compatibility/v1/reference.mjs';
 import { openState, bounded, fail, LIMITS, validateState } from './state.mjs';
 import { operations, validateRequest, operate } from './native-operations.mjs';
+import { catalogMutations, verifyCatalogReceipt } from './catalog-operations.mjs';
 
 // Construction and discovery are pure. Persistence begins only at initialize().
-export function createOntologyService(options) {
+export function createOntologyService(options, trustedProviders = {}) {
   bounded(options); exactFields(options, ['workspaceRoot', 'workspaceId']);
+  if (!trustedProviders || typeof trustedProviders !== 'object' || ![Object.prototype, null].includes(Object.getPrototypeOf(trustedProviders))) fail('INVALID_REQUEST', 'Code-injected provider required');
+  const descriptors = Object.getOwnPropertyDescriptors(trustedProviders);
+  for (const key of Reflect.ownKeys(descriptors)) {
+    const descriptor = descriptors[key];
+    if (key !== 'resolveLegacyHarness' || !Object.hasOwn(descriptor, 'value') || typeof descriptor.value !== 'function') fail('INVALID_REQUEST', 'Code-injected provider required');
+  }
+  const providers = Object.freeze({ resolveLegacyHarness: descriptors.resolveLegacyHarness?.value });
   const { workspaceRoot, workspaceId } = options;
   let store = null, closed = false;
-  const capabilities = () => frozenClone({ product: 'ontology', stage: 'M2_FIRST_SLICE', operations, limits: LIMITS, authority: false, softwareRelease: false, pending: ['10 Catalog operations', '7 persistent classification operations', 'CLI', 'MCP'] });
+  const capabilities = () => frozenClone({ product: 'ontology', stage: 'M2_FIRST_SLICE', operations, limits: LIMITS, authority: false, softwareRelease: false, pending: ['7 persistent classification operations', 'CLI', 'MCP', 'Expert integration', 'trusted Harness provider wiring'] });
   function initialize() {
     if (closed) fail('CLOSED', 'Service is closed');
-    if (!store) store = openState(workspaceRoot, workspaceId);
+    if (!store) { store = openState(workspaceRoot, workspaceId); store.trustedProviders = providers; }
     return frozenClone({ workspaceId, initialized: true, authority: false });
   }
   function execute(request) {
-    let transaction = false;
+    let transaction = false, validatedOperation;
     try {
       bounded(request);
       const r = frozenClone(request), write = validateRequest(r);
+      validatedOperation = r.operation;
       if (closed) fail('CLOSED', 'Service is closed');
       if (!store) fail('NOT_INITIALIZED', 'Explicit initialize required');
       store.guard();
       const { db } = store;
-      db.exec(write ? 'BEGIN IMMEDIATE' : 'BEGIN'); transaction = true;
+      db.exec((write || r.operation === 'semantic.catalog.recovery-readback') ? 'BEGIN IMMEDIATE' : 'BEGIN'); transaction = true;
       const scope = stableSerialize(r.scope);
       // expectedRevision is a CAS precondition, not part of the idempotent intent.
       const digest = write ? sha256({ operation: r.operation, scope: r.scope, input: r.input }) : null;
@@ -30,7 +39,12 @@ export function createOntologyService(options) {
         const old = db.prepare('SELECT digest, receipt FROM receipts WHERE scope = ? AND request_id = ?').get(scope, r.requestId);
         if (old) {
           if (old.digest !== digest) fail('REQUEST_CONFLICT', 'Request id already binds different content');
-          const result = JSON.parse(old.receipt); db.exec('COMMIT'); transaction = false; return frozenClone(result);
+          const result = JSON.parse(old.receipt);
+          if (catalogMutations.includes(r.operation)) {
+            const current = db.prepare('SELECT data FROM state WHERE singleton = 1').get();
+            verifyCatalogReceipt(store, validateState(JSON.parse(current.data)), r.scope, result);
+          }
+          db.exec('COMMIT'); transaction = false; return frozenClone(result);
         }
       }
       const row = db.prepare('SELECT revision, data FROM state WHERE singleton = 1').get();
@@ -43,6 +57,7 @@ export function createOntologyService(options) {
         const receipt = db.prepare('SELECT receipt FROM receipts WHERE scope = ? AND request_id = ?').get(scope, r.input.requestId);
         if (!receipt) fail('NOT_FOUND', 'Receipt not found in scope');
         result = JSON.parse(receipt.receipt);
+        if (catalogMutations.includes(result.operation)) verifyCatalogReceipt(store, state, r.scope, result);
       } else result = operate(store, state, r);
       if (write) {
         if (db.prepare('SELECT count(*) AS n FROM receipts').get().n >= LIMITS.receipts || row.revision >= Number.MAX_SAFE_INTEGER) fail('LIMIT', 'Receipt/revision limit');
@@ -62,6 +77,9 @@ export function createOntologyService(options) {
       return frozenClone(result);
     } catch (e) {
       if (transaction) { try { store.db.exec('ROLLBACK'); } catch { /* Preserve original failure. */ } }
+      if (['semantic.catalog.recover', 'semantic.catalog.recovery-readback', 'semantic.catalog.recovery-inspect'].includes(validatedOperation)) {
+        throw Object.assign(new Error('Catalog recovery result unresolved'), { code: 'UNKNOWN', causeCode: e.code ?? 'INVALID_REQUEST', status: 'UNKNOWN' });
+      }
       if (typeof e.code === 'string' && !e.code.startsWith('ERR_') && !e.code.startsWith('SQLITE_')) throw e;
       fail(e.code === 'ERR_SQLITE_ERROR' ? 'STATE_ERROR' : 'INVALID_REQUEST', 'Service request failed: ' + (e.code || 'invalid data'));
     }

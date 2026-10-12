@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { assertJSON, stableSerialize, sha256 } from '../vendor/compatibility/v1/reference.mjs';
 
 export function fail(code, message) { throw Object.assign(new Error(message), { code }); }
-export const LIMITS = Object.freeze({ requestBytes: 524288, nodes: 20000, depth: 48, producerPlans: 1000, producerRecords: 1000, assets: 1000, sources: 1000, receipts: 10000, stateBytes: 8388608, receiptBytes: 33554432 });
+export const LIMITS = Object.freeze({ requestBytes: 524288, nodes: 20000, depth: 48, catalogPlans: 1000, catalogRevisions: 1000, catalogHeads: 1000, catalogSets: 16, catalogRevocations: 1000, producerPlans: 1000, producerRecords: 1000, assets: 1000, sources: 1000, receipts: 10000, stateBytes: 8388608, receiptBytes: 33554432 });
 export function validateState(value) {
   if (!value || !Array.isArray(value.assets) || (Object.hasOwn(value, 'sources') && !Array.isArray(value.sources))) fail('CORRUPT_STATE', 'Invalid state collections');
   if (value.assets.length > LIMITS.assets || (value.sources?.length ?? 0) > LIMITS.sources) fail('CORRUPT_STATE', 'State collection limit');
@@ -28,6 +28,17 @@ export function validateState(value) {
       if (key === 'producerRecords' && Object.hasOwn(item, 'material') && (item.kind !== 'PackLifecycle' || item.materialDigest !== sha256(item.material))) fail('CORRUPT_STATE', 'Invalid retained Pack material');
       if (key === 'producerRecords' && Object.hasOwn(item, 'foundation') && (item.kind !== 'Artifact' || item.foundationDigest !== item.foundation?.foundationDigest)) fail('CORRUPT_STATE', 'Invalid retained foundation');
       if (key === 'producerPlans' && (!['PREPARED', 'CONSUMED'].includes(item.status) || !Array.isArray(item.dependencies) || !/^sha256:[a-f0-9]{64}$/.test(item.reviewDigest))) fail('CORRUPT_STATE', 'Invalid producer plan');
+    }
+  }
+  for (const key of ['catalogPlans', 'catalogRevisions', 'catalogHeads']) {
+    if (Object.hasOwn(value, key) && (!Array.isArray(value[key]) || value[key].length > LIMITS[key])) fail('CORRUPT_STATE', 'Invalid catalog collection');
+    const ids = new Set();
+    for (const item of value[key] ?? []) {
+      if (!item?.scope || !['public', 'private'].includes(item.scope.visibility)) fail('CORRUPT_STATE', 'Invalid catalog scope');
+      slug(item.scope.projectId);
+      const id = key === 'catalogPlans' ? item.planId : key === 'catalogRevisions' ? item.pointer?.pointerDigest : stableSerialize([item.scope, item.catalogId]);
+      if (!id || ids.has(id)) fail('CORRUPT_STATE', 'Duplicate catalog identity'); ids.add(id);
+      if (key === 'catalogPlans' && (!['PREPARED', 'CONSUMED'].includes(item.status) || !Array.isArray(item.dependencies))) fail('CORRUPT_STATE', 'Invalid catalog plan');
     }
   }
   if (Buffer.byteLength(stableSerialize(value)) > LIMITS.stateBytes) fail('CORRUPT_STATE', 'State byte limit');
