@@ -7,7 +7,7 @@ export function createOntologyService(options) {
   bounded(options); exactFields(options, ['workspaceRoot', 'workspaceId']);
   const { workspaceRoot, workspaceId } = options;
   let store = null, closed = false;
-  const capabilities = () => frozenClone({ product: 'ontology', stage: 'M2_FIRST_SLICE', operations, limits: LIMITS, authority: false, softwareRelease: false, pending: ['45 legacy producer operations', 'CLI', 'MCP'] });
+  const capabilities = () => frozenClone({ product: 'ontology', stage: 'M2_FIRST_SLICE', operations, limits: LIMITS, authority: false, softwareRelease: false, pending: ['10 Catalog operations', '7 persistent classification operations', 'CLI', 'MCP'] });
   function initialize() {
     if (closed) fail('CLOSED', 'Service is closed');
     if (!store) store = openState(workspaceRoot, workspaceId);
@@ -48,6 +48,7 @@ export function createOntologyService(options) {
         if (db.prepare('SELECT count(*) AS n FROM receipts').get().n >= LIMITS.receipts || row.revision >= Number.MAX_SAFE_INTEGER) fail('LIMIT', 'Receipt/revision limit');
         const data = stableSerialize(state);
         if (Buffer.byteLength(data) > LIMITS.stateBytes) fail('LIMIT', 'State byte limit');
+        validateState(state);
         const revision = row.revision + 1;
         const receipt = { requestId: r.requestId, scope: r.scope, operation: r.operation, requestDigest: digest, revision, uid: store.uid, result };
         const receiptJSON = stableSerialize(receipt);

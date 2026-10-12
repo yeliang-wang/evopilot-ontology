@@ -3,9 +3,12 @@ import { validateOntology } from './specification.mjs';
 import { buildDelivery, verifyDelivery } from './delivery.mjs';
 import { fail, LIMITS, slug } from './state.mjs';
 import { importOperations, importMutations, importFields, operateImport } from './import-operations.mjs';
+import { producerOperations, producerMutations, validateProducerRequest, operateProducer } from './producer-operations.mjs';
 
-export const operations = Object.freeze([...importOperations, 'workspace.inspect', 'receipt.inspect', 'asset.put', 'asset.inspect', 'asset.list', 'asset.review', 'asset.decide', 'asset.publish']);
-export const mutations = Object.freeze([...importMutations, 'asset.put', 'asset.review', 'asset.decide', 'asset.publish']);
+import { legacyQueryOperations, validateLegacyQuery, operateLegacyQuery } from './legacy-queries.mjs';
+
+export const operations = Object.freeze([...producerOperations, ...legacyQueryOperations, ...importOperations, 'workspace.inspect', 'receipt.inspect', 'asset.put', 'asset.inspect', 'asset.list', 'asset.review', 'asset.decide', 'asset.publish']);
+export const mutations = Object.freeze([...producerMutations, ...importMutations, 'asset.put', 'asset.review', 'asset.decide', 'asset.publish']);
 export function validateRequest(r) {
   if (!operations.includes(r.operation)) fail('UNSUPPORTED_OPERATION', 'Operation is outside this service slice');
   const write = mutations.includes(r.operation);
@@ -16,6 +19,8 @@ export function validateRequest(r) {
     slug(r.requestId);
     if (!Number.isSafeInteger(r.expectedRevision) || r.expectedRevision < 0) fail('INVALID_REQUEST', 'Expected nonnegative revision');
   }
+  if (producerOperations.includes(r.operation)) { validateProducerRequest(r); return write; }
+  if (legacyQueryOperations.includes(r.operation)) { validateLegacyQuery(r); return false; }
   const fields = { ...importFields,
     'workspace.inspect': [], 'receipt.inspect': ['requestId'], 'asset.put': ['model'],
     'asset.inspect': ['id', 'version'], 'asset.list': [], 'asset.review': ['id', 'version'],
@@ -30,6 +35,8 @@ export function validateRequest(r) {
   return write;
 }
 export function operate(store, state, r) {
+  if (producerOperations.includes(r.operation)) return operateProducer(store, state, r);
+  if (legacyQueryOperations.includes(r.operation)) return operateLegacyQuery(store, state, r);
   if (importOperations.includes(r.operation)) return operateImport(store, state, r, operate);
   const scopeKey = stableSerialize(r.scope);
   const own = a => stableSerialize(a.scope) === scopeKey;

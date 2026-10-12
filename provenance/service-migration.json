@@ -1,0 +1,603 @@
+{
+  "schema": "evopilot-ontology-service-migration/v1",
+  "requestDigest": "sha256:9ad47356381ea890892daa2a593439223c23b15500663525bcfbfc7b7a2895bb",
+  "status": "BOUNDED_PRODUCER_VALIDATION_SOURCE_EDIT",
+  "compatibility": "evopilot-harness@4.8.2",
+  "sourceCommit": "372733fd7b67ec3bee9efe6322f0229db77b160d",
+  "sourceIdentityNote": "Retained source commit from staged routing data; not a single-file SHA or a new tree qualification.",
+  "mapping": [
+    {
+      "operation": "semantic.foundation.inspect",
+      "owner": "ontology",
+      "module": "grounding",
+      "function": "resolveOntologyFoundation",
+      "required": [],
+      "optional": [
+        "metaTypes",
+        "relationTypes",
+        "limits"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.candidates.inspect",
+      "owner": "ontology",
+      "module": "grounding",
+      "function": "createSemanticCandidateSet",
+      "required": [
+        "sourceConceptHypothesis"
+      ],
+      "optional": [
+        "candidates",
+        "extraction"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.grounding.inspect",
+      "owner": "ontology",
+      "module": "grounding",
+      "function": "resolveOntologyGrounding",
+      "required": [
+        "candidateSet"
+      ],
+      "optional": [
+        "foundation",
+        "concepts",
+        "expected",
+        "priorResults",
+        "locale"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.reasoning-profile.inspect",
+      "owner": "ontology",
+      "module": "interoperability",
+      "function": "createOntologyReasoningProfile",
+      "required": [],
+      "optional": [
+        "id",
+        "version",
+        "metadata",
+        "mode",
+        "limits",
+        "externalReasoner",
+        "supportedRules"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.index.inspect",
+      "owner": "ontology",
+      "module": "interoperability",
+      "function": "buildSemanticIndex",
+      "required": [
+        "snapshot"
+      ],
+      "optional": [
+        "assets",
+        "algorithm",
+        "policy",
+        "toolchain",
+        "cache"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.affected-subgraph.inspect",
+      "owner": "ontology",
+      "module": "interoperability",
+      "function": "calculateAffectedSubgraph",
+      "required": [
+        "index",
+        "profile"
+      ],
+      "optional": [
+        "changedConceptIds",
+        "cacheDigest"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.compute.inspect",
+      "owner": "ontology",
+      "module": "interoperability",
+      "function": "computeSemanticState",
+      "required": [
+        "index",
+        "profile"
+      ],
+      "optional": [
+        "mode",
+        "affectedSubgraph",
+        "externalReasonerResult",
+        "execution"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.compute.compare",
+      "owner": "ontology",
+      "module": "interoperability",
+      "function": "compareSemanticComputations",
+      "required": [
+        "incremental",
+        "full"
+      ],
+      "optional": [],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.federation.discover",
+      "owner": "ontology",
+      "module": "interoperability",
+      "function": "discoverFederatedPacks",
+      "required": [],
+      "optional": [
+        "roots",
+        "query"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.interoperability.inspect",
+      "owner": "ontology",
+      "module": "interoperability",
+      "function": "createInteroperabilityProjectionSet",
+      "required": [
+        "snapshot",
+        "profile",
+        "index"
+      ],
+      "optional": [
+        "externalMappings",
+        "multilingualTerms",
+        "unsupportedSemantics"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.round-trip.inspect",
+      "owner": "ontology",
+      "module": "interoperability",
+      "function": "verifySemanticRoundTrip",
+      "required": [
+        "snapshot",
+        "projectionSet",
+        "index",
+        "incremental",
+        "full"
+      ],
+      "optional": [],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.closure.inspect",
+      "owner": "ontology",
+      "module": "interoperability",
+      "function": "createTerminalSemanticClosure",
+      "required": [
+        "snapshot",
+        "profile",
+        "index",
+        "projectionSet",
+        "roundTripReport"
+      ],
+      "optional": [
+        "harnessAssets",
+        "dependencyLocks",
+        "evaluations",
+        "rollbackLinks",
+        "provenance"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.closure.slice",
+      "owner": "ontology",
+      "module": "interoperability",
+      "function": "sliceTerminalSemanticClosure",
+      "required": [
+        "closure",
+        "expectedClosureDigest"
+      ],
+      "optional": [
+        "conceptIds"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "pack.scaffold.inspect",
+      "owner": "ontology",
+      "module": "packs",
+      "function": "createProfessionalPack",
+      "required": [
+        "kind",
+        "metadata"
+      ],
+      "optional": [
+        "spec"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "pack.inspect",
+      "owner": "ontology",
+      "module": "packs",
+      "function": "inspectProfessionalPack",
+      "required": [
+        "pack"
+      ],
+      "optional": [
+        "availablePacks"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "pack.resolve.inspect",
+      "owner": "ontology",
+      "module": "packs",
+      "function": "resolveProfessionalPackSet",
+      "required": [],
+      "optional": [
+        "packs",
+        "precedence",
+        "targetRoot",
+        "expectedBaseDigest",
+        "baseSnapshot"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "pack.benchmark.inspect",
+      "owner": "ontology",
+      "module": "packs",
+      "function": "createPackBenchmarkPackage",
+      "required": [
+        "id",
+        "version",
+        "provenance"
+      ],
+      "optional": [
+        "cases",
+        "metrics",
+        "evidenceRefs"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "pack.gold-case.inspect",
+      "owner": "ontology",
+      "module": "packs",
+      "function": "createPackGoldCasePackage",
+      "required": [
+        "id",
+        "version",
+        "source",
+        "expectedOutcome",
+        "provenance"
+      ],
+      "optional": [
+        "expectedConcepts",
+        "evidenceRefs"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "pack.certification.inspect",
+      "owner": "ontology",
+      "module": "packs",
+      "function": "createPackCertificationRecord",
+      "required": [
+        "pack",
+        "benchmark",
+        "algorithm",
+        "policy",
+        "toolchain"
+      ],
+      "optional": [
+        "goldCases",
+        "qualityLevel",
+        "signer",
+        "evidenceRefs"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.evidence-adapter.inspect",
+      "owner": "ontology",
+      "module": "packs",
+      "function": "createExternalSemanticEvidenceAdapter",
+      "required": [
+        "id",
+        "version",
+        "provenance"
+      ],
+      "optional": [
+        "sourceTypes"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "semantic.evidence.import.inspect",
+      "owner": "ontology",
+      "module": "packs",
+      "function": "importExternalSemanticEvidence",
+      "required": [
+        "source"
+      ],
+      "optional": [
+        "adapter",
+        "records",
+        "fetchedAt"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "project-ontology.proposal.inspect",
+      "owner": "ontology",
+      "module": "projectOntology",
+      "function": "createProjectOntologyProposal",
+      "required": [
+        "project",
+        "packs"
+      ],
+      "optional": [
+        "precedence",
+        "targetRoot",
+        "baseSnapshot",
+        "expectedBaseDigest",
+        "overlay",
+        "now"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "project-ontology.snapshot.resolve",
+      "owner": "ontology",
+      "module": "projectOntology",
+      "function": "resolveProjectOntologySnapshot",
+      "required": [
+        "proposal",
+        "expectedProposalDigest",
+        "foundationDigest"
+      ],
+      "optional": [
+        "priorSnapshot",
+        "now"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "project-ontology.projections.inspect",
+      "owner": "ontology",
+      "module": "projectOntology",
+      "function": "createProjectionSet",
+      "required": [
+        "snapshot"
+      ],
+      "optional": [],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "project-ontology.skill.inspect",
+      "owner": "ontology",
+      "module": "projectOntology",
+      "function": "compileProjectOntologySkill",
+      "required": [
+        "snapshot"
+      ],
+      "optional": [
+        "projectionSet",
+        "artifactSetManifestDigest",
+        "instructions"
+      ],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "ontology.inspect",
+      "owner": "ontology",
+      "module": "stored-source",
+      "function": "source.inspect (scoped OntologyPack enumeration)",
+      "required": [],
+      "optional": [],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "ontology.validate",
+      "owner": "ontology",
+      "module": "stored-source",
+      "function": "source.inspect + validation.validateDocument",
+      "required": [
+        "sourceId"
+      ],
+      "optional": [],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "ontology.diff",
+      "owner": "ontology",
+      "module": "stored-source",
+      "function": "source.inspect + deterministic structuralDiff",
+      "required": [
+        "leftSourceId",
+        "rightSourceId"
+      ],
+      "optional": [],
+      "previewOnly": true,
+      "authority": false
+    },
+    {
+      "operation": "ontology.publish",
+      "owner": "ontology",
+      "module": "producer-operations",
+      "function": "verified source.inspect + validateDocument; publication metadata in owned history",
+      "required": [
+        "planId"
+      ],
+      "optional": [],
+      "previewOnly": false,
+      "authority": false,
+      "authorization": "fresh scoped producer plan decision"
+    },
+    {
+      "operation": "semantic.closure.publish",
+      "owner": "ontology",
+      "module": "producer-operations",
+      "function": "publishTerminalSemanticClosure",
+      "required": [
+        "planId"
+      ],
+      "optional": [],
+      "previewOnly": false,
+      "authority": false,
+      "authorization": "fresh scoped producer plan decision"
+    },
+    {
+      "operation": "pack.lifecycle.create",
+      "owner": "ontology",
+      "module": "producer-operations",
+      "function": "createPackLifecycleRecord",
+      "required": [
+        "planId"
+      ],
+      "optional": [],
+      "previewOnly": false,
+      "authority": false,
+      "authorization": "fresh scoped producer plan decision"
+    },
+    {
+      "operation": "pack.lifecycle.transition",
+      "owner": "ontology",
+      "module": "producer-operations",
+      "function": "transitionPackLifecycle",
+      "required": [
+        "planId"
+      ],
+      "optional": [],
+      "previewOnly": false,
+      "authority": false,
+      "authorization": "fresh scoped producer plan decision"
+    },
+    {
+      "operation": "project-ontology.proposal.transition",
+      "owner": "ontology",
+      "module": "producer-operations",
+      "function": "transitionProjectOntologyProposal",
+      "required": [
+        "planId"
+      ],
+      "optional": [],
+      "previewOnly": false,
+      "authority": false,
+      "authorization": "fresh scoped producer plan decision"
+    },
+    {
+      "operation": "project-ontology.artifact.publish",
+      "owner": "ontology",
+      "module": "producer-operations",
+      "function": "resolveProjectOntologySnapshot + createProjectionSet + publishProjectOntologyArtifactSet",
+      "required": [
+        "planId"
+      ],
+      "optional": [],
+      "previewOnly": false,
+      "authority": false,
+      "authorization": "fresh scoped producer plan decision"
+    },
+    {
+      "operation": "project-ontology.artifact.transition",
+      "owner": "ontology",
+      "module": "producer-operations",
+      "function": "createArtifactLifecycleRecord",
+      "required": [
+        "planId"
+      ],
+      "optional": [],
+      "previewOnly": false,
+      "authority": false,
+      "authorization": "fresh scoped producer plan decision"
+    }
+  ],
+  "pendingLegacyServiceOperationCount": 10,
+  "pendingLegacyServiceOperations": [
+    "Catalog inspect",
+    "Catalog preview",
+    "Catalog publish",
+    "Catalog readback",
+    "Catalog transition preview",
+    "Catalog rollback",
+    "Catalog revoke",
+    "Catalog recovery inspect",
+    "Catalog recovery readback",
+    "Catalog recover"
+  ],
+  "pendingInventoryNote": "Ten Catalog service operations remain; Catalog generation resolution remains a pure compat calculation, not a new registered producer. Seven persistent classification operations and CLI/MCP remain pending.",
+  "pendingPersistentClassification": [
+    "start",
+    "inspect",
+    "resume",
+    "reanalyze",
+    "list",
+    "continue",
+    "close"
+  ],
+  "pendingTransports": [
+    "CLI",
+    "MCP"
+  ],
+  "validation": {
+    "syntax": "PASSED",
+    "filesystemFreeTests": 1,
+    "filesystemFreeCoverage": "Expanded producer state machine: required imports, false pins, valid referenced dependency publication, optional imports, retained-material tamper and semantic revalidation, MATERIAL_REQUIRED, canonical and custom foundation binding",
+    "operatorReportedBaselineTests": 181,
+    "baselineRerun": false,
+    "filesystemPublicServiceTests": "OPERATOR_RUN_PENDING"
+  },
+  "validationGaps": {
+    "arbitraryFoundationDigest": "SOURCE_FIXED_OPERATOR_PUBLIC_SERVICE_VERIFICATION_PENDING",
+    "assertedPackClosureWithoutMaterial": "SOURCE_FIXED_OPERATOR_PUBLIC_SERVICE_VERIFICATION_PENDING",
+    "foundationMaterial": "Owned normalization and full canonical equality; full material and digest in plan dependencies, immutable blob, record and history",
+    "packMaterial": "Owned inspection and full set resolution on create and every transition; server-derived pins with optional exact caller assertions; immutable retained material and prepared dependency binding",
+    "historicalPackRecords": "Readable; transitions without retained complete material fail MATERIAL_REQUIRED; no backfill",
+    "remainingScope": "All Catalog service operations, persistent classification lifecycle and CLI/MCP remain pending"
+  },
+  "authority": false,
+  "fullMigration": false,
+  "productionReady": false,
+  "producerHelper": "project-ontology.proposal.create",
+  "producerControlOperations": [
+    "producer.prepare",
+    "producer.inspect",
+    "producer.list",
+    "producer.decide"
+  ]
+}

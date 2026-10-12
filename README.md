@@ -11,7 +11,9 @@ Additional public subpaths:
 
 Historical wire identities remain compatibility data; native v1 validation does not automatically convert them. These libraries do not implement full OWL/RDF/SHACL/PROV or complete operational migration.
 
-All root APIs also expose `PRODUCT`, `VERSION` and `capabilities()`. Existing root readiness remains false and reports convey no acceptance, execution or publication authority. The separate service implements only the first M2 local lifecycle slice; legacy source import/derivation service operations, all 45 old producer operations, CLI/MCP and unified Expert/plugin delivery remain pending. This source is not stable 1.0 or production-ready, and does not establish M1 or full acceptance.
+The service also implements seven finite retained producers and an owned proposal-create helper through separate preparation and local operator decisions. See the [producer API](docs/legacy-api.md#finite-retained-producers). Historical approvals are never imported as current authority; no Runtime/Harness software release or activation occurs. Filesystem producer tests await operator execution.
+
+All root APIs also expose `PRODUCT`, `VERSION` and `capabilities()`. Existing root readiness remains false and reports convey no acceptance, execution or publication authority. The separate service implements only the first M2 local lifecycle slice; source import/derivation and [28 historical preview queries](docs/legacy-api.md) are implemented. Ten Catalog operations, seven persistent classification operations, CLI/MCP and unified Expert/plugin delivery remain pending. This source is not stable 1.0 or production-ready, and does not establish M1 or full acceptance.
 
 Use Node 24.14.0. In this independent source checkout, install from its own committed lock with `npm ci --ignore-scripts --no-audit --no-fund`, then:
 
