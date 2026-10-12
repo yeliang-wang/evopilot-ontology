@@ -1,0 +1,27 @@
+import { assertJSON, exactFields, sha256, frozenClone, stableSerialize } from '../vendor/compatibility/v1/reference.mjs';
+import { validateOntology, failure } from './specification.mjs';
+
+export function buildDelivery(asset) {
+  const validationReport = validateOntology(asset);
+  if (!validationReport.valid || validationReport.pending.length) throw new TypeError('Cannot deliver invalid model or required unresolved issues');
+  const content = {
+    model: asset,
+    provenance: asset.provenance,
+    sourceMappings: asset.sourceMappings,
+    unresolvedIssues: asset.unresolvedIssues,
+    validationReport,
+    buildReport: { status: 'BUILT', instanceValidation: 'NOT_CHECKED', constraints: validationReport.constraints, authority: false, businessConfirmed: false, released: false },
+  };
+  const manifest = { specVersion: 'v1', product: 'ontology', productVersion: '0.1.0', id: asset.id, version: asset.version, visibility: asset.visibility, modelDigest: sha256(asset), contentDigest: sha256(content), dependencies: asset.dependencies };
+  return frozenClone({ ...content, manifest, digest: sha256({ ...content, manifest }) });
+}
+
+export function verifyDelivery(delivery) {
+  try {
+    assertJSON(delivery);
+    exactFields(delivery, ['model', 'provenance', 'sourceMappings', 'unresolvedIssues', 'validationReport', 'buildReport', 'manifest', 'digest']);
+    const expected = buildDelivery(delivery.model);
+    if (stableSerialize(expected) !== stableSerialize(delivery)) throw new TypeError('Delivery content, manifest or report mismatch');
+    return frozenClone({ valid: true, status: 'VALID', digest: expected.digest, authority: false, businessConfirmed: false, released: false });
+  } catch (error) { return failure(error); }
+}

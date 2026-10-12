@@ -1,0 +1,174 @@
+{
+  "schema": "evopilot-ontology-legacy-extraction/v1",
+  "sourceProduct": "evopilot-harness",
+  "sourceVersion": "4.8.2",
+  "scope": "Partial M1 readonly source-classification calculation library; no full E03/M1 claim",
+  "requestDigest": "sha256:95738d3eda7c1adacd766859d46de2c308e5432b23ea92b9ad6104a6db6fff6f",
+  "files": [
+    {
+      "original": "src/v4/source/path-policy.mjs",
+      "destination": "src/compat/v4/source/path-policy.mjs",
+      "sourceSha256": "c569f04e9d6214b6bb8584b5e2da8229f1943d8b99fbb32d2a183606f9bfbc9e",
+      "destinationSha256": "c569f04e9d6214b6bb8584b5e2da8229f1943d8b99fbb32d2a183606f9bfbc9e",
+      "adaptations": [
+        "Mechanically preserve original static calculation, boundary checks and relative imports."
+      ]
+    },
+    {
+      "original": "src/v4/source/static-text.mjs",
+      "destination": "src/compat/v4/source/static-text.mjs",
+      "sourceSha256": "b16ae63cdf4eee971353f8176d787ca767a3b5faf55070089dff6bef0570c18b",
+      "destinationSha256": "b16ae63cdf4eee971353f8176d787ca767a3b5faf55070089dff6bef0570c18b",
+      "adaptations": [
+        "Mechanically preserve original static calculation, boundary checks and relative imports."
+      ]
+    },
+    {
+      "original": "src/v4/classification/source-descriptor.mjs",
+      "destination": "src/compat/v4/classification/source-descriptor.mjs",
+      "sourceSha256": "dff2dc1615db3128e033fdac237c14925370a60eb5223b82c7765c838aa47ecf",
+      "destinationSha256": "3f0e57558b80833c2b676bc39ec9ecd1a8dbc4da7b4fe0c3376a12c7cb3cc8ff",
+      "adaptations": [
+        "Use fixed minimal Git environment, disabled hooks and credential helpers; public acquisition uses HTTPS without SSH configuration.",
+        "Disposable archive adjacent to explicitly confined cache; no process globals or old home defaults."
+      ]
+    },
+    {
+      "original": "src/v4/classification/source-concept.mjs",
+      "destination": "src/compat/v4/classification/source-concept.mjs",
+      "sourceSha256": "d4388a349be8c25e7f1009e913d104f693a6f05d80e3abb18f967b24077a164b",
+      "destinationSha256": "d4388a349be8c25e7f1009e913d104f693a6f05d80e3abb18f967b24077a164b",
+      "adaptations": [
+        "Mechanically preserve original static calculation, boundary checks and relative imports."
+      ]
+    },
+    {
+      "original": "src/v4/classification/classifier.mjs",
+      "destination": "src/compat/v4/classification/classifier.mjs",
+      "sourceSha256": "09f5bb2afa47f73007746946781d24ca9daab59b3b04cd621e405c77fc410eb7",
+      "destinationSha256": "09f5bb2afa47f73007746946781d24ca9daab59b3b04cd621e405c77fc410eb7",
+      "adaptations": [
+        "Mechanically preserve original static calculation, boundary checks and relative imports."
+      ]
+    },
+    {
+      "original": "src/v4/classification/advisor.mjs",
+      "destination": "src/compat/v4/classification/advisor.mjs",
+      "sourceSha256": "17bcf6c3ba5e3d5c7317ddb56983a237bea4e3db481aeb7a1538006cc9a6643b",
+      "destinationSha256": "47ad5ca764f981158a7204b23d235e9b61786bdeb04f7c3634727ad3effa6746",
+      "adaptations": [
+        "Remove old Advisor import, disk model profile loading and network provider construction; modelsFile is inert.",
+        "Require trusted injected function; preserve projection, prompt identity, typed blockers, validation and no fallback/retry.",
+        "Bind explicit selected model and optional callback modelBinding reference fields; project usage without secret fields; reject malformed output."
+      ]
+    },
+    {
+      "original": "src/v4/classification/engine.mjs",
+      "destination": "src/compat/v4/classification/engine.mjs",
+      "sourceSha256": "492b4f0e5014bd556b4c1bc2e1ccc21b50d2669790add65d4d8deab40110d90f",
+      "destinationSha256": "f2bdc99011be625a7d41b4f463f32e0902775811f1d2cecc9fa94e505494e55a",
+      "adaptations": [
+        "Retain taxonomy-before-source-before-Advisor order and deterministic result computation.",
+        "Handoff verifies exact result digest, current source content policy and evidence freshness; deep-clone and freeze evidence, without persistent sessions."
+      ]
+    },
+    {
+      "original": "src/v4/classification/evaluation.mjs",
+      "destination": "src/compat/v4/classification/evaluation.mjs",
+      "sourceSha256": "35cecf02b9c2447ba8728066f80597e4d32fd18272343e49bbc578bb98787e73",
+      "destinationSha256": "35cecf02b9c2447ba8728066f80597e4d32fd18272343e49bbc578bb98787e73",
+      "adaptations": [
+        "Mechanically preserve original static calculation, boundary checks and relative imports."
+      ]
+    }
+  ],
+  "testSources": [
+    {
+      "original": "tests/v4.5-classification.test.mjs",
+      "sourceSha256": "871d7c032e1d62171b11631521dfe3ec764979bacbae2251141550da1b6ad17e"
+    },
+    {
+      "original": "tests/v4.5-taxonomy-boundaries.test.mjs",
+      "sourceSha256": "841cc5fc357aa96cbfb87cff0b1354d0e63b3f095e18b8d8204a158465689360"
+    },
+    {
+      "original": "tests/v4.5-source-descriptor.test.mjs",
+      "sourceSha256": "2d2ef91dcb01453e1d2556b5c637d81d825ef13cb8229c0edf36d6490802a477"
+    },
+    {
+      "original": "tests/fixtures/v4.5/candidate14-journey08-impact.json",
+      "sourceSha256": "b61804ebeabaac1d3003fe8a3b0e0cead86e14215fd232dcc552abb51699ba68"
+    }
+  ],
+  "tests": [
+    {
+      "destination": "tests/e2e/legacy-classification.test.mjs",
+      "destinationSha256": "f0e209137287d56398a843f0be9392164f671cceac6cc7c9c03fe65189c5fba0"
+    },
+    {
+      "destination": "tests/e2e/legacy-taxonomy-boundaries.test.mjs",
+      "destinationSha256": "26a87c7e7b58ed4f8d604f21c974aa53efe803c9544fcde6cac12c29b3ef14f6"
+    },
+    {
+      "destination": "tests/e2e/legacy-source-policy.test.mjs",
+      "destinationSha256": "4b6c02eb09a9e78951371cd97d61ced434ce89933559b931593783e782d405de"
+    },
+    {
+      "destination": "tests/e2e/legacy-source-descriptor.test.mjs",
+      "destinationSha256": "121e2b8cb0f5dd3e56ff222b0a1f717e891076d8822d979d159af123e4715928"
+    }
+  ],
+  "verification": {
+    "nodeCheck": "Passed on all 15 added or changed JavaScript modules/tests.",
+    "executed": "11 core tests and 5 selected pure classifier/taxonomy tests passed; no external model or network test",
+    "temporaryFilesAndProcesses": "Parent run pending; no virtual filesystem mocks in newly ported tests"
+  },
+  "pending": [
+    "Real external model integration and Runtime-owned reference-only provider binding (M2).",
+    "Seven persistent classification MCP lifecycle operations: start, inspect, resume, reanalyze, list, continue, close (M2); cancel is an action through close; retained Host/CLI/server recovery and lifecycle integration.",
+    "Harness eligibility, Operation Sessions, proposals, approval and publication.",
+    "Full original persistent 48-case gold-matrix replay and real stdio Host acceptance.",
+    "Public Git acquisition, network integration and real temporary-files/process/extractor tests in the parent run.",
+    "Full E03 and M1 completion."
+  ],
+  "subsequentRequests": [
+    {
+      "requestDigest": "sha256:6382ee93938f2998b9862aca7f7a19ed72a852efd64ec7ea328befa5bf625c61",
+      "scope": "Reversible five-file callback timeout and unsafe-response repair only; no M1 or E01-E19 acceptance claim.",
+      "changes": [
+        "Validate callback timeout before durable claim; await claim and invoke once with optional AbortSignal context.",
+        "Enforce deadline, discard late completion, consume late rejection and report UNKNOWN provider completion requiring inspection.",
+        "Check descriptor-safe JSON before response fields or hashes; reject unsafe payloads with null raw digest.",
+        "Correct seven persistent operations; actual Runtime provider receipt integration remains pending."
+      ],
+      "destinations": [
+        {
+          "destination": "src/compat/v4/classification/advisor.mjs",
+          "previousDestinationSha256": "925ba16b969edd1df0b0232341cfb51d2a031e9c17cbe352957b4f0efe5ddbb5",
+          "destinationSha256": "47ad5ca764f981158a7204b23d235e9b61786bdeb04f7c3634727ad3effa6746"
+        },
+        {
+          "destination": "src/compat/v4/classification/engine.mjs",
+          "previousDestinationSha256": "a216048e6539ae2e0e8523de3d72b4353c1cb5d314f5391a0bdec40ae0b2aaf0",
+          "destinationSha256": "f2bdc99011be625a7d41b4f463f32e0902775811f1d2cecc9fa94e505494e55a"
+        },
+        {
+          "destination": "tests/e2e/legacy-classification.test.mjs",
+          "previousDestinationSha256": "69d73d86bf09ad65997a7cf24689400cca3993ee586a8a4b110af5860501bc55",
+          "destinationSha256": "f0e209137287d56398a843f0be9392164f671cceac6cc7c9c03fe65189c5fba0"
+        },
+        {
+          "destination": "docs/legacy-classification.md",
+          "previousDestinationSha256": null,
+          "destinationSha256": "ba738664d493fc254ea47e84d3ce11cea4ddf4356a9db41e4b2bb72dc6594a75"
+        }
+      ],
+      "verification": {
+        "command": "OPENSSL_CONF=/dev/null node --test --test-name-pattern='bounded callback' projects/evopilot-ontology/tests/e2e/legacy-classification.test.mjs",
+        "passed": 6,
+        "failed": 0,
+        "fullSuite": "Parent run pending"
+      }
+    }
+  ]
+}

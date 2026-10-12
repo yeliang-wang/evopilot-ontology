@@ -1,0 +1,5709 @@
+{
+  "affected-subgraph-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/affected-subgraph-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "indexDigest",
+      "profileDigest",
+      "cacheDigest",
+      "changedConceptIds",
+      "affectedConceptIds",
+      "unaffectedConceptCount",
+      "proofPaths",
+      "iterations",
+      "authority",
+      "affectedSubgraphDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-affected-subgraph/v1"
+      },
+      "indexDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "profileDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "cacheDigest": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "changedConceptIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "uniqueItems": true
+      },
+      "affectedConceptIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "uniqueItems": true
+      },
+      "unaffectedConceptCount": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "proofPaths": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "iterations": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "authority": {
+        "type": "object"
+      },
+      "affectedSubgraphDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "external-semantic-evidence-adapter-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/external-semantic-evidence-adapter-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "kind",
+      "id",
+      "version",
+      "sourceTypes",
+      "provenance",
+      "behavior",
+      "authority",
+      "adapterDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-external-semantic-evidence-adapter/v1"
+      },
+      "kind": {
+        "const": "ExternalSemanticEvidenceAdapter"
+      },
+      "id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "version": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+      },
+      "sourceTypes": {
+        "type": "array",
+        "items": {
+          "enum": [
+            "CATALOG",
+            "VOCABULARY",
+            "RDF",
+            "OWL",
+            "KNOWLEDGE_GRAPH"
+          ]
+        }
+      },
+      "provenance": {
+        "type": "object"
+      },
+      "behavior": {
+        "type": "object"
+      },
+      "authority": {
+        "type": "object"
+      },
+      "adapterDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "external-semantic-evidence-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/external-semantic-evidence-v1.schema.json",
+    "type": "object",
+    "required": [
+      "schema",
+      "adapter",
+      "source",
+      "records",
+      "authority",
+      "evidencePackageDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-external-semantic-evidence/v1"
+      },
+      "adapter": {
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "source": {
+        "type": "object"
+      },
+      "fetchedAt": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "records": {
+        "type": "array"
+      },
+      "authority": {
+        "type": "object",
+        "required": [
+          "readOnlyImport",
+          "inactiveEvidence",
+          "mayOverridePack",
+          "mayActivate",
+          "mayApprove",
+          "mayPublish"
+        ],
+        "properties": {
+          "readOnlyImport": {
+            "const": true
+          },
+          "inactiveEvidence": {
+            "const": true
+          },
+          "mayOverridePack": {
+            "const": false
+          },
+          "mayActivate": {
+            "const": false
+          },
+          "mayApprove": {
+            "const": false
+          },
+          "mayPublish": {
+            "const": false
+          }
+        }
+      },
+      "evidencePackageDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "federated-pack-discovery-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/federated-pack-discovery-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "apiVersion",
+      "kind",
+      "query",
+      "roots",
+      "discoveredPacks",
+      "authority",
+      "discoveryDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-federated-pack-discovery/v1"
+      },
+      "apiVersion": {
+        "const": "semantics.evopilot.io/v1"
+      },
+      "kind": {
+        "const": "FederatedPackDiscovery"
+      },
+      "query": {
+        "type": "object"
+      },
+      "roots": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object"
+        }
+      },
+      "discoveredPacks": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "authority": {
+        "type": "object",
+        "required": [
+          "readOnly",
+          "rootsRemainIndependent",
+          "sharedMutation",
+          "automaticTrust",
+          "automaticInstallation",
+          "automaticPublication"
+        ],
+        "properties": {
+          "readOnly": {
+            "const": true
+          },
+          "rootsRemainIndependent": {
+            "const": true
+          },
+          "sharedMutation": {
+            "const": false
+          },
+          "automaticTrust": {
+            "const": false
+          },
+          "automaticInstallation": {
+            "const": false
+          },
+          "automaticPublication": {
+            "const": false
+          }
+        }
+      },
+      "discoveryDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "harness-semantic-requirements-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/harness-semantic-requirements-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "foundationDigest",
+      "requiredConcepts",
+      "prohibitedConcepts",
+      "relationRequirements",
+      "evidenceRequirements",
+      "authority",
+      "requirementsDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-requirements/v1"
+      },
+      "foundationDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "requiredConcepts": {
+        "$ref": "#/$defs/concepts"
+      },
+      "prohibitedConcepts": {
+        "$ref": "#/$defs/concepts"
+      },
+      "relationRequirements": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "subjectConceptId",
+            "relationType",
+            "objectConceptId"
+          ],
+          "properties": {
+            "subjectConceptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "relationType": {
+              "enum": [
+                "IS_A",
+                "PART_OF",
+                "REQUIRES",
+                "PERFORMS",
+                "CONSTRAINS",
+                "TRIGGERS",
+                "RECOVERS_WITH",
+                "VALIDATED_BY",
+                "ALTERNATIVE_TO",
+                "MITIGATES",
+                "PRODUCES"
+              ]
+            },
+            "objectConceptId": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "evidenceRequirements": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "authority": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "descriptiveConstraintOnly",
+          "executable",
+          "provesEligibility",
+          "mayApprove",
+          "mayPublish"
+        ],
+        "properties": {
+          "descriptiveConstraintOnly": {
+            "const": true
+          },
+          "executable": {
+            "const": false
+          },
+          "provesEligibility": {
+            "const": false
+          },
+          "mayApprove": {
+            "const": false
+          },
+          "mayPublish": {
+            "const": false
+          }
+        }
+      },
+      "requirementsDigest": {
+        "$ref": "#/$defs/digest"
+      }
+    },
+    "$defs": {
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "concepts": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "conceptId",
+            "metaType",
+            "rationale",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "conceptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "metaType": {
+              "enum": [
+                "ENTITY",
+                "ATTRIBUTE",
+                "RELATIONSHIP",
+                "RULE",
+                "EVENT",
+                "ACTION",
+                "ACTOR",
+                "ROLE",
+                "PERMISSION",
+                "STATE",
+                "WORKFLOW",
+                "CAPABILITY",
+                "SYSTEM",
+                "DATA_ASSET"
+              ]
+            },
+            "rationale": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "ontology-foundation-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/ontology-foundation-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "version",
+      "metaTypes",
+      "relationTypes",
+      "limits",
+      "authority",
+      "foundationDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-ontology-foundation/v1"
+      },
+      "version": {
+        "const": 1
+      },
+      "metaTypes": {
+        "type": "array",
+        "minItems": 14,
+        "maxItems": 14,
+        "uniqueItems": true,
+        "items": {
+          "enum": [
+            "ENTITY",
+            "ATTRIBUTE",
+            "RELATIONSHIP",
+            "RULE",
+            "EVENT",
+            "ACTION",
+            "ACTOR",
+            "ROLE",
+            "PERMISSION",
+            "STATE",
+            "WORKFLOW",
+            "CAPABILITY",
+            "SYSTEM",
+            "DATA_ASSET"
+          ]
+        }
+      },
+      "relationTypes": {
+        "type": "array",
+        "minItems": 11,
+        "maxItems": 11,
+        "uniqueItems": true,
+        "items": {
+          "enum": [
+            "IS_A",
+            "PART_OF",
+            "REQUIRES",
+            "PERFORMS",
+            "CONSTRAINS",
+            "TRIGGERS",
+            "RECOVERS_WITH",
+            "VALIDATED_BY",
+            "ALTERNATIVE_TO",
+            "MITIGATES",
+            "PRODUCES"
+          ]
+        }
+      },
+      "limits": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "maxCandidates",
+          "maxConcepts",
+          "maxEvidenceRefsPerCandidate"
+        ],
+        "properties": {
+          "maxCandidates": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 512
+          },
+          "maxConcepts": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "maxEvidenceRefsPerCandidate": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 64
+          }
+        }
+      },
+      "authority": {
+        "type": "object",
+        "required": [
+          "engineOwnedMetaModel",
+          "containsBusinessValues",
+          "executable",
+          "mayDecideEligibility",
+          "mayApprove",
+          "mayPublish"
+        ],
+        "properties": {
+          "engineOwnedMetaModel": {
+            "const": true
+          },
+          "containsBusinessValues": {
+            "const": false
+          },
+          "executable": {
+            "const": false
+          },
+          "mayDecideEligibility": {
+            "const": false
+          },
+          "mayApprove": {
+            "const": false
+          },
+          "mayPublish": {
+            "const": false
+          }
+        }
+      },
+      "foundationDigest": {
+        "$ref": "#/$defs/digest"
+      }
+    },
+    "$defs": {
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "ontology-grounding-result-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/ontology-grounding-result-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "foundationDigest",
+      "candidateSetDigest",
+      "sourceSnapshotDigest",
+      "evidenceGraphDigest",
+      "conceptSetDigest",
+      "results",
+      "outcomeCounts",
+      "precedence",
+      "priorResultDigests",
+      "presentation",
+      "authority",
+      "groundingResultDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-ontology-grounding-result/v1"
+      },
+      "foundationDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "candidateSetDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "sourceSnapshotDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "evidenceGraphDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "conceptSetDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "candidateId",
+            "outcome",
+            "resolvedConceptId",
+            "candidateConceptIds",
+            "conflictConceptIds",
+            "evidenceIds",
+            "evidenceFamilies",
+            "uncertainty",
+            "explanation",
+            "userActions",
+            "proposedExtension",
+            "decisionSignals"
+          ],
+          "properties": {
+            "candidateId": {
+              "type": "string"
+            },
+            "outcome": {
+              "$ref": "#/$defs/outcome"
+            },
+            "resolvedConceptId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "candidateConceptIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "conflictConceptIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "evidenceIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "evidenceFamilies": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "uncertainty": {
+              "enum": [
+                "LOW",
+                "BOUNDED",
+                "HIGH"
+              ]
+            },
+            "explanation": {
+              "type": "string"
+            },
+            "userActions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "proposedExtension": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "decisionSignals": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "outcomeCounts": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "RESOLVED",
+          "UNRESOLVED_CONCEPT",
+          "AMBIGUOUS_CONCEPT",
+          "CONFLICTING_CONCEPT",
+          "EXTENSION_REQUIRED",
+          "EVIDENCE_INSUFFICIENT"
+        ],
+        "properties": {
+          "RESOLVED": {
+            "type": "integer"
+          },
+          "UNRESOLVED_CONCEPT": {
+            "type": "integer"
+          },
+          "AMBIGUOUS_CONCEPT": {
+            "type": "integer"
+          },
+          "CONFLICTING_CONCEPT": {
+            "type": "integer"
+          },
+          "EXTENSION_REQUIRED": {
+            "type": "integer"
+          },
+          "EVIDENCE_INSUFFICIENT": {
+            "type": "integer"
+          }
+        }
+      },
+      "precedence": {
+        "type": "array",
+        "minItems": 6,
+        "maxItems": 6,
+        "uniqueItems": true,
+        "items": {
+          "$ref": "#/$defs/outcome"
+        }
+      },
+      "priorResultDigests": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "presentation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema",
+          "locale",
+          "title",
+          "items",
+          "auditTermsHiddenFromPrimaryView",
+          "hostAuthored"
+        ],
+        "properties": {
+          "schema": {
+            "const": "evopilot-harness-ontology-grounding-presentation/v1"
+          },
+          "locale": {
+            "enum": [
+              "zh-CN",
+              "en"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "auditTermsHiddenFromPrimaryView": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hostAuthored": {
+            "const": false
+          }
+        }
+      },
+      "authority": {
+        "type": "object"
+      },
+      "groundingResultDigest": {
+        "$ref": "#/$defs/digest"
+      }
+    },
+    "$defs": {
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "outcome": {
+        "enum": [
+          "RESOLVED",
+          "UNRESOLVED_CONCEPT",
+          "AMBIGUOUS_CONCEPT",
+          "CONFLICTING_CONCEPT",
+          "EXTENSION_REQUIRED",
+          "EVIDENCE_INSUFFICIENT"
+        ]
+      }
+    }
+  },
+  "ontology-pack-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/ontology-pack-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "apiVersion",
+      "kind",
+      "metadata",
+      "spec"
+    ],
+    "properties": {
+      "apiVersion": {
+        "const": "harness.evopilot.io/v1"
+      },
+      "kind": {
+        "const": "OntologyPack"
+      },
+      "metadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "lifecycle"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+          },
+          "lifecycle": {
+            "enum": [
+              "draft",
+              "review",
+              "approved",
+              "published",
+              "deprecated"
+            ]
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "spec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "concepts",
+          "roles",
+          "evidenceKinds"
+        ],
+        "properties": {
+          "concepts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "terms"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                },
+                "terms": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "parents": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "conflicts": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "domain",
+                "taskClass",
+                "concepts"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                },
+                "domain": {
+                  "type": "string"
+                },
+                "taskClass": {
+                  "type": "string"
+                },
+                "concepts": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "negativeConcepts": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "evidenceKinds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "ontology-reasoning-profile-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/ontology-reasoning-profile-v1.schema.json",
+    "title": "OntologyReasoningProfile v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "apiVersion",
+      "kind",
+      "metadata",
+      "spec",
+      "authority",
+      "profileDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-ontology-reasoning-profile/v1"
+      },
+      "apiVersion": {
+        "const": "semantics.evopilot.io/v1"
+      },
+      "kind": {
+        "const": "OntologyReasoningProfile"
+      },
+      "metadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$"
+          }
+        }
+      },
+      "spec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mode",
+          "supportedRules",
+          "limits",
+          "externalReasoner",
+          "failurePolicy",
+          "fullRecomputeEquivalenceRequired",
+          "cacheDigestRequired"
+        ],
+        "properties": {
+          "mode": {
+            "enum": [
+              "NONE",
+              "RDFS",
+              "OWL_RL",
+              "SWRL_SAFE",
+              "EXTERNAL_REASONER"
+            ]
+          },
+          "supportedRules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "limits": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "maxNodes",
+              "maxEdges",
+              "maxIterations",
+              "maxWallTimeMs",
+              "maxConcurrentTasks",
+              "maxCacheEntries"
+            ],
+            "properties": {
+              "maxNodes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "maxEdges": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "maxIterations": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "maxWallTimeMs": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "maxConcurrentTasks": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "maxCacheEntries": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "externalReasoner": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "failurePolicy": {
+            "const": "FAIL_CLOSED_WITH_PROOF_PATH"
+          },
+          "fullRecomputeEquivalenceRequired": {
+            "const": true
+          },
+          "cacheDigestRequired": {
+            "const": true
+          }
+        }
+      },
+      "authority": {
+        "type": "object",
+        "required": [
+          "engineOwnedDecision",
+          "externalReasonerEvidenceOnly",
+          "externalReasonerMayApprove",
+          "externalReasonerMayPublish",
+          "externalReasonerMayMutate",
+          "unboundedReasoningAllowed"
+        ],
+        "properties": {
+          "engineOwnedDecision": {
+            "const": true
+          },
+          "externalReasonerEvidenceOnly": {
+            "type": "boolean"
+          },
+          "externalReasonerMayApprove": {
+            "const": false
+          },
+          "externalReasonerMayPublish": {
+            "const": false
+          },
+          "externalReasonerMayMutate": {
+            "const": false
+          },
+          "unboundedReasoningAllowed": {
+            "const": false
+          }
+        }
+      },
+      "profileDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "pack-benchmark-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/pack-benchmark-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "id",
+      "version",
+      "cases",
+      "metrics",
+      "provenance",
+      "evidenceRefs",
+      "authority",
+      "benchmarkDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-pack-benchmark/v1"
+      },
+      "id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "version": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+      },
+      "cases": {
+        "type": "array"
+      },
+      "metrics": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "provenance": {
+        "type": "object"
+      },
+      "evidenceRefs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "authority": {
+        "type": "object"
+      },
+      "benchmarkDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "pack-certification-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/pack-certification-v1.schema.json",
+    "type": "object",
+    "required": [
+      "schema",
+      "pack",
+      "benchmark",
+      "goldCases",
+      "algorithm",
+      "policy",
+      "toolchain",
+      "qualityLevel",
+      "evidenceRefs",
+      "authority",
+      "certificationDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-pack-certification/v1"
+      },
+      "pack": {
+        "type": "object"
+      },
+      "benchmark": {
+        "type": "object"
+      },
+      "goldCases": {
+        "type": "array"
+      },
+      "algorithm": {
+        "type": "object"
+      },
+      "policy": {
+        "type": "object"
+      },
+      "toolchain": {
+        "type": "object"
+      },
+      "qualityLevel": {
+        "type": "string"
+      },
+      "signer": {},
+      "evidenceRefs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "authority": {
+        "type": "object"
+      },
+      "certificationDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "pack-gold-case-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/pack-gold-case-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "id",
+      "version",
+      "source",
+      "expectedConcepts",
+      "expectedOutcome",
+      "provenance",
+      "evidenceRefs",
+      "authority",
+      "goldCaseDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-pack-gold-case/v1"
+      },
+      "id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "version": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+      },
+      "source": {
+        "type": "object"
+      },
+      "expectedConcepts": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "expectedOutcome": {
+        "type": "string",
+        "minLength": 1
+      },
+      "provenance": {
+        "type": "object"
+      },
+      "evidenceRefs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "authority": {
+        "type": "object"
+      },
+      "goldCaseDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "pack-lifecycle-record-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/pack-lifecycle-record-v1.schema.json",
+    "type": "object",
+    "required": [
+      "schema",
+      "stage",
+      "history",
+      "authority",
+      "recordDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-pack-lifecycle-record/v1"
+      },
+      "stage": {
+        "enum": [
+          "DRAFT",
+          "APPLIED",
+          "IN_REVIEW",
+          "APPROVED",
+          "PUBLISHED",
+          "INSTALLED",
+          "ACTIVE",
+          "SUPERSEDED",
+          "ROLLED_BACK",
+          "DEPRECATED"
+        ]
+      },
+      "history": {
+        "type": "array"
+      },
+      "authority": {
+        "type": "object"
+      },
+      "recordDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "professional-pack-inspection-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/professional-pack-inspection-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "pack",
+      "lint",
+      "dependencies",
+      "compatibility",
+      "authority",
+      "inspectionDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-professional-pack-inspection/v1"
+      },
+      "pack": {
+        "type": "object"
+      },
+      "lint": {
+        "type": "object"
+      },
+      "dependencies": {
+        "type": "array"
+      },
+      "compatibility": {
+        "type": "object"
+      },
+      "authority": {
+        "type": "object"
+      },
+      "inspectionDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "professional-pack-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/professional-pack-v1.schema.json",
+    "title": "Declarative Professional Pack v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "apiVersion",
+      "kind",
+      "metadata",
+      "spec",
+      "status"
+    ],
+    "properties": {
+      "apiVersion": {
+        "const": "semantics.evopilot.io/v1"
+      },
+      "kind": {
+        "enum": [
+          "DomainOntologyPack",
+          "ProductOntologyPack",
+          "OrganizationOntologyPack",
+          "ProjectOntologyOverlay",
+          "DomainHarnessPack"
+        ]
+      },
+      "metadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "name",
+          "namespace",
+          "root",
+          "visibility",
+          "generation",
+          "owner",
+          "provenance",
+          "labels",
+          "kind",
+          "digest"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "namespace": {
+            "type": "string",
+            "minLength": 2
+          },
+          "root": {
+            "enum": [
+              "COMMUNITY",
+              "DOMAIN_TEAM",
+              "PRIVATE_ORGANIZATION"
+            ]
+          },
+          "visibility": {
+            "enum": [
+              "PUBLIC",
+              "DOMAIN",
+              "PRIVATE"
+            ]
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "provenance": {
+            "type": "object"
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        }
+      },
+      "spec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "imports",
+          "concepts",
+          "equivalences",
+          "replacements",
+          "deprecations",
+          "rules",
+          "shapes",
+          "harnessGuidance",
+          "authority"
+        ],
+        "properties": {
+          "imports": {
+            "type": "array"
+          },
+          "concepts": {
+            "type": "array"
+          },
+          "equivalences": {
+            "type": "array"
+          },
+          "replacements": {
+            "type": "array"
+          },
+          "deprecations": {
+            "type": "array"
+          },
+          "rules": {
+            "type": "array"
+          },
+          "shapes": {
+            "type": "array"
+          },
+          "harnessGuidance": {
+            "type": "array"
+          },
+          "authority": {
+            "type": "object",
+            "required": [
+              "declarativeOnly",
+              "executable",
+              "activationRequiresIndependentDecision"
+            ],
+            "properties": {
+              "declarativeOnly": {
+                "const": true
+              },
+              "executable": {
+                "const": false
+              },
+              "activationRequiresIndependentDecision": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "status": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "phase",
+          "conditions",
+          "observedGeneration",
+          "engineOwned"
+        ],
+        "properties": {
+          "phase": {
+            "enum": [
+              "DRAFT",
+              "APPLIED",
+              "IN_REVIEW",
+              "APPROVED",
+              "PUBLISHED",
+              "INSTALLED",
+              "ACTIVE",
+              "SUPERSEDED",
+              "ROLLED_BACK",
+              "DEPRECATED"
+            ]
+          },
+          "conditions": {
+            "type": "array"
+          },
+          "observedGeneration": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "engineOwned": {
+            "const": true
+          }
+        }
+      }
+    }
+  },
+  "project-ontology-artifact-lifecycle-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/project-ontology-artifact-lifecycle-v1.schema.json",
+    "type": "object",
+    "required": [
+      "schema",
+      "artifactSetDigest",
+      "stage",
+      "history",
+      "authority",
+      "recordDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-project-ontology-artifact-lifecycle/v1"
+      },
+      "artifactSetDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "stage": {
+        "enum": [
+          "PUBLISHED",
+          "INSTALLED",
+          "ACTIVE",
+          "SUPERSEDED",
+          "ROLLED_BACK",
+          "DEPRECATED"
+        ]
+      },
+      "history": {
+        "type": "array"
+      },
+      "authority": {
+        "type": "object"
+      },
+      "recordDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "project-ontology-artifact-set-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/project-ontology-artifact-set-v1.schema.json",
+    "type": "object",
+    "required": [
+      "schema",
+      "kind",
+      "apiVersion",
+      "metadata",
+      "spec",
+      "authority",
+      "artifactSetDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-project-ontology-artifact-set/v1"
+      },
+      "kind": {
+        "const": "ProjectOntologyArtifactSet"
+      },
+      "apiVersion": {
+        "const": "semantics.evopilot.io/v1"
+      },
+      "metadata": {
+        "type": "object"
+      },
+      "spec": {
+        "type": "object",
+        "required": [
+          "project",
+          "manifest",
+          "snapshot",
+          "snapshotDigest",
+          "foundationDigest",
+          "provenance",
+          "dependencyLock",
+          "projectionSet",
+          "projectOntologySkill",
+          "publication"
+        ],
+        "properties": {
+          "project": {
+            "type": "object"
+          },
+          "manifest": {
+            "type": "object"
+          },
+          "snapshot": {
+            "type": "object"
+          },
+          "snapshotDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "foundationDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "provenance": {
+            "type": "array"
+          },
+          "dependencyLock": {
+            "type": "object"
+          },
+          "projectionSet": {
+            "type": "object"
+          },
+          "projectOntologySkill": {
+            "type": "object"
+          },
+          "publication": {
+            "type": "object"
+          }
+        }
+      },
+      "authority": {
+        "type": "object"
+      },
+      "artifactSetDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "project-ontology-projection-set-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/project-ontology-projection-set-v1.schema.json",
+    "type": "object",
+    "required": [
+      "schema",
+      "snapshotDigest",
+      "projections",
+      "projectionSetDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-project-ontology-projection-set/v1"
+      },
+      "snapshotDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "projections": {
+        "type": "array",
+        "minItems": 6,
+        "maxItems": 6,
+        "items": {
+          "type": "object",
+          "required": [
+            "format",
+            "status",
+            "snapshotDigest",
+            "mediaType",
+            "content",
+            "contentDigest"
+          ],
+          "properties": {
+            "format": {
+              "enum": [
+                "YAML",
+                "OWL",
+                "RDF_TURTLE",
+                "JSON_LD",
+                "SWRL",
+                "SHACL"
+              ]
+            },
+            "status": {
+              "enum": [
+                "APPLICABLE",
+                "NON_APPLICABLE"
+              ]
+            },
+            "snapshotDigest": {
+              "type": "string"
+            },
+            "mediaType": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "content": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "contentDigest": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "projectionSetDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "project-ontology-proposal-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/project-ontology-proposal-v1.schema.json",
+    "type": "object",
+    "required": [
+      "schema",
+      "proposalId",
+      "revision",
+      "stage",
+      "project",
+      "baseDigest",
+      "resolvedPackSet",
+      "conflictSet",
+      "createdBy",
+      "createdAt",
+      "decisions",
+      "authority",
+      "proposalDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-project-ontology-proposal/v1"
+      },
+      "proposalId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "revision": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "stage": {
+        "enum": [
+          "DRAFT",
+          "APPLIED",
+          "IN_REVIEW",
+          "APPROVED",
+          "REJECTED"
+        ]
+      },
+      "project": {
+        "type": "object"
+      },
+      "baseDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "resolvedPackSet": {
+        "type": "object"
+      },
+      "overlay": {
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "conflictSet": {
+        "type": "array"
+      },
+      "createdBy": {
+        "type": "string",
+        "minLength": 1
+      },
+      "createdAt": {
+        "type": "string",
+        "minLength": 1
+      },
+      "decisions": {
+        "type": "array"
+      },
+      "authority": {
+        "type": "object"
+      },
+      "proposalDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "project-ontology-skill-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/project-ontology-skill-v1.schema.json",
+    "type": "object",
+    "required": [
+      "schema",
+      "kind",
+      "apiVersion",
+      "metadata",
+      "spec",
+      "authority",
+      "skillDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-project-ontology-skill/v1"
+      },
+      "kind": {
+        "const": "ProjectOntologySkill"
+      },
+      "apiVersion": {
+        "const": "semantics.evopilot.io/v1"
+      },
+      "metadata": {
+        "type": "object"
+      },
+      "spec": {
+        "type": "object",
+        "required": [
+          "snapshotDigest",
+          "projectionSetDigest",
+          "artifactSetManifestDigest",
+          "conceptIndex",
+          "instructions",
+          "readOnly",
+          "truthSource",
+          "executable"
+        ],
+        "properties": {
+          "snapshotDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "projectionSetDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "artifactSetManifestDigest": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "conceptIndex": {
+            "type": "array"
+          },
+          "instructions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "readOnly": {
+            "const": true
+          },
+          "truthSource": {
+            "const": "ResolvedProjectOntologySnapshot"
+          },
+          "executable": {
+            "const": false
+          }
+        }
+      },
+      "authority": {
+        "type": "object"
+      },
+      "skillDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "resolved-professional-pack-set-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/resolved-professional-pack-set-v1.schema.json",
+    "type": "object",
+    "required": [
+      "schema",
+      "targetRoot",
+      "baseDigest",
+      "packs",
+      "concepts",
+      "dependencyGraph",
+      "conflicts",
+      "authority",
+      "packSetDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-resolved-professional-pack-set/v1"
+      },
+      "targetRoot": {
+        "enum": [
+          "COMMUNITY",
+          "DOMAIN_TEAM",
+          "PRIVATE_ORGANIZATION"
+        ]
+      },
+      "baseDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "packs": {
+        "type": "array",
+        "minItems": 1
+      },
+      "concepts": {
+        "type": "array"
+      },
+      "dependencyGraph": {
+        "type": "array"
+      },
+      "conflicts": {
+        "type": "array",
+        "maxItems": 0
+      },
+      "authority": {
+        "type": "object"
+      },
+      "packSetDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "resolved-project-ontology-snapshot-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/resolved-project-ontology-snapshot-v1.schema.json",
+    "type": "object",
+    "required": [
+      "schema",
+      "project",
+      "foundationDigest",
+      "proposalDigest",
+      "baseDigest",
+      "packSetDigest",
+      "packs",
+      "dependencyGraph",
+      "concepts",
+      "authority",
+      "snapshotDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-resolved-project-ontology-snapshot/v1"
+      },
+      "project": {
+        "type": "object"
+      },
+      "foundationDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "proposalDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "baseDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "packSetDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "packs": {
+        "type": "array",
+        "minItems": 1
+      },
+      "dependencyGraph": {
+        "type": "array"
+      },
+      "concepts": {
+        "type": "array"
+      },
+      "overlay": {
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "predecessorSnapshotDigest": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "resolvedAt": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "authority": {
+        "type": "object"
+      },
+      "snapshotDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "semantic-candidate-set-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/semantic-candidate-set-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "sourceSnapshotDigest",
+      "evidenceGraphDigest",
+      "candidates",
+      "extraction",
+      "authority",
+      "candidateSetDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-candidate-set/v1"
+      },
+      "sourceSnapshotDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "evidenceGraphDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "candidates": {
+        "type": "array",
+        "maxItems": 512,
+        "items": {
+          "$ref": "#/$defs/candidate"
+        }
+      },
+      "extraction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "algorithm",
+          "deterministicSignals",
+          "llmAdviceSeparated",
+          "sourceExecution",
+          "bounded"
+        ],
+        "properties": {
+          "algorithm": {
+            "type": "string"
+          },
+          "deterministicSignals": {
+            "const": true
+          },
+          "llmAdviceSeparated": {
+            "const": true
+          },
+          "sourceExecution": {
+            "const": false
+          },
+          "bounded": {
+            "const": true
+          }
+        }
+      },
+      "authority": {
+        "type": "object",
+        "required": [
+          "engineOwnsCandidateSet",
+          "llmMayAdvise",
+          "llmMayAssignAuthoritativeConceptId",
+          "sourceMayMutate"
+        ],
+        "properties": {
+          "engineOwnsCandidateSet": {
+            "const": true
+          },
+          "llmMayAdvise": {
+            "const": true
+          },
+          "llmMayAssignAuthoritativeConceptId": {
+            "const": false
+          },
+          "sourceMayMutate": {
+            "const": false
+          }
+        }
+      },
+      "candidateSetDigest": {
+        "$ref": "#/$defs/digest"
+      }
+    },
+    "$defs": {
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "candidate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "candidateId",
+          "label",
+          "normalizedLabel",
+          "metaType",
+          "evidenceIds",
+          "evidenceFamilies",
+          "deterministicSignals",
+          "authoritativeConceptIds",
+          "conflictConceptIds",
+          "proposedExtension",
+          "llmAdvice",
+          "uncertainty"
+        ],
+        "properties": {
+          "candidateId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "normalizedLabel": {
+            "type": "string",
+            "minLength": 1
+          },
+          "metaType": {
+            "$ref": "#/$defs/metaType"
+          },
+          "evidenceIds": {
+            "type": "array",
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidenceFamilies": {
+            "type": "array",
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "deterministicSignals": {
+            "type": "array"
+          },
+          "authoritativeConceptIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "conflictConceptIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "proposedExtension": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "llmAdvice": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "uncertainty": {
+            "enum": [
+              "LOW",
+              "BOUNDED",
+              "HIGH"
+            ]
+          }
+        }
+      },
+      "metaType": {
+        "enum": [
+          "ENTITY",
+          "ATTRIBUTE",
+          "RELATIONSHIP",
+          "RULE",
+          "EVENT",
+          "ACTION",
+          "ACTOR",
+          "ROLE",
+          "PERMISSION",
+          "STATE",
+          "WORKFLOW",
+          "CAPABILITY",
+          "SYSTEM",
+          "DATA_ASSET"
+        ]
+      }
+    }
+  },
+  "semantic-compatibility-report-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/semantic-compatibility-report-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "status",
+      "requirementsDigest",
+      "groundingResultDigest",
+      "matchedRequiredConceptIds",
+      "missingRequiredConceptIds",
+      "presentProhibitedConceptIds",
+      "unresolvedCandidateIds",
+      "eligibilityObservation",
+      "authority",
+      "compatibilityReportDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-compatibility-report/v1"
+      },
+      "status": {
+        "enum": [
+          "COMPATIBLE",
+          "INCOMPATIBLE",
+          "INDETERMINATE"
+        ]
+      },
+      "requirementsDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "groundingResultDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "matchedRequiredConceptIds": {
+        "$ref": "#/$defs/ids"
+      },
+      "missingRequiredConceptIds": {
+        "$ref": "#/$defs/ids"
+      },
+      "presentProhibitedConceptIds": {
+        "$ref": "#/$defs/ids"
+      },
+      "unresolvedCandidateIds": {
+        "$ref": "#/$defs/ids"
+      },
+      "eligibilityObservation": {
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "authority": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "semanticCompatibilityOnly",
+          "harnessEligibilityIndependent",
+          "mayOverrideEligibility",
+          "mayCreateProposal",
+          "mayApprove",
+          "mayPublish"
+        ],
+        "properties": {
+          "semanticCompatibilityOnly": {
+            "const": true
+          },
+          "harnessEligibilityIndependent": {
+            "const": true
+          },
+          "mayOverrideEligibility": {
+            "const": false
+          },
+          "mayCreateProposal": {
+            "const": false
+          },
+          "mayApprove": {
+            "const": false
+          },
+          "mayPublish": {
+            "const": false
+          }
+        }
+      },
+      "compatibilityReportDigest": {
+        "$ref": "#/$defs/digest"
+      }
+    },
+    "$defs": {
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "ids": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "semantic-computation-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/semantic-computation-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "computationMode",
+      "indexDigest",
+      "profileDigest",
+      "affectedSubgraphDigest",
+      "externalReasonerEvidence",
+      "outcomeDigest",
+      "proofDigest",
+      "telemetry",
+      "status",
+      "authority",
+      "computationDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-computation/v1"
+      },
+      "computationMode": {
+        "enum": [
+          "FULL",
+          "INCREMENTAL"
+        ]
+      },
+      "indexDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "profileDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "affectedSubgraphDigest": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "externalReasonerEvidence": {
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "outcomeDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "proofDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "telemetry": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "nodeCount",
+          "edgeCount",
+          "evaluatedConceptCount",
+          "evaluatedConceptIds",
+          "concurrency",
+          "elapsedMs",
+          "cacheEntryCount",
+          "cacheDigest",
+          "budgets",
+          "secretsRedacted"
+        ],
+        "properties": {
+          "nodeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "edgeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "evaluatedConceptCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "evaluatedConceptIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "concurrency": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "elapsedMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cacheEntryCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cacheDigest": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "budgets": {
+            "type": "object"
+          },
+          "secretsRedacted": {
+            "const": true
+          }
+        }
+      },
+      "status": {
+        "const": "COMPLETED"
+      },
+      "authority": {
+        "type": "object"
+      },
+      "computationDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "semantic-index-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/semantic-index-v1.schema.json",
+    "title": "SemanticIndex v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "apiVersion",
+      "kind",
+      "snapshotDigest",
+      "algorithm",
+      "policy",
+      "toolchain",
+      "cache",
+      "nodes",
+      "edges",
+      "assets",
+      "statistics",
+      "authority",
+      "indexDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-index/v1"
+      },
+      "apiVersion": {
+        "const": "semantics.evopilot.io/v1"
+      },
+      "kind": {
+        "const": "SemanticIndex"
+      },
+      "snapshotDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "algorithm": {
+        "type": "object"
+      },
+      "policy": {
+        "type": "object"
+      },
+      "toolchain": {
+        "type": "object"
+      },
+      "cache": {
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "nodes": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "edges": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "assets": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "statistics": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "nodeCount",
+          "edgeCount",
+          "assetCount"
+        ],
+        "properties": {
+          "nodeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "edgeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "assetCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "authority": {
+        "type": "object",
+        "required": [
+          "contentAddressed",
+          "readOnly",
+          "staleResultsAllowed",
+          "mixedContextAllowed",
+          "mayMutateSource"
+        ],
+        "properties": {
+          "contentAddressed": {
+            "const": true
+          },
+          "readOnly": {
+            "const": true
+          },
+          "staleResultsAllowed": {
+            "const": false
+          },
+          "mixedContextAllowed": {
+            "const": false
+          },
+          "mayMutateSource": {
+            "const": false
+          }
+        }
+      },
+      "indexDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "semantic-interoperability-projection-set-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/semantic-interoperability-projection-set-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "snapshotDigest",
+      "profileDigest",
+      "indexDigest",
+      "canonicalSemanticDigest",
+      "externalMappings",
+      "multilingualTerms",
+      "projections",
+      "authority",
+      "projectionSetDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-interoperability-projection-set/v1"
+      },
+      "snapshotDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "profileDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "indexDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "canonicalSemanticDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "externalMappings": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "multilingualTerms": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "projections": {
+        "type": "array",
+        "minItems": 5,
+        "maxItems": 5,
+        "items": {
+          "type": "object"
+        }
+      },
+      "authority": {
+        "type": "object"
+      },
+      "projectionSetDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "semantic-round-trip-report-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/semantic-round-trip-report-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "status",
+      "snapshotDigest",
+      "indexDigest",
+      "projectionSetDigest",
+      "incrementalComputationDigest",
+      "fullComputationDigest",
+      "bindingChecks",
+      "allApplicableDigestsPresent",
+      "allFormatsApplicable",
+      "canonicalSemanticsPreserved",
+      "unsupportedFormats",
+      "computationEquivalence",
+      "authority",
+      "reportDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-round-trip-report/v1"
+      },
+      "status": {
+        "enum": [
+          "PASSED",
+          "FAILED"
+        ]
+      },
+      "snapshotDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "indexDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "projectionSetDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "incrementalComputationDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "fullComputationDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "bindingChecks": {
+        "type": "object"
+      },
+      "allApplicableDigestsPresent": {
+        "type": "boolean"
+      },
+      "allFormatsApplicable": {
+        "type": "boolean"
+      },
+      "canonicalSemanticsPreserved": {
+        "type": "boolean"
+      },
+      "unsupportedFormats": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "computationEquivalence": {
+        "type": "object"
+      },
+      "authority": {
+        "type": "object"
+      },
+      "reportDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "taxonomy-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/taxonomy-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "apiVersion",
+      "kind",
+      "metadata",
+      "spec"
+    ],
+    "properties": {
+      "apiVersion": {
+        "const": "harness.evopilot.io/v1"
+      },
+      "kind": {
+        "const": "Taxonomy"
+      },
+      "metadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "namespace",
+          "name",
+          "version"
+        ],
+        "properties": {
+          "namespace": {
+            "$ref": "#/$defs/namespace"
+          },
+          "name": {
+            "$ref": "#/$defs/id"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$"
+          }
+        }
+      },
+      "spec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "engineRange",
+          "requiredCapabilities",
+          "axisPolicies",
+          "domains",
+          "products"
+        ],
+        "properties": {
+          "engineRange": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "requiredCapabilities": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 32,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "expectedCanonicalDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "axisPolicies": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "domainCardinality",
+              "productCardinality"
+            ],
+            "properties": {
+              "domainCardinality": {
+                "enum": [
+                  "SINGLE",
+                  "MULTIPLE"
+                ]
+              },
+              "productCardinality": {
+                "enum": [
+                  "SINGLE",
+                  "MULTIPLE"
+                ]
+              }
+            }
+          },
+          "domains": {
+            "$ref": "#/$defs/nodes"
+          },
+          "products": {
+            "$ref": "#/$defs/nodes"
+          }
+        }
+      }
+    },
+    "$defs": {
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "id": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        "minLength": 1,
+        "maxLength": 63
+      },
+      "namespace": {
+        "type": "string",
+        "pattern": "^(?=[^.]{1,63}(?:\\.|$))[a-z0-9]+(?:-[a-z0-9]+)*(?:\\.(?=[^.]{1,63}(?:\\.|$))[a-z0-9]+(?:-[a-z0-9]+)*)*$",
+        "minLength": 1,
+        "maxLength": 253
+      },
+      "label": {
+        "type": "string",
+        "minLength": 1
+      },
+      "definition": {
+        "type": "string",
+        "minLength": 1
+      },
+      "hint": {
+        "type": "string",
+        "minLength": 1
+      },
+      "nodes": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 4096,
+        "items": {
+          "$ref": "#/$defs/node"
+        }
+      },
+      "node": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "assignable"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "label": {
+            "$ref": "#/$defs/label"
+          },
+          "aliases": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "$ref": "#/$defs/label"
+            }
+          },
+          "definition": {
+            "$ref": "#/$defs/definition"
+          },
+          "parents": {
+            "type": "array",
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/id"
+            }
+          },
+          "assignable": {
+            "type": "boolean"
+          },
+          "positiveEvidenceHints": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "$ref": "#/$defs/hint"
+            }
+          },
+          "exclusionHints": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "$ref": "#/$defs/hint"
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "assignable": {
+                  "const": true
+                }
+              },
+              "required": [
+                "assignable"
+              ]
+            },
+            "then": {
+              "properties": {
+                "definition": {
+                  "$ref": "#/$defs/definition"
+                }
+              },
+              "required": [
+                "definition"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "terminal-semantic-closure-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/terminal-semantic-closure-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "apiVersion",
+      "kind",
+      "version",
+      "status",
+      "snapshot",
+      "reasoningProfile",
+      "semanticIndex",
+      "graphIndex",
+      "projectionSet",
+      "roundTripReport",
+      "harnessAssets",
+      "dependencyLocks",
+      "evaluations",
+      "rollbackLinks",
+      "provenance",
+      "publication",
+      "authority",
+      "closureDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-terminal-semantic-closure/v1"
+      },
+      "apiVersion": {
+        "const": "semantics.evopilot.io/v1"
+      },
+      "kind": {
+        "const": "TerminalSemanticClosure"
+      },
+      "version": {
+        "const": "4.8.0"
+      },
+      "status": {
+        "enum": [
+          "CANDIDATE",
+          "PUBLISHED"
+        ]
+      },
+      "snapshot": {
+        "type": "object"
+      },
+      "reasoningProfile": {
+        "type": "object"
+      },
+      "semanticIndex": {
+        "type": "object"
+      },
+      "graphIndex": {
+        "type": "object"
+      },
+      "projectionSet": {
+        "type": "object"
+      },
+      "roundTripReport": {
+        "type": "object"
+      },
+      "harnessAssets": {
+        "type": "array",
+        "minItems": 3,
+        "items": {
+          "type": "object"
+        }
+      },
+      "dependencyLocks": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object"
+        }
+      },
+      "evaluations": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object"
+        }
+      },
+      "rollbackLinks": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object"
+        }
+      },
+      "provenance": {
+        "type": "object"
+      },
+      "publication": {
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "authority": {
+        "type": "object",
+        "required": [
+          "immutable",
+          "consumerReadOnly",
+          "liveMutableHarnessDependency",
+          "grantsConsumerMutation",
+          "grantsConsumerApproval",
+          "grantsConsumerPublication",
+          "grantsReleaseAuthority"
+        ],
+        "properties": {
+          "immutable": {
+            "const": true
+          },
+          "consumerReadOnly": {
+            "const": true
+          },
+          "liveMutableHarnessDependency": {
+            "const": false
+          },
+          "grantsConsumerMutation": {
+            "const": false
+          },
+          "grantsConsumerApproval": {
+            "const": false
+          },
+          "grantsConsumerPublication": {
+            "const": false
+          },
+          "grantsReleaseAuthority": {
+            "const": false
+          }
+        }
+      },
+      "closureDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "terminal-semantic-slice-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/terminal-semantic-slice-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "closureDigest",
+      "requestedConceptIds",
+      "bindings",
+      "authority",
+      "sliceDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-terminal-semantic-slice/v1"
+      },
+      "closureDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "requestedConceptIds": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "string"
+        }
+      },
+      "bindings": {
+        "type": "object"
+      },
+      "authority": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "readOnly",
+          "offline",
+          "liveHarnessDependency",
+          "mayMutate",
+          "mayApprove",
+          "mayPublish",
+          "mayRelease"
+        ],
+        "properties": {
+          "readOnly": {
+            "const": true
+          },
+          "offline": {
+            "const": true
+          },
+          "liveHarnessDependency": {
+            "const": false
+          },
+          "mayMutate": {
+            "const": false
+          },
+          "mayApprove": {
+            "const": false
+          },
+          "mayPublish": {
+            "const": false
+          },
+          "mayRelease": {
+            "const": false
+          }
+        }
+      },
+      "sliceDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "semantic-catalog-pointer-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/semantic-catalog-pointer-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "catalogId",
+      "generationPath",
+      "generationDigest",
+      "previousPointerDigest",
+      "receiptDigest",
+      "pointerDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-catalog-pointer/v1"
+      },
+      "catalogId": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+      },
+      "generationPath": {
+        "type": "string",
+        "pattern": "^semantic-catalog/generations/[a-f0-9]{64}\\.json$"
+      },
+      "generationDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "previousPointerDigest": {
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "receiptDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "pointerDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "semantic-catalog-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/semantic-catalog-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "catalogId",
+      "entries",
+      "revokedDigests",
+      "generationDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-catalog/v1"
+      },
+      "catalogId": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+      },
+      "entries": {
+        "type": "array",
+        "maxItems": 4096,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id",
+            "version",
+            "schema",
+            "objectDigest",
+            "fileDigest",
+            "bytes",
+            "path",
+            "scope",
+            "visibility",
+            "provenance",
+            "parent",
+            "dependencies"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+            },
+            "id": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+            },
+            "version": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "category": {
+              "enum": [
+                "ASSET",
+                "DEPENDENCY"
+              ]
+            },
+            "objectDigest": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "fileDigest": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16777216
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^semantic-catalog/materials/[a-f0-9]{64}\\.json$"
+            },
+            "scope": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "tenantId",
+                "workspaceId",
+                "projectId"
+              ],
+              "properties": {
+                "tenantId": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+                },
+                "workspaceId": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+                },
+                "projectId": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+                }
+              }
+            },
+            "visibility": {
+              "enum": [
+                "PUBLIC",
+                "DOMAIN",
+                "PRIVATE"
+              ]
+            },
+            "provenance": {
+              "type": "object"
+            },
+            "publication": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "parent": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "artifactSetDigest",
+                    "jsonPointer"
+                  ],
+                  "properties": {
+                    "artifactSetDigest": {
+                      "type": "string",
+                      "pattern": "^sha256:[a-f0-9]{64}$"
+                    },
+                    "jsonPointer": {
+                      "const": "/spec/projectOntologySkill"
+                    }
+                  }
+                }
+              ]
+            },
+            "dependencies": {
+              "type": "array",
+              "maxItems": 16384,
+              "items": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "uniqueItems": true
+            }
+          }
+        }
+      },
+      "revokedDigests": {
+        "type": "array",
+        "maxItems": 4096,
+        "items": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "uniqueItems": true
+      },
+      "generationDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "sets": {
+        "type": "array",
+        "maxItems": 4096,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scope",
+            "refs"
+          ],
+          "properties": {
+            "scope": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "tenantId",
+                "workspaceId",
+                "projectId"
+              ],
+              "properties": {
+                "tenantId": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+                },
+                "workspaceId": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+                },
+                "projectId": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+                }
+              }
+            },
+            "refs": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  },
+  "semantic-catalog-receipt-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/semantic-catalog-receipt-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "catalogId",
+      "generationDigest",
+      "expectedHead",
+      "action",
+      "requestDigest",
+      "authorization",
+      "receiptDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-catalog-receipt/v1"
+      },
+      "catalogId": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+      },
+      "generationDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "expectedHead": {
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "action": {
+        "enum": [
+          "PUBLISH",
+          "ROLLBACK",
+          "REVOKE"
+        ]
+      },
+      "requestDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "authorization": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision",
+          "actor",
+          "authorizationDigest"
+        ],
+        "properties": {
+          "decision": {
+            "const": "AUTHORIZED"
+          },
+          "actor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "authorizationDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        }
+      },
+      "receiptDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "transitionDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "semantic-catalog-lock-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/semantic-catalog-lock-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "catalogId",
+      "nonce",
+      "pid",
+      "hostDigest",
+      "rootDigest",
+      "receiptDigest",
+      "requestDigest",
+      "expectedHead",
+      "lockDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-catalog-lock/v1"
+      },
+      "catalogId": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+      },
+      "nonce": {
+        "type": "string",
+        "pattern": "^[a-f0-9-]{36}$"
+      },
+      "pid": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "hostDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "rootDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "receiptDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "requestDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "expectedHead": {
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "lockDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "semantic-catalog-recovery-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/semantic-catalog-recovery-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "catalogId",
+      "lockDigest",
+      "expectedHead",
+      "recoveryRequestDigest",
+      "publicationOutcome",
+      "authorization",
+      "recoveryDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-catalog-recovery/v1"
+      },
+      "catalogId": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+      },
+      "lockDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "expectedHead": {
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "recoveryRequestDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "publicationRequestDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "publicationOutcome": {
+        "enum": [
+          "PREFLIGHT",
+          "COMMITTED",
+          "NOT_COMMITTED"
+        ]
+      },
+      "authorization": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision",
+          "actor",
+          "authorizationDigest"
+        ],
+        "properties": {
+          "decision": {
+            "const": "AUTHORIZED"
+          },
+          "actor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "authorizationDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        }
+      },
+      "recoveryDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "semantic-catalog-policy-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/semantic-catalog-policy-v1.schema.json",
+    "title": "Operator-owned Semantic Catalog Policy v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "catalogs"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-semantic-catalog-policy/v1"
+      },
+      "catalogs": {
+        "type": "array",
+        "maxItems": 16,
+        "items": {
+          "$ref": "#/$defs/catalog"
+        }
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+      },
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "scope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tenantId",
+          "workspaceId",
+          "projectId"
+        ],
+        "properties": {
+          "tenantId": {
+            "$ref": "#/$defs/id"
+          },
+          "workspaceId": {
+            "$ref": "#/$defs/id"
+          },
+          "projectId": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "grant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision",
+          "actor",
+          "authorizationDigest",
+          "subjectDigest",
+          "purpose",
+          "revoked",
+          "expiresAt"
+        ],
+        "properties": {
+          "decision": {
+            "const": "AUTHORIZED"
+          },
+          "actor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "authorizationDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "subjectDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "purpose": {
+            "enum": [
+              "ASSET_PUBLICATION",
+              "CATALOG_PUBLICATION",
+              "CATALOG_RECOVERY"
+            ]
+          },
+          "revoked": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+          },
+          "at": {
+            "type": "string",
+            "maxLength": 64
+          }
+        }
+      },
+      "catalog": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "permission",
+          "trustContext",
+          "rootBindingDigest",
+          "scopes",
+          "grants"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "permission": {
+            "enum": [
+              "GRANTED",
+              "DENIED"
+            ]
+          },
+          "trustContext": {
+            "$ref": "#/$defs/id"
+          },
+          "rootBindingDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "scopes": {
+            "type": "array",
+            "maxItems": 4096,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "scope",
+                "visibilities"
+              ],
+              "properties": {
+                "scope": {
+                  "$ref": "#/$defs/scope"
+                },
+                "visibilities": {
+                  "type": "array",
+                  "maxItems": 3,
+                  "uniqueItems": true,
+                  "items": {
+                    "enum": [
+                      "PUBLIC",
+                      "DOMAIN",
+                      "PRIVATE"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "grants": {
+            "type": "array",
+            "maxItems": 4096,
+            "items": {
+              "$ref": "#/$defs/grant"
+            }
+          }
+        }
+      }
+    }
+  },
+  "harness-asset-v3.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/harness-asset-v3.schema.json",
+    "title": "EvoPilot Harness Asset v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "apiVersion",
+      "kind",
+      "metadata",
+      "spec"
+    ],
+    "properties": {
+      "apiVersion": {
+        "const": "harness.evopilot.io/v3"
+      },
+      "kind": {
+        "enum": [
+          "HarnessComponent",
+          "HarnessProfile",
+          "HarnessBundle"
+        ]
+      },
+      "metadata": {
+        "$ref": "#/$defs/metadata"
+      },
+      "spec": {
+        "type": "object"
+      },
+      "provenance": {
+        "$ref": "#/$defs/provenance"
+      }
+    },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "kind": {
+              "const": "HarnessComponent"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "$ref": "#/$defs/componentSpec"
+            }
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "kind": {
+              "const": "HarnessProfile"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "$ref": "#/$defs/profileSpec"
+            }
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "kind": {
+              "const": "HarnessBundle"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "$ref": "#/$defs/bundleSpec"
+            }
+          }
+        }
+      }
+    ],
+    "$defs": {
+      "identifier": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "semver": {
+        "type": "string",
+        "pattern": "^0|[1-9][0-9]*\\.0|[1-9][0-9]*\\.0|[1-9][0-9]*$"
+      },
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "nonEmptyStrings": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      },
+      "metadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "name",
+          "description",
+          "lifecycle"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 3
+          },
+          "description": {
+            "type": "string",
+            "minLength": 16
+          },
+          "lifecycle": {
+            "enum": [
+              "draft",
+              "review",
+              "approved",
+              "published",
+              "deprecated"
+            ]
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceDigests",
+          "ontologyVersion",
+          "policyVersion"
+        ],
+        "properties": {
+          "sourceDigests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/digest"
+            },
+            "uniqueItems": true
+          },
+          "ontologyVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "policyVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "advisorRunDigest": {
+            "$ref": "#/$defs/digest"
+          }
+        }
+      },
+      "action": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "description",
+          "executor",
+          "inputs",
+          "outputs"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 8
+          },
+          "executor": {
+            "enum": [
+              "shell",
+              "http",
+              "container",
+              "agent",
+              "manual"
+            ]
+          },
+          "command": {
+            "type": "string"
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "outputs": {
+            "$ref": "#/$defs/nonEmptyStrings"
+          },
+          "timeoutSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 86400
+          },
+          "network": {
+            "enum": [
+              "denied",
+              "restricted",
+              "allowed"
+            ]
+          }
+        }
+      },
+      "validator": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "assertion",
+          "evidenceRefs"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "type": {
+            "enum": [
+              "exit-code",
+              "json-schema",
+              "content",
+              "metric",
+              "manual-review",
+              "signature"
+            ]
+          },
+          "assertion": {
+            "type": "string",
+            "minLength": 3
+          },
+          "evidenceRefs": {
+            "$ref": "#/$defs/nonEmptyStrings"
+          },
+          "blocking": {
+            "type": "boolean"
+          }
+        }
+      },
+      "componentSpec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "capability",
+          "environment",
+          "actions",
+          "constraints",
+          "evidence",
+          "validators"
+        ],
+        "properties": {
+          "capability": {
+            "$ref": "#/$defs/identifier"
+          },
+          "environment": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "workspaceMode",
+              "requiredTools"
+            ],
+            "properties": {
+              "workspaceMode": {
+                "enum": [
+                  "read-only",
+                  "read-write",
+                  "isolated"
+                ]
+              },
+              "requiredTools": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "uniqueItems": true
+              },
+              "requiredServices": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "uniqueItems": true
+              }
+            }
+          },
+          "actions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/action"
+            }
+          },
+          "constraints": {
+            "$ref": "#/$defs/nonEmptyStrings"
+          },
+          "evidence": {
+            "$ref": "#/$defs/nonEmptyStrings"
+          },
+          "validators": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/validator"
+            }
+          }
+        }
+      },
+      "assetRef": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "digest": {
+            "$ref": "#/$defs/digest"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        }
+      },
+      "profileSpec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "classification",
+          "boundary",
+          "match",
+          "components",
+          "acceptance"
+        ],
+        "properties": {
+          "classification": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "domain",
+              "role",
+              "taskClass"
+            ],
+            "properties": {
+              "domain": {
+                "$ref": "#/$defs/identifier"
+              },
+              "role": {
+                "$ref": "#/$defs/identifier"
+              },
+              "taskClass": {
+                "$ref": "#/$defs/identifier"
+              }
+            }
+          },
+          "boundary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "inScope",
+              "outOfScope"
+            ],
+            "properties": {
+              "inScope": {
+                "$ref": "#/$defs/nonEmptyStrings"
+              },
+              "outOfScope": {
+                "$ref": "#/$defs/nonEmptyStrings"
+              }
+            }
+          },
+          "match": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "positiveConcepts",
+              "negativeConcepts",
+              "requiredEvidenceKinds"
+            ],
+            "properties": {
+              "positiveConcepts": {
+                "$ref": "#/$defs/nonEmptyStrings"
+              },
+              "negativeConcepts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "uniqueItems": true
+              },
+              "requiredEvidenceKinds": {
+                "$ref": "#/$defs/nonEmptyStrings"
+              }
+            }
+          },
+          "components": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/assetRef"
+            }
+          },
+          "acceptance": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "requiredEvidence",
+              "blockingValidators"
+            ],
+            "properties": {
+              "requiredEvidence": {
+                "$ref": "#/$defs/nonEmptyStrings"
+              },
+              "blockingValidators": {
+                "$ref": "#/$defs/nonEmptyStrings"
+              }
+            }
+          },
+          "evaluationPackRef": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "bundleSpec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "profile",
+          "resolvedComponents",
+          "executionPlan",
+          "constraints",
+          "evidence",
+          "validators"
+        ],
+        "properties": {
+          "profile": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/assetRef"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "digest"
+                ],
+                "properties": {
+                  "digest": {
+                    "$ref": "#/$defs/digest"
+                  }
+                }
+              }
+            ]
+          },
+          "resolvedComponents": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/assetRef"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "digest"
+                  ],
+                  "properties": {
+                    "digest": {
+                      "$ref": "#/$defs/digest"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "executionPlan": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "constraints": {
+            "$ref": "#/$defs/nonEmptyStrings"
+          },
+          "evidence": {
+            "$ref": "#/$defs/nonEmptyStrings"
+          },
+          "validators": {
+            "$ref": "#/$defs/nonEmptyStrings"
+          },
+          "semanticRequirements": {
+            "$ref": "#/$defs/semanticRequirements"
+          },
+          "exports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "adapter",
+                "path"
+              ],
+              "properties": {
+                "adapter": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "semanticRequirements": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema",
+          "foundationDigest",
+          "requiredConcepts",
+          "prohibitedConcepts",
+          "relationRequirements",
+          "evidenceRequirements",
+          "authority",
+          "requirementsDigest"
+        ],
+        "properties": {
+          "schema": {
+            "const": "evopilot-harness-semantic-requirements/v1"
+          },
+          "foundationDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "requiredConcepts": {
+            "$ref": "#/$defs/semanticConceptRequirements"
+          },
+          "prohibitedConcepts": {
+            "$ref": "#/$defs/semanticConceptRequirements"
+          },
+          "relationRequirements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "subjectConceptId",
+                "relationType",
+                "objectConceptId"
+              ],
+              "properties": {
+                "subjectConceptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "relationType": {
+                  "enum": [
+                    "IS_A",
+                    "PART_OF",
+                    "REQUIRES",
+                    "PERFORMS",
+                    "CONSTRAINS",
+                    "TRIGGERS",
+                    "RECOVERS_WITH",
+                    "VALIDATED_BY",
+                    "ALTERNATIVE_TO",
+                    "MITIGATES",
+                    "PRODUCES"
+                  ]
+                },
+                "objectConceptId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "evidenceRequirements": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "authority": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "descriptiveConstraintOnly",
+              "executable",
+              "provesEligibility",
+              "mayApprove",
+              "mayPublish"
+            ],
+            "properties": {
+              "descriptiveConstraintOnly": {
+                "const": true
+              },
+              "executable": {
+                "const": false
+              },
+              "provesEligibility": {
+                "const": false
+              },
+              "mayApprove": {
+                "const": false
+              },
+              "mayPublish": {
+                "const": false
+              }
+            }
+          },
+          "requirementsDigest": {
+            "$ref": "#/$defs/digest"
+          }
+        }
+      },
+      "semanticConceptRequirements": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "conceptId",
+            "metaType",
+            "rationale",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "conceptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "metaType": {
+              "enum": [
+                "ENTITY",
+                "ATTRIBUTE",
+                "RELATIONSHIP",
+                "RULE",
+                "EVENT",
+                "ACTION",
+                "ACTOR",
+                "ROLE",
+                "PERMISSION",
+                "STATE",
+                "WORKFLOW",
+                "CAPABILITY",
+                "SYSTEM",
+                "DATA_ASSET"
+              ]
+            },
+            "rationale": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "classification-analysis-receipt-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/classification-analysis-receipt-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "analysisRequestDigest",
+      "analysisAttemptDigest",
+      "resultDigest",
+      "executionMode",
+      "physicalAdvisorInvocationCount",
+      "advisorReceiptDigest",
+      "completedAt",
+      "authority",
+      "receiptDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-classification-analysis-receipt/v1"
+      },
+      "analysisRequestDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "analysisAttemptDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "resultDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "executionMode": {
+        "enum": [
+          "NEW_ANALYSIS",
+          "REPLAY"
+        ]
+      },
+      "physicalAdvisorInvocationCount": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "advisorReceiptDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "completedAt": {
+        "type": "string",
+        "minLength": 1
+      },
+      "authority": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "executionEvidenceOnly",
+          "humanDecision",
+          "mayApprove",
+          "mayPublish"
+        ],
+        "properties": {
+          "executionEvidenceOnly": {
+            "const": true
+          },
+          "humanDecision": {
+            "const": false
+          },
+          "mayApprove": {
+            "const": false
+          },
+          "mayPublish": {
+            "const": false
+          }
+        }
+      },
+      "receiptDigest": {
+        "$ref": "#/$defs/digest"
+      }
+    },
+    "$defs": {
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "classification-evaluation-report-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/classification-evaluation-report-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "status",
+      "goldManifestDigest",
+      "caseCount",
+      "composition",
+      "bindings",
+      "cases",
+      "metrics",
+      "thresholds",
+      "authority",
+      "reportDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-classification-evaluation-report/v1"
+      },
+      "status": {
+        "enum": [
+          "PASS",
+          "FAIL"
+        ]
+      },
+      "goldManifestDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "caseCount": {
+        "type": "integer",
+        "minimum": 48
+      },
+      "composition": {
+        "type": "object"
+      },
+      "bindings": {
+        "type": "object"
+      },
+      "cases": {
+        "type": "array",
+        "minItems": 48
+      },
+      "metrics": {
+        "type": "object"
+      },
+      "thresholds": {
+        "type": "object"
+      },
+      "authority": {
+        "type": "object"
+      },
+      "reportDigest": {
+        "$ref": "#/$defs/digest"
+      }
+    },
+    "$defs": {
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "classification-handoff-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/classification-handoff-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "classificationSessionId",
+      "sourceDescriptor",
+      "sourceDescriptorDigest",
+      "sourceResolution",
+      "sourceResolutionDigest",
+      "sourceSnapshotDigest",
+      "taxonomyDigest",
+      "hypothesisDigest",
+      "perAxisResultDigests",
+      "analysisResultDigest",
+      "classificationContextDigest",
+      "decision",
+      "authority",
+      "handoffDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-classification-handoff/v1"
+      },
+      "classificationSessionId": {
+        "type": "string",
+        "minLength": 8
+      },
+      "sourceDescriptor": {
+        "$ref": "https://evopilot.dev/schemas/source-descriptor-v1.schema.json"
+      },
+      "sourceDescriptorDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "sourceResolution": {
+        "type": "object"
+      },
+      "sourceResolutionDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "sourceSnapshotDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "taxonomyDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "hypothesisDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "ontologyFoundationDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "semanticCandidateSetDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "perAxisResultDigests": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "domain",
+          "product"
+        ],
+        "properties": {
+          "domain": {
+            "$ref": "#/$defs/digest"
+          },
+          "product": {
+            "$ref": "#/$defs/digest"
+          }
+        }
+      },
+      "analysisResultDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "classificationContextDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "decision": {
+        "const": "CONTINUE_TO_HARNESS"
+      },
+      "authority": {
+        "type": "object",
+        "required": [
+          "explicitHumanDecision",
+          "provesEligibility",
+          "createsProposal",
+          "approves",
+          "publishes"
+        ],
+        "properties": {
+          "explicitHumanDecision": {},
+          "provesEligibility": {},
+          "createsProposal": {},
+          "approves": {},
+          "publishes": {}
+        }
+      },
+      "handoffDigest": {
+        "$ref": "#/$defs/digest"
+      }
+    },
+    "$defs": {
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "classification-session-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/classification-session-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "sessionId",
+      "status",
+      "createdAt",
+      "updatedAt",
+      "workspace",
+      "agentOperationSessionId",
+      "agentOperationSessionDigest",
+      "source",
+      "taxonomy",
+      "attempts",
+      "currentResult",
+      "presentation",
+      "currentDecision",
+      "presentationReceipts",
+      "humanDecisions",
+      "nextOperations",
+      "sessionDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-classification-session/v1"
+      },
+      "sessionId": {
+        "type": "string",
+        "pattern": "^classification-[a-z0-9-]{8,96}$"
+      },
+      "status": {
+        "enum": [
+          "TAXONOMY_MATCHED",
+          "TAXONOMY_EXTENSION_SUGGESTED",
+          "TAXONOMY_EVIDENCE_INSUFFICIENT",
+          "TAXONOMY_AMBIGUOUS",
+          "ANALYSIS_BLOCKED_ADVISOR",
+          "HANDED_OFF",
+          "CLOSED",
+          "CANCELLED"
+        ]
+      },
+      "createdAt": {
+        "type": "string"
+      },
+      "updatedAt": {
+        "type": "string"
+      },
+      "workspace": {
+        "type": "object"
+      },
+      "agentOperationSessionId": {
+        "type": "string",
+        "minLength": 6
+      },
+      "agentOperationSessionDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "source": {
+        "type": "object"
+      },
+      "taxonomy": {
+        "type": "object"
+      },
+      "attempts": {
+        "type": "array",
+        "minItems": 0,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "attemptedAt",
+            "analysisAttemptDigest",
+            "analysisRequestDigest",
+            "executionMode",
+            "status",
+            "resultDigest",
+            "advisorInvocationCount",
+            "physicalAdvisorInvocationCount",
+            "analysisReceipt"
+          ],
+          "properties": {
+            "attemptedAt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "analysisAttemptDigest": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "analysisRequestDigest": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "executionMode": {
+              "enum": [
+                "NEW_ANALYSIS",
+                "REPLAY"
+              ]
+            },
+            "status": {
+              "enum": [
+                "TAXONOMY_MATCHED",
+                "TAXONOMY_EXTENSION_SUGGESTED",
+                "TAXONOMY_EVIDENCE_INSUFFICIENT",
+                "TAXONOMY_AMBIGUOUS",
+                "ANALYSIS_BLOCKED_ADVISOR"
+              ]
+            },
+            "resultDigest": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "advisorInvocationCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "physicalAdvisorInvocationCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "analysisReceipt": {
+              "$ref": "https://evopilot.dev/schemas/classification-analysis-receipt-v1.schema.json"
+            }
+          }
+        }
+      },
+      "inFlightAnalysis": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema",
+          "classificationSessionId",
+          "analysisRequestDigest",
+          "analysisAttemptDigest",
+          "inputDigest",
+          "request",
+          "state",
+          "physicalAdvisorInvocationCount",
+          "maximumPhysicalAdvisorInvocations",
+          "recordedAt",
+          "authority",
+          "receiptDigest"
+        ],
+        "properties": {
+          "schema": {
+            "const": "evopilot-harness-classification-invocation/v1"
+          },
+          "classificationSessionId": {
+            "type": "string"
+          },
+          "analysisRequestDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "analysisAttemptDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "inputDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "receiptDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "request": {
+            "type": "object"
+          },
+          "state": {
+            "const": "OUTCOME_UNKNOWN"
+          },
+          "physicalAdvisorInvocationCount": {
+            "type": "null"
+          },
+          "maximumPhysicalAdvisorInvocations": {
+            "const": 1
+          },
+          "recordedAt": {
+            "type": "string"
+          },
+          "authority": {
+            "const": {
+              "executionEvidenceOnly": true,
+              "humanDecision": false,
+              "mayApprove": false,
+              "mayPublish": false,
+              "automaticRetryAllowed": false
+            }
+          }
+        }
+      },
+      "currentResult": {
+        "type": "object"
+      },
+      "presentation": {
+        "type": "object"
+      },
+      "currentDecision": {
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "presentationReceipts": {
+        "type": "array"
+      },
+      "humanDecisions": {
+        "type": "array"
+      },
+      "handoff": {
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "operationSessionId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "closedAt": {
+        "type": "string"
+      },
+      "nextOperations": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string"
+        }
+      },
+      "sessionDigest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    },
+    "allOf": [
+      {
+        "if": {
+          "not": {
+            "required": [
+              "inFlightAnalysis"
+            ],
+            "properties": {
+              "inFlightAnalysis": {}
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "attempts": {
+              "type": "array",
+              "minItems": 1
+            }
+          }
+        }
+      }
+    ]
+  },
+  "resolved-taxonomy-snapshot-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/resolved-taxonomy-snapshot-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "canonicalization",
+      "foundation",
+      "taxonomy",
+      "axes",
+      "resourceUsage",
+      "taxonomyDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-resolved-taxonomy-snapshot/v1"
+      },
+      "canonicalization": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "algorithm",
+          "json",
+          "unicode",
+          "hash"
+        ],
+        "properties": {
+          "algorithm": {
+            "const": "taxonomy-c14n/v1"
+          },
+          "json": {
+            "const": "RFC-8785"
+          },
+          "unicode": {
+            "const": "NFKC"
+          },
+          "hash": {
+            "const": "SHA-256"
+          }
+        }
+      },
+      "foundation": {
+        "type": "object"
+      },
+      "taxonomy": {
+        "type": "object"
+      },
+      "axes": {
+        "type": "object",
+        "required": [
+          "domain",
+          "product"
+        ],
+        "properties": {
+          "domain": {},
+          "product": {}
+        }
+      },
+      "resourceUsage": {
+        "type": "object"
+      },
+      "taxonomyDigest": {
+        "$ref": "#/$defs/digest"
+      }
+    },
+    "$defs": {
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "source-concept-hypothesis-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/source-concept-hypothesis-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "sourceDescriptorDigest",
+      "sourceResolutionDigest",
+      "sourceSnapshot",
+      "sourceSnapshotDigest",
+      "evidenceGraph",
+      "evidenceGraphDigest",
+      "concepts",
+      "structuredSignals",
+      "dependencySignals",
+      "citations",
+      "contradictions",
+      "uncertainty",
+      "missingEvidence",
+      "provenance",
+      "hypothesisDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-source-concept-hypothesis/v1"
+      },
+      "sourceDescriptorDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "sourceResolutionDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "sourceSnapshot": {
+        "type": "object"
+      },
+      "sourceSnapshotDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "evidenceGraph": {
+        "type": "object"
+      },
+      "evidenceGraphDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "concepts": {
+        "type": "array"
+      },
+      "structuredSignals": {
+        "type": "array"
+      },
+      "dependencySignals": {
+        "type": "array"
+      },
+      "citations": {
+        "type": "array"
+      },
+      "contradictions": {
+        "type": "array"
+      },
+      "uncertainty": {
+        "type": "object"
+      },
+      "missingEvidence": {
+        "type": "array"
+      },
+      "provenance": {
+        "type": "object",
+        "required": [
+          "algorithm",
+          "taxonomyExposed",
+          "advisorUsed"
+        ],
+        "properties": {
+          "algorithm": {
+            "const": "taxonomy-blind-source-concepts/v1"
+          },
+          "taxonomyExposed": {
+            "const": false
+          },
+          "advisorUsed": {
+            "const": false
+          }
+        }
+      },
+      "hypothesisDigest": {
+        "$ref": "#/$defs/digest"
+      }
+    },
+    "$defs": {
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  },
+  "source-descriptor-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/source-descriptor-v1.schema.json",
+    "title": "EvoPilot Harness SourceDescriptor v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "sourceId",
+      "type",
+      "locator",
+      "acquisitionPolicy",
+      "redactionPolicy",
+      "sourceExecutionAllowed"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-source-descriptor/v1"
+      },
+      "sourceId": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9._-]{2,95}$"
+      },
+      "safeLabel": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "type": {
+        "enum": [
+          "LOCAL_FILE",
+          "LOCAL_DIRECTORY",
+          "LOCAL_GIT_REPOSITORY",
+          "GITHUB_REPOSITORY",
+          "CONTROLLED_FIXTURE",
+          "ORDERED_ATTACHMENT_SET"
+        ]
+      },
+      "locator": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "class"
+        ],
+        "properties": {
+          "class": {
+            "enum": [
+              "LOCAL_PATH",
+              "GITHUB_REPOSITORY",
+              "ORDERED_MEMBERS"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "repository": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+          },
+          "transport": {
+            "enum": [
+              "HTTPS",
+              "SSH"
+            ]
+          }
+        }
+      },
+      "requestedRef": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "privateRepository": {
+        "type": "boolean"
+      },
+      "members": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 128,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sourceId",
+            "path"
+          ],
+          "properties": {
+            "sourceId": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{2,95}$"
+            },
+            "safeLabel": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "acquisitionPolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "mode"
+        ],
+        "properties": {
+          "id": {
+            "const": "evopilot-harness-source-resolver/v1"
+          },
+          "mode": {
+            "enum": [
+              "LOCAL_READ_ONLY",
+              "BOUNDED_READ_ONLY_GIT"
+            ]
+          },
+          "networkAllowed": {
+            "type": "boolean"
+          },
+          "submodulesAllowed": {
+            "const": false
+          },
+          "gitLfsAllowed": {
+            "const": false
+          }
+        }
+      },
+      "redactionPolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "const": "evopilot-harness-source-redaction/v1"
+          }
+        }
+      },
+      "sourceExecutionAllowed": {
+        "const": false
+      }
+    },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "type": {
+              "const": "GITHUB_REPOSITORY"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "locator": {
+              "type": "object",
+              "required": [
+                "class",
+                "repository",
+                "transport"
+              ],
+              "properties": {
+                "class": {
+                  "const": "GITHUB_REPOSITORY"
+                },
+                "repository": {
+                  "type": "string"
+                },
+                "transport": {
+                  "enum": [
+                    "HTTPS",
+                    "SSH"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "type": {
+              "const": "ORDERED_ATTACHMENT_SET"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "members"
+          ],
+          "properties": {
+            "members": {
+              "type": "array"
+            },
+            "locator": {
+              "type": "object",
+              "properties": {
+                "class": {
+                  "const": "ORDERED_MEMBERS"
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "type": {
+              "enum": [
+                "LOCAL_FILE",
+                "LOCAL_DIRECTORY",
+                "LOCAL_GIT_REPOSITORY",
+                "CONTROLLED_FIXTURE"
+              ]
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "locator": {
+              "type": "object",
+              "required": [
+                "class",
+                "path"
+              ],
+              "properties": {
+                "class": {
+                  "const": "LOCAL_PATH"
+                },
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "taxonomy-analysis-result-v1.schema.json": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://evopilot.dev/schemas/taxonomy-analysis-result-v1.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "validation",
+      "analysisAttemptDigest",
+      "sourceDescriptor",
+      "sourceDescriptorDigest",
+      "sourceResolution",
+      "sourceResolutionDigest",
+      "sourceSnapshotDigest",
+      "evidenceGraphDigest",
+      "taxonomyDigest",
+      "hypothesisDigest",
+      "foundation",
+      "resolvedTaxonomySnapshot",
+      "sourceSnapshot",
+      "evidenceGraph",
+      "sourceConceptHypothesis",
+      "ontologyFoundation",
+      "semanticCandidateSet",
+      "retrieval",
+      "advisor",
+      "axes",
+      "aggregate",
+      "evolutionContext",
+      "presentation",
+      "authority",
+      "nextOperations",
+      "analysisResultDigest"
+    ],
+    "properties": {
+      "schema": {
+        "const": "evopilot-harness-taxonomy-analysis-result/v1"
+      },
+      "validation": {
+        "type": "object"
+      },
+      "analysisAttemptDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "sourceDescriptor": {
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "sourceDescriptorDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "sourceResolution": {
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "sourceResolutionDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "sourceSnapshotDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "evidenceGraphDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "taxonomyDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "hypothesisDigest": {
+        "$ref": "#/$defs/digest"
+      },
+      "foundation": {
+        "type": "object"
+      },
+      "resolvedTaxonomySnapshot": {
+        "type": "object"
+      },
+      "sourceSnapshot": {
+        "type": "object"
+      },
+      "evidenceGraph": {
+        "type": "object"
+      },
+      "sourceConceptHypothesis": {
+        "type": "object"
+      },
+      "ontologyFoundation": {
+        "type": "object"
+      },
+      "semanticCandidateSet": {
+        "type": "object"
+      },
+      "retrieval": {
+        "type": "object"
+      },
+      "advisor": {
+        "type": "object"
+      },
+      "axes": {
+        "type": "object",
+        "required": [
+          "domain",
+          "product"
+        ],
+        "properties": {
+          "domain": {},
+          "product": {}
+        }
+      },
+      "aggregate": {
+        "enum": [
+          "TAXONOMY_MATCHED",
+          "TAXONOMY_EXTENSION_SUGGESTED",
+          "TAXONOMY_EVIDENCE_INSUFFICIENT",
+          "TAXONOMY_AMBIGUOUS"
+        ]
+      },
+      "evolutionContext": {
+        "type": "object"
+      },
+      "presentation": {
+        "type": "object"
+      },
+      "authority": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "engineDecides",
+          "advisorMayDecide",
+          "classificationProvesEligibility",
+          "mayCreateProposal",
+          "mayApprove",
+          "mayPublish",
+          "mayMutateTaxonomy"
+        ],
+        "properties": {
+          "engineDecides": {
+            "const": true
+          },
+          "advisorMayDecide": {
+            "const": false
+          },
+          "classificationProvesEligibility": {
+            "const": false
+          },
+          "mayCreateProposal": {
+            "const": false
+          },
+          "mayApprove": {
+            "const": false
+          },
+          "mayPublish": {
+            "const": false
+          },
+          "mayMutateTaxonomy": {
+            "const": false
+          }
+        }
+      },
+      "nextOperations": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string"
+        }
+      },
+      "analysisResultDigest": {
+        "$ref": "#/$defs/digest"
+      }
+    },
+    "$defs": {
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    }
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "schema": "evopilot-ontology-legacy-schema-sources/v1",
+  "sourceCommit": "372733fd7b67ec3bee9efe6322f0229db77b160d",
+  "requestDigest": "sha256:dcca0bf7faf3cfe106a8a645ad88e220fed8d9c69621aa6f71f85397b090409d",
+  "extractionSet": [
+    {
+      "original": "schemas/classification-analysis-receipt-v1.schema.json",
+      "sourceSha256": "c0e9ff548e16c17ea77616f7e6bb1629a8716d8df010cbca194cdab47eae9b64",
+      "declaredSchema": "evopilot-harness-classification-analysis-receipt/v1",
+      "adaptations": [],
+      "destination": "schemas/legacy/v1.json",
+      "key": "classification-analysis-receipt-v1.schema.json",
+      "mappedJsonSha256": "2470dd743b7136f0705979de57c00ebe3d8aae45b735f472c82500723a6c233f"
+    },
+    {
+      "original": "schemas/classification-evaluation-report-v1.schema.json",
+      "sourceSha256": "89f510404dc59aa7726319e8c5280267aa6819d79ab16f1a43c92b997c22db8b",
+      "declaredSchema": "evopilot-harness-classification-evaluation-report/v1",
+      "adaptations": [],
+      "destination": "schemas/legacy/v1.json",
+      "key": "classification-evaluation-report-v1.schema.json",
+      "mappedJsonSha256": "70993610b0bbdc05f2d41a75469be8eaf09889af314f367d1dc04e2b9a1e7ad8"
+    },
+    {
+      "original": "schemas/classification-handoff-v1.schema.json",
+      "sourceSha256": "96970380bb31ff6ca2668c2f7c86c3d2f830d3f6ab30bba0dac45aab19662455",
+      "declaredSchema": "evopilot-harness-classification-handoff/v1",
+      "adaptations": [
+        {
+          "pointer": "/properties/authority",
+          "change": "Declare unconstrained required properties explicitly for strict AJV; same accepted data."
+        }
+      ],
+      "destination": "schemas/legacy/v1.json",
+      "key": "classification-handoff-v1.schema.json",
+      "mappedJsonSha256": "759d3086201c457f9faa3bec326803288d754ad19a2f20cfa1d439ef83fbb2f8"
+    },
+    {
+      "original": "schemas/classification-session-v1.schema.json",
+      "sourceSha256": "6a4fee89c4d01f914c1463d0ec698e9f73e6b00b7c6003d82a3629fe6a598f3f",
+      "declaredSchema": "evopilot-harness-classification-session/v1",
+      "adaptations": [],
+      "destination": "schemas/legacy/v1.json",
+      "key": "classification-session-v1.schema.json",
+      "mappedJsonSha256": "af295fdfb805444dae3b840eff07200d5457b5e899fb95e756f2e13e3575d673"
+    },
+    {
+      "original": "schemas/resolved-taxonomy-snapshot-v1.schema.json",
+      "sourceSha256": "b11141b342118ab20f38b71240fd47665b6054c6326d1058be91fd347addcbca",
+      "declaredSchema": "evopilot-harness-resolved-taxonomy-snapshot/v1",
+      "adaptations": [
+        {
+          "pointer": "/properties/axes",
+          "change": "Declare unconstrained required properties explicitly for strict AJV; same accepted data."
+        }
+      ],
+      "destination": "schemas/legacy/v1.json",
+      "key": "resolved-taxonomy-snapshot-v1.schema.json",
+      "mappedJsonSha256": "7c73e2f01534e2536deeb114aef56a8182f08597543688db4ac658929b1beda9"
+    },
+    {
+      "original": "schemas/source-concept-hypothesis-v1.schema.json",
+      "sourceSha256": "5fc66d3143c681daa7f2477220c1c24235477c55b35d82a6142f6c5c3084c002",
+      "declaredSchema": "evopilot-harness-source-concept-hypothesis/v1",
+      "adaptations": [],
+      "destination": "schemas/legacy/v1.json",
+      "key": "source-concept-hypothesis-v1.schema.json",
+      "mappedJsonSha256": "27efe3b0473b755ae19f71d9f2914ba72855deb85b10826efeff96d26c88d1c3"
+    },
+    {
+      "original": "schemas/source-descriptor-v1.schema.json",
+      "sourceSha256": "ec5aa3a7a4e40927ed486a6dc18e460fab8169c373f6c7cdc9b876b455af6042",
+      "declaredSchema": "evopilot-harness-source-descriptor/v1",
+      "adaptations": [],
+      "destination": "schemas/legacy/v1.json",
+      "key": "source-descriptor-v1.schema.json",
+      "mappedJsonSha256": "886e9c15995ca7a2067b560c542506b5ebb9c9d6966748873df17974a58e44cf"
+    },
+    {
+      "original": "schemas/taxonomy-analysis-result-v1.schema.json",
+      "sourceSha256": "072a87fa37295f96697fcca46ae37b5daec98a60b4f66619777dfcf9eec40f1e",
+      "declaredSchema": "evopilot-harness-taxonomy-analysis-result/v1",
+      "adaptations": [
+        {
+          "pointer": "/properties/axes",
+          "change": "Declare unconstrained required properties explicitly for strict AJV; same accepted data."
+        }
+      ],
+      "destination": "schemas/legacy/v1.json",
+      "key": "taxonomy-analysis-result-v1.schema.json",
+      "mappedJsonSha256": "6a6fa665721b8a7ef302b7ac39f374a3db616c8b8db5e56ceca77cdcfafb1f8f"
+    }
+  ],
+  "liveInventory": [
+    "affected-subgraph-v1.schema.json",
+    "classification-analysis-receipt-v1.schema.json",
+    "classification-evaluation-report-v1.schema.json",
+    "classification-handoff-v1.schema.json",
+    "classification-session-v1.schema.json",
+    "external-semantic-evidence-adapter-v1.schema.json",
+    "external-semantic-evidence-v1.schema.json",
+    "federated-pack-discovery-v1.schema.json",
+    "harness-asset-v3.schema.json",
+    "harness-semantic-requirements-v1.schema.json",
+    "ontology-foundation-v1.schema.json",
+    "ontology-grounding-result-v1.schema.json",
+    "ontology-pack-v1.schema.json",
+    "ontology-reasoning-profile-v1.schema.json",
+    "pack-benchmark-v1.schema.json",
+    "pack-certification-v1.schema.json",
+    "pack-gold-case-v1.schema.json",
+    "pack-lifecycle-record-v1.schema.json",
+    "professional-pack-inspection-v1.schema.json",
+    "professional-pack-v1.schema.json",
+    "project-ontology-artifact-lifecycle-v1.schema.json",
+    "project-ontology-artifact-set-v1.schema.json",
+    "project-ontology-projection-set-v1.schema.json",
+    "project-ontology-proposal-v1.schema.json",
+    "project-ontology-skill-v1.schema.json",
+    "resolved-professional-pack-set-v1.schema.json",
+    "resolved-project-ontology-snapshot-v1.schema.json",
+    "resolved-taxonomy-snapshot-v1.schema.json",
+    "semantic-candidate-set-v1.schema.json",
+    "semantic-catalog-lock-v1.schema.json",
+    "semantic-catalog-pointer-v1.schema.json",
+    "semantic-catalog-policy-v1.schema.json",
+    "semantic-catalog-receipt-v1.schema.json",
+    "semantic-catalog-recovery-v1.schema.json",
+    "semantic-catalog-v1.schema.json",
+    "semantic-compatibility-report-v1.schema.json",
+    "semantic-computation-v1.schema.json",
+    "semantic-index-v1.schema.json",
+    "semantic-interoperability-projection-set-v1.schema.json",
+    "semantic-round-trip-report-v1.schema.json",
+    "source-concept-hypothesis-v1.schema.json",
+    "source-descriptor-v1.schema.json",
+    "taxonomy-analysis-result-v1.schema.json",
+    "taxonomy-v1.schema.json",
+    "terminal-semantic-closure-v1.schema.json",
+    "terminal-semantic-slice-v1.schema.json"
+  ],
+  "authority": false,
+  "schemaMapSha256": "f9a495857bed24cd97ce32979dc623be6a3e676e902f8229798bdf9c370f2a6c",
+  "referenceManifestSha256": "8bc21b3a7bbe055296c337f9f50470930f263288646f50d49dc9b2e50db5c783",
+  "validation": {
+    "focusedTestsPassed": 27,
+    "fullRootTests": "Pending root runner",
+    "authority": false
+  }
+}

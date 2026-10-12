@@ -1,0 +1,37 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+import { captureSourceFile, requireSourceCapture, walkSourceFiles, assertSourcePath, assertCurrentSourcePolicy } from "../../src/compat/v4/source/path-policy.mjs";
+import { extractStaticSourceText } from "../../src/compat/v4/source/static-text.mjs";
+import { buildSourceConceptHypothesis } from "../../src/compat/v4/classification/source-concept.mjs";
+
+test("static capture rejects aliases, forgery and escapes without changing source bytes", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ontology-source-policy-"));
+  const file = path.join(root, "public.md");
+  fs.writeFileSync(file, "distributed cache api_key=synthetic-secret");
+  const before = fs.readFileSync(file);
+  const capture = captureSourceFile(file, {root});
+  assert.equal(extractStaticSourceText(file, {captured: capture}), before.toString());
+  assert.throws(() => requireSourceCapture(file, {...capture}), {code: "SOURCE_PATH_CHANGED"});
+  assert.throws(() => requireSourceCapture(path.join(root, "other.md"), capture), {code: "SOURCE_PATH_CHANGED"});
+  fs.symlinkSync(file, path.join(root, "alias.md"));
+  assert.throws(() => captureSourceFile(path.join(root, "alias.md")), {code: "SOURCE_PROTECTED_PATH"});
+  const selected = path.join(root, "selected");
+  fs.mkdirSync(selected);
+  assert.throws(() => assertSourcePath(file, {root: selected}), {code: "SOURCE_PROTECTED_PATH"});
+  fs.writeFileSync(path.join(root, "credentials.json"), "private");
+  fs.mkdirSync(path.join(root, ".ssh"));
+  fs.writeFileSync(path.join(root, ".ssh", "private.txt"), "private");
+  const walked = walkSourceFiles(root);
+  assert.deepEqual(walked.files, [file]);
+  assert.equal(walked.boundary.excluded.symlinks, 1);
+  const hypothesis = buildSourceConceptHypothesis(root);
+  assert.doesNotMatch(JSON.stringify(hypothesis), /synthetic-secret/);
+  assert.deepEqual(fs.readFileSync(file), before);
+  assertCurrentSourcePolicy(hypothesis);
+  assert.throws(() => assertCurrentSourcePolicy({}), {code: "SOURCE_POLICY_REANALYSIS_REQUIRED"});
+  fs.linkSync(file, path.join(root, "hardlink.md"));
+  assert.throws(() => captureSourceFile(file), {code: "SOURCE_PROTECTED_PATH"});
+});

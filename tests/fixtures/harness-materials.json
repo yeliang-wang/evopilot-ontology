@@ -1,0 +1,269 @@
+{
+  "schema": "evopilot-ontology-readonly-foreign-fixtures/v1",
+  "publicationAuthority": false,
+  "materials": [
+    {
+      "source": "assets/v3/bundles/api-gateway/2.3.0/asset.yaml",
+      "sourceSha256": "ad6349ab7512e83050c3a26460a99ad7fa05d5f70959fa2ff5082953d0da64d0",
+      "originalBytes": "apiVersion: harness.evopilot.io/v3\nkind: HarnessBundle\nmetadata:\n  id: api-gateway\n  version: 2.3.0\n  name: API Gateway Harness Bundle\n  description: Immutable resolved execution package migrated from api-gateway-harness.\n  lifecycle: published\n  owner: migrated-v2\n  labels:\n    migratedFrom: api-gateway-harness\nspec:\n  profile:\n    id: api-gateway\n    version: 2.3.0\n    digest: sha256:04924183920010c2a0da24e2f503113a27c1b750de51f320dae7a783e77bfc5d\n  resolvedComponents:\n    - id: engineering-validation\n      version: 1.0.0\n      digest: sha256:aa84fa704cdc31dbf3c1fb8ebe84e26acd2ade7a5cc364ab5c71784f05d78638\n      required: true\n  executionPlan:\n    - discover-project-commands\n    - run-approved-validation\n  constraints:\n    - Execute only administrator-approved commands in an isolated workspace.\n    - Preserve source and credential boundaries from the source Harness contract.\n  evidence:\n    - target-evidence-package\n    - phase-package\n    - goal-completion-report\n    - route-table\n    - policy-matrix\n    - plugin-report\n    - load-summary\n  validators:\n    - approved-command-only\n    - validation-exit-code\n  exports:\n    - adapter: evopilot\n      path: exports/evopilot/template.yaml\nprovenance:\n  sourceDigests:\n    - sha256:637e55ca3683a7e9eb0522ac7e9322575a0b05dad3d8330969f8b332fe205e95\n  ontologyVersion: software-engineering@1.0.0\n  policyVersion: default-matcher@1.0.0\n",
+      "document": {
+        "apiVersion": "harness.evopilot.io/v3",
+        "kind": "HarnessBundle",
+        "metadata": {
+          "id": "api-gateway",
+          "version": "2.3.0",
+          "name": "API Gateway Harness Bundle",
+          "description": "Immutable resolved execution package migrated from api-gateway-harness.",
+          "lifecycle": "published",
+          "owner": "migrated-v2",
+          "labels": {
+            "migratedFrom": "api-gateway-harness"
+          }
+        },
+        "spec": {
+          "profile": {
+            "id": "api-gateway",
+            "version": "2.3.0",
+            "digest": "sha256:04924183920010c2a0da24e2f503113a27c1b750de51f320dae7a783e77bfc5d"
+          },
+          "resolvedComponents": [
+            {
+              "id": "engineering-validation",
+              "version": "1.0.0",
+              "digest": "sha256:aa84fa704cdc31dbf3c1fb8ebe84e26acd2ade7a5cc364ab5c71784f05d78638",
+              "required": true
+            }
+          ],
+          "executionPlan": [
+            "discover-project-commands",
+            "run-approved-validation"
+          ],
+          "constraints": [
+            "Execute only administrator-approved commands in an isolated workspace.",
+            "Preserve source and credential boundaries from the source Harness contract."
+          ],
+          "evidence": [
+            "target-evidence-package",
+            "phase-package",
+            "goal-completion-report",
+            "route-table",
+            "policy-matrix",
+            "plugin-report",
+            "load-summary"
+          ],
+          "validators": [
+            "approved-command-only",
+            "validation-exit-code"
+          ],
+          "exports": [
+            {
+              "adapter": "evopilot",
+              "path": "exports/evopilot/template.yaml"
+            }
+          ]
+        },
+        "provenance": {
+          "sourceDigests": [
+            "sha256:637e55ca3683a7e9eb0522ac7e9322575a0b05dad3d8330969f8b332fe205e95"
+          ],
+          "ontologyVersion": "software-engineering@1.0.0",
+          "policyVersion": "default-matcher@1.0.0"
+        }
+      }
+    },
+    {
+      "source": "assets/v3/profiles/api-gateway/2.3.0/asset.yaml",
+      "sourceSha256": "8095b7381910293dfd9b77646c81809834af48b8820e2f8583a64df809963450",
+      "originalBytes": "apiVersion: harness.evopilot.io/v3\nkind: HarnessProfile\nmetadata:\n  id: api-gateway\n  version: 2.3.0\n  name: API Gateway Harness\n  description: Domain baseline for API gateway products.\n  lifecycle: published\n  owner: migrated-v2\n  labels:\n    migratedFrom: api-gateway-harness\nspec:\n  classification:\n    domain: api-gateway\n    role: api-gateway-engineering\n    taskClass: domain-task\n  boundary:\n    inScope:\n      - Engineering work supported by the api-gateway-harness v2 contract.\n    outOfScope:\n      - gateway timeout from downstream api\n      - api client wrapper\n      - http client\n      - Capabilities not supported by source evidence or declared validators.\n  match:\n    positiveConcepts:\n      - api-gateway\n      - executable-engineering\n      - gateway-product\n      - ingress-controller\n      - traffic-proxy\n      - route-matching\n      - upstream-selection\n      - rate-limit\n      - auth-policy\n      - plugin-lifecycle\n      - filter-chain\n      - service-mesh-gateway\n      - envoy\n      - kong\n      - apisix\n      - signal\n      - api\n    negativeConcepts:\n      - gateway-timeout-from-downstream-api\n      - api-client-wrapper\n      - http-client\n    requiredEvidenceKinds:\n      - source-code\n      - build-manifest\n  components:\n    - id: engineering-validation\n      version: 1.0.0\n      required: true\n  acceptance:\n    requiredEvidence:\n      - target-evidence-package\n      - phase-package\n      - goal-completion-report\n      - route-table\n      - policy-matrix\n      - plugin-report\n      - load-summary\n    blockingValidators:\n      - approved-command-only\n      - validation-exit-code\n  evaluationPackRef: api-gateway@2.3.0\nprovenance:\n  sourceDigests:\n    - sha256:637e55ca3683a7e9eb0522ac7e9322575a0b05dad3d8330969f8b332fe205e95\n  ontologyVersion: software-engineering@1.0.0\n  policyVersion: default-matcher@1.0.0\n",
+      "document": {
+        "apiVersion": "harness.evopilot.io/v3",
+        "kind": "HarnessProfile",
+        "metadata": {
+          "id": "api-gateway",
+          "version": "2.3.0",
+          "name": "API Gateway Harness",
+          "description": "Domain baseline for API gateway products.",
+          "lifecycle": "published",
+          "owner": "migrated-v2",
+          "labels": {
+            "migratedFrom": "api-gateway-harness"
+          }
+        },
+        "spec": {
+          "classification": {
+            "domain": "api-gateway",
+            "role": "api-gateway-engineering",
+            "taskClass": "domain-task"
+          },
+          "boundary": {
+            "inScope": [
+              "Engineering work supported by the api-gateway-harness v2 contract."
+            ],
+            "outOfScope": [
+              "gateway timeout from downstream api",
+              "api client wrapper",
+              "http client",
+              "Capabilities not supported by source evidence or declared validators."
+            ]
+          },
+          "match": {
+            "positiveConcepts": [
+              "api-gateway",
+              "executable-engineering",
+              "gateway-product",
+              "ingress-controller",
+              "traffic-proxy",
+              "route-matching",
+              "upstream-selection",
+              "rate-limit",
+              "auth-policy",
+              "plugin-lifecycle",
+              "filter-chain",
+              "service-mesh-gateway",
+              "envoy",
+              "kong",
+              "apisix",
+              "signal",
+              "api"
+            ],
+            "negativeConcepts": [
+              "gateway-timeout-from-downstream-api",
+              "api-client-wrapper",
+              "http-client"
+            ],
+            "requiredEvidenceKinds": [
+              "source-code",
+              "build-manifest"
+            ]
+          },
+          "components": [
+            {
+              "id": "engineering-validation",
+              "version": "1.0.0",
+              "required": true
+            }
+          ],
+          "acceptance": {
+            "requiredEvidence": [
+              "target-evidence-package",
+              "phase-package",
+              "goal-completion-report",
+              "route-table",
+              "policy-matrix",
+              "plugin-report",
+              "load-summary"
+            ],
+            "blockingValidators": [
+              "approved-command-only",
+              "validation-exit-code"
+            ]
+          },
+          "evaluationPackRef": "api-gateway@2.3.0"
+        },
+        "provenance": {
+          "sourceDigests": [
+            "sha256:637e55ca3683a7e9eb0522ac7e9322575a0b05dad3d8330969f8b332fe205e95"
+          ],
+          "ontologyVersion": "software-engineering@1.0.0",
+          "policyVersion": "default-matcher@1.0.0"
+        }
+      }
+    },
+    {
+      "source": "assets/v3/components/engineering-validation/asset.yaml",
+      "sourceSha256": "6e329cca3928b2d08a6df001bcbef9ec3db00ade96d2627c3fe9a553ccbbba5d",
+      "originalBytes": "apiVersion: harness.evopilot.io/v3\nkind: HarnessComponent\nmetadata:\n  id: engineering-validation\n  version: 1.0.0\n  name: Engineering Validation\n  description: Reusable constrained build, test, evidence collection, and validation capability.\n  lifecycle: published\n  owner: evopilot-harness\n  labels:\n    scope: product-neutral\nspec:\n  capability: engineering-validation\n  environment:\n    workspaceMode: isolated\n    requiredTools: [shell, source-control]\n  actions:\n    - id: discover-project-commands\n      description: Discover repository-declared build and test commands without executing untrusted code.\n      executor: agent\n      inputs: [source-snapshot]\n      outputs: [command-inventory]\n      timeoutSeconds: 300\n      network: denied\n    - id: run-approved-validation\n      description: Execute only administrator-approved validation commands in an isolated workspace.\n      executor: shell\n      inputs: [approved-command-inventory]\n      outputs: [validation-command-log, validation-result]\n      timeoutSeconds: 3600\n      network: restricted\n  constraints:\n    - Never execute source-provided commands before explicit approval.\n    - Never expose credentials in command output or evidence.\n    - Release claims require real command evidence.\n  evidence: [source-snapshot, command-inventory, validation-command-log, validation-result]\n  validators:\n    - id: approved-command-only\n      type: content\n      assertion: Every executed command is present in approved-command-inventory.\n      evidenceRefs: [approved-command-inventory, validation-command-log]\n      blocking: true\n    - id: validation-exit-code\n      type: exit-code\n      assertion: Required validation commands exit successfully.\n      evidenceRefs: [validation-result]\n      blocking: true\nprovenance:\n  sourceDigests: []\n  ontologyVersion: software-engineering@1.0.0\n  policyVersion: default-matcher@1.0.0\n",
+      "document": {
+        "apiVersion": "harness.evopilot.io/v3",
+        "kind": "HarnessComponent",
+        "metadata": {
+          "id": "engineering-validation",
+          "version": "1.0.0",
+          "name": "Engineering Validation",
+          "description": "Reusable constrained build, test, evidence collection, and validation capability.",
+          "lifecycle": "published",
+          "owner": "evopilot-harness",
+          "labels": {
+            "scope": "product-neutral"
+          }
+        },
+        "spec": {
+          "capability": "engineering-validation",
+          "environment": {
+            "workspaceMode": "isolated",
+            "requiredTools": [
+              "shell",
+              "source-control"
+            ]
+          },
+          "actions": [
+            {
+              "id": "discover-project-commands",
+              "description": "Discover repository-declared build and test commands without executing untrusted code.",
+              "executor": "agent",
+              "inputs": [
+                "source-snapshot"
+              ],
+              "outputs": [
+                "command-inventory"
+              ],
+              "timeoutSeconds": 300,
+              "network": "denied"
+            },
+            {
+              "id": "run-approved-validation",
+              "description": "Execute only administrator-approved validation commands in an isolated workspace.",
+              "executor": "shell",
+              "inputs": [
+                "approved-command-inventory"
+              ],
+              "outputs": [
+                "validation-command-log",
+                "validation-result"
+              ],
+              "timeoutSeconds": 3600,
+              "network": "restricted"
+            }
+          ],
+          "constraints": [
+            "Never execute source-provided commands before explicit approval.",
+            "Never expose credentials in command output or evidence.",
+            "Release claims require real command evidence."
+          ],
+          "evidence": [
+            "source-snapshot",
+            "command-inventory",
+            "validation-command-log",
+            "validation-result"
+          ],
+          "validators": [
+            {
+              "id": "approved-command-only",
+              "type": "content",
+              "assertion": "Every executed command is present in approved-command-inventory.",
+              "evidenceRefs": [
+                "approved-command-inventory",
+                "validation-command-log"
+              ],
+              "blocking": true
+            },
+            {
+              "id": "validation-exit-code",
+              "type": "exit-code",
+              "assertion": "Required validation commands exit successfully.",
+              "evidenceRefs": [
+                "validation-result"
+              ],
+              "blocking": true
+            }
+          ]
+        },
+        "provenance": {
+          "sourceDigests": [],
+          "ontologyVersion": "software-engineering@1.0.0",
+          "policyVersion": "default-matcher@1.0.0"
+        }
+      }
+    }
+  ]
+}

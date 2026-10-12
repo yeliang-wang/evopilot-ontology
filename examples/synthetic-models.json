@@ -1,0 +1,1862 @@
+{
+  "assets": [
+    {
+      "id": "orchard-forward-public",
+      "version": "0.1.0",
+      "product": "ontology",
+      "specVersion": "v1",
+      "visibility": "public",
+      "provenance": {
+        "direction": "forward",
+        "sources": [
+          {
+            "id": "source",
+            "kind": "synthetic-requirement",
+            "locator": "synthetic://ontology-v1/orchard-forward-public/source#record-1",
+            "revision": "synthetic-r1",
+            "digest": "sha256:ec7f390a0ba8299013c5d73ba61071d44c36eafe18f81c51ce28bc5f0c97c40e",
+            "status": "synthetic"
+          }
+        ]
+      },
+      "dependencies": [],
+      "extensions": [
+        {
+          "namespace": "local.notes",
+          "version": "1.0.0",
+          "required": true,
+          "data": {
+            "annotation": {
+              "text": "Entirely synthetic orchard; requirement-only."
+            }
+          }
+        }
+      ],
+      "concepts": [
+        {
+          "id": "tree",
+          "label": "tree",
+          "definition": "Synthetic tree concept."
+        },
+        {
+          "id": "plot",
+          "label": "plot",
+          "definition": "Synthetic plot concept."
+        }
+      ],
+      "properties": [
+        {
+          "id": "quantity",
+          "conceptRef": "tree",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "id": "active",
+          "conceptRef": "tree",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "id": "name",
+          "conceptRef": "plot",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "relations": [
+        {
+          "id": "located-in",
+          "from": "tree",
+          "to": "plot",
+          "directed": true
+        }
+      ],
+      "constraints": [
+        {
+          "id": "quantity-range",
+          "conceptRef": "tree",
+          "propertyRef": "quantity",
+          "kind": "numeric-range",
+          "required": true,
+          "minimum": 0,
+          "maximum": 10
+        },
+        {
+          "id": "quantity-enum",
+          "conceptRef": "tree",
+          "propertyRef": "quantity",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            0,
+            2,
+            10
+          ]
+        },
+        {
+          "id": "quantity-count",
+          "conceptRef": "tree",
+          "propertyRef": "quantity",
+          "kind": "cardinality",
+          "required": true,
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "id": "active-enum",
+          "conceptRef": "tree",
+          "propertyRef": "active",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            false,
+            true
+          ]
+        }
+      ],
+      "sourceMappings": [
+        {
+          "id": "mapping-0",
+          "targetRef": "tree",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-1",
+          "targetRef": "plot",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-2",
+          "targetRef": "quantity",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-3",
+          "targetRef": "active",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-4",
+          "targetRef": "name",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-5",
+          "targetRef": "located-in",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-6",
+          "targetRef": "quantity-range",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-7",
+          "targetRef": "quantity-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-8",
+          "targetRef": "quantity-count",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-9",
+          "targetRef": "active-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        }
+      ],
+      "unresolvedIssues": []
+    },
+    {
+      "id": "orchard-forward-private",
+      "version": "0.1.0",
+      "product": "ontology",
+      "specVersion": "v1",
+      "visibility": "private",
+      "provenance": {
+        "direction": "forward",
+        "sources": [
+          {
+            "id": "source",
+            "kind": "synthetic-requirement",
+            "locator": "synthetic://ontology-v1/orchard-forward-private/source#record-1",
+            "revision": "synthetic-r1",
+            "digest": "sha256:ec7f390a0ba8299013c5d73ba61071d44c36eafe18f81c51ce28bc5f0c97c40e",
+            "status": "synthetic"
+          }
+        ]
+      },
+      "dependencies": [],
+      "extensions": [
+        {
+          "namespace": "local.notes",
+          "version": "1.0.0",
+          "required": true,
+          "data": {
+            "annotation": {
+              "text": "Entirely synthetic orchard; requirement-only."
+            }
+          }
+        }
+      ],
+      "concepts": [
+        {
+          "id": "tree",
+          "label": "tree",
+          "definition": "Synthetic tree concept."
+        },
+        {
+          "id": "plot",
+          "label": "plot",
+          "definition": "Synthetic plot concept."
+        }
+      ],
+      "properties": [
+        {
+          "id": "quantity",
+          "conceptRef": "tree",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "id": "active",
+          "conceptRef": "tree",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "id": "name",
+          "conceptRef": "plot",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "relations": [
+        {
+          "id": "located-in",
+          "from": "tree",
+          "to": "plot",
+          "directed": true
+        }
+      ],
+      "constraints": [
+        {
+          "id": "quantity-range",
+          "conceptRef": "tree",
+          "propertyRef": "quantity",
+          "kind": "numeric-range",
+          "required": true,
+          "minimum": 0,
+          "maximum": 10
+        },
+        {
+          "id": "quantity-enum",
+          "conceptRef": "tree",
+          "propertyRef": "quantity",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            0,
+            2,
+            10
+          ]
+        },
+        {
+          "id": "quantity-count",
+          "conceptRef": "tree",
+          "propertyRef": "quantity",
+          "kind": "cardinality",
+          "required": true,
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "id": "active-enum",
+          "conceptRef": "tree",
+          "propertyRef": "active",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            false,
+            true
+          ]
+        }
+      ],
+      "sourceMappings": [
+        {
+          "id": "mapping-0",
+          "targetRef": "tree",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-1",
+          "targetRef": "plot",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-2",
+          "targetRef": "quantity",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-3",
+          "targetRef": "active",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-4",
+          "targetRef": "name",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-5",
+          "targetRef": "located-in",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-6",
+          "targetRef": "quantity-range",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-7",
+          "targetRef": "quantity-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-8",
+          "targetRef": "quantity-count",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-9",
+          "targetRef": "active-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        }
+      ],
+      "unresolvedIssues": []
+    },
+    {
+      "id": "orchard-reverse-public",
+      "version": "0.1.0",
+      "product": "ontology",
+      "specVersion": "v1",
+      "visibility": "public",
+      "provenance": {
+        "direction": "reverse",
+        "sources": [
+          {
+            "id": "source",
+            "kind": "synthetic-source",
+            "locator": "synthetic://ontology-v1/orchard-reverse-public/source#record-1",
+            "revision": "synthetic-r1",
+            "digest": "sha256:8cd241630325d8bc4c0aa81c6131767f031936cb0beaa8bb7c8a154c23f4212f",
+            "status": "synthetic"
+          }
+        ]
+      },
+      "dependencies": [],
+      "extensions": [
+        {
+          "namespace": "local.notes",
+          "version": "1.0.0",
+          "required": true,
+          "data": {
+            "annotation": {
+              "text": "Entirely synthetic orchard; invented source-derived."
+            }
+          }
+        }
+      ],
+      "concepts": [
+        {
+          "id": "tree",
+          "label": "tree",
+          "definition": "Synthetic tree concept."
+        },
+        {
+          "id": "plot",
+          "label": "plot",
+          "definition": "Synthetic plot concept."
+        }
+      ],
+      "properties": [
+        {
+          "id": "quantity",
+          "conceptRef": "tree",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "id": "active",
+          "conceptRef": "tree",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "id": "name",
+          "conceptRef": "plot",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "relations": [
+        {
+          "id": "located-in",
+          "from": "tree",
+          "to": "plot",
+          "directed": true
+        }
+      ],
+      "constraints": [
+        {
+          "id": "quantity-range",
+          "conceptRef": "tree",
+          "propertyRef": "quantity",
+          "kind": "numeric-range",
+          "required": true,
+          "minimum": 0,
+          "maximum": 10
+        },
+        {
+          "id": "quantity-enum",
+          "conceptRef": "tree",
+          "propertyRef": "quantity",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            0,
+            2,
+            10
+          ]
+        },
+        {
+          "id": "quantity-count",
+          "conceptRef": "tree",
+          "propertyRef": "quantity",
+          "kind": "cardinality",
+          "required": true,
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "id": "active-enum",
+          "conceptRef": "tree",
+          "propertyRef": "active",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            false,
+            true
+          ]
+        }
+      ],
+      "sourceMappings": [
+        {
+          "id": "mapping-0",
+          "targetRef": "tree",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-1",
+          "targetRef": "plot",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-2",
+          "targetRef": "quantity",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-3",
+          "targetRef": "active",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-4",
+          "targetRef": "name",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-5",
+          "targetRef": "located-in",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-6",
+          "targetRef": "quantity-range",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-7",
+          "targetRef": "quantity-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-8",
+          "targetRef": "quantity-count",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-9",
+          "targetRef": "active-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        }
+      ],
+      "unresolvedIssues": []
+    },
+    {
+      "id": "orchard-reverse-private",
+      "version": "0.1.0",
+      "product": "ontology",
+      "specVersion": "v1",
+      "visibility": "private",
+      "provenance": {
+        "direction": "reverse",
+        "sources": [
+          {
+            "id": "source",
+            "kind": "synthetic-source",
+            "locator": "synthetic://ontology-v1/orchard-reverse-private/source#record-1",
+            "revision": "synthetic-r1",
+            "digest": "sha256:8cd241630325d8bc4c0aa81c6131767f031936cb0beaa8bb7c8a154c23f4212f",
+            "status": "synthetic"
+          }
+        ]
+      },
+      "dependencies": [],
+      "extensions": [
+        {
+          "namespace": "local.notes",
+          "version": "1.0.0",
+          "required": true,
+          "data": {
+            "annotation": {
+              "text": "Entirely synthetic orchard; invented source-derived."
+            }
+          }
+        }
+      ],
+      "concepts": [
+        {
+          "id": "tree",
+          "label": "tree",
+          "definition": "Synthetic tree concept."
+        },
+        {
+          "id": "plot",
+          "label": "plot",
+          "definition": "Synthetic plot concept."
+        }
+      ],
+      "properties": [
+        {
+          "id": "quantity",
+          "conceptRef": "tree",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "id": "active",
+          "conceptRef": "tree",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "id": "name",
+          "conceptRef": "plot",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "relations": [
+        {
+          "id": "located-in",
+          "from": "tree",
+          "to": "plot",
+          "directed": true
+        }
+      ],
+      "constraints": [
+        {
+          "id": "quantity-range",
+          "conceptRef": "tree",
+          "propertyRef": "quantity",
+          "kind": "numeric-range",
+          "required": true,
+          "minimum": 0,
+          "maximum": 10
+        },
+        {
+          "id": "quantity-enum",
+          "conceptRef": "tree",
+          "propertyRef": "quantity",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            0,
+            2,
+            10
+          ]
+        },
+        {
+          "id": "quantity-count",
+          "conceptRef": "tree",
+          "propertyRef": "quantity",
+          "kind": "cardinality",
+          "required": true,
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "id": "active-enum",
+          "conceptRef": "tree",
+          "propertyRef": "active",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            false,
+            true
+          ]
+        }
+      ],
+      "sourceMappings": [
+        {
+          "id": "mapping-0",
+          "targetRef": "tree",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-1",
+          "targetRef": "plot",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-2",
+          "targetRef": "quantity",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-3",
+          "targetRef": "active",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-4",
+          "targetRef": "name",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-5",
+          "targetRef": "located-in",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-6",
+          "targetRef": "quantity-range",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-7",
+          "targetRef": "quantity-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-8",
+          "targetRef": "quantity-count",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-9",
+          "targetRef": "active-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/orchard-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        }
+      ],
+      "unresolvedIssues": []
+    },
+    {
+      "id": "observatory-forward-public",
+      "version": "0.1.0",
+      "product": "ontology",
+      "specVersion": "v1",
+      "visibility": "public",
+      "provenance": {
+        "direction": "forward",
+        "sources": [
+          {
+            "id": "source",
+            "kind": "synthetic-requirement",
+            "locator": "synthetic://ontology-v1/observatory-forward-public/source#record-1",
+            "revision": "synthetic-r1",
+            "digest": "sha256:e77ba669a8d409f45456685f7377986197ec79a9b54628b21e3e6e6fb99ce1cc",
+            "status": "synthetic"
+          }
+        ]
+      },
+      "dependencies": [],
+      "extensions": [
+        {
+          "namespace": "local.notes",
+          "version": "1.0.0",
+          "required": true,
+          "data": {
+            "annotation": {
+              "text": "Entirely synthetic observatory; requirement-only."
+            }
+          }
+        }
+      ],
+      "concepts": [
+        {
+          "id": "sensor",
+          "label": "sensor",
+          "definition": "Synthetic sensor concept."
+        },
+        {
+          "id": "station",
+          "label": "station",
+          "definition": "Synthetic station concept."
+        }
+      ],
+      "properties": [
+        {
+          "id": "quantity",
+          "conceptRef": "sensor",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "id": "active",
+          "conceptRef": "sensor",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "id": "name",
+          "conceptRef": "station",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "relations": [
+        {
+          "id": "located-in",
+          "from": "sensor",
+          "to": "station",
+          "directed": true
+        }
+      ],
+      "constraints": [
+        {
+          "id": "quantity-range",
+          "conceptRef": "sensor",
+          "propertyRef": "quantity",
+          "kind": "numeric-range",
+          "required": true,
+          "minimum": 0,
+          "maximum": 10
+        },
+        {
+          "id": "quantity-enum",
+          "conceptRef": "sensor",
+          "propertyRef": "quantity",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            0,
+            2,
+            10
+          ]
+        },
+        {
+          "id": "quantity-count",
+          "conceptRef": "sensor",
+          "propertyRef": "quantity",
+          "kind": "cardinality",
+          "required": true,
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "id": "active-enum",
+          "conceptRef": "sensor",
+          "propertyRef": "active",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            false,
+            true
+          ]
+        }
+      ],
+      "sourceMappings": [
+        {
+          "id": "mapping-0",
+          "targetRef": "sensor",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-1",
+          "targetRef": "station",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-2",
+          "targetRef": "quantity",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-3",
+          "targetRef": "active",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-4",
+          "targetRef": "name",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-5",
+          "targetRef": "located-in",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-6",
+          "targetRef": "quantity-range",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-7",
+          "targetRef": "quantity-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-8",
+          "targetRef": "quantity-count",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-9",
+          "targetRef": "active-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        }
+      ],
+      "unresolvedIssues": []
+    },
+    {
+      "id": "observatory-forward-private",
+      "version": "0.1.0",
+      "product": "ontology",
+      "specVersion": "v1",
+      "visibility": "private",
+      "provenance": {
+        "direction": "forward",
+        "sources": [
+          {
+            "id": "source",
+            "kind": "synthetic-requirement",
+            "locator": "synthetic://ontology-v1/observatory-forward-private/source#record-1",
+            "revision": "synthetic-r1",
+            "digest": "sha256:e77ba669a8d409f45456685f7377986197ec79a9b54628b21e3e6e6fb99ce1cc",
+            "status": "synthetic"
+          }
+        ]
+      },
+      "dependencies": [],
+      "extensions": [
+        {
+          "namespace": "local.notes",
+          "version": "1.0.0",
+          "required": true,
+          "data": {
+            "annotation": {
+              "text": "Entirely synthetic observatory; requirement-only."
+            }
+          }
+        }
+      ],
+      "concepts": [
+        {
+          "id": "sensor",
+          "label": "sensor",
+          "definition": "Synthetic sensor concept."
+        },
+        {
+          "id": "station",
+          "label": "station",
+          "definition": "Synthetic station concept."
+        }
+      ],
+      "properties": [
+        {
+          "id": "quantity",
+          "conceptRef": "sensor",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "id": "active",
+          "conceptRef": "sensor",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "id": "name",
+          "conceptRef": "station",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "relations": [
+        {
+          "id": "located-in",
+          "from": "sensor",
+          "to": "station",
+          "directed": true
+        }
+      ],
+      "constraints": [
+        {
+          "id": "quantity-range",
+          "conceptRef": "sensor",
+          "propertyRef": "quantity",
+          "kind": "numeric-range",
+          "required": true,
+          "minimum": 0,
+          "maximum": 10
+        },
+        {
+          "id": "quantity-enum",
+          "conceptRef": "sensor",
+          "propertyRef": "quantity",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            0,
+            2,
+            10
+          ]
+        },
+        {
+          "id": "quantity-count",
+          "conceptRef": "sensor",
+          "propertyRef": "quantity",
+          "kind": "cardinality",
+          "required": true,
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "id": "active-enum",
+          "conceptRef": "sensor",
+          "propertyRef": "active",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            false,
+            true
+          ]
+        }
+      ],
+      "sourceMappings": [
+        {
+          "id": "mapping-0",
+          "targetRef": "sensor",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-1",
+          "targetRef": "station",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-2",
+          "targetRef": "quantity",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-3",
+          "targetRef": "active",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-4",
+          "targetRef": "name",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-5",
+          "targetRef": "located-in",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-6",
+          "targetRef": "quantity-range",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-7",
+          "targetRef": "quantity-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-8",
+          "targetRef": "quantity-count",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-9",
+          "targetRef": "active-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-forward-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        }
+      ],
+      "unresolvedIssues": []
+    },
+    {
+      "id": "observatory-reverse-public",
+      "version": "0.1.0",
+      "product": "ontology",
+      "specVersion": "v1",
+      "visibility": "public",
+      "provenance": {
+        "direction": "reverse",
+        "sources": [
+          {
+            "id": "source",
+            "kind": "synthetic-source",
+            "locator": "synthetic://ontology-v1/observatory-reverse-public/source#record-1",
+            "revision": "synthetic-r1",
+            "digest": "sha256:e68442fa9820fed291513d9b11f33880574d65a5e96ec75a0a2feb704cc2a821",
+            "status": "synthetic"
+          }
+        ]
+      },
+      "dependencies": [],
+      "extensions": [
+        {
+          "namespace": "local.notes",
+          "version": "1.0.0",
+          "required": true,
+          "data": {
+            "annotation": {
+              "text": "Entirely synthetic observatory; invented source-derived."
+            }
+          }
+        }
+      ],
+      "concepts": [
+        {
+          "id": "sensor",
+          "label": "sensor",
+          "definition": "Synthetic sensor concept."
+        },
+        {
+          "id": "station",
+          "label": "station",
+          "definition": "Synthetic station concept."
+        }
+      ],
+      "properties": [
+        {
+          "id": "quantity",
+          "conceptRef": "sensor",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "id": "active",
+          "conceptRef": "sensor",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "id": "name",
+          "conceptRef": "station",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "relations": [
+        {
+          "id": "located-in",
+          "from": "sensor",
+          "to": "station",
+          "directed": true
+        }
+      ],
+      "constraints": [
+        {
+          "id": "quantity-range",
+          "conceptRef": "sensor",
+          "propertyRef": "quantity",
+          "kind": "numeric-range",
+          "required": true,
+          "minimum": 0,
+          "maximum": 10
+        },
+        {
+          "id": "quantity-enum",
+          "conceptRef": "sensor",
+          "propertyRef": "quantity",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            0,
+            2,
+            10
+          ]
+        },
+        {
+          "id": "quantity-count",
+          "conceptRef": "sensor",
+          "propertyRef": "quantity",
+          "kind": "cardinality",
+          "required": true,
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "id": "active-enum",
+          "conceptRef": "sensor",
+          "propertyRef": "active",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            false,
+            true
+          ]
+        }
+      ],
+      "sourceMappings": [
+        {
+          "id": "mapping-0",
+          "targetRef": "sensor",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-1",
+          "targetRef": "station",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-2",
+          "targetRef": "quantity",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-3",
+          "targetRef": "active",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-4",
+          "targetRef": "name",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-5",
+          "targetRef": "located-in",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-6",
+          "targetRef": "quantity-range",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-7",
+          "targetRef": "quantity-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-8",
+          "targetRef": "quantity-count",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-9",
+          "targetRef": "active-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-public/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        }
+      ],
+      "unresolvedIssues": []
+    },
+    {
+      "id": "observatory-reverse-private",
+      "version": "0.1.0",
+      "product": "ontology",
+      "specVersion": "v1",
+      "visibility": "private",
+      "provenance": {
+        "direction": "reverse",
+        "sources": [
+          {
+            "id": "source",
+            "kind": "synthetic-source",
+            "locator": "synthetic://ontology-v1/observatory-reverse-private/source#record-1",
+            "revision": "synthetic-r1",
+            "digest": "sha256:e68442fa9820fed291513d9b11f33880574d65a5e96ec75a0a2feb704cc2a821",
+            "status": "synthetic"
+          }
+        ]
+      },
+      "dependencies": [],
+      "extensions": [
+        {
+          "namespace": "local.notes",
+          "version": "1.0.0",
+          "required": true,
+          "data": {
+            "annotation": {
+              "text": "Entirely synthetic observatory; invented source-derived."
+            }
+          }
+        }
+      ],
+      "concepts": [
+        {
+          "id": "sensor",
+          "label": "sensor",
+          "definition": "Synthetic sensor concept."
+        },
+        {
+          "id": "station",
+          "label": "station",
+          "definition": "Synthetic station concept."
+        }
+      ],
+      "properties": [
+        {
+          "id": "quantity",
+          "conceptRef": "sensor",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "id": "active",
+          "conceptRef": "sensor",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "id": "name",
+          "conceptRef": "station",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "relations": [
+        {
+          "id": "located-in",
+          "from": "sensor",
+          "to": "station",
+          "directed": true
+        }
+      ],
+      "constraints": [
+        {
+          "id": "quantity-range",
+          "conceptRef": "sensor",
+          "propertyRef": "quantity",
+          "kind": "numeric-range",
+          "required": true,
+          "minimum": 0,
+          "maximum": 10
+        },
+        {
+          "id": "quantity-enum",
+          "conceptRef": "sensor",
+          "propertyRef": "quantity",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            0,
+            2,
+            10
+          ]
+        },
+        {
+          "id": "quantity-count",
+          "conceptRef": "sensor",
+          "propertyRef": "quantity",
+          "kind": "cardinality",
+          "required": true,
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "id": "active-enum",
+          "conceptRef": "sensor",
+          "propertyRef": "active",
+          "kind": "enum",
+          "required": true,
+          "values": [
+            false,
+            true
+          ]
+        }
+      ],
+      "sourceMappings": [
+        {
+          "id": "mapping-0",
+          "targetRef": "sensor",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-1",
+          "targetRef": "station",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-2",
+          "targetRef": "quantity",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-3",
+          "targetRef": "active",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-4",
+          "targetRef": "name",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-5",
+          "targetRef": "located-in",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-6",
+          "targetRef": "quantity-range",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-7",
+          "targetRef": "quantity-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-8",
+          "targetRef": "quantity-count",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        },
+        {
+          "id": "mapping-9",
+          "targetRef": "active-enum",
+          "sourceRef": "source",
+          "sourceLocator": "synthetic://ontology-v1/observatory-reverse-private/source#record-1",
+          "sourceRevision": "synthetic-r1",
+          "status": "synthetic"
+        }
+      ],
+      "unresolvedIssues": []
+    }
+  ],
+  "instances": {
+    "orchard-forward-public": {
+      "entities": [
+        {
+          "id": "entity-a",
+          "conceptRef": "tree",
+          "properties": {
+            "quantity": [
+              0
+            ],
+            "active": [
+              false
+            ]
+          }
+        },
+        {
+          "id": "entity-b",
+          "conceptRef": "plot",
+          "properties": {
+            "name": [
+              "synthetic"
+            ]
+          }
+        }
+      ],
+      "relations": [
+        {
+          "id": "edge",
+          "relationRef": "located-in",
+          "from": "entity-a",
+          "to": "entity-b"
+        }
+      ]
+    },
+    "orchard-forward-private": {
+      "entities": [
+        {
+          "id": "entity-a",
+          "conceptRef": "tree",
+          "properties": {
+            "quantity": [
+              0
+            ],
+            "active": [
+              false
+            ]
+          }
+        },
+        {
+          "id": "entity-b",
+          "conceptRef": "plot",
+          "properties": {
+            "name": [
+              "synthetic"
+            ]
+          }
+        }
+      ],
+      "relations": [
+        {
+          "id": "edge",
+          "relationRef": "located-in",
+          "from": "entity-a",
+          "to": "entity-b"
+        }
+      ]
+    },
+    "orchard-reverse-public": {
+      "entities": [
+        {
+          "id": "entity-a",
+          "conceptRef": "tree",
+          "properties": {
+            "quantity": [
+              0
+            ],
+            "active": [
+              false
+            ]
+          }
+        },
+        {
+          "id": "entity-b",
+          "conceptRef": "plot",
+          "properties": {
+            "name": [
+              "synthetic"
+            ]
+          }
+        }
+      ],
+      "relations": [
+        {
+          "id": "edge",
+          "relationRef": "located-in",
+          "from": "entity-a",
+          "to": "entity-b"
+        }
+      ]
+    },
+    "orchard-reverse-private": {
+      "entities": [
+        {
+          "id": "entity-a",
+          "conceptRef": "tree",
+          "properties": {
+            "quantity": [
+              0
+            ],
+            "active": [
+              false
+            ]
+          }
+        },
+        {
+          "id": "entity-b",
+          "conceptRef": "plot",
+          "properties": {
+            "name": [
+              "synthetic"
+            ]
+          }
+        }
+      ],
+      "relations": [
+        {
+          "id": "edge",
+          "relationRef": "located-in",
+          "from": "entity-a",
+          "to": "entity-b"
+        }
+      ]
+    },
+    "observatory-forward-public": {
+      "entities": [
+        {
+          "id": "entity-a",
+          "conceptRef": "sensor",
+          "properties": {
+            "quantity": [
+              0
+            ],
+            "active": [
+              false
+            ]
+          }
+        },
+        {
+          "id": "entity-b",
+          "conceptRef": "station",
+          "properties": {
+            "name": [
+              "synthetic"
+            ]
+          }
+        }
+      ],
+      "relations": [
+        {
+          "id": "edge",
+          "relationRef": "located-in",
+          "from": "entity-a",
+          "to": "entity-b"
+        }
+      ]
+    },
+    "observatory-forward-private": {
+      "entities": [
+        {
+          "id": "entity-a",
+          "conceptRef": "sensor",
+          "properties": {
+            "quantity": [
+              0
+            ],
+            "active": [
+              false
+            ]
+          }
+        },
+        {
+          "id": "entity-b",
+          "conceptRef": "station",
+          "properties": {
+            "name": [
+              "synthetic"
+            ]
+          }
+        }
+      ],
+      "relations": [
+        {
+          "id": "edge",
+          "relationRef": "located-in",
+          "from": "entity-a",
+          "to": "entity-b"
+        }
+      ]
+    },
+    "observatory-reverse-public": {
+      "entities": [
+        {
+          "id": "entity-a",
+          "conceptRef": "sensor",
+          "properties": {
+            "quantity": [
+              0
+            ],
+            "active": [
+              false
+            ]
+          }
+        },
+        {
+          "id": "entity-b",
+          "conceptRef": "station",
+          "properties": {
+            "name": [
+              "synthetic"
+            ]
+          }
+        }
+      ],
+      "relations": [
+        {
+          "id": "edge",
+          "relationRef": "located-in",
+          "from": "entity-a",
+          "to": "entity-b"
+        }
+      ]
+    },
+    "observatory-reverse-private": {
+      "entities": [
+        {
+          "id": "entity-a",
+          "conceptRef": "sensor",
+          "properties": {
+            "quantity": [
+              0
+            ],
+            "active": [
+              false
+            ]
+          }
+        },
+        {
+          "id": "entity-b",
+          "conceptRef": "station",
+          "properties": {
+            "name": [
+              "synthetic"
+            ]
+          }
+        }
+      ],
+      "relations": [
+        {
+          "id": "edge",
+          "relationRef": "located-in",
+          "from": "entity-a",
+          "to": "entity-b"
+        }
+      ]
+    }
+  }
+}

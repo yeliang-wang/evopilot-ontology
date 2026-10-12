@@ -1,0 +1,694 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:evopilot:ontology:v1",
+  "title": "EvoPilot native Ontology v1 syntax",
+  "description": "Syntax only. Runtime semantic validation is also mandatory; no authority is inferred.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "product": {
+      "const": "ontology"
+    },
+    "specVersion": {
+      "const": "v1"
+    },
+    "visibility": {
+      "enum": [
+        "public",
+        "private"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "direction": {
+          "enum": [
+            "forward",
+            "reverse"
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "locator": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "revision": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "digest": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "status": {
+                "enum": [
+                  "design-proposed",
+                  "design-confirmed",
+                  "source-observed",
+                  "inferred",
+                  "runtime-observed",
+                  "human-reviewed",
+                  "synthetic"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "locator",
+              "revision",
+              "digest",
+              "status"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "direction",
+        "sources"
+      ],
+      "additionalProperties": false
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "product": {
+            "enum": [
+              "ontology",
+              "harness"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+          },
+          "specVersion": {
+            "const": "v1"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "visibility": {
+            "enum": [
+              "public",
+              "private"
+            ]
+          }
+        },
+        "required": [
+          "product",
+          "id",
+          "version",
+          "specVersion",
+          "digest",
+          "visibility"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "extensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "basePatch"
+                  ]
+                },
+                {
+                  "required": [
+                    "override"
+                  ]
+                },
+                {
+                  "required": [
+                    "id"
+                  ]
+                },
+                {
+                  "required": [
+                    "version"
+                  ]
+                },
+                {
+                  "required": [
+                    "product"
+                  ]
+                },
+                {
+                  "required": [
+                    "specVersion"
+                  ]
+                },
+                {
+                  "required": [
+                    "visibility"
+                  ]
+                },
+                {
+                  "required": [
+                    "provenance"
+                  ]
+                },
+                {
+                  "required": [
+                    "extensions"
+                  ]
+                },
+                {
+                  "required": [
+                    "dependencies"
+                  ]
+                },
+                {
+                  "required": [
+                    "concepts"
+                  ]
+                },
+                {
+                  "required": [
+                    "properties"
+                  ]
+                },
+                {
+                  "required": [
+                    "relations"
+                  ]
+                },
+                {
+                  "required": [
+                    "constraints"
+                  ]
+                },
+                {
+                  "required": [
+                    "sourceMappings"
+                  ]
+                },
+                {
+                  "required": [
+                    "unresolvedIssues"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "namespace",
+          "version",
+          "required",
+          "data"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "namespace": {
+                  "const": "local.notes"
+                },
+                "version": {
+                  "const": "1.0.0"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "annotation": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+                        },
+                        "language": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+                        }
+                      },
+                      "required": [
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "annotation"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "required": {
+                  "const": false
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "definition": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "definition"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "properties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "conceptRef": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "type": {
+            "enum": [
+              "string",
+              "number",
+              "integer",
+              "boolean"
+            ]
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "conceptRef",
+          "type",
+          "required"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "from": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "to": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "directed": {
+            "const": true
+          }
+        },
+        "required": [
+          "id",
+          "from",
+          "to",
+          "directed"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "conceptRef": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "propertyRef": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "kind": {
+                "const": "numeric-range"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "minimum": {
+                "type": "number"
+              },
+              "maximum": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "conceptRef",
+              "propertyRef",
+              "kind",
+              "required",
+              "minimum",
+              "maximum"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "conceptRef": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "propertyRef": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "kind": {
+                "const": "enum"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "values": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "id",
+              "conceptRef",
+              "propertyRef",
+              "kind",
+              "required",
+              "values"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "conceptRef": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "propertyRef": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "kind": {
+                "const": "cardinality"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "minCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "maxCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "id",
+              "conceptRef",
+              "propertyRef",
+              "kind",
+              "required",
+              "minCount",
+              "maxCount"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "conceptRef": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "propertyRef": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              },
+              "kind": {
+                "const": "descriptive-range"
+              },
+              "required": {
+                "const": false
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+              }
+            },
+            "required": [
+              "id",
+              "conceptRef",
+              "propertyRef",
+              "kind",
+              "required",
+              "description"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "sourceMappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "targetRef": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "sourceRef": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "sourceLocator": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "sourceRevision": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "status": {
+            "enum": [
+              "design-proposed",
+              "design-confirmed",
+              "source-observed",
+              "inferred",
+              "runtime-observed",
+              "human-reviewed",
+              "synthetic"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "targetRef",
+          "sourceRef",
+          "sourceLocator",
+          "sourceRevision",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "unresolvedIssues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "targetRef": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "targetRef",
+          "required"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "product",
+    "specVersion",
+    "visibility",
+    "provenance",
+    "dependencies",
+    "extensions",
+    "concepts",
+    "properties",
+    "relations",
+    "constraints",
+    "sourceMappings",
+    "unresolvedIssues"
+  ],
+  "additionalProperties": false
+}

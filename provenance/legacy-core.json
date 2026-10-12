@@ -1,0 +1,478 @@
+{
+  "schema": "evopilot-ontology-legacy-extraction/v1",
+  "sourceProduct": "evopilot-harness",
+  "sourceVersion": "4.8.2",
+  "sourceCommit": "372733fd7b67ec3bee9efe6322f0229db77b160d",
+  "scope": "Partial M1 calculation-library migration batch; not all E03 or M1",
+  "requestDigest": "sha256:84f5da7c1da21824c40512b38cdcea89a0a2f46e9599968bd202e5bd365aef04",
+  "files": [
+    {
+      "original": "src/v3/constants.mjs",
+      "destination": "src/compat/v3/constants.mjs",
+      "sourceSha256": "4dee28266a6a138171b6fadaefc1903f604105c20247947c6928ee3b537089b0",
+      "destinationSha256": "e2d7fa38ca9c76a052b49a28775e75e95ef30876ff21bf55882d7c3cbe58b304",
+      "adaptations": [
+        "Resolve own package root from compat/v3; remove all unused Harness service constants and default home lookup."
+      ]
+    },
+    {
+      "original": "src/v3/utils.mjs",
+      "destination": "src/compat/v3/utils.mjs",
+      "sourceSha256": "527fbd453bec101eeea718f6005faeae681504c90e2370fd78abfab2e23f8b72",
+      "destinationSha256": "dde43cdb2bfba484c6d22f0a05a85791f4bc7249b509736afec413b8aef87838",
+      "adaptations": [
+        "Remove unused CLI/output and filesystem mutation helpers; retain canonicalization, digests and readonly helpers."
+      ]
+    },
+    {
+      "original": "src/v3/schema.mjs",
+      "destination": "src/compat/v3/schema.mjs",
+      "sourceSha256": "0a364cb2bc7533dea898ae9037ca2496540efedb30515720d638ac4e6a925378",
+      "destinationSha256": "619fd179366fc4681538444286052301c6b1a7c33adb0854a61ef864266b523d",
+      "adaptations": [
+        "Retain Ontology kinds and semantic readonly material contracts only; remove Harness authoring/versioned and catalog validators and filesystem tree APIs; load exact schemas from own filename map; original AJV strict/allErrors validation retained."
+      ]
+    },
+    {
+      "original": "src/v4/classification/taxonomy.mjs",
+      "destination": "src/compat/v4/classification/taxonomy.mjs",
+      "sourceSha256": "0b51d6faf70706b226c2f38fcd7d8a2f5ce9e3de8025df1adb466f33b68b7d43",
+      "destinationSha256": "e821207f6a8c3877f8941a2196c30d8c9c020aa6ed5e1b8b967606faab13a9e4",
+      "adaptations": [
+        "Pin explicit historical engine 4.8.2 for engineRange; lazily compile exact taxonomy schema from own map; no package metadata read on import."
+      ]
+    },
+    {
+      "original": "src/v4/semantics/ontology-grounding.mjs",
+      "destination": "src/compat/v4/semantics/ontology-grounding.mjs",
+      "sourceSha256": "5350cfd6400125e4d7ddf64108e13c7b7c72e2dccebafb1ffc2765d9c28b344b",
+      "destinationSha256": "5350cfd6400125e4d7ddf64108e13c7b7c72e2dccebafb1ffc2765d9c28b344b",
+      "adaptations": [
+        "Equivalent regex spelling for the literal word process to retain the existing static process guard."
+      ]
+    },
+    {
+      "original": "src/v4/semantics/professional-packs.mjs",
+      "destination": "src/compat/v4/semantics/professional-packs.mjs",
+      "sourceSha256": "5ac3036897ae9a96801feac54d3aad53365671000887cd277b4ac8dcffb4a95d",
+      "destinationSha256": "cf4b1672ed1d3bb7e3c5171e68490bc04f414811ec6a7075d7de3506be9b08b4",
+      "adaptations": [
+        "Restrict creation/validation/resolution to four Ontology kinds; reject nonempty or malformed harnessGuidance while preserving empty field and digest rules."
+      ]
+    },
+    {
+      "original": "src/v4/semantics/project-ontology.mjs",
+      "destination": "src/compat/v4/semantics/project-ontology.mjs",
+      "sourceSha256": "e477fe5878e6d2fc4fba11df9cac4d889c455901096066f12985b4ed5e6bc0ba",
+      "destinationSha256": "e477fe5878e6d2fc4fba11df9cac4d889c455901096066f12985b4ed5e6bc0ba",
+      "adaptations": []
+    },
+    {
+      "original": "src/v4/semantics/semantic-interoperability.mjs",
+      "destination": "src/compat/v4/semantics/semantic-interoperability.mjs",
+      "sourceSha256": "c725501e9c8b6ec218e400efc7c7799b7f08010b37e0d72c1122cde505e4bdc8",
+      "destinationSha256": "c725501e9c8b6ec218e400efc7c7799b7f08010b37e0d72c1122cde505e4bdc8",
+      "adaptations": []
+    },
+    {
+      "original": "LICENSE",
+      "destination": "LICENSE",
+      "sourceSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "destinationSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "adaptations": []
+    },
+    {
+      "original": "NOTICE",
+      "destination": "NOTICE",
+      "sourceSha256": "f575e864a99e1370b2d302c59c27ff1d91141244910492ce0217527f307d00bd",
+      "destinationSha256": "03b31ef10aa94ae367989f28ef17e324bf02bf4627be8be5913580faf28e822e",
+      "adaptations": [
+        "Append extraction attribution."
+      ]
+    }
+  ],
+  "selectedSchemas": [
+    {
+      "original": "schemas/affected-subgraph-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "affected-subgraph-v1.schema.json",
+      "sourceSha256": "643f501333831587cbe9ba8e1d37ced662e27d12593099069f5e26b5252e3c9c"
+    },
+    {
+      "original": "schemas/external-semantic-evidence-adapter-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "external-semantic-evidence-adapter-v1.schema.json",
+      "sourceSha256": "a6fd6439d92f6e67e7c24e369b1c7fdaf07a3ebceede03339a8c3ffe0f878c99"
+    },
+    {
+      "original": "schemas/external-semantic-evidence-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "external-semantic-evidence-v1.schema.json",
+      "sourceSha256": "0c45ae2a9dc7bf7adbff831c7ce532b92a90bccad5827df0460ed95a4ef72d53"
+    },
+    {
+      "original": "schemas/federated-pack-discovery-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "federated-pack-discovery-v1.schema.json",
+      "sourceSha256": "c0e8ca572b173684e95145ef5b996acd7278a400361a7e81da08e23f860fce54"
+    },
+    {
+      "original": "schemas/harness-semantic-requirements-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "harness-semantic-requirements-v1.schema.json",
+      "sourceSha256": "98c6864f796da774cfaa68f43bacb23fe7720db1531a87817e1f53d655cd9236"
+    },
+    {
+      "original": "schemas/ontology-foundation-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "ontology-foundation-v1.schema.json",
+      "sourceSha256": "396c7d80ea930f022adbd164e39c16139e658d6156d1e3dbbaa9e9448f97c018"
+    },
+    {
+      "original": "schemas/ontology-grounding-result-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "ontology-grounding-result-v1.schema.json",
+      "sourceSha256": "43f09e089c83389bdbcab7f0e0b8d85a095432f88f6fd6815da7c54501bc4d7c"
+    },
+    {
+      "original": "schemas/ontology-pack-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "ontology-pack-v1.schema.json",
+      "sourceSha256": "81a057854aa902a34885776fa97e1ca043fae08b366b8193650e9bf83b19d7ed"
+    },
+    {
+      "original": "schemas/ontology-reasoning-profile-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "ontology-reasoning-profile-v1.schema.json",
+      "sourceSha256": "45424fc9b600286db45628df81e9cf41106f3c5a86e2bff0b147da11abf964f2"
+    },
+    {
+      "original": "schemas/pack-benchmark-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "pack-benchmark-v1.schema.json",
+      "sourceSha256": "fd44d16b96e89292cc331342c600539b52beb55c7cc28ca34ace05f9ab0bc666"
+    },
+    {
+      "original": "schemas/pack-certification-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "pack-certification-v1.schema.json",
+      "sourceSha256": "d54a1b2400da88a4f224c97becf3b287839eb931d3fc6b03dd195bf5b5542334"
+    },
+    {
+      "original": "schemas/pack-gold-case-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "pack-gold-case-v1.schema.json",
+      "sourceSha256": "1eacda6152a29e06b69ff983a2ec49215c172efaee0318b0ad8b19b326287147"
+    },
+    {
+      "original": "schemas/pack-lifecycle-record-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "pack-lifecycle-record-v1.schema.json",
+      "sourceSha256": "10670bbf6463d62053ef01bdf41df1e12b696177f0dbc38b30cd4c32a9781b1f"
+    },
+    {
+      "original": "schemas/professional-pack-inspection-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "professional-pack-inspection-v1.schema.json",
+      "sourceSha256": "89793919163a596b3cba28213b1e1bed483083beeb627d4d995b47b15d11c021"
+    },
+    {
+      "original": "schemas/professional-pack-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "professional-pack-v1.schema.json",
+      "sourceSha256": "3ae204a1890e3a65d3543fc4952b74b2b59b9f40fbff91e56632b155515c92a7"
+    },
+    {
+      "original": "schemas/project-ontology-artifact-lifecycle-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "project-ontology-artifact-lifecycle-v1.schema.json",
+      "sourceSha256": "f7991c6f8dad618e7fa6ab25335136f94ac02ef9a9bf4f0a3fdb5c5501ecb323"
+    },
+    {
+      "original": "schemas/project-ontology-artifact-set-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "project-ontology-artifact-set-v1.schema.json",
+      "sourceSha256": "0454842260731d5b7b79cb8b749b2829cee234db7e8e6d8cd1a353b9e2045bc2"
+    },
+    {
+      "original": "schemas/project-ontology-projection-set-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "project-ontology-projection-set-v1.schema.json",
+      "sourceSha256": "8ce9c020373c78bef06512951632ac5aa1c0f2ffccfa386305b2660b85d905b0"
+    },
+    {
+      "original": "schemas/project-ontology-proposal-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "project-ontology-proposal-v1.schema.json",
+      "sourceSha256": "cf4f43b183ca0815c60479100855bb235e0569193ad06ad6b96d4385bae86ebf"
+    },
+    {
+      "original": "schemas/project-ontology-skill-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "project-ontology-skill-v1.schema.json",
+      "sourceSha256": "0c5834b1f176b0ac6e7496ea49ca49256185d3e08f589adf31e0f41e76dc91b7"
+    },
+    {
+      "original": "schemas/resolved-professional-pack-set-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "resolved-professional-pack-set-v1.schema.json",
+      "sourceSha256": "9850184c88f336361f1200e989f6d24acf18529b19e8192743d2499c0f72de52"
+    },
+    {
+      "original": "schemas/resolved-project-ontology-snapshot-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "resolved-project-ontology-snapshot-v1.schema.json",
+      "sourceSha256": "6dc13a110230abbe1c7e6a0b18b6e392910aafd80a65c85bd2afb23ecf7e360d"
+    },
+    {
+      "original": "schemas/semantic-candidate-set-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "semantic-candidate-set-v1.schema.json",
+      "sourceSha256": "c69c1b71ff19db1a112c5a8e7929008ff09935b55f31048bd4754dc6f9d4dbf4"
+    },
+    {
+      "original": "schemas/semantic-compatibility-report-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "semantic-compatibility-report-v1.schema.json",
+      "sourceSha256": "5f77a34f013e46539f2fcf3e9b20dbf6ece5353b53adb43b250445298989d166"
+    },
+    {
+      "original": "schemas/semantic-computation-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "semantic-computation-v1.schema.json",
+      "sourceSha256": "8d4fb79d5928c4e601d6674c4e5484238da24bca1858a18c26355cb5df06fe90"
+    },
+    {
+      "original": "schemas/semantic-index-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "semantic-index-v1.schema.json",
+      "sourceSha256": "5b5b9831e5537dbd32d2860661a4636041fcd68b734dcb86b548460e64316568"
+    },
+    {
+      "original": "schemas/semantic-interoperability-projection-set-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "semantic-interoperability-projection-set-v1.schema.json",
+      "sourceSha256": "79e5fbb89f1b31e16a431578e2058b6f709a440837f28516d994f4cd3ebab85b"
+    },
+    {
+      "original": "schemas/semantic-round-trip-report-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "semantic-round-trip-report-v1.schema.json",
+      "sourceSha256": "6fa78f9a1861abe2a83442302cdc50c6d5b0ef7cb89808bee838fa0bdebbf521"
+    },
+    {
+      "original": "schemas/taxonomy-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "taxonomy-v1.schema.json",
+      "sourceSha256": "78469fddd47dbbbcead133eb8965bf0cade00e41a14dabb7c5517c2995f32008"
+    },
+    {
+      "original": "schemas/terminal-semantic-closure-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "terminal-semantic-closure-v1.schema.json",
+      "sourceSha256": "6318e53b2b584d2738345ecfb6e3b8638319000b2273a4db3e556c9071e6eb19"
+    },
+    {
+      "original": "schemas/terminal-semantic-slice-v1.schema.json",
+      "destination": "schemas/legacy/v1.json",
+      "key": "terminal-semantic-slice-v1.schema.json",
+      "sourceSha256": "f3338eb301742e86ccac8ed53defbf688168a9fbac81620d2d3a6cccb2e1bb17"
+    }
+  ],
+  "lockSource": {
+    "original": "package-lock.json",
+    "sourceSha256": "2e4137cd6089572f4b41253897bb8d6a8b36ee62148586c8cd30d04aff963cb5",
+    "packages": [
+      "ajv",
+      "yaml",
+      "fast-deep-equal",
+      "fast-uri",
+      "json-schema-traverse",
+      "require-from-string"
+    ],
+    "adaptations": [
+      "New root identity and exact dependencies; original six registry package entries retained."
+    ]
+  },
+  "testsMoved": [
+    {
+      "original": "tests/v4.7-project-ontology.test.mjs",
+      "destination": "tests/e2e/legacy-project-ontology.test.mjs",
+      "sourceSha256": "c171554f862b4273ab1f6d4219f525e93f7b320139bf6a8bc1f224992c076c91",
+      "adaptations": [
+        "Retain all seven pure library tests; preserve incomplete-profile assertion from final adapter test; remove only Engine adapter integration."
+      ],
+      "destinationSha256": "af47ee5ea98e3f96cff7ce3e3b8d501c697dbb9f7a90932c4403f16292bef860"
+    },
+    {
+      "original": "tests/v4.8-semantic-interoperability.test.mjs",
+      "destination": "tests/e2e/legacy-interoperability.test.mjs",
+      "sourceSha256": "f1960b7a31b2ff2462cc32ac14900a2fd74a17dff3efab4f15854f2992681523",
+      "adaptations": [
+        "Retain all eight pure tests and nested budget cases; retain closure slice stale-binding computation assertions; remove closure Engine invocation tail, CLI round trip and Engine capability tests."
+      ],
+      "destinationSha256": "22983d79513401c8b51935c816c3324dd8b58d21dda0e169c7937213ba8a8dd3"
+    },
+    {
+      "original": "tests/v4.6-semantic-grounding.test.mjs",
+      "destination": "tests/e2e/legacy-core.test.mjs",
+      "sourceSha256": "a7c7eae44d559112efab0066509c3ba5b58017697a79c68e5c7437e8c018b4db",
+      "adaptations": [
+        "Retain foundation, six outcomes and LLM rejection tests; Harness semantic compatibility producer/Bundle and Engine tests pending."
+      ],
+      "destinationSha256": "7c0538d9999373154835e3df1b07d272a982aa4e1fe5148aac452cd591dd4b41"
+    },
+    {
+      "original": "tests/v4.5-taxonomy-serialization.test.mjs",
+      "destination": "tests/e2e/legacy-core.test.mjs",
+      "sourceSha256": "31ceac4a7c9a23ab21c4fb17bdf325888a775d2daa687aa288eda5a4be6a9e64",
+      "adaptations": [
+        "Retain canonical JSON/YAML parity, unsafe YAML, invalid UTF-8 and invalid/nonfinite JSON assertions; substitute readonly in-memory file fixtures; source/Advisor integration assertions pending."
+      ],
+      "destinationSha256": "7c0538d9999373154835e3df1b07d272a982aa4e1fe5148aac452cd591dd4b41"
+    }
+  ],
+  "pending": [
+    "Full persistent lifecycle and service/API operations, CLI, MCP, installation, activation and publication transports.",
+    "Explicit conversion/bridge to native Core v1 assets; historical compatibility documents are not native v1.",
+    "v4.7 Engine governed Pack and Project Ontology operation family and workspace-backed dispatch.",
+    "v4.8 terminal closure Engine slice exact/stale digest result and persisted-file non-mutation assertions.",
+    "v4.8 CLI transition actor/exact digest and snapshot round trip, and Engine interoperability operation family.",
+    "v4.6 Harness semantic requirements producer/compatibility evaluation, HarnessBundle closure and Engine diagnostics.",
+    "v4.5 source-not-opened and Advisor-not-invoked integration assertions after unsafe taxonomy rejection."
+  ],
+  "authority": "NONE",
+  "nativeNormativeBasis": "Core v1 specifications; historical IDs and digests are compatibility only",
+  "verification": {
+    "syntax": {
+      "status": "PASSED",
+      "files": 14,
+      "command": "node --check <each edited .mjs>"
+    },
+    "nativeV1Tests": {
+      "status": "PASSED",
+      "tests": 11,
+      "command": "node --test projects/evopilot-ontology/tests/e2e/reference.test.mjs projects/evopilot-ontology/tests/e2e/specification.test.mjs"
+    },
+    "sourceHashesAndSchemaParity": "VERIFIED",
+    "lockClosure": "Six exact source dependency entries verified",
+    "compatStaticImportGraph": "VERIFIED within Ontology only",
+    "compatibilityTests": {
+      "status": "PENDING_DEPENDENCY_INSTALL",
+      "reason": "Product-local ajv and yaml absent; no installation performed"
+    },
+    "scope": "Local checks only; no global PASS, service acceptance or release authority"
+  },
+  "generatedArtifacts": [
+    {
+      "destination": "src/compat/index.mjs",
+      "sha256": "44a5d0ed66e81c108d46e2c1219cdecf1a5d115df7491b1be5c0278fb2909e3e"
+    },
+    {
+      "destination": "schemas/legacy/v1.json",
+      "sha256": "f9a495857bed24cd97ce32979dc623be6a3e676e902f8229798bdf9c370f2a6c"
+    },
+    {
+      "destination": "package.json",
+      "sha256": "91f98b480e7f24aa237b16c24621d0acb576b0a550a0c8fe6762ce1f9239056d"
+    },
+    {
+      "destination": "package-lock.json",
+      "sha256": "cc99c1e983b7923531d3a35c639326f0f06dc6ad7288bfb96c71c95ddbb3a115"
+    },
+    {
+      "destination": "docs/legacy-core.md",
+      "sha256": "0e2f54965c8f23fa1b79a41cd9b12564ab1c93ed6d1d6630c9a79e7febe9a823"
+    }
+  ],
+  "integrationAdaptations": [
+    {
+      "path": "package.json",
+      "changes": [
+        "Include every Ontology tests/e2e/*.test.mjs in the root test command."
+      ]
+    },
+    {
+      "path": "scripts/check.mjs",
+      "changes": [
+        "Require exact Ontology dependency pins, export map and extended package files; retain dependency-free rules for other products."
+      ]
+    },
+    {
+      "path": "integration/e2e/package-isolation.test.mjs",
+      "changes": [
+        "Allow only ajv/dist/2020.js and yaml bare imports in Ontology compat modules; retain cross-product/dynamic execution/process guards and add legacy-home guard.",
+        "Exercise compat namespace, bundled validation and computation in the existing child-only Node permission test."
+      ]
+    }
+  ],
+  "subsequentChanges": [
+    {
+      "requestDigest": "sha256:80275fc38b7f6e5fb0880521294e69d27c62fc18d37ff9d7c38664a1effd2152",
+      "changes": [
+        {
+          "destination": "src/compat/v3/schema.mjs",
+          "previousDestinationSha256": "650d5db3fc3779f5b3bb37fe73f628e3f680ceb7d74b1a53aaf8bbec70b39f32",
+          "destinationSha256": "2afefb22343df63f374b4bcc94635175046604a99cf2408ecb6c2da2b565566e"
+        },
+        {
+          "destination": "src/compat/v4/semantics/ontology-grounding.mjs",
+          "previousDestinationSha256": "0805c8d6bbffdc2ffd528b4c88bedebf99b9dabe9bdfcab3d72834d7a56c773b",
+          "destinationSha256": "5350cfd6400125e4d7ddf64108e13c7b7c72e2dccebafb1ffc2765d9c28b344b"
+        },
+        {
+          "destination": "tests/e2e/legacy-core.test.mjs",
+          "previousDestinationSha256": "7e24d9ab62f49f8c545a037b8cbb3e8bbd613492e4119e19e6f01a56b5f41f2f",
+          "destinationSha256": "b7da098cbf20242870f28c03e8b6fbdb9840ce6aba746a988c9a5003c2225039"
+        },
+        {
+          "destination": "tests/e2e/legacy-core.test.mjs",
+          "previousDestinationSha256": "7e24d9ab62f49f8c545a037b8cbb3e8bbd613492e4119e19e6f01a56b5f41f2f",
+          "destinationSha256": "b7da098cbf20242870f28c03e8b6fbdb9840ce6aba746a988c9a5003c2225039"
+        }
+      ],
+      "description": "Catalog extraction adds explicit namespaces and exact selected schema-set assertions; restores original grounding bytes and foreign semantic requirements validation. Initial source identities, request provenance and adaptation history retained above; changed files are not claimed byte-identical unless independently recorded."
+    },
+    {
+      "requestDigest": "sha256:95738d3eda7c1adacd766859d46de2c308e5432b23ea92b9ad6104a6db6fff6f",
+      "description": "Add six classification compat namespaces and extend exact namespace assertions; original extraction origin preserved.",
+      "files": []
+    },
+    {
+      "requestDigest": "sha256:dcca0bf7faf3cfe106a8a645ad88e220fed8d9c69621aa6f71f85397b090409d",
+      "description": "Explicit source inspection and native-v1 derivation; eight-schema extraction; preserved historical extraction and source hashes.",
+      "updates": [
+        {
+          "destination": "src/compat/v3/schema.mjs",
+          "previousDestinationSha256": "2afefb22343df63f374b4bcc94635175046604a99cf2408ecb6c2da2b565566e",
+          "destinationSha256": "619fd179366fc4681538444286052301c6b1a7c33adb0854a61ef864266b523d"
+        },
+        {
+          "destination": "tests/e2e/legacy-core.test.mjs",
+          "previousDestinationSha256": "b7da098cbf20242870f28c03e8b6fbdb9840ce6aba746a988c9a5003c2225039",
+          "destinationSha256": "7c0538d9999373154835e3df1b07d272a982aa4e1fe5148aac452cd591dd4b41"
+        },
+        {
+          "destination": "tests/e2e/legacy-core.test.mjs",
+          "previousDestinationSha256": "b7da098cbf20242870f28c03e8b6fbdb9840ce6aba746a988c9a5003c2225039",
+          "destinationSha256": "7c0538d9999373154835e3df1b07d272a982aa4e1fe5148aac452cd591dd4b41"
+        },
+        {
+          "destination": "schemas/legacy/v1.json",
+          "previousDestinationSha256": "7cfcae5d86f7c2de9361b626c2e5cc3d9c99ba60b0ee40a8cdf8581a70507fa6",
+          "destinationSha256": "f9a495857bed24cd97ce32979dc623be6a3e676e902f8229798bdf9c370f2a6c"
+        },
+        {
+          "destination": "package.json",
+          "previousDestinationSha256": "730391ccea4bba4ff2cd8cacd85a8891c8a56c4fa2f5aae3b93021a6fc5727f8",
+          "destinationSha256": "91f98b480e7f24aa237b16c24621d0acb576b0a550a0c8fe6762ce1f9239056d"
+        },
+        {
+          "destination": "docs/legacy-core.md",
+          "previousDestinationSha256": "59d36c2f5f9c57642a710496c0fc14bc066192d1ee64ac8ad864bed7e9923b74",
+          "destinationSha256": "0e2f54965c8f23fa1b79a41cd9b12564ab1c93ed6d1d6630c9a79e7febe9a823"
+        }
+      ]
+    }
+  ]
+}

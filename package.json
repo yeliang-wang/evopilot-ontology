@@ -1,0 +1,38 @@
+{
+  "name": "@evopilot-next/ontology",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.0"
+  },
+  "files": [
+    "src",
+    "vendor",
+    "README.md",
+    "specifications",
+    "examples",
+    "schemas",
+    "docs",
+    "provenance",
+    "LICENSE",
+    "NOTICE",
+    "assets"
+  ],
+  "exports": {
+    ".": "./src/index.mjs",
+    "./compat": "./src/compat/index.mjs",
+    "./migration": "./src/migration.mjs",
+    "./sources": "./src/asset-sources.mjs"
+  },
+  "scripts": {
+    "build": "node scripts/check.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/e2e/*.test.mjs"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "yaml": "2.9.0"
+  },
+  "license": "Apache-2.0"
+}

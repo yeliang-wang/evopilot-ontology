@@ -1,0 +1,32 @@
+{
+  "schema": "evopilot-public-source-provenance/v1",
+  "sourceCommit": "372733fd7b67ec3bee9efe6322f0229db77b160d",
+  "sourceURL": "https://github.com/yeliang-wang/evopilot-harness/tree/372733fd7b67ec3bee9efe6322f0229db77b160d",
+  "license": "Apache-2.0",
+  "requestDigest": "sha256:37913cec99db4e29a0f8d8e96c6ad96a2451dd7d7792ac3cd0afa8f5cb318754",
+  "owner": "ontology",
+  "destination": "assets/legacy-sources.json",
+  "destinationSha256": "3ff80c93ed1c444696607d4f66bb4747415a8125516e0444af57e6c96bdbc8ef",
+  "sources": {
+    "ontology/builtin/software-engineering.yaml": {
+      "sha256": "a04f0c27b4406db5cc534f8823c14e834926b9b1f94779e19137aa457facab53",
+      "bytes": 4014,
+      "classification": "ontology-pack"
+    },
+    "ontology/examples/example-crm-product.yaml": {
+      "sha256": "eb5d8ebff0869ba0d74688bf73f0f0675fd72ac7463cd6a14e0985cf036f37f9",
+      "bytes": 1471,
+      "classification": "ontology-pack"
+    },
+    "ontology/examples/example-erp-product.yaml": {
+      "sha256": "86cda1ad3b720e31e5b504151a752960ef3447a404e3c7db2ea2baffb2b02d9a",
+      "bytes": 1455,
+      "classification": "ontology-pack"
+    },
+    "ontology/examples/example-finance-domain.yaml": {
+      "sha256": "149ced38dabc79ee1b5d8fe4892fecac2f9235e38e327a17137fee1c519a8a26",
+      "bytes": 1527,
+      "classification": "ontology-pack"
+    }
+  }
+}
