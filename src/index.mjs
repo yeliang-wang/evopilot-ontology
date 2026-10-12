@@ -10,10 +10,14 @@ export function capabilities() {
   return Object.freeze({
     product: PRODUCT,
     version: VERSION,
-    implementationStage: 'M1_FOUNDATION',
-    businessOperationsReady: false,
-    persistentBusinessOperationsReady: false,
+    implementationStage: 'M2_OWNED_SERVICE',
+    businessOperationsReady: true,
+    persistentBusinessOperationsReady: true,
     pureApi: Object.freeze(['validateOntology', 'validateInstances', 'buildDelivery', 'verifyDelivery']),
+    serviceApi: Object.freeze({ subpath: '@evopilot-next/ontology/service', factory: 'createOntologyService', methods: Object.freeze(['capabilities', 'initialize', 'execute', 'classify', 'close']) }),
+    cli: 'evopilot-next-ontology',
+    hostReady: false,
+    productionReady: false,
     authority: false,
     referenceApi: Object.freeze(['inspectArtifactReference']),
   });

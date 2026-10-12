@@ -13,7 +13,20 @@ Historical wire identities remain compatibility data; native v1 validation does 
 
 The service also implements seven finite retained producers and an owned proposal-create helper through separate preparation and local operator decisions. See the [producer API](docs/legacy-api.md#finite-retained-producers). Historical approvals are never imported as current authority; no Runtime/Harness software release or activation occurs. Filesystem producer tests await operator execution.
 
-All root APIs also expose `PRODUCT`, `VERSION` and `capabilities()`. Existing root readiness remains false and reports convey no acceptance, execution or publication authority. The separate service implements only the first M2 local lifecycle slice; source import/derivation and [28 historical preview queries](docs/legacy-api.md) are implemented. Ten Catalog operations, seven persistent classification operations, CLI/MCP and unified Expert/plugin delivery remain pending. This source is not stable 1.0 or production-ready, and does not establish M1 or full acceptance.
+All root APIs also expose `PRODUCT`, `VERSION` and `capabilities()`. Discovery describes `M2_OWNED_SERVICE`: local business operations and persistence are implemented through the separate service export; Host and production readiness remain false. Source import/derivation and [28 historical preview queries](docs/legacy-api.md), scoped [Catalog routes](docs/catalog-service.md), seven persistent [classification operations](docs/classification-service.md) and the [standalone CLI](docs/cli.md) are implemented. Classification and foreign Catalog material require explicit trusted application callbacks; the CLI supplies none and returns unavailable errors when they are needed. MCP, Expert/plugin integration and actual provider wiring remain pending. Reports convey no acceptance, execution or publication authority.
+
+For first use from this checkout, choose a fresh canonical absolute workspace path whose parent exists, then store a synthetic native model and read its durable receipt:
+
+```sh
+ONTOLOGY_WORKSPACE=/absolute/canonical/new-ontology-workspace
+node src/cli.mjs capabilities
+node --input-type=module -e 'import fs from "node:fs"; const model = JSON.parse(fs.readFileSync("examples/synthetic-models.json", "utf8")).assets[0]; console.log(JSON.stringify({operation:"asset.put",scope:{visibility:"public",projectId:"demo"},input:{model},requestId:"first-model",expectedRevision:0}));' |
+  node src/cli.mjs request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
+printf '%s\n' '{"operation":"receipt.inspect","scope":{"visibility":"public","projectId":"demo"},"input":{"requestId":"first-model"}}' |
+  node src/cli.mjs request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
+```
+
+The installed bin is `evopilot-next-ontology`. See the [CLI guide](docs/cli.md) for inspection, file input, error codes and modeling/classification workflows. This example creates a draft without review, decision or publication.
 
 Use Node 24.14.0. In this independent source checkout, install from its own committed lock with `npm ci --ignore-scripts --no-audit --no-fund`, then:
 

@@ -35,6 +35,6 @@ verifyDelivery(delivery) validates the model and rebuilds/compares the entire de
 
 [Template](templates/model.json) and [examples](../../examples/synthetic-models.json) are entirely synthetic: orchard and observatory × forward requirement-only/reverse invented source-derived × public/private = eight assets. Each exact synthetic locator identifies record-1 at synthetic-r1. Source digest bytes are UTF-8 text "Synthetic <domain> <direction> record-1". No real implementation or private data is represented.
 
-Source checkout: run `npm run build` from the parent to generate pinned vendors, then `npm test`. Child `npm test` requires that parent build first. E01–E19, full legacy migration, service/Host acceptance and release remain pending.
+This source checkout ships its own pinned vendored reference. Run `npm run check`, `npm run build` and `npm test` independently here; no parent build is required. Canonical vendor regeneration remains parent-only. E01–E19, full legacy migration, service/Host acceptance and release remain pending.
 
 [Historical source inspection and explicit native derivation](legacy-derivation.md) use a separate public migration subpath and do not change the native contract.

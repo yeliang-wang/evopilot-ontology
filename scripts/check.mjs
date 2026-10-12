@@ -65,7 +65,11 @@ export async function checkSource() {
   const pkg = JSON.parse(await readFile(resolve(ROOT, 'package.json'), 'utf8'));
   for (const [key, value] of Object.entries(expected)) assert.deepEqual(pkg[key], value, key);
   for (const key of ['devDependencies', 'peerDependencies', 'optionalDependencies']) assert.deepEqual(pkg[key] ?? {}, {});
-  assert.equal(pkg.bin, undefined);
+  assert.deepEqual(pkg.bin, { 'evopilot-next-ontology': 'src/cli.mjs' });
+  const lock = JSON.parse(await readFile(resolve(ROOT, 'package-lock.json'), 'utf8'));
+  assert.deepEqual(lock.packages[''].bin, pkg.bin);
+  assert((await lstat(resolve(ROOT, 'src/cli.mjs'))).mode & 0o111);
+  assert((await readFile(resolve(ROOT, 'src/cli.mjs'), 'utf8')).startsWith('#!/usr/bin/env node\n'));
   const vendor = resolve(ROOT, 'vendor/compatibility/v1');
   const manifest = JSON.parse(await readFile(resolve(vendor, 'manifest.json'), 'utf8'));
   assert.deepEqual(manifest, {
@@ -97,10 +101,13 @@ export async function checkSource() {
     'assert.equal(api.PRODUCT, ' + JSON.stringify(PRODUCT) + ');',
     "assert.equal(api.VERSION, '0.1.0');",
     'assert.equal(api.capabilities().authority, false);',
-    'assert.equal(api.capabilities().businessOperationsReady, false);',
+    'assert.equal(api.capabilities().businessOperationsReady, true);',
+    'await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'src/cli.mjs')).href) + ');',
     'const service = await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'src/service.mjs')).href) + ');',
     "const discovery = service.createOntologyService({ workspaceRoot: '/explicit-discovery-only', workspaceId: 'discovery' });",
-    "assert(discovery.capabilities().operations.includes('asset.publish')); discovery.close();",
+    "assert(discovery.capabilities().operations.includes('asset.publish'));",
+    "assert.equal(typeof discovery.classify, 'function');",
+    "assert.equal(discovery.capabilities().operations.filter(x => x.startsWith('classification.')).length, 7); discovery.close();",
   ].join('\n');
   const result = spawnSync(process.execPath, ['--permission', '--allow-fs-read=' + ROOT, '--input-type=module', '-e', code], {
     cwd: ROOT, encoding: 'utf8', env: { ...process.env, NODE_OPTIONS: '', OPENSSL_CONF: '/dev/null' },

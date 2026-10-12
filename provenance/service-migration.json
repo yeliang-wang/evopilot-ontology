@@ -625,20 +625,54 @@
       "function": "operateCatalog",
       "authority": false,
       "authorization": "scoped read or receipt reconciliation"
+    },
+    {
+      "operation": "classification.start",
+      "owner": "ontology",
+      "module": "classification-operations/classification-runner",
+      "authority": false
+    },
+    {
+      "operation": "classification.inspect",
+      "owner": "ontology",
+      "module": "classification-operations/classification-runner",
+      "authority": false
+    },
+    {
+      "operation": "classification.resume",
+      "owner": "ontology",
+      "module": "classification-operations/classification-runner",
+      "authority": false
+    },
+    {
+      "operation": "classification.reanalyze",
+      "owner": "ontology",
+      "module": "classification-operations/classification-runner",
+      "authority": false
+    },
+    {
+      "operation": "classification.list",
+      "owner": "ontology",
+      "module": "classification-operations/classification-runner",
+      "authority": false
+    },
+    {
+      "operation": "classification.continue_to_harness",
+      "owner": "ontology",
+      "module": "classification-operations/classification-runner",
+      "authority": false
+    },
+    {
+      "operation": "classification.close",
+      "owner": "ontology",
+      "module": "classification-operations/classification-runner",
+      "authority": false
     }
   ],
   "pendingLegacyServiceOperationCount": 0,
   "pendingLegacyServiceOperations": [],
-  "pendingInventoryNote": "Ten catalog routes implemented in owned SQLite service; seven persistent classification operations, CLI/MCP, Expert integration and trusted Harness provider wiring pending.",
-  "pendingPersistentClassification": [
-    "start",
-    "inspect",
-    "resume",
-    "reanalyze",
-    "list",
-    "continue",
-    "close"
-  ],
+  "pendingInventoryNote": "Seven classification routes moved to owned SQLite service; CLI/MCP, Expert integration and actual trusted Harness composition remain pending.",
+  "pendingPersistentClassification": [],
   "pendingTransports": [
     "CLI",
     "MCP"
@@ -694,6 +728,26 @@
     },
     "scope": "Eight authorized source/test/documentation files; frozen v1 and compatibility code unchanged",
     "operatorFullSuiteRerun": "PENDING",
+    "acceptance": false
+  },
+  "classificationMigration": {
+    "requestDigest": "sha256:be2cd9c47bff49ed351d463101b79624bb0ebbe8e18e512188e772f69ce84aed",
+    "status": "BOUNDED_SOURCE_EDIT",
+    "operations": [
+      "classification.start",
+      "classification.inspect",
+      "classification.resume",
+      "classification.reanalyze",
+      "classification.list",
+      "classification.continue_to_harness",
+      "classification.close"
+    ],
+    "sourceCheck": "PASSED",
+    "readOnlyDiscovery": "PASSED",
+    "filesystemSuite": "OPERATOR_PENDING",
+    "E03": "PENDING",
+    "E10": "PENDING",
+    "authority": false,
     "acceptance": false
   }
 }

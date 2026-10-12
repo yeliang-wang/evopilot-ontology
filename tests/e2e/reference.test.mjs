@@ -41,8 +41,13 @@ test('package boundary: default capabilities are truthful immutable data', () =>
   assert.equal(api.VERSION, '0.1.0');
   assert.equal(api.PRODUCT, 'ontology');
   const capabilities = api.capabilities();
-  assert.equal(capabilities.businessOperationsReady, false);
-  assert.equal(capabilities.implementationStage, 'M1_FOUNDATION');
+  assert.equal(capabilities.businessOperationsReady, true);
+  assert.equal(capabilities.implementationStage, 'M2_OWNED_SERVICE');
+  assert.equal(capabilities.persistentBusinessOperationsReady, true);
+  assert.equal(capabilities.hostReady, false);
+  assert.equal(capabilities.productionReady, false);
+  assert.deepEqual(capabilities.serviceApi.methods, ['capabilities', 'initialize', 'execute', 'classify', 'close']);
+  assert(Object.isFrozen(capabilities.serviceApi.methods));
   assert.equal(capabilities.authority, false);
   assert(Object.isFrozen(capabilities));
   assert(Object.isFrozen(capabilities.referenceApi));

@@ -13,7 +13,7 @@ const bad = fn => assert.equal(validateOntology(mutate(asset(), fn)).valid, fals
 test('synthetic matrix and immutable pure API facts', () => {
   assert.equal(fixtures.assets.length, 8);
   assert.equal(new Set(fixtures.assets.map(a => a.id)).size, 8);
-  assert.equal(capabilities().persistentBusinessOperationsReady, false);
+  assert.equal(capabilities().persistentBusinessOperationsReady, true);
   for (const a of fixtures.assets) {
     const before = JSON.stringify(a);
     assert.equal(validateOntology(a).valid, true);

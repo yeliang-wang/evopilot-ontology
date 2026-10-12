@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { assertJSON, stableSerialize, sha256 } from '../vendor/compatibility/v1/reference.mjs';
 
 export function fail(code, message) { throw Object.assign(new Error(message), { code }); }
-export const LIMITS = Object.freeze({ requestBytes: 524288, nodes: 20000, depth: 48, catalogPlans: 1000, catalogRevisions: 1000, catalogHeads: 1000, catalogSets: 16, catalogRevocations: 1000, producerPlans: 1000, producerRecords: 1000, assets: 1000, sources: 1000, receipts: 10000, stateBytes: 8388608, receiptBytes: 33554432 });
+export const LIMITS = Object.freeze({ classificationSessions: 64, classificationAttempts: 16, classificationHandoffs: 16, requestBytes: 524288, nodes: 20000, depth: 48, catalogPlans: 1000, catalogRevisions: 1000, catalogHeads: 1000, catalogSets: 16, catalogRevocations: 1000, producerPlans: 1000, producerRecords: 1000, assets: 1000, sources: 1000, receipts: 10000, stateBytes: 8388608, receiptBytes: 33554432 });
 export function validateState(value) {
   if (!value || !Array.isArray(value.assets) || (Object.hasOwn(value, 'sources') && !Array.isArray(value.sources))) fail('CORRUPT_STATE', 'Invalid state collections');
   if (value.assets.length > LIMITS.assets || (value.sources?.length ?? 0) > LIMITS.sources) fail('CORRUPT_STATE', 'State collection limit');
@@ -39,6 +39,21 @@ export function validateState(value) {
       const id = key === 'catalogPlans' ? item.planId : key === 'catalogRevisions' ? item.pointer?.pointerDigest : stableSerialize([item.scope, item.catalogId]);
       if (!id || ids.has(id)) fail('CORRUPT_STATE', 'Duplicate catalog identity'); ids.add(id);
       if (key === 'catalogPlans' && (!['PREPARED', 'CONSUMED'].includes(item.status) || !Array.isArray(item.dependencies))) fail('CORRUPT_STATE', 'Invalid catalog plan');
+    }
+  }
+  if (Object.hasOwn(value, 'classificationSessions')) {
+    if (!Array.isArray(value.classificationSessions) || value.classificationSessions.length > LIMITS.classificationSessions) fail('CORRUPT_STATE', 'Classification session limit');
+    const identities = new Set();
+    for (const s of value.classificationSessions) {
+      slug(s.id); slug(s.scope?.projectId);
+      const key = stableSerialize([s.scope, s.id]);
+      if (identities.has(key) || !['public', 'private'].includes(s.scope.visibility) || !Number.isSafeInteger(s.ownerUid) || !['PENDING', 'UNKNOWN', 'COMPLETED', 'ANALYSIS_BLOCKED_ADVISOR', 'CLOSED'].includes(s.status) || !Array.isArray(s.attempts) || !s.attempts.length || s.attempts.length > LIMITS.classificationAttempts || !Array.isArray(s.handoffs) || s.handoffs.length > LIMITS.classificationHandoffs) fail('CORRUPT_STATE', 'Invalid classification session');
+      identities.add(key);
+      const attempts = new Set();
+      for (const a of s.attempts) {
+        if (!/^sha256:[a-f0-9]{64}$/.test(a.attemptId) || attempts.has(a.attemptId) || !['PREPARED', 'INVOKING', 'UNKNOWN', 'COMPLETED', 'ANALYSIS_BLOCKED_ADVISOR'].includes(a.status) || !a.prepared || a.preparedDigest !== sha256(a.prepared) || (a.result && a.resultDigest !== sha256(a.result))) fail('CORRUPT_STATE', 'Invalid classification attempt');
+        attempts.add(a.attemptId);
+      }
     }
   }
   if (Buffer.byteLength(stableSerialize(value)) > LIMITS.stateBytes) fail('CORRUPT_STATE', 'State byte limit');

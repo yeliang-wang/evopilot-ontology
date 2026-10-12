@@ -8,8 +8,9 @@ import { producerOperations, producerMutations, validateProducerRequest, operate
 import { legacyQueryOperations, validateLegacyQuery, operateLegacyQuery } from './legacy-queries.mjs';
 import { catalogOperations, catalogMutations, validateCatalogRequest, operateCatalog } from './catalog-operations.mjs';
 
-export const operations = Object.freeze([...catalogOperations, ...producerOperations, ...legacyQueryOperations, ...importOperations, 'workspace.inspect', 'receipt.inspect', 'asset.put', 'asset.inspect', 'asset.list', 'asset.review', 'asset.decide', 'asset.publish']);
-export const mutations = Object.freeze([...catalogMutations, ...producerMutations, ...importMutations, 'asset.put', 'asset.review', 'asset.decide', 'asset.publish']);
+import { classificationOperations, classificationMutations, validateClassificationRequest, operateClassification } from './classification-operations.mjs';
+export const operations = Object.freeze([...classificationOperations, ...catalogOperations, ...producerOperations, ...legacyQueryOperations, ...importOperations, 'workspace.inspect', 'receipt.inspect', 'asset.put', 'asset.inspect', 'asset.list', 'asset.review', 'asset.decide', 'asset.publish']);
+export const mutations = Object.freeze([...classificationMutations, ...catalogMutations, ...producerMutations, ...importMutations, 'asset.put', 'asset.review', 'asset.decide', 'asset.publish']);
 export function validateRequest(r) {
   if (!operations.includes(r.operation)) fail('UNSUPPORTED_OPERATION', 'Operation is outside this service slice');
   const write = mutations.includes(r.operation);
@@ -20,6 +21,7 @@ export function validateRequest(r) {
     slug(r.requestId);
     if (!Number.isSafeInteger(r.expectedRevision) || r.expectedRevision < 0) fail('INVALID_REQUEST', 'Expected nonnegative revision');
   }
+  if (classificationOperations.includes(r.operation)) { validateClassificationRequest(r); return write; }
   if (catalogOperations.includes(r.operation)) { validateCatalogRequest(r); return write; }
   if (producerOperations.includes(r.operation)) { validateProducerRequest(r); return write; }
   if (legacyQueryOperations.includes(r.operation)) { validateLegacyQuery(r); return false; }
@@ -37,6 +39,7 @@ export function validateRequest(r) {
   return write;
 }
 export function operate(store, state, r) {
+  if (classificationOperations.includes(r.operation)) return operateClassification(store, state, r);
   if (catalogOperations.includes(r.operation)) return operateCatalog(store, state, r);
   if (producerOperations.includes(r.operation)) return operateProducer(store, state, r);
   if (legacyQueryOperations.includes(r.operation)) return operateLegacyQuery(store, state, r);

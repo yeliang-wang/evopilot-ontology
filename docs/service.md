@@ -1,6 +1,6 @@
 # First M2 durable Ontology service
 
-Import `createOntologyService` from `@evopilot-next/ontology/service`. The returned synchronous API has `capabilities()`, `initialize()`, `execute(request)` and `close()`. Import, construction and capabilities create nothing. `initialize()` explicitly opens or creates an external workspace; `close()` is idempotent and ends the instance. No ambient environment/default workspace is used.
+Import `createOntologyService` from `@evopilot-next/ontology/service`. The returned API has `capabilities()`, `initialize()`, `execute(request)` and `close()`, plus async `classify(request)` for classification start/reanalyze. Import, construction and capabilities create nothing. `initialize()` explicitly opens or creates an external workspace; `close()` is idempotent and ends the instance. No ambient environment/default workspace is used.
 
 ```js
 const service = createOntologyService({ workspaceRoot: '/absolute/external/workspace', workspaceId: 'example' });
@@ -57,7 +57,7 @@ The supported service target is Node **24.14.0**, adopting its built-in SQLite A
 
 Independent operator validation: run `npm run check` and `npm test` with installed locked dependencies and permission to create temporary workspaces and child processes. The service and import-service tests cover real filesystem persistence, scope, rollback, byte preservation, quarantine and derivation. The kill seam intercepts SQLite COMMIT only inside the test worker; product code has no environment/RPC/test-hook backdoor.
 
-Existing pure/compat/migration/source APIs, v1 fixtures, schemas, public sources and vendor bytes remain unchanged. The [28 retained legacy queries](legacy-api.md) now run synchronously as read-only previews. The ten scoped Catalog routes are implemented (see [Catalog service](catalog-service.md)); seven persistent classification operations, CLI, MCP, full workspace integration and unified Expert/plugin delivery remain pending; unsupported operations fail explicitly.
+Existing pure/compat/migration/source APIs, v1 fixtures, schemas, public sources and vendor bytes remain unchanged. The [28 retained legacy queries](legacy-api.md) now run synchronously as read-only previews. The ten scoped Catalog routes are implemented (see [Catalog service](catalog-service.md)); the seven persistent classification routes are now implemented (see [Classification service](classification-service.md)). CLI, MCP, full workspace integration and unified Expert/plugin delivery remain pending; unsupported operations fail explicitly.
 
 The complete closed query and producer input tables, historical calculation authority boundary, scoped stored-source validation/diff behavior and remaining service inventory are documented in [Legacy API](legacy-api.md). Seven retained producers and the proposal.create helper use producer.prepare/inspect/list/decide. Named producers accept only planId. Their exact current dependency bindings survive their own prepare/decision revision changes, but reject changed records. Query outputs never grant native review or publication rights.
 

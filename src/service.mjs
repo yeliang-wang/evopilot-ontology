@@ -2,31 +2,29 @@ import { exactFields, frozenClone, sha256, stableSerialize } from '../vendor/com
 import { openState, bounded, fail, LIMITS, validateState } from './state.mjs';
 import { operations, validateRequest, operate } from './native-operations.mjs';
 import { catalogMutations, verifyCatalogReceipt } from './catalog-operations.mjs';
+import { classificationDispatch, classificationOperations, findClassification } from './classification-operations.mjs';
+import { classificationProviders, createClassificationRunner } from './classification-runner.mjs';
 
 // Construction and discovery are pure. Persistence begins only at initialize().
 export function createOntologyService(options, trustedProviders = {}) {
   bounded(options); exactFields(options, ['workspaceRoot', 'workspaceId']);
-  if (!trustedProviders || typeof trustedProviders !== 'object' || ![Object.prototype, null].includes(Object.getPrototypeOf(trustedProviders))) fail('INVALID_REQUEST', 'Code-injected provider required');
-  const descriptors = Object.getOwnPropertyDescriptors(trustedProviders);
-  for (const key of Reflect.ownKeys(descriptors)) {
-    const descriptor = descriptors[key];
-    if (key !== 'resolveLegacyHarness' || !Object.hasOwn(descriptor, 'value') || typeof descriptor.value !== 'function') fail('INVALID_REQUEST', 'Code-injected provider required');
-  }
-  const providers = Object.freeze({ resolveLegacyHarness: descriptors.resolveLegacyHarness?.value });
+  const providers = classificationProviders(trustedProviders);
   const { workspaceRoot, workspaceId } = options;
   let store = null, closed = false;
-  const capabilities = () => frozenClone({ product: 'ontology', stage: 'M2_FIRST_SLICE', operations, limits: LIMITS, authority: false, softwareRelease: false, pending: ['7 persistent classification operations', 'CLI', 'MCP', 'Expert integration', 'trusted Harness provider wiring'] });
+  const capabilities = () => frozenClone({ product: 'ontology', stage: 'M2_OWNED_SERVICE', operations, limits: LIMITS, authority: false, softwareRelease: false, pending: ['MCP', 'Expert integration', 'trusted Harness provider wiring'] });
   function initialize() {
     if (closed) fail('CLOSED', 'Service is closed');
     if (!store) { store = openState(workspaceRoot, workspaceId); store.trustedProviders = providers; }
     return frozenClone({ workspaceId, initialized: true, authority: false });
   }
-  function execute(request) {
+  const runClassification = createClassificationRunner(() => store);
+  function executeCore(request, onDispatch) {
     let transaction = false, validatedOperation;
     try {
       bounded(request);
       const r = frozenClone(request), write = validateRequest(r);
       validatedOperation = r.operation;
+      if (classificationDispatch.includes(r.operation) && !onDispatch) fail('ASYNC_REQUIRED', 'Use service.classify for classification dispatch');
       if (closed) fail('CLOSED', 'Service is closed');
       if (!store) fail('NOT_INITIALIZED', 'Explicit initialize required');
       store.guard();
@@ -44,6 +42,7 @@ export function createOntologyService(options, trustedProviders = {}) {
             const current = db.prepare('SELECT data FROM state WHERE singleton = 1').get();
             verifyCatalogReceipt(store, validateState(JSON.parse(current.data)), r.scope, result);
           }
+          if (classificationOperations.includes(r.operation)) findClassification(store, validateState(JSON.parse(db.prepare('SELECT data FROM state WHERE singleton = 1').get().data)), r.scope, r.input.id);
           db.exec('COMMIT'); transaction = false; return frozenClone(result);
         }
       }
@@ -58,6 +57,7 @@ export function createOntologyService(options, trustedProviders = {}) {
         if (!receipt) fail('NOT_FOUND', 'Receipt not found in scope');
         result = JSON.parse(receipt.receipt);
         if (catalogMutations.includes(result.operation)) verifyCatalogReceipt(store, state, r.scope, result);
+        if (classificationOperations.includes(result.operation)) findClassification(store, state, r.scope, result.result.id ?? result.result.classificationSessionId);
       } else result = operate(store, state, r);
       if (write) {
         if (db.prepare('SELECT count(*) AS n FROM receipts').get().n >= LIMITS.receipts || row.revision >= Number.MAX_SAFE_INTEGER) fail('LIMIT', 'Receipt/revision limit');
@@ -74,16 +74,27 @@ export function createOntologyService(options, trustedProviders = {}) {
         result = receipt;
       }
       db.exec('COMMIT'); transaction = false;
+      if (classificationDispatch.includes(r.operation)) onDispatch();
       return frozenClone(result);
     } catch (e) {
       if (transaction) { try { store.db.exec('ROLLBACK'); } catch { /* Preserve original failure. */ } }
       if (['semantic.catalog.recover', 'semantic.catalog.recovery-readback', 'semantic.catalog.recovery-inspect'].includes(validatedOperation)) {
         throw Object.assign(new Error('Catalog recovery result unresolved'), { code: 'UNKNOWN', causeCode: e.code ?? 'INVALID_REQUEST', status: 'UNKNOWN' });
       }
+      if (classificationOperations.includes(validatedOperation)) fail(typeof e.code === 'string' && /^[A-Z_]+$/.test(e.code) ? e.code : 'CLASSIFICATION_FAILED', 'Classification request failed');
       if (typeof e.code === 'string' && !e.code.startsWith('ERR_') && !e.code.startsWith('SQLITE_')) throw e;
       fail(e.code === 'ERR_SQLITE_ERROR' ? 'STATE_ERROR' : 'INVALID_REQUEST', 'Service request failed: ' + (e.code || 'invalid data'));
     }
   }
+  function execute(request) { return executeCore(request); }
+  async function classify(request) {
+    bounded(request);
+    const r = frozenClone(request);
+    if (!classificationDispatch.includes(r.operation)) fail('INVALID_REQUEST', 'classify accepts start or reanalyze only');
+    let created = false;
+    const receipt = executeCore(r, () => { created = true; });
+    return created ? runClassification(r, receipt) : receipt;
+  }
   function close() { if (store) { store.db.close(); store = null; } closed = true; }
-  return Object.freeze({ capabilities, initialize, execute, close });
+  return Object.freeze({ capabilities, initialize, execute, classify, close });
 }
