@@ -21,7 +21,7 @@ are inert provenance. Original lifecycle and example labels confer no authority.
 
 Source preservation is not native-v1 validation or product import completion.
 The main API and existing compat/migration APIs remain unchanged. Inspect these four documents with `inspectLegacySource` from `@evopilot-next/ontology/migration`; `deriveLegacyModel` may return PENDING when business definitions or semantic mappings remain unresolved.
-No global source loader or import API is exposed. See
+The [owned service](service.md) implements `source.install` for the four exact bundled keys, scoped `source.list`/`source.inspect`, and `legacy.import` for bounded inline historical JSON/YAML. It does not expose a global filesystem loader or arbitrary source-code parser. Native reverse modeling instead uses authorized observations and `asset.put`; see [asset workflows](asset-workflows.md). See
 [provenance](../provenance/public-assets.json), [LICENSE](../LICENSE) and [NOTICE](../NOTICE).
 The provenance links the preserved source commit at the verified historical
 `yeliang-wang/evopilot-harness` origin. Original paths remain inert; no files were moved.

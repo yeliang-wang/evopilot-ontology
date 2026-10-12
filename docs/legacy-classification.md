@@ -1,6 +1,6 @@
-# Readonly source classification extraction
+# Retained source classification library
 
-This is partial M1 calculation-library work, not full E03 or M1 completion. Historical wire identifiers remain compatibility identifiers. A classification match and immutable handoff evidence do not establish Harness eligibility, approval, or publication.
+This compatibility library underlies the seven-operation [owned classification service](classification-service.md). Historical wire identifiers remain compatibility identifiers. A classification match and immutable handoff evidence do not establish Harness eligibility, approval, or publication.
 
 The compatibility entry adds classification (engine), classifier, classificationAdvisor, classificationEvaluation, sourceDescriptor, and sourceConcept to the existing twelve namespaces. The eight native exports remain unchanged.
 
@@ -10,26 +10,18 @@ Advisor accepts a trusted application callback through advisorProvider, never se
 
 advisorTimeoutMs (callback timeoutMs) defaults to 180000 ms and must be a finite positive integer at most 180000. Invalid values return INVALID_ADVISOR_TIMEOUT with zero invocations before any durable claim; absent callbacks still return MODEL_NOT_CONFIGURED. A failed synchronous or asynchronous beforeInvocation claim propagates without calling the provider. The callback runs exactly once and may accept a second argument `{signal, analysisAttemptDigest}`; existing one-argument callbacks remain supported.
 
-The deadline clears its timer on every terminal path, signals abort, and returns TRANSPORT_TIMEOUT with providerCompletion UNKNOWN and an inspection-before-new-attempt policy. The engine offers inspect/close, without automatic replay or a human approval gate. An injected callback cannot be forcibly killed: it can ignore abort, and synchronous work can block the event loop and delay timer delivery. Late results are discarded and late rejections consumed. Inspection and reconciliation with actual Runtime provider receipts remain pending integration; a local timeout does not establish whether the external provider finished.
+The deadline clears its timer on every terminal path, signals abort, and returns TRANSPORT_TIMEOUT with providerCompletion UNKNOWN and an inspection-before-new-attempt policy. The engine offers inspect/close, without automatic replay or a human approval gate. An injected callback cannot be forcibly killed: it can ignore abort, and synchronous work can block the event loop and delay timer delivery. Late results are discarded and late rejections consumed. The [owned service](classification-service.md) persists claims and outcomes, but application-specific reconciliation with external provider receipts remains necessary; a local timeout does not establish whether the external provider finished.
 
 Callback responses pass the vendored descriptor-safe finite, acyclic plain-JSON check before field validation or hashing. Unsafe values, including accessors, cycles and BigInt, return ADVISOR_CONTRACT_REJECTED with rawDigest null, without executing getters or retaining rejected raw content. Valid response receipts, digests and usage retain their existing shape.
 
-Public Git acquisition remains a library capability and was not invoked in this batch. It requires explicit external cache confinement, uses a fixed minimal environment and disabled hooks/credential helpers, and uses public HTTPS without inherited SSH configuration. Local file/directory and ordered-member classification are readonly.
+Public Git acquisition remains an explicit library capability. It requires explicit external cache confinement, uses a fixed minimal environment and disabled hooks/credential helpers, and uses public HTTPS without inherited SSH configuration. Local file/directory and ordered-member classification are readonly.
 
 createClassificationHandoff validates the exact result digest, current source-policy version and fresh source evidence, then returns a deeply frozen copy. It neither imports nor creates Harness Operation Sessions.
 
-Original pure classification assertions and all taxonomy boundary assertions were ported. Tests use real synthetic temporary files and injected deterministic test providers; they do not represent real LLM integration. The approved candidate-impact JSON fixture is embedded in the test so installed tests never read the legacy checkout. Persistent CLI, Host, server, replay and recovery portions remain pending.
+Original pure classification and taxonomy boundary assertions are retained. Tests use synthetic source files and explicit deterministic advisors with the owned engine; they do not establish real LLM integration. See the [independent technical baseline](../README.md).
 
-Verification in this bounded batch: 11 core tests and five selected pure classifier/taxonomy tests passed. Syntax is checked with node --check. Real temporary-file, static extractor, subprocess and package-isolation execution remain for the parent run.
+The [owned classification service](classification-service.md) implements start, inspect, resume, reanalyze, list, continue_to_harness and close, with durable claims, immutable admission receipts and bounded recovery. The [CLI](cli.md) and parent Preview MCP route these operations; start/reanalyze await classify. Resume only reads, UNKNOWN is never replayed, and reanalysis requires a known completed attempt. There is no separate cancel operation; close records closure.
 
-Subsequent bounded callback repair: six focused asynchronous regression tests passed locally, including short deadlines, late completion, claim failures, unsafe JSON and timer cleanup. Full-suite execution remains with the parent run; this repair makes no M1 or E01–E19 acceptance claim.
+Explicit application source/advisor/model configuration is required. Default CLI and Preview deployments provide none, and no old Runtime profiles or credentials are inherited. Harness eligibility, sessions and publication remain separate authority boundaries. Actual Desktop/Host full-journey acceptance, full migration, E03/E10 and source-ledger closure status must be obtained from a separate local acceptance report bound to the exact candidate; without that report, no acceptance can be claimed. Retention does not establish the full historical Host or gold-matrix journey.
 
-Pending:
-- Real external model integration and Runtime-owned reference-only provider binding (M2).
-- Seven persistent classification MCP lifecycle operations: start, inspect, resume, reanalyze, list, continue, close (M2); cancel is an action through close. Retained Host/CLI/server recovery and lifecycle integration remain pending.
-- Harness eligibility, Operation Sessions, proposals, approval and publication.
-- Full original persistent 48-case gold-matrix replay and real stdio Host acceptance.
-- Public Git acquisition, network integration and real temporary-files/process/extractor tests in the parent run.
-- Full E03 and M1 completion.
-
-Source and destination hashes, adaptations and original test links are recorded in [legacy-classification provenance](../provenance/legacy-classification.json). Existing [core provenance](../provenance/legacy-core.json) retains its origin and records this request as a subsequent change.
+Source and destination hashes, adaptations and original test links remain in [classification provenance](../provenance/legacy-classification.json) and [core provenance](../provenance/legacy-core.json).

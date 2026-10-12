@@ -4,7 +4,7 @@ Start with the meaning you need to describe and the evidence you have. Ontology 
 
 ## Concepts and format choices
 
-A model describes concepts, properties, relations and constraints. Source mappings explain where each statement came from; unresolved issues keep missing or disputed meaning visible. You can begin with requirements alone. Ordinary users can describe these in plain language; a subsequently integrated Host Expert can help author fields and explain review results. That Host/Expert integration is still pending. Today developers use the standalone [CLI](cli.md) or [service](service.md); the JSON examples are integration interfaces, not a requirement that users hand-author raw JSON.
+A model describes concepts, properties, relations and constraints. Source mappings explain where each statement came from; unresolved issues keep missing or disputed meaning visible. You can begin with requirements alone. Ordinary users can describe these in plain language; the parent unified Expert guidance supports authoring fields and explaining review results. Actual Desktop full-journey acceptance requires a separate local acceptance report bound to the exact candidate; without it, no acceptance can be claimed. Developers can also use the standalone [CLI](cli.md) or [service](service.md); the JSON examples are integration interfaces, not a requirement that users hand-author raw JSON.
 
 | Format | Contract and purpose |
 | --- | --- |
@@ -25,7 +25,9 @@ The pure `buildDelivery` and `verifyDelivery` APIs build/check deterministic art
 
 ## Reverse: explicit source evidence to the same draft
 
-Read only explicitly scoped source evidence, such as synthetic `src/orchard/harvest.mjs` at a pinned revision. Separate directly observed structure (`source-observed`) from a proposed business interpretation (`inferred`); runtime behavior requires its own `runtime-observed` evidence. Set `direction: "reverse"`, preserve source mappings, and carry uncertainties into the same native draft/review/decision/publication sequence.
+The Host performs bounded inspection of explicitly authorized source files. Author those observations directly into a native v1 model with real source locator, revision and digest pins, definitions and source mappings. Separate directly observed structure (`source-observed`) from a proposed business interpretation (`inferred`); runtime behavior requires its own `runtime-observed` evidence. Set `direction: "reverse"`, record unresolved semantics, validate, and store the draft with `asset.put`. Continue through the same separate review/decision/publication sequence. The packaged [synthetic examples](../examples/synthetic-models.json) illustrate the structure; replace synthetic pins only with real inspected evidence when modeling a real project.
+
+This native reverse workflow does not require the legacy bridge. `legacy.import` and `legacy.derive` map structured historical assets; they do not parse arbitrary source code.
 
 For bundled sources, obtain exact keys through `listPublicSources` and install one using `source.install`; `source.list` and `source.inspect` inspect retained evidence. This installer accepts only the four bundled keys, not arbitrary source paths. For historical JSON/YAML, `legacy.import` retains exact inline bytes and origin metadata; invalid but safely parsed documents are quarantined. `legacy.derive` requires an inspected sourceId, a new id/version and explicit visibility, and returns coverage plus unresolved issues. It never imports historical approval. Unsupported projections and missing definitions remain explicit blockers. See [source contracts](public-assets.md) and [derivation](legacy-migration.md).
 
@@ -63,7 +65,7 @@ Reads have exactly `{operation, scope, input}`; mutations additionally have a fr
 
 ## Retained classification and grounding
 
-The seven operations are `classification.start`, `classification.inspect`, `classification.resume`, `classification.reanalyze`, `classification.list`, `classification.continue_to_harness` and `classification.close`. Start/reanalyze use async `service.classify`; the others use `execute`. Trusted source resolution, advisor and explicit model binding are prerequisites. The CLI configures none of these callbacks automatically. See the [exact classification inputs and handoff evidence](classification-service.md).
+The seven operations are `classification.start`, `classification.inspect`, `classification.resume`, `classification.reanalyze`, `classification.list`, `classification.continue_to_harness` and `classification.close`. Start/reanalyze use async `service.classify`; the others use `execute`. Trusted source resolution, advisor and explicit model binding are prerequisites. Neither the standalone CLI nor the default Preview daemon configures these providers automatically; see [integration boundaries](service.md#preview-integration-and-provider-boundaries). See the [exact classification inputs and handoff evidence](classification-service.md).
 
 A TAXONOMY_MATCHED result means the taxonomy matches the analyzed source; it is not Harness approval or quality eligibility. An exact user decision can record a handoff, but starts no Harness session. Admission receipts remain PENDING; inspect/resume reads the current outcome. Reanalysis is only for a known completed prior attempt.
 
@@ -91,4 +93,4 @@ Catalog checks real scoped producer history, consumed decisions, source/material
 
 On timeout or UNKNOWN, retain the original request identity and inspect receipts; never redispatch uncertain work. Classification resume does not invoke the advisor. Catalog uses `semantic.catalog.recovery-inspect` / `semantic.catalog.recovery-readback`; `semantic.catalog.recover` records reconciliation with its own requestId and revision. It neither republishes nor unlocks old file stores. Preserve unresolved failures.
 
-Current local evidence reports 201 passing product tests, check/build and offline artifact smoke. Some detailed retained guides preserve earlier pending-test/CLI notes; the [current migration summary](../provenance/migration-current.json) records the newer bounded evidence. MCP, Host/Expert/provider composition and final source-ledger closure remain pending; E03/E10 and full migration are not complete. Local evidence conveys no acceptance or software release authority.
+See the [technical baseline](../README.md) and [current roadmap](roadmap.md). Parent Preview routing and unified Expert guidance are implemented; default advanced providers are not configured. Actual Desktop/Host full-journey acceptance, full migration, E03/E10 and source-ledger closure status must be obtained from a separate local acceptance report bound to the exact candidate; without that report, no acceptance can be claimed. Local evidence conveys no acceptance or software release authority.
