@@ -1,9 +1,9 @@
 import { inspectReference } from '../vendor/compatibility/v1/reference.mjs';
-export { validateOntology } from './specification.mjs';
-export { validateInstances } from './instances.mjs';
-export { buildDelivery, verifyDelivery } from './delivery.mjs';
+export { validateOntology } from './specification.js';
+export { validateInstances } from './instances.js';
+export { buildDelivery, verifyDelivery } from './delivery.js';
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.1';
 export const PRODUCT = 'ontology';
 
 export function capabilities() {
@@ -23,6 +23,8 @@ export function capabilities() {
   });
 }
 
-export function inspectArtifactReference(ref, observed) {
+export function inspectArtifactReference(ref: unknown, observed: unknown) {
   return inspectReference(ref, observed, { product: 'ontology' });
 }
+
+export type * from "./types.js";

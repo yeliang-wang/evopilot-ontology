@@ -13,7 +13,7 @@ export const repositories = Object.freeze({
 });
 const owners = ['runtime', 'harness', 'ontology'];
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-export const tarball = owner => `evopilot-next-${owner}-0.1.0.tgz`;
+export const tarball = owner => `evopilot-next-${owner}-0.1.1.tgz`;
 export function validateInputs(input) {
   assert(Object.hasOwn(repositories, input.repository), 'Repository not allowed');
   assert.match(input.expectedCommit, /^[a-f0-9]{40}$/);
@@ -31,7 +31,7 @@ export function validateInputs(input) {
 export function validateRun(run, input, head, pkg) {
   const owner = validateInputs(input);
   assert.equal(head, input.expectedCommit, 'Checkout HEAD mismatch');
-  assert.equal(pkg.version, '0.1.0');
+  assert.equal(pkg.version, '0.1.1');
   assert.equal(pkg.name, '@evopilot-next/' + owner);
   assert.equal(run.id, Number(input.sourceRunId));
   assert.equal(run.repository?.full_name, input.repository);
@@ -48,7 +48,7 @@ export function validateArtifact(metadata, input) {
   validateInputs(input);
   assert.equal(input.repository, 'yeliang-wang/evopilot');
   assert.equal(metadata.total_count, metadata.artifacts?.length, 'Incomplete artifact metadata');
-  const matches = metadata.artifacts.filter(a => a.name === `evopilot-0.1.0-preview-${input.expectedCommit}`);
+  const matches = metadata.artifacts.filter(a => a.name === `evopilot-0.1.1-preview-${input.expectedCommit}`);
   assert.equal(matches.length, 1, 'Expected exactly one named artifact');
   const a = matches[0];
   assert(Number.isSafeInteger(a.id) && a.id > 0);
@@ -65,7 +65,7 @@ export function validateDigest(bytes, expected) {
   assert.equal(expected.length, 64);
   assert.equal(sha256(bytes), expected, 'SHA256 mismatch');
 }
-export const parentFiles = ['evopilot-0.1.0-preview.tar.gz', ...owners.map(o => `${o}/${tarball(o)}`),
+export const parentFiles = ['evopilot-0.1.1-preview.tar.gz', ...owners.map(o => `${o}/${tarball(o)}`),
   'harness/dependency-lock.json', 'ontology/dependency-lock.json', 'source-revision.txt', 'SHA256SUMS'];
 export function validateArchiveNames(names) {
   assert.equal(new Set(names).size, names.length, 'Duplicate ZIP path');
@@ -100,7 +100,7 @@ export function validatePack(records, owner) {
   assert(owners.includes(owner));
   assert(Array.isArray(records) && records.length === 1);
   assert.equal(records[0].name, '@evopilot-next/' + owner);
-  assert.equal(records[0].version, '0.1.0');
+  assert.equal(records[0].version, '0.1.1');
   assert.equal(records[0].filename, tarball(owner));
   return records[0].filename;
 }
@@ -118,8 +118,8 @@ function environment() {
   return { repository: e.GITHUB_REPOSITORY, expectedCommit: e.EXPECTED_COMMIT, sourceRunId: e.SOURCE_RUN_ID,
     expectedDigest: e.EXPECTED_DIGEST, publish: e.PUBLISH, decisionRef: e.DECISION_REF };
 }
-function assetNames(owner) {
-  return owner === 'stack' ? ['evopilot-0.1.0-preview.tar.gz', ...owners.map(tarball),
+export function assetNames(owner) {
+  return owner === 'stack' ? ['evopilot-0.1.1-preview.tar.gz', ...owners.map(tarball),
     'harness-dependency-lock.json', 'ontology-dependency-lock.json', 'source-revision.txt', 'SHA256SUMS']
     : [tarball(owner), ...(owner === 'runtime' ? [] : [owner + '-dependency-lock.json']), 'source-revision.txt', 'SHA256SUMS'];
 }
@@ -160,6 +160,7 @@ function prepare(input, owner, out) {
   } else {
     const pack = path.join(process.env.RUNNER_TEMP, 'child-pack'); fs.mkdirSync(pack);
     command('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund']);
+    command('npm', ['run', 'build']);
     const filename = validatePack(JSON.parse(command('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', pack])), owner);
     const bytes = read(path.join(pack, filename)); validateDigest(bytes, input.expectedDigest); files.set(filename, bytes);
     if (owner !== 'runtime') files.set(owner + '-dependency-lock.json', read('package-lock.json'));
@@ -172,8 +173,29 @@ function prepare(input, owner, out) {
   console.log('Technical validation passed; no acceptance or release authority inferred.');
 }
 export function releaseNotes(input, owner) {
-  const role = { stack: 'Parent composition and portable distribution', runtime: 'Runtime execution', harness: 'Harness quality assets', ontology: 'Ontology semantic models' }[owner];
-  return `# EvoPilot 0.1.0 Preview\n\n${role}. Node 24.14.0. This is a Preview, not v1. Products are published independently.\n\n[Repository](https://github.com/${input.repository}) · [Exact source](https://github.com/${input.repository}/tree/${input.expectedCommit}) · [Source CI](https://github.com/${input.repository}/actions/runs/${input.sourceRunId})\n\nTechnical preparation does not establish acceptance. Release publication requires an explicit external decision.\n`;
+  assert.equal(validateInputs(input), owner, 'Release notes role mismatch');
+  const role = { stack: 'Parent composition and portable distribution', runtime: 'Runtime projects, goals, execution and durable receipts', harness: 'Harness quality assets and evaluation', ontology: 'Ontology semantic models and validation' }[owner];
+  const repository = `https://github.com/${input.repository}`;
+  const docs = `${repository}/blob/${input.expectedCommit}`;
+  const api = owner === 'runtime' ? `[Service API](${docs}/docs/service.md) · [CLI](${docs}/docs/cli.md)` : `[Product documentation](${docs}/README.md)`;
+  return `# EvoPilot 0.1.1 Preview
+
+${role}. Use Node 24.14.0. This repair adopts strict TypeScript with TypeScript 5.9.3, compiled JavaScript and declaration files for package consumers. Public documentation and repository links are repaired; contributor attribution follows actual Git author records without rewriting v0.1.0 history. Historical code, provenance and licenses are retained. Public APIs and asset v1 contracts remain backward compatible.
+
+[Repository](${repository}) · [Exact source commit](${repository}/tree/${input.expectedCommit}) · [Successful source CI](${repository}/actions/runs/${input.sourceRunId})
+
+## Downloads and installation
+
+[Download v0.1.1 assets](${repository}/releases/tag/v0.1.1). Verify every downloaded asset against SHA256SUMS and inspect source-revision.txt before installation. ${api} · [Installation and source instructions](${docs}/README.md) · [Distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
+
+The parent consumes the exact verified source-CI ZIP without rebuilding. Child preparation installs locked development tools, builds, then packs; its tarball must match the expected source-distribution SHA256. Runtime has no runtime dependencies and no Runtime dependency-lock asset. Compiler development dependencies are not installed runtime dependencies. Harness and Ontology retain their named dependency-lock assets. Installed component tarballs include compiled dist and declarations, and omit development scripts/tests; package scripts are for source maintainers.
+
+## Composition and limitations
+
+[Parent releases](https://github.com/yeliang-wang/evopilot/releases) · [Runtime](https://github.com/yeliang-wang/evopilot-runtime) · [Harness](https://github.com/yeliang-wang/evopilot-harness) · [Ontology](https://github.com/yeliang-wang/evopilot-ontology).
+
+Standalone Runtime inspection and project/goal planning need no execution provider. Preparing pinned runs and executing them require configured trusted resolvers and an executor; the default standalone CLI does not perform coding work. Parent composition is documented separately. This Preview does not establish Host acceptance, arbitrary coding-agent support, production readiness or GA. There is no npm publication. Technical checks and source CI provide evidence independently of acceptance and release authority; publication is conditional on all required acceptance and the explicit recorded decision.
+`;
 }
 export function validateAbsence(response, exitCode) {
   const status = /^HTTP\/\S+ (\d{3})\b/m.exec(response)?.[1];
@@ -194,12 +216,12 @@ function publish(input, owner, out) {
   const revision = files.get('source-revision.txt').toString();
   assert.equal(revision.split('\n')[0], input.expectedCommit);
   if (owner !== 'stack') { assert.equal(revision, input.expectedCommit + '\n'); validateDigest(files.get(tarball(owner)), input.expectedDigest); }
-  requireAbsent(`repos/${input.repository}/releases/tags/v0.1.0`);
-  requireAbsent(`repos/${input.repository}/git/ref/tags/v0.1.0`);
+  requireAbsent(`repos/${input.repository}/releases/tags/v0.1.1`);
+  requireAbsent(`repos/${input.repository}/git/ref/tags/v0.1.1`);
   // No retries or cleanup after either mutation: reconcile an uncertain outcome manually.
-  command('gh', ['api', '--method', 'POST', `repos/${input.repository}/git/refs`, '-f', 'ref=refs/tags/v0.1.0', '-f', `sha=${input.expectedCommit}`]);
-  command('gh', ['release', 'create', 'v0.1.0', '--repo', input.repository, '--verify-tag', '--prerelease', '--latest=false',
-    '--title', 'EvoPilot 0.1.0 Preview', '--notes-file', path.join(out, 'release-notes.md'), ...names.map(n => path.join(out, n))]);
+  command('gh', ['api', '--method', 'POST', `repos/${input.repository}/git/refs`, '-f', 'ref=refs/tags/v0.1.1', '-f', `sha=${input.expectedCommit}`]);
+  command('gh', ['release', 'create', 'v0.1.1', '--repo', input.repository, '--verify-tag', '--prerelease', '--latest=false',
+    '--title', 'EvoPilot 0.1.1 Preview', '--notes-file', path.join(out, 'release-notes.md'), ...names.map(n => path.join(out, n))]);
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {

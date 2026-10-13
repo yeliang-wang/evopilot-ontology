@@ -4,10 +4,10 @@ import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createOntologyService } from '../../src/service.mjs';
+import { createOntologyService } from '../../dist/service.js';
 import { grounding as g, packs as p, projectOntology as o, interoperability as s } from '../../src/compat/index.mjs';
 import { digest } from '../../src/compat/v3/utils.mjs';
-import { operateLegacyQuery, validateLegacyQuery } from '../../src/legacy-queries.mjs';
+import { operateLegacyQuery, validateLegacyQuery } from '../../dist/legacy-queries.js';
 
 const scope = { visibility: 'public', projectId: 'alpha' };
 const read = (service, operation, input = {}, selected = scope) => service.execute({ operation, scope: selected, input });

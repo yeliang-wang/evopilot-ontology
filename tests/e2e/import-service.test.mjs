@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { createOntologyService } from '../../src/service.mjs';
-import { listPublicSources, readPublicSource } from '../../src/asset-sources.mjs';
+import { createOntologyService } from '../../dist/service.js';
+import { listPublicSources, readPublicSource } from '../../dist/asset-sources.js';
 
 const scope = { visibility: 'public', projectId: 'alpha' };
 const privateScope = { visibility: 'private', projectId: 'alpha' };

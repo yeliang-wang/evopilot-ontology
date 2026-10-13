@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parse } from 'yaml';
-import { inspectLegacySource, deriveLegacyModel } from '../../src/migration.mjs';
-import { buildDelivery } from '../../src/delivery.mjs';
-import { validateOntology } from '../../src/specification.mjs';
+import { inspectLegacySource, deriveLegacyModel } from '../../dist/migration.js';
+import { buildDelivery } from '../../dist/delivery.js';
+import { validateOntology } from '../../dist/specification.js';
 import { sha256 } from '../../vendor/compatibility/v1/reference.mjs';
 import { createProfessionalPack, inspectProfessionalPack } from '../../src/compat/v4/semantics/professional-packs.mjs';
 import { digest } from '../../src/compat/v3/utils.mjs';

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fork } from 'node:child_process';
 import { once } from 'node:events';
 import { DatabaseSync } from 'node:sqlite';
-import { createOntologyService } from '../../src/service.mjs';
+import { createOntologyService } from '../../dist/service.js';
 import { sha256, stableSerialize } from '../../vendor/compatibility/v1/reference.mjs';
 
 const fixtures = JSON.parse(readFileSync(new URL('../../examples/synthetic-models.json', import.meta.url)));

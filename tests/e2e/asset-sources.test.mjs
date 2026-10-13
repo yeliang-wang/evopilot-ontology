@@ -72,22 +72,18 @@ test('only exact own keys and bounded public exports', async () => {
   await assert.rejects(import('@evopilot-next/ontology/assets/legacy-sources.json'), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' });
 });
 test('isolated real archive tampering fails closed, including after successful access', async t => {
-  let directory;
-  try { directory = mkdtempSync(join(tmpdir(), 'public-source-test-')); }
-  catch (error) {
-    if (['EPERM', 'EACCES', 'ERR_ACCESS_DENIED'].includes(error.code)) { t.skip('Sandbox denies temporary writes; run in independent verification'); return; }
-    throw error;
-  }
+  const directory = mkdtempSync(join(tmpdir(), 'public-source-test-'));
   try {
-    mkdirSync(join(directory, 'src'));
+    mkdirSync(join(directory, 'dist'));
+    writeFileSync(join(directory, 'package.json'), JSON.stringify({ type: 'module' }));
     mkdirSync(join(directory, 'assets'));
     mkdirSync(join(directory, 'node_modules'));
-    cpSync(new URL('src/asset-sources.mjs', root), join(directory, 'src/asset-sources.mjs'));
+    cpSync(new URL('dist/asset-sources.js', root), join(directory, 'dist/asset-sources.js'));
     cpSync(new URL('node_modules/yaml', root), join(directory, 'node_modules/yaml'), { recursive: true });
     const original = readFileSync(new URL('assets/legacy-sources.json', root), 'utf8');
     const target = join(directory, 'assets/legacy-sources.json');
     writeFileSync(target, original);
-    const isolated = await import(pathToFileURL(join(directory, 'src/asset-sources.mjs')).href);
+    const isolated = await import(pathToFileURL(join(directory, 'dist/asset-sources.js')).href);
     assert.equal(isolated.listPublicSources().count, 4);
     const mutations = [
       a => { a.owner = 'foreign'; },

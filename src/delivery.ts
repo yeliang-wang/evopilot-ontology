@@ -1,9 +1,12 @@
+import type { OntologyModel } from "./types.js";
 import { assertJSON, exactFields, sha256, frozenClone, stableSerialize } from '../vendor/compatibility/v1/reference.mjs';
-import { validateOntology, failure } from './specification.mjs';
+import { validateOntology, failure } from './specification.js';
 
-export function buildDelivery(asset) {
-  const validationReport = validateOntology(asset);
+export function buildDelivery(input: unknown) {
+  const validationReport = validateOntology(input);
   if (!validationReport.valid || validationReport.pending.length) throw new TypeError('Cannot deliver invalid model or required unresolved issues');
+  // Successful native validation establishes the complete model shape.
+  const asset = input as OntologyModel;
   const content = {
     model: asset,
     provenance: asset.provenance,
@@ -12,11 +15,11 @@ export function buildDelivery(asset) {
     validationReport,
     buildReport: { status: 'BUILT', instanceValidation: 'NOT_CHECKED', constraints: validationReport.constraints, authority: false, businessConfirmed: false, released: false },
   };
-  const manifest = { specVersion: 'v1', product: 'ontology', productVersion: '0.1.0', id: asset.id, version: asset.version, visibility: asset.visibility, modelDigest: sha256(asset), contentDigest: sha256(content), dependencies: asset.dependencies };
+  const manifest = { specVersion: 'v1', product: 'ontology', productVersion: '0.1.1', id: asset.id, version: asset.version, visibility: asset.visibility, modelDigest: sha256(asset), contentDigest: sha256(content), dependencies: asset.dependencies };
   return frozenClone({ ...content, manifest, digest: sha256({ ...content, manifest }) });
 }
 
-export function verifyDelivery(delivery) {
+export function verifyDelivery(delivery: unknown) {
   try {
     assertJSON(delivery);
     exactFields(delivery, ['model', 'provenance', 'sourceMappings', 'unresolvedIssues', 'validationReport', 'buildReport', 'manifest', 'digest']);

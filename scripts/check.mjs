@@ -11,13 +11,14 @@ const PRODUCT = 'ontology';
 const PIN = 'df4f7246ae35ef9114e2b93663d520e7ff4f44f14f886ac8ba43e9fc080ddc9a';
 const expected = {
   "name": "@evopilot-next/ontology",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=24.14.0"
   },
   "files": [
+    "dist",
     "src",
     "vendor",
     "README.md",
@@ -28,23 +29,45 @@ const expected = {
     "provenance",
     "LICENSE",
     "NOTICE",
-    "assets"
+    "assets",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "CHANGELOG.md"
   ],
   "exports": {
-    ".": "./src/index.mjs",
-    "./compat": "./src/compat/index.mjs",
-    "./migration": "./src/migration.mjs",
-    "./sources": "./src/asset-sources.mjs",
-    "./service": "./src/service.mjs"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./compat": {
+      "types": "./dist/compat/index.d.mts",
+      "import": "./dist/compat/index.mjs"
+    },
+    "./migration": {
+      "types": "./dist/migration.d.ts",
+      "import": "./dist/migration.js"
+    },
+    "./sources": {
+      "types": "./dist/asset-sources.d.ts",
+      "import": "./dist/asset-sources.js"
+    },
+    "./service": {
+      "types": "./dist/service.d.ts",
+      "import": "./dist/service.js"
+    }
   },
   "scripts": {
-    "build": "node scripts/check.mjs",
-    "check": "node scripts/check.mjs",
+    "build": "node scripts/build.mjs",
+    "check": "tsc --noEmit && node scripts/check.mjs",
     "test": "node --test tests/e2e/*.test.mjs"
   },
   "dependencies": {
     "ajv": "8.20.0",
     "yaml": "2.9.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "24.19.2"
   }
 };
 const specifiers = source => [...source.matchAll(/^[\t ]*(?:import\s+(?:(?:[\w$]+(?:\s*,\s*)?)?(?:\{[^}]*\}|\*\s+as\s+[\w$]+)?\s*from\s*)?|export\s+(?:\{[^}]*\}|\*(?:\s+as\s+[\w$]+)?)\s+from\s*)['"]([^'"]+)['"]/gm)].map(match => match[1]);
@@ -64,12 +87,22 @@ async function files(directory) {
 export async function checkSource() {
   const pkg = JSON.parse(await readFile(resolve(ROOT, 'package.json'), 'utf8'));
   for (const [key, value] of Object.entries(expected)) assert.deepEqual(pkg[key], value, key);
-  for (const key of ['devDependencies', 'peerDependencies', 'optionalDependencies']) assert.deepEqual(pkg[key] ?? {}, {});
-  assert.deepEqual(pkg.bin, { 'evopilot-next-ontology': 'src/cli.mjs' });
+  for (const key of ['peerDependencies', 'optionalDependencies']) assert.deepEqual(pkg[key] ?? {}, {});
+  assert.deepEqual(pkg.bin, { 'evopilot-next-ontology': 'dist/cli.js' });
+  // Public type consumers must resolve emitted package exports, never source aliases.
+  for (const entry of Object.values(pkg.exports)) {
+    for (const target of [entry.types, entry.import]) {
+      assert((await lstat(resolve(ROOT, target))).isFile(), 'Build package exports before check: ' + target);
+    }
+  }
+  const consumer = spawnSync(process.execPath, [resolve(ROOT, 'node_modules/typescript/bin/tsc'), '--noEmit', '--strict', '--target', 'ES2023', '--module', 'NodeNext', 'tests/types/contracts.ts'], {
+    cwd: ROOT, encoding: 'utf8', env: { ...process.env, OPENSSL_CONF: '/dev/null' },
+  });
+  assert.ifError(consumer.error); assert.equal(consumer.status, 0, consumer.stdout + consumer.stderr);
   const lock = JSON.parse(await readFile(resolve(ROOT, 'package-lock.json'), 'utf8'));
   assert.deepEqual(lock.packages[''].bin, pkg.bin);
-  assert((await lstat(resolve(ROOT, 'src/cli.mjs'))).mode & 0o111);
-  assert((await readFile(resolve(ROOT, 'src/cli.mjs'), 'utf8')).startsWith('#!/usr/bin/env node\n'));
+  assert((await lstat(resolve(ROOT, 'dist/cli.js'))).mode & 0o111);
+  assert((await readFile(resolve(ROOT, 'dist/cli.js'), 'utf8')).startsWith('#!/usr/bin/env node\n'));
   const vendor = resolve(ROOT, 'vendor/compatibility/v1');
   const manifest = JSON.parse(await readFile(resolve(vendor, 'manifest.json'), 'utf8'));
   assert.deepEqual(manifest, {
@@ -80,30 +113,34 @@ export async function checkSource() {
   assert.equal(createHash('sha256').update(bytes).digest('hex'), PIN);
   const sources = [...await files(resolve(ROOT, 'src')), ...await files(resolve(ROOT, 'vendor'))];
   for (const path of sources) {
-    if (!path.endsWith('.mjs')) continue;
+    if (path.endsWith('.d.ts') || path.endsWith('.d.mts')) continue;
+    if (!path.endsWith('.mjs') && !path.endsWith('.ts')) continue;
+    assert(!(dirname(path) === resolve(ROOT, 'src') && path.endsWith('.mjs')), 'Transitional top-level .mjs implementation must be removed: ' + path);
     const source = await readFile(path, 'utf8');
+    if (path.endsWith('.mjs')) {
     const syntax = spawnSync(process.execPath, ['--check', path], { encoding: 'utf8' });
     assert.ifError(syntax.error); assert.equal(syntax.status, 0, syntax.stderr);
+    }
     assert.doesNotMatch(source, /\bimport\s*\(|\brequire\s*\(|\beval\s*\(|\/Users\/|\/home\/|EVOPILOT_HARNESS_HOME|defaultHarnessHome|\.evopilot-harness|\bprocess\s*(?:\.\s*(?:env|cwd|chdir)|\[)|\bglobalThis\s*(?:\.|\[)|\bm0\//);
     for (const specifier of specifiers(source)) {
       if (isBuiltin(specifier)) continue;
-      if (specifier === 'yaml' && (path.endsWith('/src/asset-sources.mjs') || path === resolve(ROOT, 'src/import-operations.mjs') || PRODUCT === 'ontology' && path.includes('/src/compat/'))) continue;
+      if (specifier === 'yaml' && (path.endsWith('/src/asset-sources.ts') || path === resolve(ROOT, 'src/import-operations.ts') || PRODUCT === 'ontology' && path.includes('/src/compat/'))) continue;
       if (PRODUCT === 'ontology' && path.includes('/src/compat/') && specifier === 'ajv/dist/2020.js') continue;
       assert(specifier.startsWith('.'), 'Undeclared import: ' + specifier);
-      const target = resolve(dirname(path), specifier);
+      const target = resolve(dirname(path), path.endsWith('.ts') && specifier.endsWith('.js') ? specifier.slice(0, -3) + '.ts' : specifier);
       assert(target.startsWith(resolve(ROOT, 'src') + sep) || target === resolve(vendor, 'reference.mjs'), 'Foreign source import');
       assert((await lstat(target)).isFile(), 'Import must be an owned regular file');
     }
   }
   const code = [
     "import assert from 'node:assert/strict';",
-    'const api = await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'src/index.mjs')).href) + ');',
+    'const api = await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'dist/index.js')).href) + ');',
     'assert.equal(api.PRODUCT, ' + JSON.stringify(PRODUCT) + ');',
-    "assert.equal(api.VERSION, '0.1.0');",
+    "assert.equal(api.VERSION, '0.1.1');",
     'assert.equal(api.capabilities().authority, false);',
     'assert.equal(api.capabilities().businessOperationsReady, true);',
-    'await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'src/cli.mjs')).href) + ');',
-    'const service = await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'src/service.mjs')).href) + ');',
+    'await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'dist/cli.js')).href) + ');',
+    'const service = await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'dist/service.js')).href) + ');',
     "const discovery = service.createOntologyService({ workspaceRoot: '/explicit-discovery-only', workspaceId: 'discovery' });",
     "assert(discovery.capabilities().operations.includes('asset.publish'));",
     "assert.equal(typeof discovery.classify, 'function');",

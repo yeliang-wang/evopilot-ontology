@@ -1,3 +1,4 @@
+import type { SourceArchive, PreservedDocument, PublicSourceReport } from "./legacy-types.js";
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { parseDocument } from 'yaml';
@@ -6,15 +7,15 @@ const OWNER = 'ontology';
 const COMMIT = '372733fd7b67ec3bee9efe6322f0229db77b160d';
 const ARCHIVE_HASH = '3ff80c93ed1c444696607d4f66bb4747415a8125516e0444af57e6c96bdbc8ef';
 const MAPPING = [["OntologyPack",null,"harness.evopilot.io/v1","ontology","ontology-pack"],["ProductOntologyPack",null,"semantics.evopilot.io/v1","ontology","ontology-pack"],["DomainOntologyPack",null,"semantics.evopilot.io/v1","ontology","ontology-pack"]];
-const hash = value => createHash('sha256').update(value).digest('hex');
+const hash = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
 const authority = { authority: false, businessConfirmed: false, released: false };
-function identity(d) {
+function identity(d: PreservedDocument) {
   return { kind: d.kind ?? null, schema: d.schema ?? null, apiVersion: d.apiVersion ?? null,
     id: d.metadata?.id ?? d.id ?? null, version: d.metadata?.version ?? d.version ?? null,
     digest: d.metadata?.digest ?? d.digest ?? null };
 }
 
-function freeze(value, seen = new Set()) {
+function freeze<T>(value: T, seen = new Set<object>()): T {
   if (value && typeof value === 'object' && !seen.has(value)) {
     seen.add(value);
     for (const child of Object.values(value)) freeze(child, seen);
@@ -22,11 +23,11 @@ function freeze(value, seen = new Set()) {
   }
   return value;
 }
-function sourceKey(key) {
+function sourceKey(key: unknown): key is string {
   return typeof key === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9/_.@-]*\.yaml$/.test(key)
     && !key.split('/').some(part => !part || part === '.' || part === '..');
 }
-function parse(raw) {
+function parse(raw: string): PreservedDocument {
   const yaml = parseDocument(raw, { uniqueKeys: true, schema: 'core', customTags: [] });
   if (yaml.errors.length || yaml.warnings.length) throw new TypeError('Invalid preserved YAML');
   const document = yaml.toJS({ maxAliasCount: 100 });
@@ -43,11 +44,11 @@ function load() {
   // Read on every access so changes after an earlier successful read fail closed.
   const bytes = readFileSync(new URL('../assets/legacy-sources.json', import.meta.url));
   if (hash(bytes) !== ARCHIVE_HASH) throw new TypeError('Public source archive integrity failure');
-  const archive = JSON.parse(bytes.toString('utf8'));
+  const archive: SourceArchive = JSON.parse(bytes.toString('utf8'));
   if (archive.schema !== 'evopilot-public-source-archive/v1' || archive.version !== 1
     || archive.owner !== OWNER || archive.sourceCommit !== COMMIT
     || Object.keys(archive.entries).length !== 4) throw new TypeError('Invalid archive ownership');
-  const reports = {};
+  const reports: Record<string, PublicSourceReport> = {};
   for (const [sourcePath, entry] of Object.entries(archive.entries)) {
     if (!sourceKey(sourcePath) || Object.hasOwn(reports, sourcePath)
       || typeof entry.raw !== 'string' || Buffer.byteLength(entry.raw, 'utf8') !== entry.bytes
@@ -75,7 +76,7 @@ export function listPublicSources() {
 }
 
 /** Exact manifest key lookup. Archived paths, bindings and recipes are never resolved or executed. */
-export function readPublicSource(sourcePath) {
+export function readPublicSource(sourcePath: string) {
   if (!sourceKey(sourcePath)) throw new TypeError('Unknown public source key');
   const reports = load();
   if (!Object.hasOwn(reports, sourcePath)) throw new TypeError('Unknown public source key');

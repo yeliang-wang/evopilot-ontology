@@ -1,12 +1,13 @@
 {
   "name": "@evopilot-next/ontology",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=24.14.0"
   },
   "files": [
+    "dist",
     "src",
     "vendor",
     "README.md",
@@ -17,18 +18,36 @@
     "provenance",
     "LICENSE",
     "NOTICE",
-    "assets"
+    "assets",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "CHANGELOG.md"
   ],
   "exports": {
-    ".": "./src/index.mjs",
-    "./compat": "./src/compat/index.mjs",
-    "./migration": "./src/migration.mjs",
-    "./sources": "./src/asset-sources.mjs",
-    "./service": "./src/service.mjs"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./compat": {
+      "types": "./dist/compat/index.d.mts",
+      "import": "./dist/compat/index.mjs"
+    },
+    "./migration": {
+      "types": "./dist/migration.d.ts",
+      "import": "./dist/migration.js"
+    },
+    "./sources": {
+      "types": "./dist/asset-sources.d.ts",
+      "import": "./dist/asset-sources.js"
+    },
+    "./service": {
+      "types": "./dist/service.d.ts",
+      "import": "./dist/service.js"
+    }
   },
   "scripts": {
-    "build": "node scripts/check.mjs",
-    "check": "node scripts/check.mjs",
+    "build": "node scripts/build.mjs",
+    "check": "tsc --noEmit && node scripts/check.mjs",
     "test": "node --test tests/e2e/*.test.mjs"
   },
   "dependencies": {
@@ -37,6 +56,10 @@
   },
   "license": "Apache-2.0",
   "bin": {
-    "evopilot-next-ontology": "src/cli.mjs"
+    "evopilot-next-ontology": "dist/cli.js"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "24.19.2"
   }
 }

@@ -1,19 +1,20 @@
 # Ontology documentation
 
-Ontology 0.1.0 has a native v1 lifecycle and separately retained compatibility capabilities.
+EvoPilot Ontology v0.1.1 Preview separates the native v1 model and delivery contract from retained historical capabilities.
 
-| Start here | Guide |
+| Your task | Read |
 | --- | --- |
-| New users: concepts, forward requirements or reverse source evidence | [Concepts and asset workflows](asset-workflows.md#concepts-and-format-choices) |
-| Developers: standalone commands and request examples | [CLI](cli.md) |
-| Developers: owned storage, scope, decisions and API inputs | [Service](service.md) |
-| Native model authors | [v1 specification](../specifications/v1/README.md), [schema](../specifications/v1/asset.schema.json), [synthetic examples](../examples/synthetic-models.json) |
-| Retained queries, Packs and producers | [Legacy API](legacy-api.md), [core library](legacy-core.md) |
-| Retained Catalog users | [Catalog service](catalog-service.md), [Catalog library](legacy-catalog.md) |
-| Retained classification users | [Classification service](classification-service.md), [classification library](legacy-classification.md) |
-| Source import and derivation | [Public sources](public-assets.md), [migration](legacy-migration.md) |
-| Current status and historical evidence | [Roadmap](roadmap.md), [historical migration provenance](../provenance/migration-current.json) |
+| Understand concepts and the three asset levels | [Asset overview](../README.md#three-levels-of-semantic-assets), [forward/reverse workflows](asset-workflows.md#concepts-and-format-choices) |
+| Author a native model | [Specification](../specifications/v1/README.md), [schema](../specifications/v1/asset.schema.json), [template](../specifications/v1/templates/model.json), [synthetic examples](../examples/synthetic-models.json) |
+| Build or install | [Quickstart](../README.md#quickstart), [package installation](../README.md#install-the-preview-package) |
+| Use Codex and unified Expert | [Parent four journeys](https://github.com/yeliang-wang/evopilot/blob/main/docs/first-journey.md) |
+| Submit commands or embed the service | [CLI](cli.md), [service API](service.md) |
+| Inspect historical assets or derive native drafts | [Public assets](public-assets.md), [migration](legacy-migration.md) |
+| Use retained Pack, Proposal, Snapshot, grounding, projection or reasoning | [Query and producer API](legacy-api.md), [compatibility core](legacy-core.md) |
+| Use retained Catalog | [Catalog service](catalog-service.md), [Catalog library](legacy-catalog.md) |
+| Use retained classification | [Classification service](classification-service.md), [classification library](legacy-classification.md) |
+| Contribute or understand boundaries | [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [changelog](../CHANGELOG.md), [roadmap](roadmap.md) |
 
-The package includes this docs directory and its linked specifications, examples, source and provenance. Native v1 delivery and legacy Catalog are separate formats; conversion is explicit. For ordinary source reverse modeling, author native v1 evidence and use `asset.put`; the legacy bridge accepts structured historical assets, not arbitrary source code.
+Native authoring needs no external LLM. Classification and foreign Catalog materials require the explicit trusted SDK providers in the service guides. Legacy JSON/YAML import is a structured-asset bridge; the Host interprets authorized repository sources for reverse native modeling. Evidence retains uncertainty about business meaning.
 
-The owned service, CLI, parent Preview MCP routing and unified Expert guidance are implemented. See [integration and provider prerequisites](service.md#preview-integration-and-provider-boundaries) and the [independent technical baseline](../README.md). Actual Desktop/Host full-journey acceptance, full migration, E03/E10 and source-ledger closure status must be obtained from a separate local acceptance report bound to the exact candidate; without that report, no acceptance can be claimed. Documentation, discovery and test results grant no acceptance or release authority.
+Historical schemas, specifications and provenance preserve their original identifiers and historical statements. Current build and installation instructions are in the [quickstart](../README.md#quickstart). Compatibility outputs do not automatically become native v1 deliveries.

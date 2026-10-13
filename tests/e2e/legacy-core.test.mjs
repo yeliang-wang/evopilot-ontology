@@ -3,7 +3,7 @@ import { mock } from "node:test";
 import { stringify } from "yaml";
 import Ajv2020 from "ajv/dist/2020.js";
 import * as compat from "../../src/compat/index.mjs";
-import * as native from "../../src/index.mjs";
+import * as native from "../../dist/index.js";
 import { resolveTaxonomy } from "../../src/compat/v4/classification/taxonomy.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";

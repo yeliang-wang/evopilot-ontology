@@ -1,51 +1,87 @@
-# EvoPilot Ontology 0.1.0
+# EvoPilot Ontology · v0.1.1 Preview
 
-New users: start with [concepts and asset workflows](docs/asset-workflows.md#concepts-and-format-choices). Developers: use the [CLI](docs/cli.md) and [service contract](docs/service.md). Retained capability users: see [Legacy API](docs/legacy-api.md), [Catalog service](docs/catalog-service.md) and [Classification service](docs/classification-service.md). The [documentation index](docs/README.md) routes the packaged guides.
+[Quickstart](#quickstart) · [Documentation](docs/README.md) · [CLI](docs/cli.md) · [Contribute](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
-Ontology owns semantic modeling and instance validation. Public root APIs are `inspectArtifactReference`, `validateOntology`, `validateInstances`, `buildDelivery` and `verifyDelivery`. See the [native v1 specification and API guide](specifications/v1/README.md), [schema](specifications/v1/asset.schema.json) and [synthetic examples](examples/synthetic-models.json).
+Ontology owns domain concepts, relationships, constraints, source grounding and immutable semantic deliveries. It gives public and private projects a common way to describe meaning, retain its sources and expose unanswered business questions.
 
-Additional public subpaths:
+The [EvoPilot parent distribution](https://github.com/yeliang-wang/evopilot) composes independent repositories: [Ontology](https://github.com/yeliang-wang/evopilot-ontology) for semantics, [Harness](https://github.com/yeliang-wang/evopilot-harness) for QA and evidence, and [Runtime](https://github.com/yeliang-wang/evopilot-runtime) for projects, goals and execution. Runtime composition supplies deterministic ontology-instance and Harness-evidence evaluation, not arbitrary code generation.
 
-- `@evopilot-next/ontology/compat`: historical calculation, classification and catalog namespaces. See [core](docs/legacy-core.md), [classification](docs/legacy-classification.md), [catalog](docs/legacy-catalog.md) and the [export inventory](src/compat/index.mjs). Some catalog APIs use explicit caller-selected storage; there is no implicit workspace or running service.
-- `@evopilot-next/ontology/migration`: `inspectLegacySource` and `deriveLegacyModel`, an explicit derivation bridge preserving original semantics and unresolved gaps. See [migration guide](docs/legacy-migration.md).
-- `@evopilot-next/ontology/sources`: `listPublicSources` and `readPublicSource` for four preserved public ontology sources. See [source guide](docs/public-assets.md) and [provenance](provenance/public-assets.json).
-- `@evopilot-next/ontology/service`: `createOntologyService({workspaceRoot,workspaceId}, trustedProviders)` provides the durable local asset lifecycle. Explicit initialization, scoped requests, SQLite transactions and separate human decisions are described in the [service guide](docs/service.md).
+| Capability | Entry point |
+| --- | --- |
+| Model concepts, properties, relations and constraints | [Native v1 specification](specifications/v1/README.md) |
+| Validate instances and build or verify deterministic deliveries | `@evopilot-next/ontology` |
+| Store scoped drafts, reviews, decisions and immutable deliveries | [Service API](docs/service.md) |
+| Submit workspace requests and inspect receipts | [CLI](docs/cli.md) |
+| Inspect structured historical assets and derive native drafts | [Migration](docs/legacy-migration.md), `@evopilot-next/ontology/migration` |
+| Read bundled public sources | [Public assets](docs/public-assets.md), `@evopilot-next/ontology/sources` |
+| Use retained queries, producers, Catalog and classification | [Compatibility API](docs/legacy-api.md), `@evopilot-next/ontology/compat` |
 
-Historical wire identities remain compatibility data; native v1 validation does not automatically convert them. These libraries do not implement full OWL/RDF/SHACL/PROV or complete operational migration.
+## Three levels of semantic assets
 
-The service also implements seven finite retained producers and an owned proposal-create helper through separate preparation and local operator decisions. See the [producer API](docs/legacy-api.md#finite-retained-producers). Historical approvals are never imported as current authority; no Runtime/Harness software release or activation occurs. The operator-verified independent technical baseline is 201 Ontology tests PASS plus check/build. Parent verification reports 394 tests PASS, zero skipped, using actual Runtime, Harness and Ontology products for native v1 core composition. This does not establish that every advanced workflow is ready by default. Historical [migration provenance](provenance/migration-current.json) remains an audit record.
+1. **Common native model.** Frozen `specifications/v1` is the minimal common contract for all public and private projects. Start with the [schema](specifications/v1/asset.schema.json), [template](specifications/v1/templates/model.json) and [synthetic examples](examples/synthetic-models.json). Validation checks references, source mappings and constraints; required unresolved issues keep a draft PENDING and block delivery.
+2. **Project meaning and its evidence.** Forward requirements and reverse modeling from authorized sources produce the same native contract. The Host interprets explicitly authorized repository sources and retains locators, revisions, digests, observed/inferred mappings and unresolved business questions. Source evidence alone never confirms business meaning. `legacy.import` and `legacy.derive` accept structured JSON/YAML assets; they do not parse arbitrary repositories or Java source.
+3. **Additive project extensions.** Namespaced extensions add project-specific data without overriding base fields. Unknown optional extensions remain unevaluated; unknown required extensions fail validation. Visibility and exact dependency pins continue to apply.
 
-The root entry also exports `PRODUCT`, `VERSION` and `capabilities()`. Discovery describes `M2_OWNED_SERVICE`: local business operations and persistence are implemented through the separate service export; Host and production readiness remain false. Source import/derivation and [28 historical preview queries](docs/legacy-api.md), ten scoped [Catalog routes](docs/catalog-service.md), seven persistent [classification operations](docs/classification-service.md) and the [standalone CLI](docs/cli.md) are implemented. Classification and foreign Catalog material require explicit trusted application callbacks; the CLI supplies none and returns unavailable errors when they are needed. The new Preview MCP SDK `request(owner, envelope)` routes to the actual owned service: classification start/reanalyze await `classify`, and other operations use synchronous `execute`. Activation is explicit per stdio session and off by default. Parent unified Expert guidance is implemented. Actual Desktop/Host full-journey acceptance, full migration, E03/E10 and source-ledger closure status must be obtained from a separate local acceptance report bound to the exact candidate; without that report, no acceptance can be claimed. M0 feasibility and source tests cannot substitute for actual Host evidence. See [integration boundaries](docs/service.md#preview-integration-and-provider-boundaries).
+Historical Pack, Proposal, Snapshot, grounding, projection, reasoning, Catalog and classification capabilities form a separate compatibility layer. They retain original schema IDs, wire formats and lifecycle vocabulary. They are not automatically equivalent to a native v1 model or delivery. Explicit derivation preserves coverage gaps and requires a fresh native lifecycle.
 
-Neither the default Preview daemon nor the standalone CLI configures `resolveClassificationSource`, `classificationAdvisor`, `classificationModel` or `resolveLegacyHarness`. Explicit application callbacks and model binding are required. Validated factory forwarding of those keys is not a provider implementation; missing providers fail explicitly, with no invented LLM route or old Runtime profile/credential inheritance. The separate exact-candidate-bound local acceptance report determines actual candidate status, including full migration, E03/E10 and source-ledger closure, independently of current SDK capabilities and standalone discovery flags. Reports convey no acceptance, execution or publication authority.
+## Quickstart
 
-For first use from this checkout, choose a fresh canonical absolute workspace path whose parent exists, then store a synthetic native model and read its durable receipt:
+Ordinary Codex use starts with the [parent distribution and unified Expert](https://github.com/yeliang-wang/evopilot/blob/main/README.md). Follow the parent [four user journeys](https://github.com/yeliang-wang/evopilot/blob/main/docs/first-journey.md) for composed workflows. The standalone Ontology service can author native assets without an external LLM.
+
+For a source checkout, use **Node 24.14.0** and the committed dependency lock:
+
+```sh
+npm ci --ignore-scripts
+npm run build
+npm run check
+npm test
+node dist/cli.js help
+node dist/cli.js version
+```
+
+Owned source uses strict **TypeScript 5.9.3**, compiled JavaScript and declarations. Historical compatibility JavaScript is retained behind a typed boundary. Build uses the checked-in pinned vendor contract without a sibling checkout. These commands apply to source checkouts; release packages include `dist` exports and the CLI, so consumers need no compiler.
+
+Choose a new canonical absolute workspace path outside the checkout, with an existing parent, to create a synthetic draft:
 
 ```sh
 ONTOLOGY_WORKSPACE=/absolute/canonical/new-ontology-workspace
-node src/cli.mjs capabilities
 node --input-type=module -e 'import fs from "node:fs"; const model = JSON.parse(fs.readFileSync("examples/synthetic-models.json", "utf8")).assets[0]; console.log(JSON.stringify({operation:"asset.put",scope:{visibility:"public",projectId:"demo"},input:{model},requestId:"first-model",expectedRevision:0}));' |
-  node src/cli.mjs request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
+  node dist/cli.js request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
 printf '%s\n' '{"operation":"receipt.inspect","scope":{"visibility":"public","projectId":"demo"},"input":{"requestId":"first-model"}}' |
-  node src/cli.mjs request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
+  node dist/cli.js request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
 ```
 
-The installed bin is `evopilot-next-ontology`. See the [CLI guide](docs/cli.md) for inspection, file input, error codes and modeling/classification workflows. This example creates a draft without review, decision or publication.
+This stores a draft and reads its durable receipt. Review, human decision and local asset publication are distinct requests. See [CLI usage](docs/cli.md) for exact envelopes, revision conflicts and uncertain outcomes.
 
-Use Node 24.14.0. In this independent source checkout, install from its own committed lock with `npm ci --ignore-scripts --no-audit --no-fund`, then:
+## Install the Preview package
+
+Download the exact [v0.1.1 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.1.1). The published [v0.1.0 release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.1.0) remains historical. See [changes](CHANGELOG.md) and the parent [distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
+
+Place all four release assets in one new directory before checking checksums:
+
+- `evopilot-next-ontology-0.1.1.tgz`
+- `ontology-dependency-lock.json` (the Ontology `dependency-lock.json` asset uses this owner-prefixed release name)
+- `source-revision.txt`
+- `SHA256SUMS`
 
 ```sh
-npm run check
-npm run build
-npm test
+shasum -a 256 -c SHA256SUMS
+cat source-revision.txt
+mkdir ontology-0.1.1
+tar -xzf evopilot-next-ontology-0.1.1.tgz -C ontology-0.1.1
+cp ontology-dependency-lock.json ontology-0.1.1/package/package-lock.json
+cd ontology-0.1.1/package
+npm ci --omit=dev --ignore-scripts
+node dist/cli.js help
+node dist/cli.js version
 ```
 
-Build verifies owned ESM sources and pinned vendor bytes; it needs no parent generator or sibling source. Only the parent canonical build regenerates vendor bytes. The same commands work in an unrelated standalone source copy. Installed tarballs omit development scripts/tests; these commands apply to source checkouts. Earlier specification guides describing a parent-first build refer to vendor regeneration, not a prerequisite for validating an existing pinned copy.
+Stop if checksum verification fails; compare `source-revision.txt` with the release's exact source commit. Distribution uses release tarballs, not a public npm registry. The installed bin is `evopilot-next-ontology`; SDK subpaths resolve compiled JavaScript and declarations.
 
-## Source and Preview release distribution
+## Provider boundaries
 
-Source: [yeliang-wang/evopilot-ontology](https://github.com/yeliang-wang/evopilot-ontology). The [v0.1.0 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.1.0) is pending until published. See the parent [common release mechanics](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md) and [Codex plugin composition](https://github.com/yeliang-wang/evopilot).
+Classification requires SDK-injected trusted `resolveClassificationSource`, `classificationAdvisor` and `classificationModel: {providerId, modelId, revision, timeoutMs}`. Foreign Catalog material requires trusted `resolveLegacyHarness`. These are application callbacks and explicit bindings, not public JSON configuration or inherited Host credentials. The standalone CLI and default Preview daemon provide none; missing required providers fail explicitly. See [classification](docs/classification-service.md), [Catalog](docs/catalog-service.md) and [integration](docs/service.md#preview-integration-and-provider-boundaries).
 
-Preparation uses Node 24.14.0; `expected_digest` is the Ontology tarball SHA256 from parent verified CI. The workflow defaults to `publish=false`, so publication is disabled by default. Publication requires external M5 target validation and an explicit user decision. M5 authorizes source, CI and public-release preparation; code, scripts and CI tests establish neither Host acceptance nor release authority. Existing feature metadata remains unchanged.
+## Documentation and contributions
 
-Read the [current roadmap](docs/roadmap.md). Local artifact rehearsal is technical evidence only. Licenses and provenance retain their existing ownership.
+The [documentation index](docs/README.md) routes concepts, specification, CLI/API and retained capabilities. Read [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md) and the [roadmap](docs/roadmap.md). This edition is Preview. Technical evidence does not grant acceptance or release authority.

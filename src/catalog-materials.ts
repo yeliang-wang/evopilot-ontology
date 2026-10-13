@@ -1,15 +1,19 @@
+import type { Scope, WorkspaceIdentity } from './types.js';
+import type { Store, State, CatalogSet, CatalogRevision, ProducerHistory, ProducerRecord } from './persistence-types.js';
 import { isPromise } from 'node:util/types';
 import { exactFields, sha256, stableSerialize, frozenClone } from '../vendor/compatibility/v1/reference.mjs';
-import { assembleSemanticGeneration, resolveSemanticGeneration } from './compat/v4/semantics/catalog-generation.mjs';
-import { checkScope } from './legacy-queries.mjs';
-import { bounded, fail, LIMITS } from './state.mjs';
+import { catalogGeneration as legacy_catalogGeneration } from "./compat/index.mjs";
+const { assembleSemanticGeneration, resolveSemanticGeneration } = legacy_catalogGeneration;
+import { checkScope } from './legacy-queries.js';
+import { bounded, fail, LIMITS } from './state.js';
 
-export const equal = (a, b) => a === undefined || b === undefined ? a === b : stableSerialize(a) === stableSerialize(b);
+export const equal = (a: unknown, b: unknown) => a === undefined || b === undefined ? a === b : stableSerialize(a) === stableSerialize(b);
 const foreignKinds = ['HarnessBundle', 'HarnessProfile', 'HarnessComponent'];
 // Only provider-verified full Harness material bypasses the legacy query rule.
-function catalogScope(value, scope, workspace, known) {
-  if (!value || typeof value !== 'object') return;
-  if (foreignKinds.includes(value.kind) && (value.metadata || value.assetDigest)) {
+function catalogScope(input: unknown, scope: Scope, workspace: WorkspaceIdentity, known: unknown[]) {
+  if (!input || typeof input !== 'object') return;
+  const value = input as Record<string, unknown>;
+  if (foreignKinds.includes(value.kind as string) && (value.metadata || value.assetDigest)) {
     if (!known.some(v => equal(v, value))) fail('FOREIGN_MATERIAL', 'Unknown full Harness material');
     const copy = { ...value }; delete copy.kind;
     catalogScope(copy, scope, workspace, known); return;
@@ -19,14 +23,14 @@ function catalogScope(value, scope, workspace, known) {
   checkScope(shallow, scope, workspace);
   for (const child of Object.values(value)) catalogScope(child, scope, workspace, known);
 }
-export function buildCatalog(store, state, scope, catalogId, sets, revokedDigests = [], historical = false) {
+export function buildCatalog(store: Store, state: State, scope: Scope, catalogId: string, sets: CatalogSet[], revokedDigests: string[] = [], historical = false) {
   if (!Array.isArray(sets) || sets.length > LIMITS.catalogSets) fail('LIMIT', 'Catalog set limit');
-  const dependencies = new Map(), records = (state.producerRecords ?? []).filter(v => equal(v.scope, scope));
-  function owned(kind, document, predicate = () => true) {
+  const dependencies = new Map<string, { recordId: string; digest: string }>(), records = (state.producerRecords ?? []).filter(v => equal(v.scope, scope));
+  function owned(kind: ProducerRecord["kind"], document: unknown, predicate: (h: ProducerHistory, v: ProducerRecord) => boolean = () => true) {
     const record = records.find(v => v.kind === kind && v.history.some(h => equal(h.document, document) && predicate(h, v)));
     if (!record) fail('OWNED_MATERIAL_REQUIRED', 'Exact owned producer history required: ' + kind);
     if (!historical && !equal(record.document, document)) fail('DEPENDENCY_CHANGED', 'Current producer document required');
-    if (record.digest !== sha256(record.document) || !record.history.length || !equal(record.history.at(-1).document, record.document)) fail('CORRUPT_STATE', 'Producer history differs');
+    if (record.digest !== sha256(record.document) || !record.history.length || !equal(record.history.at(-1)!.document, record.document)) fail('CORRUPT_STATE', 'Producer history differs');
     store.verifyBlob(scope, record.document);
     for (const h of record.history) {
       store.verifyBlob(scope, h); store.verifyBlob(scope, h.document);
@@ -43,19 +47,20 @@ export function buildCatalog(store, state, scope, catalogId, sets, revokedDigest
   }
   for (const set of sets) {
     exactFields(set, ['artifactSet', 'closure', 'foundation', 'proposal', 'packs', 'profile', 'index', 'projectionSet', 'roundTripReport', 'incremental', 'full', 'support', 'harnessAssets'], ['priorSnapshot', 'basePackSet']);
-    const known = [];
+    const known: unknown[] = [];
     if (!Array.isArray(set.harnessAssets)) fail('INVALID_MODEL', 'Harness materials required');
     for (const item of set.harnessAssets) {
       exactFields(item, ['entry', 'document']);
       const entry = item.entry;
       const resolver = store.trustedProviders.resolveLegacyHarness;
       if (typeof resolver !== 'function') fail('PROVIDER_REQUIRED', 'Trusted Harness resolver required');
-      let resolved;
+      let resolved: unknown;
       try { resolved = resolver(frozenClone({ reference: { kind: entry.kind, id: entry.id, version: entry.version, digest: entry.assetDigest }, scope, workspace: store.identity })); }
       catch { fail('PROVIDER_FAILED', 'Harness resolver failed'); }
       if (isPromise(resolved)) { Promise.prototype.then.call(resolved, undefined, () => {}); fail('PROVIDER_ASYNC', 'Synchronous verified resolver required'); }
       bounded(resolved);
-      if (!resolved || resolved.verified !== true || !equal(resolved.scope, scope) || !equal(resolved.workspace, store.identity) || !equal(resolved.entry, entry) || !equal(resolved.document, item.document)) fail('PROVIDER_MISMATCH', 'Exact verified Harness identity required');
+      const verified = resolved as Record<string, unknown> | null;
+      if (!verified || verified.verified !== true || !equal(verified.scope, scope) || !equal(verified.workspace, store.identity) || !equal(verified.entry, entry) || !equal(verified.document, item.document)) fail('PROVIDER_MISMATCH', 'Exact verified Harness identity required');
       known.push(entry, item.document);
     }
     catalogScope(set, scope, store.identity, known);
@@ -67,12 +72,12 @@ export function buildCatalog(store, state, scope, catalogId, sets, revokedDigest
       const record = records.find(v => v.kind === 'PackLifecycle' && v.history.some(h => h.document.stage === 'PUBLISHED' && equal(h.material?.pack ?? null, pack)));
       const history = record?.history.find(h => h.document.stage === 'PUBLISHED' && equal(h.material?.pack ?? null, pack));
       if (!history) fail('OWNED_MATERIAL_REQUIRED', 'Published retained Pack material required');
-      owned('PackLifecycle', historical ? history.document : record.document, h => equal(h.material?.pack ?? null, pack));
-      if (!historical && !['PUBLISHED', 'INSTALLED', 'ACTIVE', 'ACTIVATED'].includes(record.document.stage)) fail('DEPENDENCY_CHANGED', 'Pack is no longer published');
+      owned('PackLifecycle', historical ? history.document : record!.document, h => equal(h.material?.pack ?? null, pack));
+      if (!historical && !['PUBLISHED', 'INSTALLED', 'ACTIVE', 'ACTIVATED'].includes(record!.document.stage as string)) fail('DEPENDENCY_CHANGED', 'Pack is no longer published');
     }
-    const prior = snapshot => {
-      const record = records.find(v => v.kind === 'Artifact' && v.history.some(h => equal(h.document.spec.snapshot, snapshot)));
-      const h = record?.history.find(h => equal(h.document.spec.snapshot, snapshot));
+    const prior = (snapshot: unknown) => {
+      const record = records.find(v => v.kind === 'Artifact' && v.history.some(h => equal((h.document.spec as { snapshot: unknown }).snapshot, snapshot)));
+      const h = record?.history.find(h => equal((h.document.spec as { snapshot: unknown }).snapshot, snapshot));
       if (!h) fail('OWNED_MATERIAL_REQUIRED', 'Owned prior snapshot required');
       owned('Artifact', h.document);
     };
@@ -97,7 +102,7 @@ export function buildCatalog(store, state, scope, catalogId, sets, revokedDigest
   if (!equal(built.generation, rebuilt.generation) || !equal([...built.material], [...rebuilt.material])) fail('CORRUPT_STATE', 'Catalog rebuild differs');
   return { generation: built.generation, material: [...built.material], dependencies: [...dependencies.values()].sort((a, b) => a.recordId.localeCompare(b.recordId)), sets: resolved };
 }
-export function verifyCatalogRevision(store, state, revision) {
+export function verifyCatalogRevision(store: Store, state: State, revision: CatalogRevision) {
   if (!equal(revision.workspace, store.identity)) fail('SCOPE_MISMATCH', 'Catalog workspace differs');
   store.verifyBlob(revision.scope, revision);
   const { pointerDigest, ...pointer } = revision.pointer;

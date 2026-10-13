@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { validateOntology, validateInstances, buildDelivery, verifyDelivery, capabilities } from '../../src/index.mjs';
+import { validateOntology, validateInstances, buildDelivery, verifyDelivery, capabilities } from '../../dist/index.js';
 import { assertJSON, stableSerialize, sha256, frozenClone } from '../../vendor/compatibility/v1/reference.mjs';
 
 const fixtures = JSON.parse(await readFile(new URL('../../examples/synthetic-models.json', import.meta.url)));

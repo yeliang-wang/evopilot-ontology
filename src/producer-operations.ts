@@ -1,15 +1,19 @@
+import type { DispatchRequest, Scope } from './types.js';
+import type { Store, State, ProducerPlan, ProducerRecord } from './persistence-types.js';
 import { exactFields, textField, sha256, stableSerialize } from '../vendor/compatibility/v1/reference.mjs';
 import { digest } from './compat/v3/utils.mjs';
-import * as packs from './compat/v4/semantics/professional-packs.mjs';
-import * as project from './compat/v4/semantics/project-ontology.mjs';
-import { publishTerminalSemanticClosure } from './compat/v4/semantics/semantic-interoperability.mjs';
-import { validateDocument } from './compat/v3/schema.mjs';
-import { operateImport } from './import-operations.mjs';
-import { checkScope } from './legacy-queries.mjs';
+import { packs as packs } from "./compat/index.mjs";
+import { projectOntology as project } from "./compat/index.mjs";
+import { interoperability as legacy_interoperability } from "./compat/index.mjs";
+const { publishTerminalSemanticClosure } = legacy_interoperability;
+import { validation as legacy_validation } from "./compat/index.mjs";
+const { validateDocument } = legacy_validation;
+import { operateImport } from './import-operations.js';
+import { checkScope } from './legacy-queries.js';
 import { grounding } from './compat/index.mjs';
-import { bounded, fail, LIMITS } from './state.mjs';
+import { bounded, fail, LIMITS } from './state.js';
 
-const fields = {
+const fields: Record<string, [string[], string[]]> = {
   'ontology.publish': [['sourceId'], []],
   'pack.lifecycle.create': [['pack', 'targetRoot'], ['availablePacks', 'dependencyClosure', 'conflictPreview', 'project', 'migrationPlan']],
   'pack.lifecycle.transition': [['recordId', 'expectedRecordDigest', 'action'], ['reason', 'successor', 'rollbackTarget', 'migrationPlan']],
@@ -22,8 +26,8 @@ const fields = {
 export const producerRoutes = Object.freeze(Object.keys(fields));
 export const producerOperations = Object.freeze([...producerRoutes, 'producer.prepare', 'producer.decide', 'producer.inspect', 'producer.list']);
 export const producerMutations = Object.freeze([...producerRoutes, 'producer.prepare', 'producer.decide']);
-const hash = value => { if (typeof value !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(value)) fail('INVALID_REQUEST', 'Exact digest required'); };
-function parameters(operation, p) {
+const hash = (value: unknown) => { if (typeof value !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(value)) fail('INVALID_REQUEST', 'Exact digest required'); };
+function parameters(operation: string, p: Record<string, unknown>) {
   if (!Object.hasOwn(fields, operation)) fail('UNSUPPORTED_OPERATION', 'Unknown producer');
   exactFields(p, ...fields[operation]);
   for (const [key, value] of Object.entries(p)) {
@@ -33,28 +37,28 @@ function parameters(operation, p) {
   if ('version' in p && (typeof p.version !== 'string' || !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(p.version))) fail('INVALID_REQUEST', 'Strict numeric version required');
   if ('action' in p) {
     const actions = operation === 'project-ontology.proposal.transition' ? ['APPLY', 'REQUEST_REVIEW', 'APPROVE', 'REJECT'] : operation === 'pack.lifecycle.transition' ? ['APPLY', 'REQUEST_REVIEW', 'APPROVE', 'PUBLISH', 'INSTALL', 'ACTIVATE', 'SUPERSEDE', 'ROLLBACK', 'DEPRECATE'] : ['INSTALL', 'ACTIVATE', 'SUPERSEDE', 'ROLLBACK', 'DEPRECATE'];
-    if (!actions.includes(p.action)) fail('INVALID_REQUEST', 'Unsupported action');
+    if (!actions.includes(p.action as string)) fail('INVALID_REQUEST', 'Unsupported action');
     for (const key of ['successor', 'rollbackTarget', 'migrationPlan']) if (key in p) {
       if ((key === 'rollbackTarget' && p.action !== 'ROLLBACK') || (key !== 'rollbackTarget' && p.action !== 'SUPERSEDE')) fail('INVALID_REQUEST', 'Unsupported action field');
       exactFields(p[key], ['id', 'version', 'digest']); textField(p[key].id); textField(p[key].version); hash(p[key].digest);
     }
   }
 }
-function foundationMaterial(p) {
+function foundationMaterial(p: Record<string, unknown>) {
   if (Object.hasOwn(p, 'foundation')) bounded(p.foundation);
-  const supplied = p.foundation;
+  const supplied = p.foundation as { metaTypes?: unknown; relationTypes?: unknown; limits?: unknown } | undefined;
   const foundation = supplied === undefined ? grounding.resolveOntologyFoundation() : grounding.resolveOntologyFoundation({
     metaTypes: supplied?.metaTypes, relationTypes: supplied?.relationTypes, limits: supplied?.limits,
   });
   if ((supplied !== undefined && stableSerialize(supplied) !== stableSerialize(foundation)) || p.foundationDigest !== foundation.foundationDigest) fail('INVALID_MODEL', 'Canonical foundation material and exact digest required');
   return foundation;
 }
-function packMaterial(p) {
+function packMaterial(p: Record<string, unknown>) {
   bounded(p);
   const available = Object.hasOwn(p, 'availablePacks') ? p.availablePacks : [];
   if (!Array.isArray(available)) fail('INVALID_MODEL', 'availablePacks must be an array');
-  const all = [p.pack];
-  for (const candidate of available) {
+  const all = [p.pack] as ({ metadata?: { id?: unknown; version?: unknown } } | null)[];
+  for (const candidate of available as typeof all) {
     const same = all.find(v => v?.metadata?.id === candidate?.metadata?.id && v?.metadata?.version === candidate?.metadata?.version);
     if (same) {
       if (same !== p.pack || stableSerialize(same) !== stableSerialize(candidate)) fail('INVALID_MODEL', 'Conflicting or duplicate Pack identity');
@@ -73,21 +77,21 @@ function packMaterial(p) {
   }
   return { pack: p.pack, availablePacks: all.slice(1), targetRoot: p.targetRoot, resolved, dependencyClosure, conflictPreview };
 }
-export function validateProducerRequest(r) {
-  const f = { 'producer.prepare': ['operation', 'parameters'], 'producer.decide': ['planId', 'reviewDigest', 'decision', 'humanEvidenceRef'], 'producer.inspect': ['planId'], 'producer.list': [] };
+export function validateProducerRequest(r: DispatchRequest) {
+  const f: Record<string, string[]> = { 'producer.prepare': ['operation', 'parameters'], 'producer.decide': ['planId', 'reviewDigest', 'decision', 'humanEvidenceRef'], 'producer.inspect': ['planId'], 'producer.list': [] };
   exactFields(r.input, f[r.operation] ?? ['planId']);
-  if (r.operation === 'producer.prepare') parameters(r.input.operation, r.input.parameters);
+  if (r.operation === 'producer.prepare') parameters(r.input.operation as string, r.input.parameters as Record<string, unknown>);
   if ('planId' in r.input) hash(r.input.planId);
   if (r.operation === 'producer.decide') {
     hash(r.input.reviewDigest); textField(r.input.humanEvidenceRef);
-    if (!['APPROVE', 'REJECT'].includes(r.input.decision)) fail('INVALID_REQUEST', 'Explicit decision required');
+    if (!['APPROVE', 'REJECT'].includes(r.input.decision as string)) fail('INVALID_REQUEST', 'Explicit decision required');
   }
 }
-const subject = p => ({ workspace: p.workspace, scope: p.scope, operation: p.operation, parameters: p.parameters, dependencies: p.dependencies });
-export function operateProducer(store, state, r) {
-  const own = v => stableSerialize(v.scope) === stableSerialize(r.scope);
+const subject = (p: Omit<ProducerPlan, "reviewDigest" | "planId">) => ({ workspace: p.workspace, scope: p.scope, operation: p.operation, parameters: p.parameters, dependencies: p.dependencies });
+export function operateProducer(store: Store, state: State, r: DispatchRequest) {
+  const own = (v: { scope: Scope }) => stableSerialize(v.scope) === stableSerialize(r.scope);
   const records = state.producerRecords ?? [], plans = state.producerPlans ?? [];
-  function verify(v) {
+  function verify(v: ProducerRecord) {
     store.verifyBlob(v.scope, v.document);
     if (v.digest !== sha256(v.document)) fail('CORRUPT_STATE', 'Producer document digest differs');
     for (const h of v.history) store.verifyBlob(v.scope, h);
@@ -101,7 +105,7 @@ export function operateProducer(store, state, r) {
     }
     return v;
   }
-  function record(id, kind, expected) {
+  function record(id: unknown, kind: ProducerRecord["kind"], expected: unknown) {
     const v = records.find(v => own(v) && v.recordId === id && v.kind === kind);
     if (!v) fail('NOT_FOUND', 'Owned producer record not found');
     verify(v);
@@ -109,18 +113,18 @@ export function operateProducer(store, state, r) {
     if (expected !== current) fail('DEPENDENCY_CHANGED', 'Exact current record digest required');
     return v;
   }
-  function calculate(operation, p, publication, now) {
+  function calculate(operation: string, p: Record<string, unknown>, publication: Record<string, unknown>, now: string) {
     parameters(operation, p); checkScope(p, r.scope, store.identity);
-    const dependencies = [], actor = `uid:${store.uid}`;
-    const load = (id, kind, expected) => { const v = record(id, kind, expected); dependencies.push({ recordId: id, digest: v.digest }); return v; };
-    let document, kind, identity, previous = null, extra = null;
+    const dependencies: unknown[] = [], actor = `uid:${store.uid}`;
+    const load = (id: unknown, kind: ProducerRecord["kind"], expected: unknown) => { const v = record(id, kind, expected); dependencies.push({ recordId: id, digest: v.digest }); return v; };
+    let document: Record<string, unknown>, kind: ProducerRecord["kind"], identity: unknown, previous: ProducerRecord | null = null, extra: { material?: Record<string, unknown>; materialDigest?: string; foundation?: { foundationDigest: string }; foundationDigest?: string; publication?: unknown; sourceId?: string } | null = null;
     if (operation === 'ontology.publish') {
       const source = operateImport(store, state, { ...r, operation: 'source.inspect', input: { sourceId: p.sourceId } });
       checkScope(source.document, r.scope, store.identity);
-      if (source.document?.kind !== 'OntologyPack' || !source.inspection.valid || !validateDocument(source.document).valid) fail('INVALID_MODEL', 'Verified valid OntologyPack required');
+      if ((source.document as { kind?: unknown } | null)?.kind !== 'OntologyPack' || !source.inspection.valid || !validateDocument(source.document).valid) fail('INVALID_MODEL', 'Verified valid OntologyPack required');
       dependencies.push({ sourceId: source.sourceId, digest: sha256(source) });
-      document = structuredClone(source.document); kind = 'OntologyPack'; identity = document.metadata;
-      extra = { publication: { ...publication, version: document.metadata.version }, sourceId: source.sourceId };
+      document = structuredClone(source.document) as Record<string, unknown>; kind = 'OntologyPack'; identity = document.metadata;
+      extra = { publication: { ...publication, version: (document.metadata as { version: string }).version }, sourceId: source.sourceId };
     } else if (operation === 'pack.lifecycle.create') {
       const material = packMaterial(p);
       extra = { material, materialDigest: sha256(material) };
@@ -156,28 +160,28 @@ export function operateProducer(store, state, r) {
       document = project.createArtifactLifecycleRecord({ ...p, artifactSet, record: previous.document, actor, now });
     } else {
       const artifact = load(p.artifactRecordId, 'Artifact', p.expectedArtifactDigest).document;
-      if (p.closure?.snapshot?.digest !== artifact.spec.snapshotDigest || stableSerialize(p.closure.snapshot.project) !== stableSerialize(artifact.spec.project)) fail('DEPENDENCY_CHANGED', 'Closure must bind owned published snapshot/project');
-      document = publishTerminalSemanticClosure({ closure: p.closure, publication }); kind = 'Closure'; identity = { project: p.closure.snapshot.project.id, version: p.version, snapshotDigest: p.closure.snapshot.digest };
+      if ((p.closure as { snapshot?: { digest?: unknown } } | null)?.snapshot?.digest !== (artifact.spec as { snapshotDigest: unknown; project: unknown }).snapshotDigest || stableSerialize((p.closure as { snapshot: { project: { id: string }; digest: string } }).snapshot.project) !== stableSerialize((artifact.spec as { snapshotDigest: unknown; project: unknown }).project)) fail('DEPENDENCY_CHANGED', 'Closure must bind owned published snapshot/project');
+      document = publishTerminalSemanticClosure({ closure: p.closure, publication }); kind = 'Closure'; identity = { project: (p.closure as { snapshot: { project: { id: string }; digest: string } }).snapshot.project.id, version: p.version, snapshotDigest: (p.closure as { snapshot: { project: { id: string }; digest: string } }).snapshot.digest };
     }
     // Optional pack project:null is an unbound field, not a foreign project.
     const scopedDocument = { ...document };
     if (kind === 'PackLifecycle' && scopedDocument.project === null) delete scopedDocument.project;
     checkScope(scopedDocument, r.scope, store.identity);
-    const recordId = previous?.recordId ?? sha256({ scope: r.scope, kind, identity: kind === 'OntologyPack' || kind === 'Artifact' ? { id: identity.id, version: identity.version } : identity });
+    const recordId = previous?.recordId ?? sha256({ scope: r.scope, kind, identity: kind === 'OntologyPack' || kind === 'Artifact' ? { id: (identity as { id: string; version: string }).id, version: (identity as { id: string; version: string }).version } : identity });
     if (!previous && records.some(v => own(v) && v.recordId === recordId)) fail('IMMUTABLE_VERSION', 'Producer identity already exists');
     return { document, kind, recordId, dependencies, previous, extra };
   }
-  const publication = (p, decision) => ({ decision: 'AUTHORIZED', actor: `uid:${store.uid}`, authorizationDigest: sha256(decision), version: p.version ?? '1.0.0', at: decision.at });
+  const publication = (p: Record<string, unknown>, decision: { at: string }) => ({ decision: 'AUTHORIZED', actor: `uid:${store.uid}`, authorizationDigest: sha256(decision), version: p.version ?? '1.0.0', at: decision.at });
   if (r.operation === 'producer.prepare') {
     if (plans.length >= LIMITS.producerPlans) fail('LIMIT', 'Producer plan count');
-    const { operation, parameters: p } = r.input, now = new Date().toISOString();
+    const { operation, parameters: p } = r.input as { operation: string; parameters: Record<string, unknown> }, now = new Date().toISOString();
     const result = calculate(operation, p, publication(p, { at: now }), now);
-    const plan = { workspace: store.identity, scope: r.scope, operation, parameters: p, dependencies: result.dependencies, createdAt: now, status: 'PREPARED', decision: null, output: null };
+    const plan = { workspace: store.identity, scope: r.scope, operation, parameters: p, dependencies: result.dependencies, createdAt: now, status: 'PREPARED', decision: null, output: null } as ProducerPlan;
     plan.reviewDigest = sha256(subject(plan)); plan.planId = sha256({ reviewDigest: plan.reviewDigest, requestId: r.requestId });
     if (plans.some(v => v.planId === plan.planId)) fail('REQUEST_CONFLICT', 'Plan already exists');
     store.blob(r.scope, plan); state.producerPlans ??= []; state.producerPlans.push(plan); return plan;
   }
-  function inspect(plan) {
+  function inspect(plan: ProducerPlan) {
     store.verifyBlob(plan.scope, plan);
     if (sha256(subject(plan)) !== plan.reviewDigest || stableSerialize(plan.workspace) !== stableSerialize(store.identity)) fail('CORRUPT_STATE', 'Producer plan binding differs');
     if (plan.output) for (const id of plan.output.recordIds) { const v = records.find(v => own(v) && v.recordId === id); if (!v) fail('CORRUPT_STATE', 'Missing producer output'); verify(v); }
@@ -195,15 +199,15 @@ export function operateProducer(store, state, r) {
   const result = calculate(plan.operation, plan.parameters, publication(plan.parameters, plan.decision ?? { at: now }), now);
   if (sha256(result.dependencies) !== sha256(plan.dependencies)) fail('DEPENDENCY_CHANGED', 'Prepared dependencies changed');
   if (r.operation === 'producer.decide') {
-    plan.decision = { reviewDigest: plan.reviewDigest, decision: r.input.decision, humanEvidenceRef: r.input.humanEvidenceRef, uid: store.uid, at: now };
+    plan.decision = { reviewDigest: plan.reviewDigest, decision: r.input.decision as "APPROVE" | "REJECT", humanEvidenceRef: r.input.humanEvidenceRef as string, uid: store.uid, at: now };
     store.blob(r.scope, plan); return plan.decision;
   }
   const additions = result.previous ? 0 : result.kind === 'Artifact' ? 2 : 1;
   if (records.length + additions > LIMITS.producerRecords) fail('LIMIT', 'Producer record count');
-  function persist(kind, recordId, document, previous = null, extra = null) {
+  function persist(kind: ProducerRecord["kind"], recordId: string, document: Record<string, unknown>, previous: ProducerRecord | null = null, extra: ReturnType<typeof calculate>["extra"] = null) {
     if (extra?.material) store.blob(r.scope, extra.material);
     if (extra?.foundation) store.blob(r.scope, extra.foundation);
-    const history = [...(previous?.history ?? []), { document, decision: plan.decision, planId: plan.planId, ...(extra ?? {}) }];
+    const history = [...(previous?.history ?? []), { document, decision: plan!.decision, planId: plan!.planId, ...(extra ?? {}) }];
     for (const h of history) store.blob(r.scope, h);
     const retained = extra?.material ? { material: extra.material, materialDigest: extra.materialDigest } : extra?.foundation ? { foundation: extra.foundation, foundationDigest: extra.foundationDigest } : {};
     const v = { scope: r.scope, kind, recordId, document, digest: store.blob(r.scope, document), history, ...retained };
@@ -214,7 +218,7 @@ export function operateProducer(store, state, r) {
   const output = persist(result.kind, result.recordId, result.document, result.previous, result.extra);
   const recordIds = [output.recordId]; let lifecycle = null;
   if (result.kind === 'Artifact') {
-    const initial = { schema: 'evopilot-harness-project-ontology-artifact-lifecycle/v1', artifactSetDigest: output.document.artifactSetDigest, stage: 'PUBLISHED', history: [], authority: { installationIndependent: true, activationIndependent: true, rollbackIndependent: true } };
+    const initial: Record<string, unknown> = { schema: 'evopilot-harness-project-ontology-artifact-lifecycle/v1', artifactSetDigest: output.document.artifactSetDigest, stage: 'PUBLISHED', history: [], authority: { installationIndependent: true, activationIndependent: true, rollbackIndependent: true } };
     initial.recordDigest = digest(initial);
     lifecycle = persist('ArtifactLifecycle', sha256({ scope: r.scope, kind: 'ArtifactLifecycle', artifactRecordId: output.recordId }), initial);
     recordIds.push(lifecycle.recordId);

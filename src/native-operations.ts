@@ -1,17 +1,20 @@
+import type { DispatchRequest, OntologyModel, Scope } from './types.js';
+import type { Store, State } from './persistence-types.js';
 import { exactFields, textField, sha256, stableSerialize } from '../vendor/compatibility/v1/reference.mjs';
-import { validateOntology } from './specification.mjs';
-import { buildDelivery, verifyDelivery } from './delivery.mjs';
-import { fail, LIMITS, slug } from './state.mjs';
-import { importOperations, importMutations, importFields, operateImport } from './import-operations.mjs';
-import { producerOperations, producerMutations, validateProducerRequest, operateProducer } from './producer-operations.mjs';
+import { validateOntology } from './specification.js';
+import { buildDelivery, verifyDelivery } from './delivery.js';
+import { fail, LIMITS, slug } from './state.js';
+import { importOperations, importMutations, importFields, operateImport } from './import-operations.js';
+import { producerOperations, producerMutations, validateProducerRequest, operateProducer } from './producer-operations.js';
 
-import { legacyQueryOperations, validateLegacyQuery, operateLegacyQuery } from './legacy-queries.mjs';
-import { catalogOperations, catalogMutations, validateCatalogRequest, operateCatalog } from './catalog-operations.mjs';
+import { legacyQueryOperations, validateLegacyQuery, operateLegacyQuery } from './legacy-queries.js';
+import { catalogOperations, catalogMutations, validateCatalogRequest, operateCatalog } from './catalog-operations.js';
 
-import { classificationOperations, classificationMutations, validateClassificationRequest, operateClassification } from './classification-operations.mjs';
+import { classificationOperations, classificationMutations, validateClassificationRequest, operateClassification } from './classification-operations.js';
 export const operations = Object.freeze([...classificationOperations, ...catalogOperations, ...producerOperations, ...legacyQueryOperations, ...importOperations, 'workspace.inspect', 'receipt.inspect', 'asset.put', 'asset.inspect', 'asset.list', 'asset.review', 'asset.decide', 'asset.publish']);
 export const mutations = Object.freeze([...classificationMutations, ...catalogMutations, ...producerMutations, ...importMutations, 'asset.put', 'asset.review', 'asset.decide', 'asset.publish']);
-export function validateRequest(r) {
+export function validateRequest(request: unknown) {
+  const r = request as DispatchRequest;
   if (!operations.includes(r.operation)) fail('UNSUPPORTED_OPERATION', 'Operation is outside this service slice');
   const write = mutations.includes(r.operation);
   exactFields(r, ['operation', 'scope', 'input', ...(write ? ['requestId', 'expectedRevision'] : [])]);
@@ -25,7 +28,7 @@ export function validateRequest(r) {
   if (catalogOperations.includes(r.operation)) { validateCatalogRequest(r); return write; }
   if (producerOperations.includes(r.operation)) { validateProducerRequest(r); return write; }
   if (legacyQueryOperations.includes(r.operation)) { validateLegacyQuery(r); return false; }
-  const fields = { ...importFields,
+  const fields: Record<string, string[]> = { ...importFields,
     'workspace.inspect': [], 'receipt.inspect': ['requestId'], 'asset.put': ['model'],
     'asset.inspect': ['id', 'version'], 'asset.list': [], 'asset.review': ['id', 'version'],
     'asset.decide': ['id', 'version', 'reviewDigest', 'decision', 'humanEvidenceRef'],
@@ -35,17 +38,17 @@ export function validateRequest(r) {
   for (const field of fields[r.operation]) if (field !== 'model' && field !== 'raw') textField(r.input[field]);
   if (r.operation === 'legacy.import' && typeof r.input.raw !== 'string') fail('INVALID_REQUEST', 'Raw input must be a string');
   if (r.operation === 'receipt.inspect') slug(r.input.requestId);
-  if (r.operation === 'asset.decide' && (!['APPROVE', 'REJECT'].includes(r.input.decision) || !/^sha256:[a-f0-9]{64}$/.test(r.input.reviewDigest))) fail('INVALID_REQUEST', 'Explicit decision and review digest required');
+  if (r.operation === 'asset.decide' && (!['APPROVE', 'REJECT'].includes(r.input.decision as string) || !/^sha256:[a-f0-9]{64}$/.test(r.input.reviewDigest as string))) fail('INVALID_REQUEST', 'Explicit decision and review digest required');
   return write;
 }
-export function operate(store, state, r) {
+export function operate(store: Store, state: State, r: DispatchRequest): unknown {
   if (classificationOperations.includes(r.operation)) return operateClassification(store, state, r);
   if (catalogOperations.includes(r.operation)) return operateCatalog(store, state, r);
   if (producerOperations.includes(r.operation)) return operateProducer(store, state, r);
   if (legacyQueryOperations.includes(r.operation)) return operateLegacyQuery(store, state, r);
   if (importOperations.includes(r.operation)) return operateImport(store, state, r, operate);
   const scopeKey = stableSerialize(r.scope);
-  const own = a => stableSerialize(a.scope) === scopeKey;
+  const own = (a: { scope: Scope }) => stableSerialize(a.scope) === scopeKey;
   const find = () => {
     const a = state.assets.find(a => own(a) && a.model.id === r.input.id && a.model.version === r.input.version);
     if (!a) fail('NOT_FOUND', 'Asset not found in scope');
@@ -55,7 +58,7 @@ export function operate(store, state, r) {
   };
   if (r.operation === 'asset.list') return state.assets.filter(own).map(a => ({ id: a.model.id, version: a.model.version, digest: a.digest, published: !!a.delivery }));
   if (r.operation === 'asset.put') {
-    const model = r.input.model;
+    const model = r.input.model as OntologyModel;
     const validation = validateOntology(model);
     if (!validation.valid) fail('INVALID_MODEL', 'Ontology model failed validation');
     if (model.visibility !== r.scope.visibility) fail('SCOPE_MISMATCH', 'Model visibility differs from scope');
@@ -78,19 +81,19 @@ export function operate(store, state, r) {
   }
   const currentReview = () => {
     const current = reviewSubject();
-    if (!a.review || a.review.reviewDigest !== sha256(current)) fail('REVIEW_REQUIRED', 'Current exact review required');
+    if (!a.review || a.review!.reviewDigest !== sha256(current)) fail('REVIEW_REQUIRED', 'Current exact review required');
   };
   currentReview();
   if (r.operation === 'asset.decide') {
-    if (r.input.reviewDigest !== a.review.reviewDigest) fail('REVIEW_MISMATCH', 'Decision must bind exact review');
-    a.decision = { reviewDigest: r.input.reviewDigest, decision: r.input.decision, humanEvidenceRef: r.input.humanEvidenceRef, uid: store.uid };
+    if (r.input.reviewDigest !== a.review!.reviewDigest) fail('REVIEW_MISMATCH', 'Decision must bind exact review');
+    a.decision = { reviewDigest: r.input.reviewDigest as string, decision: r.input.decision as "APPROVE" | "REJECT", humanEvidenceRef: r.input.humanEvidenceRef as string, uid: store.uid };
     return a.decision;
   }
-  if (!a.decision || a.decision.decision !== 'APPROVE' || a.decision.reviewDigest !== a.review.reviewDigest) fail('APPROVAL_REQUIRED', 'Exact human approval required');
+  if (!a.decision || a.decision.decision !== 'APPROVE' || a.decision.reviewDigest !== a.review!.reviewDigest) fail('APPROVAL_REQUIRED', 'Exact human approval required');
   if (validateOntology(a.model).status !== 'VALID') fail('PENDING_MODEL', 'Only VALID models may publish');
   for (const ref of a.model.dependencies) {
     const dependency = state.assets.find(d => d.scope.projectId === r.scope.projectId && d.scope.visibility === ref.visibility && d.model.id === ref.id && d.model.version === ref.version && d.delivery);
-    if (ref.product !== 'ontology' || !dependency || dependency.delivery.digest !== ref.digest || (a.model.visibility === 'public' && ref.visibility !== 'public')) fail('UNSUPPORTED_DEPENDENCY', 'Exact published own Ontology dependency required');
+    if (ref.product !== 'ontology' || !dependency || dependency.delivery!.digest !== ref.digest || (a.model.visibility === 'public' && ref.visibility !== 'public')) fail('UNSUPPORTED_DEPENDENCY', 'Exact published own Ontology dependency required');
     store.verifyBlob(dependency.scope, dependency.model); store.verifyBlob(dependency.scope, dependency.delivery);
     if (!verifyDelivery(dependency.delivery).valid) fail('CORRUPT_STATE', 'Invalid dependency delivery');
   }

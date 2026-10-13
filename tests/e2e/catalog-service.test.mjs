@@ -4,7 +4,7 @@ import { mkdtempSync, realpathSync, rmSync, readFileSync, writeFileSync } from '
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createOntologyService } from '../../src/service.mjs';
+import { createOntologyService } from '../../dist/service.js';
 import { sha256 } from '../../vendor/compatibility/v1/reference.mjs';
 import { catalogClient, ownedCatalogMaterials, trustedHarness } from '../fixtures/catalog-service-materials.mjs';
 

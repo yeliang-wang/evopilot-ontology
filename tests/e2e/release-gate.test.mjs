@@ -3,21 +3,21 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { repositories, validateInputs, validateRun, validateArtifact, validateDigest,
   parentFiles, validateArchiveNames, validateChecksums, validateRevision, validatePack,
-  tarball, sha256, releaseNotes, validateAbsence } from '../../scripts/release-gate.mjs';
+  tarball, sha256, releaseNotes, validateAbsence, assetNames } from '../../scripts/release-gate.mjs';
 
 const input = { repository: 'yeliang-wang/evopilot', expectedCommit: 'd4a9201169a82c36875bf6bc28c784fb3fb7122a',
   sourceRunId: '38328075766', expectedDigest: 'dffe37b209fed4d9a8d9da83a43b834d78e7a5532917ef0a0b265b9107158002',
   publish: 'false', decisionRef: '' };
-const pkg = { name: '@evopilot-next/stack', version: '0.1.0' };
-// Fixtures use the retained source run identifiers; no network or publication.
+const pkg = { name: '@evopilot-next/stack', version: '0.1.1' };
+// Synthetic v0.1.1 fixtures reuse retained identifiers; no claim of a new CI run.
 const run = { id: 38328075766, repository: { full_name: input.repository, id: 1416267165 },
   head_repository: { id: 1416267165 }, head_sha: input.expectedCommit,
   path: '.github/workflows/ci.yml', status: 'completed', conclusion: 'success', event: 'push' };
-const artifact = { id: 11781746590, name: `evopilot-0.1.0-preview-${input.expectedCommit}`, expired: false,
+const artifact = { id: 11781746590, name: `evopilot-0.1.1-preview-${input.expectedCommit}`, expired: false,
   digest: 'sha256:' + input.expectedDigest,
   workflow_run: { id: run.id, head_sha: input.expectedCommit, repository_id: 1416267165, head_repository_id: 1416267165 } };
 const metadata = a => ({ total_count: 1, artifacts: [a] });
-test('retained positive metadata is technical validation only', () => {
+test('positive fixture metadata is technical validation only', () => {
   assert.deepEqual(validateRun(run, input, input.expectedCommit, pkg), {
     technicalValidation: true, authority: false, expectedCommit: input.expectedCommit,
   });
@@ -40,7 +40,7 @@ test('exact checkout, package identity and version', () => {
   for (const [repository, id] of Object.entries(repositories)) {
     const i = { ...input, repository }, owner = validateInputs(i);
     validateRun({ ...run, repository: { full_name: repository, id }, head_repository: { id } }, i, input.expectedCommit,
-      { name: '@evopilot-next/' + owner, version: '0.1.0' });
+      { name: '@evopilot-next/' + owner, version: '0.1.1' });
   }
 });
 for (const [name, change] of Object.entries({ name: { name: 'wrong' }, expiry: { expired: true },
@@ -91,7 +91,7 @@ test('revision records match parent and all three gitlinks', () => {
 });
 test('child pack filenames are exact and notes contain only public references', () => {
   for (const owner of ['runtime', 'harness', 'ontology']) {
-    const pack = { name: '@evopilot-next/' + owner, version: '0.1.0', filename: tarball(owner) };
+    const pack = { name: '@evopilot-next/' + owner, version: '0.1.1', filename: tarball(owner) };
     assert.equal(validatePack([pack], owner), tarball(owner));
     for (const change of [{ filename: '../' + pack.filename }, { version: '1.0.0' }, { name: 'wrong' }]) {
       assert.throws(() => validatePack([{ ...pack, ...change }], owner));
@@ -114,5 +114,53 @@ test('remote mutations require definitive absence; existing and uncertain outcom
   for (const [response, status] of [['HTTP/2.0 200 OK', 0], ['HTTP/2.0 403 Forbidden', 1],
     ['HTTP/2.0 500 Server Error', 1], ['', 1], ['HTTP/2.0 404 Not Found', null], ['HTTP/2.0 404 Not Found', 0]]) {
     assert.throws(() => validateAbsence(response, status), /inspect-existing-before-retry/);
+  }
+});
+
+test('v0.1.1 names reject historical v0.1.0 package and artifact inputs', () => {
+  assert.throws(() => validateRun(run, input, input.expectedCommit, { ...pkg, version: '0.1.0' }));
+  assert.throws(() => validateArtifact(metadata({ ...artifact, name: `evopilot-0.1.0-preview-${input.expectedCommit}` }), input));
+  assert.throws(() => validateArchiveNames(parentFiles.map(n => n.replaceAll('0.1.1', '0.1.0'))));
+  assert.equal(parentFiles[0], 'evopilot-0.1.1-preview.tar.gz');
+  for (const owner of ['runtime', 'harness', 'ontology']) {
+    assert.equal(tarball(owner), `evopilot-next-${owner}-0.1.1.tgz`);
+    const record = { name: '@evopilot-next/' + owner, version: '0.1.1', filename: tarball(owner) };
+    for (const change of [{ version: '0.1.0' }, { filename: `evopilot-next-${owner}-0.1.0.tgz` }]) {
+      assert.throws(() => validatePack([{ ...record, ...change }], owner));
+    }
+  }
+});
+
+test('release asset layout retains 8/3/4/4 files and only Harness/Ontology locks', () => {
+  assert.deepEqual(assetNames('stack'), ['evopilot-0.1.1-preview.tar.gz',
+    'evopilot-next-runtime-0.1.1.tgz', 'evopilot-next-harness-0.1.1.tgz', 'evopilot-next-ontology-0.1.1.tgz',
+    'harness-dependency-lock.json', 'ontology-dependency-lock.json', 'source-revision.txt', 'SHA256SUMS']);
+  assert.equal(parentFiles.length, 8);
+  for (const owner of ['runtime', 'harness', 'ontology']) {
+    assert.deepEqual(assetNames(owner), [tarball(owner),
+      ...(owner === 'runtime' ? [] : [owner + '-dependency-lock.json']), 'source-revision.txt', 'SHA256SUMS']);
+  }
+});
+
+test('release notes bind role-correct source, CI, download and documentation links', () => {
+  const roles = { stack: 'Parent composition', runtime: 'Runtime projects', harness: 'Harness quality', ontology: 'Ontology semantic' };
+  for (const repository of Object.keys(repositories)) {
+    const i = { ...input, repository, decisionRef: '/private/operator-evidence' };
+    const owner = validateInputs(i), notes = releaseNotes(i, owner);
+    const base = 'https://github.com/' + repository;
+    assert(notes.startsWith('# EvoPilot 0.1.1 Preview\n'));
+    assert(notes.includes(roles[owner]));
+    for (const link of [`${base}/tree/${i.expectedCommit}`, `${base}/actions/runs/${i.sourceRunId}`,
+      `${base}/releases/tag/v0.1.1`, `${base}/blob/${i.expectedCommit}/README.md`]) assert(notes.includes('](' + link + ')'), link);
+    if (owner === 'runtime') {
+      for (const file of ['service', 'cli']) assert(notes.includes(`${base}/blob/${i.expectedCommit}/docs/${file}.md`));
+    } else assert(!notes.includes('/docs/service.md') && !notes.includes('/docs/cli.md'));
+    for (const repo of Object.keys(repositories)) assert(notes.includes('https://github.com/' + repo));
+    assert(notes.includes('https://github.com/yeliang-wang/evopilot/releases'));
+    for (const text of ['strict TypeScript', 'compiled JavaScript', 'declaration files', 'SHA256SUMS',
+      'source-revision.txt', 'Git author records', 'without rewriting v0.1.0 history', 'asset v1',
+      'Historical code', 'no npm publication', 'production readiness or GA']) assert(notes.includes(text), text);
+    assert(!notes.includes(i.decisionRef));
+    assert.throws(() => releaseNotes(i, owner === 'stack' ? 'runtime' : 'stack'), /role mismatch/);
   }
 });

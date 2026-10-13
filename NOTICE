@@ -6,3 +6,8 @@ This product is licensed under the Apache License, Version 2.0.
 Bounded Ontology compatibility extraction from EvoPilot Harness 4.8.2,
 commit 372733fd7b67ec3bee9efe6322f0229db77b160d. See provenance/legacy-core.json
 and docs/legacy-core.md. Historical compatibility artifacts are not native v1 assets.
+
+The public documentation layout takes inspiration from OpenHands: concise
+navigation, a capability overview, quickstart, documentation and contribution
+routes. EvoPilot uses its own wording. This acknowledgment implies no OpenHands
+affiliation or endorsement and does not change the licenses above.

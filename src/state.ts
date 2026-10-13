@@ -1,3 +1,6 @@
+import type { State, Store, ProducerPlan, ProducerRecord, CatalogPlan, CatalogRevision } from './persistence-types.js';
+import { OntologyError } from "./types.js";
+import type { Scope, JSONValue } from "./types.js";
 import { DatabaseSync } from 'node:sqlite';
 import { constants, lstatSync, mkdirSync, readdirSync, readFileSync, openSync, closeSync, writeFileSync, fsyncSync } from 'node:fs';
 import { resolve, dirname, join, isAbsolute, parse, sep } from 'node:path';
@@ -5,9 +8,10 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { assertJSON, stableSerialize, sha256 } from '../vendor/compatibility/v1/reference.mjs';
 
-export function fail(code, message) { throw Object.assign(new Error(message), { code }); }
+export function fail(code: string, message: string): never { throw new OntologyError(code, message); }
 export const LIMITS = Object.freeze({ classificationSessions: 64, classificationAttempts: 16, classificationHandoffs: 16, requestBytes: 524288, nodes: 20000, depth: 48, catalogPlans: 1000, catalogRevisions: 1000, catalogHeads: 1000, catalogSets: 16, catalogRevocations: 1000, producerPlans: 1000, producerRecords: 1000, assets: 1000, sources: 1000, receipts: 10000, stateBytes: 8388608, receiptBytes: 33554432 });
-export function validateState(value) {
+export function validateState(input: unknown): State {
+  const value = input as State;
   if (!value || !Array.isArray(value.assets) || (Object.hasOwn(value, 'sources') && !Array.isArray(value.sources))) fail('CORRUPT_STATE', 'Invalid state collections');
   if (value.assets.length > LIMITS.assets || (value.sources?.length ?? 0) > LIMITS.sources) fail('CORRUPT_STATE', 'State collection limit');
   for (const source of value.sources ?? []) {
@@ -15,10 +19,11 @@ export function validateState(value) {
     slug(source.scope.projectId);
     if (source.sourceVisibility === 'private' && source.scope.visibility === 'public') fail('CORRUPT_STATE', 'Private source in public scope');
   }
-  for (const key of ['producerPlans', 'producerRecords']) {
+  for (const key of ['producerPlans', 'producerRecords'] as const) {
     if (Object.hasOwn(value, key) && (!Array.isArray(value[key]) || value[key].length > LIMITS[key])) fail('CORRUPT_STATE', 'Invalid producer collection');
     const ids = new Set();
-    for (const item of value[key] ?? []) {
+    for (const entry of value[key] ?? []) {
+      const item = entry as ProducerPlan & ProducerRecord;
       if (!item?.scope || !['public', 'private'].includes(item.scope.visibility)) fail('CORRUPT_STATE', 'Invalid producer scope');
       slug(item.scope.projectId);
       const id = item.planId ?? item.recordId;
@@ -30,10 +35,11 @@ export function validateState(value) {
       if (key === 'producerPlans' && (!['PREPARED', 'CONSUMED'].includes(item.status) || !Array.isArray(item.dependencies) || !/^sha256:[a-f0-9]{64}$/.test(item.reviewDigest))) fail('CORRUPT_STATE', 'Invalid producer plan');
     }
   }
-  for (const key of ['catalogPlans', 'catalogRevisions', 'catalogHeads']) {
+  for (const key of ['catalogPlans', 'catalogRevisions', 'catalogHeads'] as const) {
     if (Object.hasOwn(value, key) && (!Array.isArray(value[key]) || value[key].length > LIMITS[key])) fail('CORRUPT_STATE', 'Invalid catalog collection');
     const ids = new Set();
-    for (const item of value[key] ?? []) {
+    for (const entry of value[key] ?? []) {
+      const item = entry as CatalogPlan & CatalogRevision & { catalogId: string };
       if (!item?.scope || !['public', 'private'].includes(item.scope.visibility)) fail('CORRUPT_STATE', 'Invalid catalog scope');
       slug(item.scope.projectId);
       const id = key === 'catalogPlans' ? item.planId : key === 'catalogRevisions' ? item.pointer?.pointerDigest : stableSerialize([item.scope, item.catalogId]);
@@ -59,10 +65,10 @@ export function validateState(value) {
   if (Buffer.byteLength(stableSerialize(value)) > LIMITS.stateBytes) fail('CORRUPT_STATE', 'State byte limit');
   return value;
 }
-export function bounded(value) {
+export function bounded(value: unknown): asserts value is JSONValue {
   let nodes = 0, bytes = 0;
-  const ancestors = new Set();
-  function visit(v, depth) {
+  const ancestors = new Set<object>();
+  function visit(v: unknown, depth: number) {
     if (++nodes > LIMITS.nodes || depth > LIMITS.depth) fail('LIMIT', 'JSON structure limit');
     if (typeof v === 'string') bytes += Buffer.byteLength(v);
     if (bytes > LIMITS.requestBytes) fail('LIMIT', 'JSON byte limit');
@@ -71,7 +77,7 @@ export function bounded(value) {
     ancestors.add(v);
     const ds = Object.getOwnPropertyDescriptors(v);
     for (const k of Reflect.ownKeys(ds)) {
-      const d = ds[k];
+      const d = (ds as Record<PropertyKey, PropertyDescriptor>)[k];
       if (!Object.hasOwn(d, 'value')) fail('INVALID_REQUEST', 'Accessors forbidden');
       bytes += typeof k === 'string' ? Buffer.byteLength(k) : 0;
       visit(d.value, depth + 1);
@@ -81,10 +87,14 @@ export function bounded(value) {
   visit(value, 0); assertJSON(value);
   if (Buffer.byteLength(stableSerialize(value)) > LIMITS.requestBytes) fail('LIMIT', 'Request too large');
 }
-export function slug(v) { if (typeof v !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(v)) fail('INVALID_REQUEST', 'Expected slug'); }
+export function slug(v: unknown): asserts v is string { if (typeof v !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(v)) fail('INVALID_REQUEST', 'Expected slug'); }
 const sourceRoot = fileURLToPath(new URL('../', import.meta.url)).replace(/\/$/, '');
-function stat(path) { try { return lstatSync(path); } catch (e) { if (e.code === 'ENOENT') return null; throw e; } }
-function ancestors(path) {
+export function errorCode(error: unknown): string | undefined {
+  if (error && (typeof error === 'object' || typeof error === 'function') && 'code' in error && typeof error.code === 'string') return error.code;
+  return undefined;
+}
+function stat(path: string) { try { return lstatSync(path); } catch (e) { if (errorCode(e) === 'ENOENT') return null; throw e; } }
+function ancestors(path: string) {
   const paths = []; for (let p = path; ; p = dirname(p)) { paths.unshift(p); if (p === dirname(p)) break; }
   for (const p of paths) {
     const s = stat(p);
@@ -92,19 +102,19 @@ function ancestors(path) {
     if (stat(join(p, '.git'))) fail('UNSAFE_WORKSPACE', 'Git workspace forbidden');
   }
 }
-function checked(path, uid, directory, optional = false) {
+function checked(path: string, uid: number, directory: boolean, optional = false) {
   const s = stat(path);
   if (!s && optional) return false;
   if (!s || s.isSymbolicLink() || (directory ? !s.isDirectory() : !s.isFile()) || s.uid !== uid || (s.mode & 0o077) || (!directory && s.nlink !== 1)) fail('UNSAFE_WORKSPACE', 'Owned private regular path required');
   return true;
 }
-function syncDir(path) { const fd = openSync(path, constants.O_RDONLY | constants.O_DIRECTORY); try { fsyncSync(fd); } finally { closeSync(fd); } }
-function createFile(path, bytes) {
+function syncDir(path: string) { const fd = openSync(path, constants.O_RDONLY | constants.O_DIRECTORY); try { fsyncSync(fd); } finally { closeSync(fd); } }
+function createFile(path: string, bytes: string | Uint8Array) {
   const fd = openSync(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
   try { writeFileSync(fd, bytes); fsyncSync(fd); } finally { closeSync(fd); }
   syncDir(dirname(path));
 }
-export function openState(root, id) {
+export function openState(root: string, id: string): Omit<Store, 'trustedProviders'> {
   if (typeof process.getuid !== 'function') fail('UNSUPPORTED_PLATFORM', 'OS uid required');
   const uid = process.getuid();
   if (typeof root !== 'string' || !isAbsolute(root) || resolve(root) !== root || root === parse(root).root) fail('UNSAFE_WORKSPACE', 'Explicit canonical absolute root required');
@@ -112,7 +122,7 @@ export function openState(root, id) {
   if (root === sourceRoot || root.startsWith(sourceRoot + sep) || sourceRoot.startsWith(root + sep)) fail('UNSAFE_WORKSPACE', 'Source workspace forbidden');
   ancestors(root);
   const marker = join(root, 'workspace.json');
-  const identity = { schema: 'evopilot-workspace/v1', id, canonicalRoot: root, ownerUid: uid };
+  const identity: Store['identity'] = { schema: 'evopilot-workspace/v1', id, canonicalRoot: root, ownerUid: uid };
   const existing = stat(root);
   if (existing) {
     checked(root, uid, true);
@@ -133,7 +143,7 @@ export function openState(root, id) {
   if (!stat(marker)) createFile(marker, stableSerialize(identity));
   for (const d of dirs) if (!stat(d)) { mkdirSync(d, { mode: 0o700 }); syncDir(dirname(d)); }
   if (!existed) createFile(dbPath, '');
-  let db;
+  let db: DatabaseSync | undefined;
   function guard() {
     ancestors(root); checked(root, uid, true); checked(marker, uid, false);
     let value; try { value = JSON.parse(readFileSync(marker, 'utf8')); } catch { fail('IDENTITY_MISMATCH', 'Malformed identity'); }
@@ -146,9 +156,9 @@ export function openState(root, id) {
     db = new DatabaseSync(dbPath, { timeout: 1000, allowExtension: false });
     db.enableDefensive(true);
     if (existed) {
-      if (db.prepare('PRAGMA quick_check').get().quick_check !== 'ok') fail('CORRUPT_STATE', 'SQLite integrity check failed');
-      if (db.prepare('PRAGMA user_version').get().user_version !== 1) fail('CORRUPT_STATE', 'Unknown state schema');
-      const row = db.prepare('SELECT revision, data FROM state WHERE singleton = 1').get();
+      if (db.prepare('PRAGMA quick_check').get()!.quick_check !== 'ok') fail('CORRUPT_STATE', 'SQLite integrity check failed');
+      if (db.prepare('PRAGMA user_version').get()!.user_version !== 1) fail('CORRUPT_STATE', 'Unknown state schema');
+      const row = db.prepare('SELECT revision, data FROM state WHERE singleton = 1').get() as { revision: number; data: string } | undefined;
       if (!row || !Number.isSafeInteger(row.revision) || row.revision < 0 || !validateState(JSON.parse(row.data))) fail('CORRUPT_STATE', 'Invalid state');
       db.prepare('SELECT scope, request_id, digest, receipt FROM receipts LIMIT 1').all();
       db.prepare('SELECT revision, uid, operation, request_digest, result_digest FROM audit LIMIT 1').all();
@@ -156,8 +166,8 @@ export function openState(root, id) {
     db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;');
     if (!existed) db.exec("BEGIN IMMEDIATE; CREATE TABLE state (singleton INTEGER PRIMARY KEY CHECK(singleton=1), revision INTEGER NOT NULL, data TEXT NOT NULL); INSERT INTO state VALUES(1,0,'{\"assets\":[]}'); CREATE TABLE receipts (scope TEXT NOT NULL, request_id TEXT NOT NULL, digest TEXT NOT NULL, receipt TEXT NOT NULL, PRIMARY KEY(scope,request_id)); CREATE TABLE audit (revision INTEGER PRIMARY KEY, uid INTEGER NOT NULL, operation TEXT NOT NULL, request_digest TEXT NOT NULL, result_digest TEXT NOT NULL); PRAGMA user_version=1; COMMIT;");
     guard();
-  } catch (e) { if (db) db.close(); fail('CORRUPT_STATE', 'Cannot open verified Ontology state: ' + (e.code || 'invalid database')); }
-  function blob(scope, value) {
+  } catch (e) { if (db) db.close(); fail('CORRUPT_STATE', 'Cannot open verified Ontology state: ' + (errorCode(e) || 'invalid database')); }
+  function blob(scope: Scope, value: unknown) {
     guard();
     const bytes = stableSerialize(value);
     const hash = 'sha256:' + createHash('sha256').update(bytes).digest('hex');
@@ -167,19 +177,19 @@ export function openState(root, id) {
       p = join(p, part); if (!stat(p)) { mkdirSync(p, { mode: 0o700 }); syncDir(dirname(p)); } checked(p, uid, true);
     }
     const target = join(p, hash.slice(7) + '.json');
-    if (!stat(target)) { try { createFile(target, bytes); } catch (e) { if (e.code !== 'EEXIST') throw e; } }
+    if (!stat(target)) { try { createFile(target, bytes); } catch (e) { if (errorCode(e) !== 'EEXIST') throw e; } }
     checked(target, uid, false);
     if (readFileSync(target, 'utf8') !== bytes) fail('CORRUPT_BLOB', 'Existing content differs');
     return hash;
   }
-  function verifyBlob(scope, value) {
+  function verifyBlob(scope: Scope, value: unknown) {
     const hash = createHash('sha256').update(stableSerialize(value)).digest('hex');
     const parts = scope.visibility === 'public' ? ['public', 'ontology'] : ['private', 'projects', scope.projectId, 'ontology'];
     let p = root; for (const part of parts) { p = join(p, part); checked(p, uid, true); }
     p = join(p, hash + '.json'); checked(p, uid, false);
     if (readFileSync(p, 'utf8') !== stableSerialize(value)) fail('CORRUPT_BLOB', 'Referenced bytes differ');
   }
-  function rawPath(scope, digest, create = false) {
+  function rawPath(scope: Scope, digest: string, create = false) {
     guard(); slug(scope.projectId);
     if (!['public', 'private'].includes(scope.visibility) || !/^sha256:[a-f0-9]{64}$/.test(digest)) fail('CORRUPT_BLOB', 'Invalid raw blob reference');
     const parts = scope.visibility === 'public' ? ['public', 'ontology', 'sources'] : ['private', 'projects', scope.projectId, 'ontology', 'sources'];
@@ -191,7 +201,7 @@ export function openState(root, id) {
     }
     return join(p, digest.slice(7) + '.raw');
   }
-  function verifyRawBlob(scope, digest) {
+  function verifyRawBlob(scope: Scope, digest: string) {
     const target = rawPath(scope, digest); checked(target, uid, false);
     if (lstatSync(target).size > LIMITS.requestBytes) fail('CORRUPT_BLOB', 'Raw source exceeds byte limit');
     const bytes = readFileSync(target);
@@ -200,11 +210,11 @@ export function openState(root, id) {
     if (!Buffer.from(raw, 'utf8').equals(bytes)) fail('CORRUPT_BLOB', 'Invalid UTF-8 source bytes');
     return raw;
   }
-  function rawBlob(scope, raw) {
+  function rawBlob(scope: Scope, raw: string) {
     const bytes = Buffer.from(raw, 'utf8');
     const digest = 'sha256:' + createHash('sha256').update(bytes).digest('hex');
     const target = rawPath(scope, digest, true);
-    if (!stat(target)) { try { createFile(target, bytes); } catch (e) { if (e.code !== 'EEXIST') throw e; } }
+    if (!stat(target)) { try { createFile(target, bytes); } catch (e) { if (errorCode(e) !== 'EEXIST') throw e; } }
     if (verifyRawBlob(scope, digest) !== raw) fail('CORRUPT_BLOB', 'Raw source bytes differ');
     return digest;
   }

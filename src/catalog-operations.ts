@@ -1,13 +1,17 @@
+import type { DispatchRequest, Scope, Receipt } from './types.js';
+import type { Store, State, CatalogParameters, CatalogPlan, CatalogPointer } from './persistence-types.js';
 import { exactFields, sha256, stableSerialize, textField } from '../vendor/compatibility/v1/reference.mjs';
-import { assembleSemanticGeneration } from './compat/v4/semantics/catalog-generation.mjs';
-import { buildCatalog, equal, verifyCatalogRevision } from './catalog-materials.mjs';
-import { fail, LIMITS, slug } from './state.mjs';
+import { catalogGeneration as legacy_catalogGeneration } from "./compat/index.mjs";
+const { assembleSemanticGeneration } = legacy_catalogGeneration;
+import { buildCatalog, equal, verifyCatalogRevision } from './catalog-materials.js';
+import { fail, LIMITS, slug } from './state.js';
 
 const prefix = 'semantic.catalog.';
 export const catalogOperations = Object.freeze(['preview', 'inspect', 'readback', 'publish', 'transition-preview', 'rollback', 'revoke', 'recovery-inspect', 'recovery-readback', 'recover'].map(n => prefix + n).concat(['catalog.prepare', 'catalog.decide', 'catalog.plan-inspect']));
 export const catalogMutations = Object.freeze(['publish', 'rollback', 'revoke', 'recover'].map(n => prefix + n).concat(['catalog.prepare', 'catalog.decide']));
-const hash = v => { if (typeof v !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(v)) fail('INVALID_REQUEST', 'Exact digest required'); };
-function parameters(p) {
+const hash = (v: unknown) => { if (typeof v !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(v)) fail('INVALID_REQUEST', 'Exact digest required'); };
+function parameters(input: unknown) {
+  const p = input as CatalogParameters;
   if (!['PUBLISH', 'ROLLBACK', 'REVOKE'].includes(p.action)) fail('INVALID_REQUEST', 'Catalog action required');
   exactFields(p, ['catalogId', 'action', 'expectedHead', ...(p.action === 'PUBLISH' ? ['sets'] : p.action === 'ROLLBACK' ? ['targetPointerDigest'] : ['revokedDigests'])]);
   slug(p.catalogId); if (p.expectedHead !== 'EMPTY') hash(p.expectedHead);
@@ -17,8 +21,8 @@ function parameters(p) {
     p.revokedDigests.forEach(hash);
   }
 }
-export function validateCatalogRequest(r) {
-  const op = r.operation, i = r.input;
+export function validateCatalogRequest(r: DispatchRequest) {
+  const op = r.operation, i = r.input as unknown as CatalogParameters & { planId: string; requestId: string; intentDigest: string; reviewDigest: string; decision: "APPROVE" | "REJECT"; evidenceRef: string };
   if (['catalog.prepare', prefix + 'preview', prefix + 'transition-preview'].includes(op)) {
     parameters(i);
     if ((op === prefix + 'preview' && i.action !== 'PUBLISH') || (op === prefix + 'transition-preview' && i.action === 'PUBLISH')) fail('INVALID_REQUEST', 'Wrong preview action');
@@ -35,14 +39,14 @@ export function validateCatalogRequest(r) {
   if (i.catalogId) slug(i.catalogId);
   if (i.requestId) slug(i.requestId);
   if (i.intentDigest) hash(i.intentDigest);
-  if (op === 'catalog.decide') { hash(i.reviewDigest); textField(i.evidenceRef); if (!['APPROVE', 'REJECT'].includes(i.decision)) fail('INVALID_REQUEST', 'Explicit decision required'); }
+  if (op === 'catalog.decide') { hash(i.reviewDigest); textField(i.evidenceRef); if (!['APPROVE', 'REJECT'].includes(i.decision as string)) fail('INVALID_REQUEST', 'Explicit decision required'); }
 }
-export const catalogSubject = p => ({ workspace: p.workspace, scope: p.scope, parameters: p.parameters, dependencies: p.dependencies, inputDigest: p.inputDigest, expectedGenerationDigest: p.expectedGenerationDigest, transitionDigest: p.transitionDigest });
-function verifyPlan(store, plan) {
+export const catalogSubject = (p: Omit<CatalogPlan, "reviewDigest" | "planId">) => ({ workspace: p.workspace, scope: p.scope, parameters: p.parameters, dependencies: p.dependencies, inputDigest: p.inputDigest, expectedGenerationDigest: p.expectedGenerationDigest, transitionDigest: p.transitionDigest });
+function verifyPlan(store: Store, plan: CatalogPlan) {
   store.verifyBlob(plan.scope, plan);
   if (!equal(plan.workspace, store.identity) || sha256(catalogSubject(plan)) !== plan.reviewDigest) fail('CORRUPT_STATE', 'Catalog review differs');
 }
-export function verifyCatalogReceipt(store, state, scope, receipt) {
+export function verifyCatalogReceipt(store: Store, state: State, scope: Scope, receipt: Receipt<Record<string, unknown>>) {
   if (!equal(receipt.scope, scope) || !catalogMutations.includes(receipt.operation)) fail('NOT_FOUND', 'Scoped catalog mutation receipt required');
   const audit = store.db.prepare('SELECT * FROM audit WHERE revision = ?').get(receipt.revision);
   if (!audit || audit.request_digest !== receipt.requestDigest || audit.result_digest !== sha256(receipt.result) || audit.operation !== receipt.operation || audit.uid !== receipt.uid || receipt.uid !== store.uid) fail('CORRUPT_STATE', 'Receipt audit differs');
@@ -50,11 +54,11 @@ export function verifyCatalogReceipt(store, state, scope, receipt) {
     const revision = (state.catalogRevisions ?? []).find(v => equal(v.scope, scope) && v.pointer.pointerDigest === receipt.result.pointerDigest);
     if (!revision || revision.pointer.requestId !== receipt.requestId || revision.pointer.intentDigest !== receipt.requestDigest) fail('CORRUPT_STATE', 'Receipt revision differs');
     verifyCatalogRevision(store, state, revision);
-    const plan = state.catalogPlans.find(p => p.planId === revision.pointer.planId); verifyPlan(store, plan);
+    const plan = state.catalogPlans!.find(p => p.planId === revision.pointer.planId); verifyPlan(store, plan!);
   } else if (receipt.operation === prefix + 'recover' && receipt.result.status === 'COMMITTED') {
-    const original = store.db.prepare('SELECT receipt FROM receipts WHERE scope = ? AND request_id = ?').get(stableSerialize(scope), receipt.result.requestId);
+    const original = store.db.prepare('SELECT receipt FROM receipts WHERE scope = ? AND request_id = ?').get(stableSerialize(scope), receipt.result.requestId as string);
     if (!original) fail('CORRUPT_STATE', 'Missing reconciled receipt');
-    const value = JSON.parse(original.receipt);
+    const value = JSON.parse(original.receipt as string);
     if (![prefix + 'publish', prefix + 'rollback', prefix + 'revoke'].includes(value.operation) || value.requestDigest !== receipt.result.intentDigest) fail('CORRUPT_STATE', 'Reconciliation differs');
     verifyCatalogReceipt(store, state, scope, value);
   } else if (receipt.operation === 'catalog.prepare' || receipt.operation === 'catalog.decide') {
@@ -71,18 +75,18 @@ export function verifyCatalogReceipt(store, state, scope, receipt) {
   }
   return receipt;
 }
-export function operateCatalog(store, state, r) {
-  const own = v => equal(v.scope, r.scope), plans = state.catalogPlans ?? [], revisions = state.catalogRevisions ?? [], heads = state.catalogHeads ?? [];
-  function revision(digest, catalogId) {
+export function operateCatalog(store: Store, state: State, r: DispatchRequest) {
+  const own = (v: { scope: Scope }) => equal(v.scope, r.scope), plans = state.catalogPlans ?? [], revisions = state.catalogRevisions ?? [], heads = state.catalogHeads ?? [];
+  function revision(digest: unknown, catalogId: unknown) {
     const v = revisions.find(v => own(v) && v.pointer.pointerDigest === digest && v.generation.catalogId === catalogId);
     if (!v) fail('NOT_FOUND', 'Own catalog revision required');
     return verifyCatalogRevision(store, state, v);
   }
-  function current(catalogId) {
+  function current(catalogId: unknown) {
     const h = heads.find(v => own(v) && v.catalogId === catalogId);
     return h ? revision(h.pointerDigest, catalogId) : null;
   }
-  function calculate(p) {
+  function calculate(p: CatalogParameters) {
     const head = current(p.catalogId), headDigest = head?.pointer.pointerDigest ?? 'EMPTY';
     if (p.expectedHead !== headDigest) fail('HEAD_CONFLICT', 'Catalog head changed');
     let sets, revoked = head?.generation.revokedDigests ?? [];
@@ -93,8 +97,8 @@ export function operateCatalog(store, state, r) {
         if (p.targetPointerDigest === headDigest) fail('INVALID_REQUEST', 'Rollback requires prior revision');
         sets = revision(p.targetPointerDigest, p.catalogId).sets;
       } else {
-        if (!p.revokedDigests.every(d => head.generation.entries.some(e => e.objectDigest === d))) fail('UNKNOWN_REVOCATION', 'Known current digest required');
-        revoked = [...new Set([...revoked, ...p.revokedDigests])].sort();
+        if (!p.revokedDigests!.every(d => head.generation.entries.some(e => e.objectDigest === d))) fail('UNKNOWN_REVOCATION', 'Known current digest required');
+        revoked = [...new Set([...revoked, ...p.revokedDigests!])].sort();
         sets = head.sets.filter(set => !assembleSemanticGeneration({ catalogId: p.catalogId, sets: [set] }).generation.entries.some(e => revoked.includes(e.objectDigest)));
       }
     }
@@ -105,7 +109,7 @@ export function operateCatalog(store, state, r) {
     const transitionDigest = sha256({ action: p.action, expectedHead: headDigest, inputDigest, expectedGenerationDigest, revokedDigests: revoked });
     return { ...built, inputDigest, expectedGenerationDigest, transitionDigest, head: headDigest, authority: false };
   }
-  const op = r.operation, i = r.input;
+  const op = r.operation, i = r.input as unknown as CatalogParameters & { planId: string; requestId: string; intentDigest: string; reviewDigest: string; decision: "APPROVE" | "REJECT"; evidenceRef: string };
   if (op === prefix + 'preview' || op === prefix + 'transition-preview') {
     const v = calculate(i); return { generationDigest: v.expectedGenerationDigest, expectedGenerationDigest: v.expectedGenerationDigest, inputDigest: v.inputDigest, transitionDigest: v.transitionDigest, head: v.head, authority: false };
   }
@@ -116,7 +120,7 @@ export function operateCatalog(store, state, r) {
       verifyCatalogRevision(store, state, v);
       const row = store.db.prepare('SELECT receipt FROM receipts WHERE scope = ? AND request_id = ?').get(stableSerialize(r.scope), v.pointer.requestId);
       if (!row) fail('CORRUPT_STATE', 'Missing publication receipt');
-      verifyCatalogReceipt(store, state, r.scope, JSON.parse(row.receipt));
+      verifyCatalogReceipt(store, state, r.scope, JSON.parse(row.receipt as string));
     }
     return { status: 'CLEAN', reconcilable: true, head: head?.pointer.pointerDigest ?? 'EMPTY', externalWork: false, authority: false };
   }
@@ -132,7 +136,7 @@ export function operateCatalog(store, state, r) {
       }
       return { status: 'NOT_COMMITTED', requestId: i.requestId, intentDigest: i.intentDigest, authority: false };
     }
-    const receipt = verifyCatalogReceipt(store, state, r.scope, JSON.parse(row.receipt));
+    const receipt = verifyCatalogReceipt(store, state, r.scope, JSON.parse(row.receipt as string));
     if (row.digest !== receipt.requestDigest) fail('CORRUPT_STATE', 'Receipt intent differs');
     if (op === prefix + 'readback') return receipt;
     if (![prefix + 'publish', prefix + 'rollback', prefix + 'revoke'].includes(receipt.operation) || receipt.requestDigest !== i.intentDigest) fail('REQUEST_CONFLICT', 'Exact original publication intent required');
@@ -141,7 +145,7 @@ export function operateCatalog(store, state, r) {
   if (op === 'catalog.prepare') {
     if (plans.length >= LIMITS.catalogPlans) fail('LIMIT', 'Catalog plan count');
     const v = calculate(i);
-    const plan = { workspace: store.identity, scope: r.scope, parameters: i, dependencies: v.dependencies, inputDigest: v.inputDigest, expectedGenerationDigest: v.expectedGenerationDigest, transitionDigest: v.transitionDigest, status: 'PREPARED', decision: null, output: null };
+    const plan = { workspace: store.identity, scope: r.scope, parameters: i, dependencies: v.dependencies, inputDigest: v.inputDigest, expectedGenerationDigest: v.expectedGenerationDigest, transitionDigest: v.transitionDigest, status: 'PREPARED', decision: null, output: null } as Omit<CatalogPlan, "reviewDigest" | "planId"> as CatalogPlan;
     plan.reviewDigest = sha256(catalogSubject(plan)); plan.planId = sha256({ reviewDigest: plan.reviewDigest, requestId: r.requestId });
     store.blob(r.scope, plan); (state.catalogPlans ??= []).push(plan); return plan;
   }
@@ -159,7 +163,7 @@ export function operateCatalog(store, state, r) {
   if (op !== prefix + plan.parameters.action.toLowerCase()) fail('PLAN_OPERATION_MISMATCH', 'Wrong catalog action');
   if (plan.decision?.decision !== 'APPROVE' || plan.decision.reviewDigest !== plan.reviewDigest || plan.decision.uid !== store.uid) fail('APPROVAL_REQUIRED', 'Exact local catalog decision required');
   if (revisions.length >= LIMITS.catalogRevisions) fail('LIMIT', 'Catalog revision count');
-  const pointer = { workspace: store.identity, scope: r.scope, catalogId: plan.parameters.catalogId, generationDigest: calculated.expectedGenerationDigest, materialDigest: sha256(calculated.material), previous: calculated.head, action: plan.parameters.action, planId: plan.planId, decision: plan.decision, actor: `uid:${store.uid}`, at: new Date().toISOString(), requestId: r.requestId, intentDigest: sha256({ operation: r.operation, scope: r.scope, input: r.input }) };
+  const pointer = { workspace: store.identity, scope: r.scope, catalogId: plan.parameters.catalogId, generationDigest: calculated.expectedGenerationDigest, materialDigest: sha256(calculated.material), previous: calculated.head, action: plan.parameters.action, planId: plan.planId, decision: plan.decision, actor: `uid:${store.uid}`, at: new Date().toISOString(), requestId: r.requestId, intentDigest: sha256({ operation: r.operation, scope: r.scope, input: r.input }) } as CatalogPointer;
   pointer.pointerDigest = sha256(pointer);
   const v = { workspace: store.identity, scope: r.scope, pointer, generation: calculated.generation, material: calculated.material };
   for (const [, doc] of v.material) store.blob(r.scope, doc);

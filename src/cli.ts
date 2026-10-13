@@ -1,13 +1,14 @@
 #!/usr/bin/env node
+import type { ExecuteRequest, ClassificationRequest } from './types.js';
 import { constants, realpathSync } from 'node:fs';
 import { lstat, open } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PRODUCT, VERSION, capabilities } from './index.mjs';
-import { createOntologyService } from './service.mjs';
-import { operations, validateRequest } from './native-operations.mjs';
-import { classificationDispatch } from './classification-operations.mjs';
-import { bounded, fail, LIMITS, slug } from './state.mjs';
+import { PRODUCT, VERSION, capabilities } from './index.js';
+import { createOntologyService } from './service.js';
+import { operations, validateRequest } from './native-operations.js';
+import { classificationDispatch } from './classification-operations.js';
+import { bounded, fail, LIMITS, slug, errorCode } from './state.js';
 
 const serviceCodes = new Set("APPROVAL_REQUIRED ASSET_EXISTS ASYNC_REQUIRED CLASSIFICATION_FAILED CLASSIFICATION_HANDOFF_BLOCKED CLASSIFICATION_MATCH_REQUIRED CLASSIFICATION_PROVIDER_UNAVAILABLE CLASSIFICATION_PROVIDER_UNRESOLVED CLASSIFICATION_REPLAY_INTEGRITY_FAILED CLASSIFICATION_SOURCE_ASYNC CLASSIFICATION_SOURCE_DRIFT CLASSIFICATION_SOURCE_INVALID CLASSIFICATION_SOURCE_UNAVAILABLE CLASSIFICATION_UNRESOLVED CLOSED CORRUPT_BLOB CORRUPT_STATE DEPENDENCY_CHANGED EMPTY_PUBLICATION EXPLICIT_HANDOFF_DECISION_REQUIRED FOREIGN_MATERIAL HEAD_CONFLICT HUMAN_EVIDENCE_MISMATCH IDENTITY_MISMATCH IMMUTABLE_VERSION INVALID_DELIVERY INVALID_ENCODING INVALID_FORMAT INVALID_MODEL INVALID_REQUEST INVALID_SOURCE INVALID_TAXONOMY LIMIT MATERIAL_REQUIRED NOT_DERIVABLE NOT_FOUND NOT_INITIALIZED OWNED_MATERIAL_REQUIRED PENDING_MODEL PLAN_CONSUMED PLAN_OPERATION_MISMATCH PROVIDER_ASYNC PROVIDER_FAILED PROVIDER_MISMATCH PROVIDER_REQUIRED REQUEST_CONFLICT REVIEW_MISMATCH REVIEW_REQUIRED REVISION_CONFLICT REVOKED_MATERIAL SCOPE_MISMATCH SESSION_EXISTS SOURCE_BINDING_MISMATCH SOURCE_MISMATCH SOURCE_QUARANTINED STATE_ERROR UNKNOWN UNKNOWN_REVOCATION UNKNOWN_SOURCE UNKNOWN_WORKSPACE UNSAFE_WORKSPACE UNSUPPORTED_DEPENDENCY UNSUPPORTED_KIND UNSUPPORTED_OPERATION UNSUPPORTED_PLATFORM".split(' '));
 const help = {
@@ -15,7 +16,7 @@ const help = {
   input: 'One bounded JSON request from stdin or the exact explicit regular file.',
   exitCodes: { success: 0, serviceFailure: 1, invalidInput: 2 },
 };
-function parseArgs(args) {
+function parseArgs(args: string[]) {
   if (!Array.isArray(args) || args.some(a => typeof a !== 'string')) fail('USAGE', 'Invalid arguments');
   const [raw, ...rest] = args;
   const command = raw === '--help' ? 'help' : raw === '--version' ? 'version' : raw;
@@ -24,7 +25,7 @@ function parseArgs(args) {
     return { command };
   }
   if (command !== 'request') fail('USAGE', 'Expected a supported command');
-  const flags = {};
+  const flags: Record<string, string> = {};
   for (let i = 0; i < rest.length; i += 2) {
     const key = rest[i], value = rest[i + 1];
     if (!['--workspace', '--workspace-id', '--request-file'].includes(key) || Object.hasOwn(flags, key) || !value || value.startsWith('--')) fail('USAGE', 'Invalid request flags');
@@ -37,9 +38,9 @@ function parseArgs(args) {
   if (file && !isAbsolute(file)) fail('USAGE', 'Absolute request file required');
   return { command, root, id: flags['--workspace-id'], file };
 }
-async function readInput(file, stdin) {
-  const chunks = []; let size = 0;
-  const add = chunk => {
+async function readInput(file: string | undefined, stdin: AsyncIterable<string | Buffer>) {
+  const chunks: Buffer[] = []; let size = 0;
+  const add = (chunk: string | Buffer) => {
     const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     size += bytes.length;
     if (size > LIMITS.requestBytes) fail('LIMIT', 'Request byte limit');
@@ -62,7 +63,7 @@ async function readInput(file, stdin) {
         add(buffer.subarray(0, bytesRead));
       }
     } catch (error) {
-      if (error.code === 'LIMIT') throw error;
+      if (errorCode(error) === 'LIMIT') throw error;
       fail('INPUT_FILE', 'Cannot read regular request file');
     } finally { await handle?.close(); }
   } else {
@@ -74,11 +75,11 @@ async function readInput(file, stdin) {
   try { request = JSON.parse(text); } catch { fail('INVALID_REQUEST', 'Expected one JSON request'); }
   bounded(request);
   validateRequest(request);
-  return request;
+  return request as unknown as ExecuteRequest | ClassificationRequest;
 }
 
 // Injected streams are trusted test/host code, never request-configurable providers.
-export async function main(args, { stdin = process.stdin, stdout = process.stdout } = {}) {
+export async function main(args: string[], { stdin = process.stdin, stdout = process.stdout }: { stdin?: AsyncIterable<string | Buffer>; stdout?: { write(chunk: string): unknown } } = {}) {
   let response, exitCode = 0, executing = false;
   try {
     const parsed = parseArgs(args);
@@ -93,16 +94,16 @@ export async function main(args, { stdin = process.stdin, stdout = process.stdou
     };
     else {
       const request = await readInput(parsed.file, stdin);
-      const service = createOntologyService({ workspaceRoot: parsed.root, workspaceId: parsed.id });
+      const service = createOntologyService({ workspaceRoot: parsed.root!, workspaceId: parsed.id! });
       try {
         executing = true;
         service.initialize();
-        result = classificationDispatch.includes(request.operation) ? await service.classify(request) : service.execute(request);
+        result = classificationDispatch.includes(request.operation) ? await service.classify(request as ClassificationRequest) : service.execute(request as ExecuteRequest);
       } finally { service.close(); }
     }
     response = { ok: true, product: PRODUCT, version: VERSION, result, authority: false };
   } catch (error) {
-    const code = ['USAGE', 'INPUT_FILE'].includes(error?.code) || serviceCodes.has(error?.code) ? error.code : executing ? 'STATE_ERROR' : 'INVALID_REQUEST';
+    const code = ['USAGE', 'INPUT_FILE'].includes(errorCode(error) ?? "") || serviceCodes.has(errorCode(error) ?? "") ? errorCode(error)! : executing ? 'STATE_ERROR' : 'INVALID_REQUEST';
     // Never echo exception messages, paths, parser excerpts or caller-controlled fields.
     const message = code === 'USAGE' ? 'Invalid command arguments; use help.'
       : code === 'INPUT_FILE' ? 'Cannot read a bounded regular request file.'

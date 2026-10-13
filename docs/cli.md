@@ -1,6 +1,6 @@
 # Ontology CLI
 
-`evopilot-next-ontology` is the independent package bin for `src/cli.mjs` (Node 24.14.0). A source checkout can use `node src/cli.mjs` or the executable script directly. Installed package-manager symlinks resolve to the same entry. Importing `main` does not initialize storage or run a request.
+`evopilot-next-ontology` is the independent package bin for `dist/cli.js` (Node 24.14.0). After building, a source checkout can use `node dist/cli.js` or the executable script directly. Installed package-manager symlinks resolve to the same entry. Importing `main` does not initialize storage or run a request.
 
 ```text
 evopilot-next-ontology capabilities
@@ -11,20 +11,20 @@ evopilot-next-ontology request --workspace <canonicalAbsoluteRoot> --workspace-i
 
 `--help` and `--version` are aliases. Discovery commands need no workspace and perform no initialization. Requests require both workspace flags; there is no environment, current-directory, home, credential or configuration fallback. Workspace identity and symlink checks belong to the existing owned service. Use a new workspace with an existing canonical parent or an existing service-owned workspace with its exact id.
 
-First use from the source checkout (replace the workspace placeholder with an explicit canonical absolute path):
+Build the source checkout first using the [quickstart](../README.md#quickstart). Then replace the workspace placeholder with an explicit canonical absolute path:
 
 ```sh
 ONTOLOGY_WORKSPACE=/absolute/canonical/new-ontology-workspace
-node src/cli.mjs version
-node src/cli.mjs capabilities
+node dist/cli.js version
+node dist/cli.js capabilities
 node --input-type=module -e 'import fs from "node:fs"; const model = JSON.parse(fs.readFileSync("examples/synthetic-models.json", "utf8")).assets[0]; console.log(JSON.stringify({operation:"asset.put",scope:{visibility:"public",projectId:"demo"},input:{model},requestId:"first-model",expectedRevision:0}));' |
-  node src/cli.mjs request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
+  node dist/cli.js request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
 printf '%s\n' '{"operation":"workspace.inspect","scope":{"visibility":"public","projectId":"demo"},"input":{}}' |
-  node src/cli.mjs request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
+  node dist/cli.js request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
 printf '%s\n' '{"operation":"asset.list","scope":{"visibility":"public","projectId":"demo"},"input":{}}' |
-  node src/cli.mjs request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
+  node dist/cli.js request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
 printf '%s\n' '{"operation":"receipt.inspect","scope":{"visibility":"public","projectId":"demo"},"input":{"requestId":"first-model"}}' |
-  node src/cli.mjs request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
+  node dist/cli.js request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo
 ```
 
 The first request stores `examples/synthetic-models.json`'s actual `assets[0]` as a native model. The following commands run in separate processes and read the same durable state. The receipt has revision 1 for a fresh workspace. `asset.inspect` accepts `{id,version}` from `asset.list`. Review, decision and delivery remain absent. Follow the [native modeling/instance APIs](../specifications/v1/README.md) and [service lifecycle](service.md) for explicit review and separately evidenced decisions. The CLI never adds approval or publication operations.
@@ -32,7 +32,7 @@ The first request stores `examples/synthetic-models.json`'s actual `assets[0]` a
 For file input, supply a JSON request in an explicit absolute regular file:
 
 ```sh
-node src/cli.mjs request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo --request-file /absolute/request.json
+node dist/cli.js request --workspace "$ONTOLOGY_WORKSPACE" --workspace-id demo --request-file /absolute/request.json
 ```
 
 File input replaces stdin. The final file must be regular and not a symlink; device/inode are checked across open, with no-follow and nonblocking flags. Directories, missing files and special files fail safely. Input is one UTF-8 JSON value, bounded to 524288 bytes, 20000 nodes and depth 48. Duplicate/unknown flags, extra fields, unknown operations, invalid scope and malformed envelopes fail before initialization. Native model and operation semantics continue to be validated by the service.
@@ -49,4 +49,4 @@ Classification admission receipts remain immutable PENDING evidence; inspect/res
 
 Stdout contains one JSON envelope: success `{ok:true,product:"ontology",version,result,authority:false}`, failure `{ok:false,error:{code,message},authority:false}`. Exit codes are 0 success, 1 service failure, 2 invalid arguments/input. Errors expose allowlisted codes and static messages, never raw exception messages, input excerpts, paths or stacks. Unknown input errors become `INVALID_REQUEST`; unknown execution errors become `STATE_ERROR`. `INPUT_FILE` covers file access failures and `LIMIT` covers bounds. Nested successful results preserve the service's documented data, including explicitly stored evidence. Node platform warnings may appear on stderr.
 
-Parent Preview MCP SDK `request(owner, envelope)` routes to the same owned service; start/reanalyze await `classify`, and other operations use synchronous `execute`. Activation is explicit per stdio session, off by default. Unified Expert guidance is implemented. Actual Desktop/Host full-journey acceptance, full migration, E03/E10 and source-ledger closure status must be obtained from a separate local acceptance report bound to the exact candidate; without that report, no acceptance can be claimed. Neither this CLI nor the default Preview daemon configures classification or external legacy Harness Catalog providers. Validated factory forwarding is available for applications that supply them; it does not implement a provider or inherit old Runtime profiles/credentials. See [integration boundaries](service.md#preview-integration-and-provider-boundaries). Discovery's literal stage/pending fields are retained implementation metadata, not the current parent integration status.
+Parent Preview MCP SDK `request(owner, envelope)` routes to the same owned service; start/reanalyze await `classify`, and other operations use synchronous `execute`. Activation is explicit per stdio session, off by default. Unified Expert guidance is implemented. Neither this CLI nor the default Preview daemon configures classification or external legacy Harness Catalog providers. Validated factory forwarding is available for applications that supply them; it does not implement a provider or inherit old Runtime profiles/credentials. See [integration boundaries](service.md#preview-integration-and-provider-boundaries). Discovery fields retain their existing wire values.
