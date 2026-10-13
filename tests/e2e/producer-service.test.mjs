@@ -57,6 +57,32 @@ function sequence(c) {
   const params = { recordId: proposal.recordId, expectedProposalDigest: proposal.document.proposalDigest, foundationDigest: g.resolveOntologyFoundation().foundationDigest, version: '1.0.0' };
   const publication = c.produce('project-ontology.artifact.publish', params);
   assert.equal(publication.record.document.spec.snapshot.concepts.length, 2);
+  // These assertions run through the actual public service sequence as well as
+  // its in-memory contract check; projections remain read-only synthetic guidance.
+  const { snapshot, projectionSet, projectOntologySkill: skill, manifest } = publication.record.document.spec;
+  assert.equal(snapshot.project.id, 'alpha');
+  assert.equal(snapshot.proposalDigest, proposal.document.proposalDigest);
+  assert.equal(projectionSet.snapshotDigest, snapshot.snapshotDigest);
+  const jsonLd = projectionSet.projections.find(item => item.format === 'JSON_LD');
+  assert.equal(jsonLd.status, 'APPLICABLE');
+  assert.deepEqual(JSON.parse(jsonLd.content)['@graph'].map(item => ({ id: item.id, type: item.type, label: item.label, definition: item.definition })), [
+    { id: 'finance:account', type: 'ENTITY', label: 'Account', definition: 'A governed account.' },
+    { id: 'finance:audit', type: 'CAPABILITY', label: 'Audit', definition: 'A governed audit capability.' },
+  ]);
+  const swrl = projectionSet.projections.find(item => item.format === 'SWRL');
+  assert.equal(swrl.status, 'NON_APPLICABLE'); assert.equal(swrl.content, null, 'A non-rule relationship cannot invent executable rules');
+  assert.equal(skill.kind, 'ProjectOntologySkill'); assert.equal(skill.metadata.projectId, 'alpha');
+  assert.equal(skill.spec.snapshotDigest, snapshot.snapshotDigest);
+  assert.equal(skill.spec.projectionSetDigest, projectionSet.projectionSetDigest);
+  assert.equal(skill.spec.artifactSetManifestDigest, manifest.manifestDigest);
+  assert.deepEqual(skill.spec.conceptIndex, [
+    { conceptId: 'finance:account', label: 'Account', metaType: 'ENTITY', definition: 'A governed account.' },
+    { conceptId: 'finance:audit', label: 'Audit', metaType: 'CAPABILITY', definition: 'A governed audit capability.' },
+  ]);
+  assert.equal(skill.spec.truthSource, 'ResolvedProjectOntologySnapshot');
+  assert.equal(skill.spec.readOnly, true); assert.equal(skill.spec.executable, false);
+  assert.equal(skill.authority.mayMutateOntology, false); assert.equal(skill.authority.mayApprove, false);
+  assert.equal(skill.authority.mayPublish, false); assert.equal(skill.authority.mayActivate, false);
   assert.throws(() => c.prepare('project-ontology.artifact.publish', params), { code: 'IMMUTABLE_VERSION' });
   const artifact = publication.record;
   const transitioned = c.produce('project-ontology.artifact.transition', { artifactRecordId: artifact.recordId, expectedArtifactDigest: artifact.document.artifactSetDigest, recordId: publication.lifecycle.recordId, expectedRecordDigest: publication.lifecycle.document.recordDigest, action: 'INSTALL' });
