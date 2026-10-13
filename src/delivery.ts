@@ -2,7 +2,7 @@ import type { OntologyModel } from "./types.js";
 import { assertJSON, exactFields, sha256, frozenClone, stableSerialize } from '../vendor/compatibility/v1/reference.mjs';
 import { validateOntology, failure } from './specification.js';
 
-export function buildDelivery(input: unknown) {
+function buildForVersion(input: unknown, productVersion: string) {
   const validationReport = validateOntology(input);
   if (!validationReport.valid || validationReport.pending.length) throw new TypeError('Cannot deliver invalid model or required unresolved issues');
   // Successful native validation establishes the complete model shape.
@@ -15,15 +15,20 @@ export function buildDelivery(input: unknown) {
     validationReport,
     buildReport: { status: 'BUILT', instanceValidation: 'NOT_CHECKED', constraints: validationReport.constraints, authority: false, businessConfirmed: false, released: false },
   };
-  const manifest = { specVersion: 'v1', product: 'ontology', productVersion: '0.1.1', id: asset.id, version: asset.version, visibility: asset.visibility, modelDigest: sha256(asset), contentDigest: sha256(content), dependencies: asset.dependencies };
+  const manifest = { specVersion: 'v1', product: 'ontology', productVersion, id: asset.id, version: asset.version, visibility: asset.visibility, modelDigest: sha256(asset), contentDigest: sha256(content), dependencies: asset.dependencies };
   return frozenClone({ ...content, manifest, digest: sha256({ ...content, manifest }) });
 }
+
+
+export function buildDelivery(input: unknown) { return buildForVersion(input, '0.2.0'); }
 
 export function verifyDelivery(delivery: unknown) {
   try {
     assertJSON(delivery);
     exactFields(delivery, ['model', 'provenance', 'sourceMappings', 'unresolvedIssues', 'validationReport', 'buildReport', 'manifest', 'digest']);
-    const expected = buildDelivery(delivery.model);
+    const producer = (delivery.manifest as {productVersion?: unknown})?.productVersion;
+    if (typeof producer !== 'string' || !['0.1.0','0.1.1','0.2.0'].includes(producer)) throw new TypeError('Unsupported delivery producer version');
+    const expected = buildForVersion(delivery.model, producer);
     if (stableSerialize(expected) !== stableSerialize(delivery)) throw new TypeError('Delivery content, manifest or report mismatch');
     return frozenClone({ valid: true, status: 'VALID', digest: expected.digest, authority: false, businessConfirmed: false, released: false });
   } catch (error) { return failure(error); }

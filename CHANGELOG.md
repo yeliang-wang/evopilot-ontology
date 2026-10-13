@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 Preview
+
+- Private Workspace initialization and explicit existing-workspace attachment through the unified Expert.
+- Separate editable project files and protected service state; same-host migration preserves immutable history and receipts.
+- Versioned asset compatibility, recovery coverage and expanded Expert E2E documentation.
+- Historical specifications/v1 and earlier acceptance records remain unchanged.
+
 ## 0.1.1 Preview
 
 - Deliver owned implementation as strict TypeScript 5.9.3 compiled to JavaScript and declarations. Public exports and CLI use `dist`; remove the 17 duplicate top-level `.mjs` implementations after confirming their `.ts` counterparts.

@@ -1,3 +1,4 @@
+import { readRelocations, acceptsWorkspace as acceptRelocatedWorkspace } from './location-lineage.js';
 import type { State, Store, ProducerPlan, ProducerRecord, CatalogPlan, CatalogRevision } from './persistence-types.js';
 import { OntologyError } from "./types.js";
 import type { Scope, JSONValue } from "./types.js";
@@ -151,6 +152,7 @@ export function openState(root: string, id: string): Omit<Store, 'trustedProvide
     for (const d of dirs) checked(d, uid, true);
     for (const p of [dbPath, dbPath + '-wal', dbPath + '-shm', dbPath + '-journal']) checked(p, uid, false, true);
     checked(dbPath, uid, false);
+    if (db) readRelocations(db, identity, 'ontology');
   }
   try {
     db = new DatabaseSync(dbPath, { timeout: 1000, allowExtension: false });
@@ -165,8 +167,9 @@ export function openState(root: string, id: string): Omit<Store, 'trustedProvide
     }
     db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;');
     if (!existed) db.exec("BEGIN IMMEDIATE; CREATE TABLE state (singleton INTEGER PRIMARY KEY CHECK(singleton=1), revision INTEGER NOT NULL, data TEXT NOT NULL); INSERT INTO state VALUES(1,0,'{\"assets\":[]}'); CREATE TABLE receipts (scope TEXT NOT NULL, request_id TEXT NOT NULL, digest TEXT NOT NULL, receipt TEXT NOT NULL, PRIMARY KEY(scope,request_id)); CREATE TABLE audit (revision INTEGER PRIMARY KEY, uid INTEGER NOT NULL, operation TEXT NOT NULL, request_digest TEXT NOT NULL, result_digest TEXT NOT NULL); PRAGMA user_version=1; COMMIT;");
+    readRelocations(db, identity, 'ontology');
     guard();
-  } catch (e) { if (db) db.close(); fail('CORRUPT_STATE', 'Cannot open verified Ontology state: ' + (errorCode(e) || 'invalid database')); }
+  } catch (e) { if (db) db.close(); if (['INVALID_LINEAGE','MISSING_RELOCATION_KEY'].includes(errorCode(e) ?? '')) throw e; fail('CORRUPT_STATE', 'Cannot open verified Ontology state: ' + (errorCode(e) || 'invalid database')); }
   function blob(scope: Scope, value: unknown) {
     guard();
     const bytes = stableSerialize(value);
@@ -218,5 +221,5 @@ export function openState(root: string, id: string): Omit<Store, 'trustedProvide
     if (verifyRawBlob(scope, digest) !== raw) fail('CORRUPT_BLOB', 'Raw source bytes differ');
     return digest;
   }
-  return { db, uid, identity, guard, blob, verifyBlob, rawBlob, verifyRawBlob };
+  return { db, uid, identity, guard, blob, verifyBlob, rawBlob, verifyRawBlob, acceptsWorkspace: (value: unknown, digest: string) => acceptRelocatedWorkspace(db, identity, 'ontology', value, digest) };
 }

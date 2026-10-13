@@ -98,7 +98,7 @@ export interface State {
 }
 export interface Store {
   db: DatabaseSync; uid: number; identity: WorkspaceIdentity;
-  guard(): void; blob(scope: Scope, value: unknown): string;
+  guard(): void; acceptsWorkspace(value: unknown, digest: string): boolean; blob(scope: Scope, value: unknown): string;
   verifyBlob(scope: Scope, value: unknown): void;
   rawBlob(scope: Scope, raw: string): string;
   verifyRawBlob(scope: Scope, digest: string): string;

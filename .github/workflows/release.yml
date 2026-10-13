@@ -15,7 +15,7 @@ on:
         required: true
         type: string
       publish:
-        description: Publish only after external M5 validation and explicit human decision
+        description: Publish only after exact-candidate v0.2 acceptance and explicit human decision
         type: boolean
         default: false
       decision_ref:
@@ -26,7 +26,7 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: ${{ github.repository }}-v0.1.1
+  group: ${{ github.repository }}-v0.2.0
   cancel-in-progress: false
 env:
   GH_TOKEN: ${{ github.token }}

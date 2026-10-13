@@ -23,7 +23,7 @@ test('package boundary: exact references are immutable and carry no authority', 
 
 test('package boundary: changed bindings and unsupported input fail closed', () => {
   for (const patch of [
-    { version: '0.1.1' }, { digest: 'sha256:' + 'b'.repeat(64) },
+    { version: '0.2.0' }, { digest: 'sha256:' + 'b'.repeat(64) },
     { product: 'runtime' }, { id: 'other' }, { visibility: 'public' },
     { specVersion: '1.0.0' }, { specVersion: 'v2' }, { version: '01.0.0' }, { version: '1.00.0' },
     { version: '1.0.00' }, { version: '1.0' }, { version: '1.0.0-beta' },
@@ -38,7 +38,7 @@ test('package boundary: changed bindings and unsupported input fail closed', () 
 });
 
 test('package boundary: default capabilities are truthful immutable data', () => {
-  assert.equal(api.VERSION, '0.1.1');
+  assert.equal(api.VERSION, '0.2.0');
   assert.equal(api.PRODUCT, 'ontology');
   const capabilities = api.capabilities();
   assert.equal(capabilities.businessOperationsReady, true);
@@ -78,7 +78,7 @@ test('vendored v1 wire and public boundary are independent of implementation rev
       }
       for (const patch of [
         { product: product === 'ontology' ? 'harness' : 'ontology' },
-        { version: '0.1.1' }, { digest: 'sha256:' + 'b'.repeat(64) },
+        { version: '0.2.0' }, { digest: 'sha256:' + 'b'.repeat(64) },
       ]) assert.throws(() => inspectReference(input, { ...input, ...patch }), TypeError);
     }
   }

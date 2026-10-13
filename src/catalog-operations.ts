@@ -44,7 +44,7 @@ export function validateCatalogRequest(r: DispatchRequest) {
 export const catalogSubject = (p: Omit<CatalogPlan, "reviewDigest" | "planId">) => ({ workspace: p.workspace, scope: p.scope, parameters: p.parameters, dependencies: p.dependencies, inputDigest: p.inputDigest, expectedGenerationDigest: p.expectedGenerationDigest, transitionDigest: p.transitionDigest });
 function verifyPlan(store: Store, plan: CatalogPlan) {
   store.verifyBlob(plan.scope, plan);
-  if (!equal(plan.workspace, store.identity) || sha256(catalogSubject(plan)) !== plan.reviewDigest) fail('CORRUPT_STATE', 'Catalog review differs');
+  if ((!equal(plan.workspace, store.identity) && !store.acceptsWorkspace(plan.workspace, plan.reviewDigest)) || sha256(catalogSubject(plan)) !== plan.reviewDigest) fail('CORRUPT_STATE', 'Catalog review differs');
 }
 export function verifyCatalogReceipt(store: Store, state: State, scope: Scope, receipt: Receipt<Record<string, unknown>>) {
   if (!equal(receipt.scope, scope) || !catalogMutations.includes(receipt.operation)) fail('NOT_FOUND', 'Scoped catalog mutation receipt required');
@@ -152,6 +152,7 @@ export function operateCatalog(store: Store, state: State, r: DispatchRequest) {
   const plan = plans.find(p => own(p) && p.planId === i.planId);
   if (!plan) fail('NOT_FOUND', 'Scoped catalog plan required'); verifyPlan(store, plan);
   if (op === 'catalog.plan-inspect') { if (plan.output) revision(plan.output, plan.parameters.catalogId); return plan; }
+  if (!equal(plan.workspace, store.identity)) fail('RELOCATION_REVIEW_REQUIRED', 'Historical Catalog plan requires new preparation and review');
   if (plan.status !== 'PREPARED') fail('PLAN_CONSUMED', 'Catalog plan consumed');
   const calculated = calculate(plan.parameters);
   if (calculated.inputDigest !== plan.inputDigest || calculated.transitionDigest !== plan.transitionDigest || !equal(calculated.dependencies, plan.dependencies)) fail('DEPENDENCY_CHANGED', 'Catalog dependencies changed');

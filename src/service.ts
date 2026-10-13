@@ -16,7 +16,7 @@ export function createOntologyService(options: WorkspaceOptions, trustedProvider
   const providers = classificationProviders(trustedProviders);
   const { workspaceRoot, workspaceId } = options;
   let store: Store | null = null, closed = false;
-  const capabilities = () => frozenClone({ product: 'ontology', stage: 'M2_OWNED_SERVICE', operations, limits: LIMITS, authority: false, softwareRelease: false, pending: ['MCP', 'Expert integration', 'trusted Harness provider wiring'] });
+  const capabilities = () => frozenClone({ product: 'ontology', version: '0.2.0', stage: 'M2_OWNED_SERVICE', operations, limits: LIMITS, authority: false, softwareRelease: false, pending: ['MCP', 'Expert integration', 'trusted Harness provider wiring'] });
   function initialize() {
     if (closed) fail('CLOSED', 'Service is closed');
     if (!store) { store = Object.assign(openState(workspaceRoot, workspaceId), { trustedProviders: providers }); }

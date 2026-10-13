@@ -28,7 +28,7 @@ function invoke(args, input = '', status = 0, flags = []) {
   assert.equal(envelope.ok, status === 0);
   assert.equal(envelope.authority, false);
   assert.deepEqual(Object.keys(envelope).sort(), (status === 0 ? ['ok', 'product', 'version', 'result', 'authority'] : ['ok', 'error', 'authority']).sort());
-  if (status === 0) { assert.equal(envelope.product, 'ontology'); assert.equal(envelope.version, '0.1.1'); }
+  if (status === 0) { assert.equal(envelope.product, 'ontology'); assert.equal(envelope.version, '0.2.0'); }
   return status === 0 ? envelope.result : envelope.error;
 }
 function setup(t) {

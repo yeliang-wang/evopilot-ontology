@@ -1,4 +1,4 @@
-# EvoPilot Ontology · v0.1.1 Preview
+# EvoPilot Ontology · v0.2.0 Preview
 
 [Quickstart](#quickstart) · [Documentation](docs/README.md) · [CLI](docs/cli.md) · [Contribute](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
@@ -55,11 +55,11 @@ This stores a draft and reads its durable receipt. Review, human decision and lo
 
 ## Install the Preview package
 
-Download the exact [v0.1.1 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.1.1). The published [v0.1.0 release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.1.0) remains historical. See [changes](CHANGELOG.md) and the parent [distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
+Download the exact [v0.2.0 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.2.0). The published [v0.1.0 release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.1.0) remains historical. See [changes](CHANGELOG.md) and the parent [distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
 
 Place all four release assets in one new directory before checking checksums:
 
-- `evopilot-next-ontology-0.1.1.tgz`
+- `evopilot-next-ontology-0.2.0.tgz`
 - `ontology-dependency-lock.json` (the Ontology `dependency-lock.json` asset uses this owner-prefixed release name)
 - `source-revision.txt`
 - `SHA256SUMS`
@@ -67,10 +67,10 @@ Place all four release assets in one new directory before checking checksums:
 ```sh
 shasum -a 256 -c SHA256SUMS
 cat source-revision.txt
-mkdir ontology-0.1.1
-tar -xzf evopilot-next-ontology-0.1.1.tgz -C ontology-0.1.1
-cp ontology-dependency-lock.json ontology-0.1.1/package/package-lock.json
-cd ontology-0.1.1/package
+mkdir ontology-0.2.0
+tar -xzf evopilot-next-ontology-0.2.0.tgz -C ontology-0.2.0
+cp ontology-dependency-lock.json ontology-0.2.0/package/package-lock.json
+cd ontology-0.2.0/package
 npm ci --omit=dev --ignore-scripts
 node dist/cli.js help
 node dist/cli.js version

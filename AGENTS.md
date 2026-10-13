@@ -9,3 +9,7 @@ Preserve business APIs, exact request/receipt semantics, frozen `specifications/
 Ontology owns semantic assets and their local lifecycle. Harness owns QA/evidence; Runtime owns execution. Do not turn validation, schema validity, provider registration, model output or test success into acceptance, business confirmation or release authority. Retain uncertain request outcomes and inspect exact receipts; never infer permission to redispatch.
 
 Release work is conditional on required acceptance and explicit recorded release authorization for the exact candidate. Source edits and local checks alone do not authorize publication, installation or remote changes. Follow [contribution rules](CONTRIBUTING.md), the parent exact-gitlink workflow and the task's narrower permissions. Preserve current private workspaces and credentials during recovery.
+
+## Approved v0.2.0 evolution
+
+The current user-approved Workspace v0.2.0 Target supersedes historical repair-only scope for this task. Implement only the owning workspace identity, relocation/snapshot APIs, exact component metadata, tests and documentation needed by that Target. Preserve immutable business records, frozen asset v1 specifications and compatibility/vendor bytes. Real-data cutover follows isolated migration verification. Existing project source and releases stay unchanged. The parent coordinates exact-candidate acceptance and conditional Preview release; tests alone confer no authority.

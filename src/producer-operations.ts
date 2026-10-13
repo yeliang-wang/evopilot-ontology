@@ -183,7 +183,7 @@ export function operateProducer(store: Store, state: State, r: DispatchRequest) 
   }
   function inspect(plan: ProducerPlan) {
     store.verifyBlob(plan.scope, plan);
-    if (sha256(subject(plan)) !== plan.reviewDigest || stableSerialize(plan.workspace) !== stableSerialize(store.identity)) fail('CORRUPT_STATE', 'Producer plan binding differs');
+    if (sha256(subject(plan)) !== plan.reviewDigest || (stableSerialize(plan.workspace) !== stableSerialize(store.identity) && !store.acceptsWorkspace(plan.workspace, plan.reviewDigest))) fail('CORRUPT_STATE', 'Producer plan binding differs');
     if (plan.output) for (const id of plan.output.recordIds) { const v = records.find(v => own(v) && v.recordId === id); if (!v) fail('CORRUPT_STATE', 'Missing producer output'); verify(v); }
     return plan;
   }
@@ -191,6 +191,7 @@ export function operateProducer(store: Store, state: State, r: DispatchRequest) 
   const plan = plans.find(v => own(v) && v.planId === r.input.planId);
   if (!plan) fail('NOT_FOUND', 'Plan not found in scope'); inspect(plan);
   if (r.operation === 'producer.inspect') return plan;
+  if (stableSerialize(plan.workspace) !== stableSerialize(store.identity)) fail('RELOCATION_REVIEW_REQUIRED', 'Historical producer plan requires new preparation and review');
   if (plan.status !== 'PREPARED') fail('PLAN_CONSUMED', 'Plan already consumed');
   if (r.operation !== 'producer.decide' && r.operation !== plan.operation) fail('PLAN_OPERATION_MISMATCH', 'Wrong operation plan');
   if (r.operation === 'producer.decide' && r.input.reviewDigest !== plan.reviewDigest) fail('REVIEW_MISMATCH', 'Exact review required');

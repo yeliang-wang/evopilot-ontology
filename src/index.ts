@@ -3,7 +3,7 @@ export { validateOntology } from './specification.js';
 export { validateInstances } from './instances.js';
 export { buildDelivery, verifyDelivery } from './delivery.js';
 
-export const VERSION = '0.1.1';
+export const VERSION = '0.2.0';
 export const PRODUCT = 'ontology';
 
 export function capabilities() {

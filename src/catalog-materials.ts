@@ -35,7 +35,7 @@ export function buildCatalog(store: Store, state: State, scope: Scope, catalogId
     for (const h of record.history) {
       store.verifyBlob(scope, h); store.verifyBlob(scope, h.document);
       const plan = (state.producerPlans ?? []).find(p => p.planId === h.planId && equal(p.scope, scope));
-      if (!plan || !equal(plan.workspace, store.identity) || plan.status !== 'CONSUMED' || !plan.output?.recordIds.includes(record.recordId) || !equal(plan.decision, h.decision) || h.decision?.decision !== 'APPROVE' || h.decision.uid !== store.uid || h.decision.reviewDigest !== plan.reviewDigest) fail('APPROVAL_REQUIRED', 'Owned consumed producer decision required');
+      if (!plan || (!equal(plan.workspace, store.identity) && !store.acceptsWorkspace(plan.workspace, plan.reviewDigest)) || plan.status !== 'CONSUMED' || !plan.output?.recordIds.includes(record.recordId) || !equal(plan.decision, h.decision) || h.decision?.decision !== 'APPROVE' || h.decision.uid !== store.uid || h.decision.reviewDigest !== plan.reviewDigest) fail('APPROVAL_REQUIRED', 'Owned consumed producer decision required');
       store.verifyBlob(scope, plan);
       const subject = { workspace: plan.workspace, scope: plan.scope, operation: plan.operation, parameters: plan.parameters, dependencies: plan.dependencies };
       if (sha256(subject) !== plan.reviewDigest) fail('CORRUPT_STATE', 'Producer review differs');
@@ -103,10 +103,10 @@ export function buildCatalog(store: Store, state: State, scope: Scope, catalogId
   return { generation: built.generation, material: [...built.material], dependencies: [...dependencies.values()].sort((a, b) => a.recordId.localeCompare(b.recordId)), sets: resolved };
 }
 export function verifyCatalogRevision(store: Store, state: State, revision: CatalogRevision) {
-  if (!equal(revision.workspace, store.identity)) fail('SCOPE_MISMATCH', 'Catalog workspace differs');
+  if ((!equal(revision.workspace, store.identity) && !store.acceptsWorkspace(revision.workspace, revision.pointer.pointerDigest))) fail('SCOPE_MISMATCH', 'Catalog workspace differs');
   store.verifyBlob(revision.scope, revision);
   const { pointerDigest, ...pointer } = revision.pointer;
-  if (sha256(pointer) !== pointerDigest || !equal(pointer.scope, revision.scope) || !equal(pointer.workspace, store.identity) || pointer.generationDigest !== revision.generation.generationDigest || pointer.materialDigest !== sha256(revision.material)) fail('CORRUPT_STATE', 'Catalog pointer differs');
+  if (sha256(pointer) !== pointerDigest || !equal(pointer.scope, revision.scope) || !equal(pointer.workspace, revision.workspace) || pointer.generationDigest !== revision.generation.generationDigest || pointer.materialDigest !== sha256(revision.material)) fail('CORRUPT_STATE', 'Catalog pointer differs');
   store.verifyBlob(revision.scope, revision.generation);
   for (const [, document] of revision.material) store.verifyBlob(revision.scope, document);
   const sets = resolveSemanticGeneration({ generation: revision.generation, material: new Map(revision.material) });
@@ -116,7 +116,7 @@ export function verifyCatalogRevision(store: Store, state: State, revision: Cata
   if (!plan || plan.status !== 'CONSUMED' || plan.output !== pointerDigest || !equal(plan.decision, pointer.decision) || plan.decision?.decision !== 'APPROVE' || plan.decision.uid !== store.uid || plan.reviewDigest !== plan.decision.reviewDigest) fail('CORRUPT_STATE', 'Catalog decision differs');
   store.verifyBlob(plan.scope, plan);
   const subject = { workspace: plan.workspace, scope: plan.scope, parameters: plan.parameters, dependencies: plan.dependencies, inputDigest: plan.inputDigest, expectedGenerationDigest: plan.expectedGenerationDigest, transitionDigest: plan.transitionDigest };
-  if (sha256(subject) !== plan.reviewDigest || !equal(plan.workspace, store.identity) || pointer.catalogId !== plan.parameters.catalogId || pointer.catalogId !== revision.generation.catalogId || pointer.action !== plan.parameters.action || pointer.previous !== plan.parameters.expectedHead || pointer.generationDigest !== plan.expectedGenerationDigest || pointer.actor !== `uid:${store.uid}`) fail('CORRUPT_STATE', 'Catalog publication binding differs');
+  if (sha256(subject) !== plan.reviewDigest || (!equal(plan.workspace, store.identity) && !store.acceptsWorkspace(plan.workspace, plan.reviewDigest)) || pointer.catalogId !== plan.parameters.catalogId || pointer.catalogId !== revision.generation.catalogId || pointer.action !== plan.parameters.action || pointer.previous !== plan.parameters.expectedHead || pointer.generationDigest !== plan.expectedGenerationDigest || pointer.actor !== `uid:${store.uid}`) fail('CORRUPT_STATE', 'Catalog publication binding differs');
   if (pointer.previous !== 'EMPTY') {
     const previous = (state.catalogRevisions ?? []).find(v => equal(v.scope, revision.scope) && v.generation.catalogId === pointer.catalogId && v.pointer.pointerDigest === pointer.previous);
     if (!previous || !previous.generation.revokedDigests.every(d => revision.generation.revokedDigests.includes(d))) fail('CORRUPT_STATE', 'Catalog ancestry or cumulative revocation differs');
