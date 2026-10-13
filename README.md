@@ -42,4 +42,10 @@ npm test
 
 Build verifies owned ESM sources and pinned vendor bytes; it needs no parent generator or sibling source. Only the parent canonical build regenerates vendor bytes. The same commands work in an unrelated standalone source copy. Installed tarballs omit development scripts/tests; these commands apply to source checkouts. Earlier specification guides describing a parent-first build refer to vendor regeneration, not a prerequisite for validating an existing pinned copy.
 
-Read the [current roadmap](docs/roadmap.md). Final remote URL metadata and GitHub execution remain pending authorization. Local artifact rehearsal is technical evidence only. Licenses and provenance retain their existing ownership.
+## Source and Preview release distribution
+
+Source: [yeliang-wang/evopilot-ontology](https://github.com/yeliang-wang/evopilot-ontology). The [v0.1.0 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.1.0) is pending until published. See the parent [common release mechanics](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md) and [Codex plugin composition](https://github.com/yeliang-wang/evopilot).
+
+Preparation uses Node 24.14.0; `expected_digest` is the Ontology tarball SHA256 from parent verified CI. The workflow defaults to `publish=false`, so publication is disabled by default. Publication requires external M5 target validation and an explicit user decision. M5 authorizes source, CI and public-release preparation; code, scripts and CI tests establish neither Host acceptance nor release authority. Existing feature metadata remains unchanged.
+
+Read the [current roadmap](docs/roadmap.md). Local artifact rehearsal is technical evidence only. Licenses and provenance retain their existing ownership.

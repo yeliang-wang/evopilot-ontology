@@ -1,0 +1,92 @@
+name: Preview release preparation
+on:
+  workflow_dispatch:
+    inputs:
+      expected_commit:
+        description: Exact source commit (40 lowercase hex)
+        required: true
+        type: string
+      source_run_id:
+        description: Own repository successful ci.yml run ID
+        required: true
+        type: string
+      expected_digest:
+        description: SHA256 of parent CI ZIP or child component tarball
+        required: true
+        type: string
+      publish:
+        description: Publish only after external M5 validation and explicit human decision
+        type: boolean
+        default: false
+      decision_ref:
+        description: Reviewed external authorization reference (required for publication)
+        type: string
+        default: ''
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ${{ github.repository }}-v0.1.0
+  cancel-in-progress: false
+env:
+  GH_TOKEN: ${{ github.token }}
+  EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+  SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+  EXPECTED_DIGEST: ${{ inputs.expected_digest }}
+  PUBLISH: ${{ inputs.publish }}
+  DECISION_REF: ${{ inputs.decision_ref }}
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      artifactName: ${{ steps.prepare.outputs.artifactName }}
+      expectedCommit: ${{ steps.prepare.outputs.expectedCommit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_commit }}
+          submodules: ${{ github.repository == 'yeliang-wang/evopilot' && 'recursive' || false }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.14.0'
+      - name: Validate source and prepare distribution
+        id: prepare
+        run: node scripts/release-gate.mjs prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prepare.outputs.artifactName }}
+          path: ${{ runner.temp }}/release-assets/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: release-preparation-failure-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/release-evidence/
+            ${{ runner.temp }}/release-assets/
+            ${{ runner.temp }}/child-pack/
+          if-no-files-found: warn
+          retention-days: 14
+  publish:
+    if: ${{ inputs.publish }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_commit }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.14.0'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.artifactName }}
+          path: ${{ runner.temp }}/release-assets/
+      - name: Publish once after external decision
+        run: node scripts/release-gate.mjs publish

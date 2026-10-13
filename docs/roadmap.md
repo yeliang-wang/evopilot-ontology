@@ -28,3 +28,9 @@ The separate local acceptance report determines actual candidate status, includi
 ## Existing 0.1.x real-project target
 
 Within the existing plan, apply the [forward and reverse workflows](asset-workflows.md) to an explicitly authorized real project, retaining actual source pins, unresolved semantics, review results and separate human decisions. Complete applicable provider-backed workflows and the actual Desktop canonical journey against the exact candidate, then reconcile source-ledger and E03/E10 evidence. This is the existing real-project target, not a new scope or version schedule. Software publication remains a separately authorized stage.
+
+## M5 source, CI and release preparation
+
+After M4 passed, a new explicit user decision authorized source, CI and public-release preparation for yeliang-wang/evopilot, yeliang-wang/evopilot-runtime, yeliang-wang/evopilot-harness and yeliang-wang/evopilot-ontology. This supersedes the earlier local-only GitHub prohibition solely for the bound M5 scope and preserves the original M0–M4 baseline. This task prepares local infrastructure and documentation only; no feature implementation, actual release, tag, remote operation or daily installation is included.
+
+Publication defaults off (`publish=false`) and requires external M5 target validation plus an independent explicit user decision. Source, scripts and CI tests do not establish Host acceptance or release authority; candidate acceptance remains governed by the separate evidence described above.
