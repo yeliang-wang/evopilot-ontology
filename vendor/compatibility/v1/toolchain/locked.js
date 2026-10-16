@@ -86,19 +86,29 @@ async function download(directory, asset, mirror, offline) {
     else {
         if (offline)
             fail('TOOLCHAIN_NOT_READY', 'Offline cache is missing a locked artifact');
-        const response = await fetch(asset.url, { signal: AbortSignal.timeout(60_000), redirect: 'follow' });
-        if (!response.ok || !response.body || !response.url.startsWith('https://'))
-            fail('TOOLCHAIN_DOWNLOAD', 'Locked artifact download failed');
-        const chunks = [];
-        let size = 0;
-        for await (const value of response.body) {
-            const b = Buffer.from(value);
-            size += b.length;
-            if (size > (asset.bytes ?? asset.size ?? 256 * 1024 * 1024))
-                fail('TOOLCHAIN_DOWNLOAD', 'Download exceeded locked bound');
-            chunks.push(b);
+        try {
+            const response = await fetch(asset.url, { signal: AbortSignal.timeout(60_000), redirect: 'follow' });
+            if (!response.ok || !response.body || !response.url.startsWith('https://'))
+                fail('TOOLCHAIN_DOWNLOAD', 'Locked artifact download failed');
+            const chunks = [];
+            let size = 0;
+            for await (const value of response.body) {
+                const b = Buffer.from(value);
+                size += b.length;
+                if (size > (asset.bytes ?? asset.size ?? 256 * 1024 * 1024))
+                    fail('TOOLCHAIN_DOWNLOAD', 'Download exceeded locked bound');
+                chunks.push(b);
+            }
+            bytes = Buffer.concat(chunks);
         }
-        bytes = Buffer.concat(chunks);
+        catch (error) {
+            if (error instanceof Error && 'code' in error && error.code === 'TOOLCHAIN_DOWNLOAD')
+                throw error;
+            // Keep a failed dependency download distinct from a daemon/Workspace error.
+            // Never return fetch causes, redirect URLs or proxy details through MCP.
+            const timeout = error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name);
+            fail(timeout ? 'TOOLCHAIN_DOWNLOAD_TIMEOUT' : 'TOOLCHAIN_DOWNLOAD_NETWORK', timeout ? 'Locked artifact download timed out' : 'Locked artifact download failed before completion');
+        }
     }
     if (sha(bytes) !== asset.sha256 || ((asset.bytes ?? asset.size) !== undefined && bytes.length !== (asset.bytes ?? asset.size)))
         fail('TOOLCHAIN_INTEGRITY', 'Download hash/size mismatch');
