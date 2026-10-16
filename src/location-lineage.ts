@@ -3,7 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { execFileSync } from 'node:child_process';
 import { constants, lstatSync, mkdirSync, rmdirSync, readdirSync, readFileSync, openSync, closeSync, writeFileSync, fsyncSync, renameSync, unlinkSync } from 'node:fs';
 import { dirname, isAbsolute, join, parse, resolve } from 'node:path';
-import { homedir, hostname } from 'node:os';
+import { homedir, hostname, platform } from 'node:os';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { stableSerialize } from '../vendor/compatibility/v1/reference.mjs';
 
@@ -88,7 +88,7 @@ function newKey(): string {
 // recognize only the current system names, never a name supplied by a caller.
 function hostDigests(): string[] {
   const names = [hostname()];
-  if (process.platform === 'darwin') {
+  if (platform() === 'darwin') {
     try {
       const local = execFileSync('/usr/sbin/scutil', ['--get', 'LocalHostName'], {
         encoding: 'utf8', timeout: 1000, maxBuffer: 1024, stdio: ['ignore', 'pipe', 'ignore'],
