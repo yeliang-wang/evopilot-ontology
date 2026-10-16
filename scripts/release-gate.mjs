@@ -180,7 +180,7 @@ export function releaseNotes(input, owner) {
   const api = owner === 'runtime' ? `[Service API](${docs}/docs/service.md) · [CLI](${docs}/docs/cli.md)` : `[Product documentation](${docs}/README.md)`;
   return `# EvoPilot 0.3.0 Preview
 
-${role}. Use Node 24.14.0. This release adds private Workspace initialization and attachment through the unified Expert, separate editable project/state roots, owner-validated same-host migration, backup/restore and an explicit 27-scenario Expert catalogue. Existing immutable assets and receipts retain their original identity through signed location lineage. Compiled JavaScript and declarations are shipped from strict TypeScript. Historical specifications/v1, provenance and licenses remain unchanged.
+${role}. Use Node 24.14.0. This release corrects the current specifications/v1 with RDF 1.1/Turtle 1.1, bounded SHACL 2017 validation through pySHACL 0.40.1, and Rego v1 through OPA 1.21.2 and Conftest 0.71.1. Owner-specific standard digests, independent source requirements, native positive/negative cases and protected collection/Run receipts establish the declared verification boundary. Exact human decisions remain separate from technical validation. The unified Expert retains private Workspace initialization and recovery; native tool preparation returns a durable status while bounded downloads run asynchronously. Compiled JavaScript and declarations are shipped from strict TypeScript. Historical commits, releases, assets and receipts retain their original bytes; their old v1 labels do not certify corrected-native conformance.
 
 [Repository](${repository}) · [Exact source commit](${repository}/tree/${input.expectedCommit}) · [Successful source CI](${repository}/actions/runs/${input.sourceRunId})
 

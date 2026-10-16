@@ -99,6 +99,10 @@ test('child pack filenames are exact and notes contain only public references', 
   }
   const notes = releaseNotes({ ...input, decisionRef: '/private/operator-evidence' }, 'stack');
   assert(!notes.includes('/private/')); assert(notes.includes(input.expectedCommit)); assert(notes.includes('24.14.0'));
+  assert(notes.includes('corrects the current specifications/v1'));
+  assert(notes.includes('SHACL 2017') && notes.includes('Rego v1'));
+  assert(!notes.includes('Historical specifications/v1, provenance and licenses remain unchanged'));
+  assert(!notes.includes('27-scenario Expert catalogue'));
 });
 test('common workflow separates preparation from publication without inline input shell code', () => {
   const yaml = fs.readFileSync(new URL('../../.github/workflows/release.yml', import.meta.url), 'utf8');
@@ -158,7 +162,7 @@ test('release notes bind role-correct source, CI, download and documentation lin
     for (const repo of Object.keys(repositories)) assert(notes.includes('https://github.com/' + repo));
     assert(notes.includes('https://github.com/yeliang-wang/evopilot/releases'));
     for (const text of ['strict TypeScript', 'Compiled JavaScript', 'declarations', 'SHA256SUMS',
-      'source-revision.txt', 'private Workspace', '27-scenario', 'signed location lineage',
+      'source-revision.txt', 'private Workspace', 'SHACL 2017', 'Rego v1', 'protected collection/Run receipts',
       'specifications/v1', 'no npm publication', 'production readiness or GA']) assert(notes.includes(text), text);
     assert(!notes.includes(i.decisionRef));
     assert.throws(() => releaseNotes(i, owner === 'stack' ? 'runtime' : 'stack'), /role mismatch/);
