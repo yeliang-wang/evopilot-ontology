@@ -242,3 +242,41 @@ test('foreign marker staging is rejected verbatim and never cleaned as an owned 
   const resumed = relocateWorkspaceSnapshot(request); cleanKeys(t, resumed);
   assert.equal(resumed.snapshot.recordsDigest, snapshot.recordsDigest);
 });
+
+
+test('same-machine macOS hostname changes preserve signed history while a foreign host stays rejected', async t => {
+  const osModule = await import('node:os'), cpModule = await import('node:child_process');
+  const { syncBuiltinESMExports } = await import('node:module');
+  const originalExec = cpModule.default.execFileSync;
+  t.mock.method(osModule.default, 'hostname', () => 'synthetic-local-host.local');
+  t.mock.method(cpModule.default, 'execFileSync', (file, args, options) => {
+    if (file === '/usr/sbin/scutil') return 'synthetic-local-host\n';
+    return originalExec(file, args, options);
+  });
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  const { options, sourceRoot, destinationRoot, workspaceId } = setup(t);
+  await populate(options);
+  const snapshot = inspectWorkspaceSnapshot(options); privateCopy(sourceRoot, destinationRoot);
+  const report = relocateWorkspaceSnapshot({sourceRoot,destinationRoot,workspaceId,expectedSnapshotDigest:snapshot.snapshotDigest});
+  cleanKeys(t, report);
+  const before = businessTables(destinationRoot);
+  const database = join(destinationRoot, 'state', product, product + '.db');
+  const lineageBytes = () => { const db = new DatabaseSync(database,{readOnly:true}); try{return db.prepare('SELECT record FROM workspace_relocations ORDER BY sequence').all();} finally{db.close();} };
+  const signed = lineageBytes();
+  t.mock.method(osModule.default, 'hostname', () => 'synthetic-network-alias'); syncBuiltinESMExports();
+  const destination = {workspaceRoot:destinationRoot,workspaceId};
+  if (process.platform === 'darwin') {
+    assert.equal(inspectWorkspaceSnapshot(destination).recordsDigest, snapshot.recordsDigest);
+    assert.deepEqual(lineageBytes(), signed); assert.deepEqual(businessTables(destinationRoot), before);
+  } else {
+    assert.throws(() => inspectWorkspaceSnapshot(destination), {code:'INVALID_LINEAGE'});
+  }
+  t.mock.method(cpModule.default, 'execFileSync', (file, args, options) => {
+    if (file === '/usr/sbin/scutil') return 'foreign-configured-host\n';
+    return originalExec(file, args, options);
+  });
+  syncBuiltinESMExports();
+  assert.throws(() => inspectWorkspaceSnapshot(destination), {code:'INVALID_LINEAGE'});
+  assert.deepEqual(lineageBytes(), signed); assert.deepEqual(businessTables(destinationRoot), before);
+});

@@ -1,5 +1,6 @@
 /** Owner-controlled, same-host location lineage. Business records are never rewritten. */
 import { DatabaseSync } from 'node:sqlite';
+import { execFileSync } from 'node:child_process';
 import { constants, lstatSync, mkdirSync, rmdirSync, readdirSync, readFileSync, openSync, closeSync, writeFileSync, fsyncSync, renameSync, unlinkSync } from 'node:fs';
 import { dirname, isAbsolute, join, parse, resolve } from 'node:path';
 import { homedir, hostname } from 'node:os';
@@ -82,7 +83,22 @@ function newKey(): string {
   for (const path of missing) { mkdirSync(path, { mode: 0o700 }); syncDirectory(dirname(path)); }
   privatePath(directory, true); const id = randomBytes(32).toString('hex'); createPrivateFile(join(directory, id + '.key'), randomBytes(32)); return id;
 }
-const hostDigest = () => hash({ hostname: hostname(), home: homedir(), uid: process.getuid?.() });
+// macOS may change gethostname() with the network while LocalHostName remains
+// the configured machine name. Keep signed history and every key/scope check;
+// recognize only the current system names, never a name supplied by a caller.
+function hostDigests(): string[] {
+  const names = [hostname()];
+  if (process.platform === 'darwin') {
+    try {
+      const local = execFileSync('/usr/sbin/scutil', ['--get', 'LocalHostName'], {
+        encoding: 'utf8', timeout: 1000, maxBuffer: 1024, stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
+      if (/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(local)) names.unshift(local + '.local');
+    } catch { /* Without a verified system name, retain the exact current-host rule. */ }
+  }
+  return [...new Set(names)].map(name => hash({ hostname: name, home: homedir(), uid: process.getuid?.() }));
+}
+const hostDigest = (): string => hostDigests()[0]!;
 function hasLineage(db: DatabaseSync): boolean { return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='workspace_relocations'").get(); }
 function prefix(db: DatabaseSync, revision: number) {
   const receipts = db.prepare('SELECT scope,request_id,digest,receipt FROM receipts WHERE CAST(json_extract(receipt,\'$.revision\') AS INTEGER)<=? ORDER BY scope,request_id').all(revision);
@@ -100,7 +116,7 @@ export function readRelocations(db: DatabaseSync, identity: WorkspaceIdentity, p
     if (row.sequence !== index + 1 || typeof row.record !== 'string' || Buffer.byteLength(row.record) > 8388608) migrationFail('INVALID_LINEAGE', 'Invalid relocation row');
     const record = JSON.parse(row.record) as RelocationRecord;
     const { recordDigest, signature, ...subject } = record;
-    if (record.schema !== 'evopilot-workspace-relocation/v1' || record.product !== product || recordDigest !== hash(subject) || record.hostDigest !== hostDigest() || !Number.isSafeInteger(record.historyRevision) || record.historyRevision < 0 || !Array.isArray(record.bindings) || record.bindings.length > 20000 || !/^[a-f0-9]{64}$/.test(signature)) migrationFail('INVALID_LINEAGE', 'Relocation metadata differs');
+    if (record.schema !== 'evopilot-workspace-relocation/v1' || record.product !== product || recordDigest !== hash(subject) || !hostDigests().includes(record.hostDigest) || !Number.isSafeInteger(record.historyRevision) || record.historyRevision < 0 || !Array.isArray(record.bindings) || record.bindings.length > 20000 || !/^[a-f0-9]{64}$/.test(signature)) migrationFail('INVALID_LINEAGE', 'Relocation metadata differs');
     const expected = createHmac('sha256', readKey(record.keyId)).update(stableSerialize(subject)).digest();
     if (!timingSafeEqual(expected, Buffer.from(signature, 'hex'))) migrationFail('INVALID_LINEAGE', 'Relocation attestation differs');
     for (const location of [record.from, record.to]) if (location.schema !== identity.schema || location.id !== identity.id || location.ownerUid !== identity.ownerUid || !isAbsolute(location.canonicalRoot) || resolve(location.canonicalRoot) !== location.canonicalRoot) migrationFail('INVALID_LINEAGE', 'Relocation scope differs');
