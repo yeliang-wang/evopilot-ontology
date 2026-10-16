@@ -3,7 +3,7 @@
   "producer": "evopilot/scripts/sync-toolchain.mjs",
   "sourceDigests": {
     "cli.ts": "caa029aecbbe1d3b1a8876477eef8647bbe67f00efbb6f526cb3f7b3f312dba5",
-    "locked.ts": "3da80139c9428c08bd7ee30620201c3b63d65b9fcb4da7d52fedf422dc28ecb7",
+    "locked.ts": "4d81f74a2a4e2fa353a0df0fc3868de37dae8f10d7ca567990714fea97b7d35e",
     "archive.ts": "6577c26b63b059fcae66757fffd67442fb06d7394d51060069168dff06aa37d2"
   },
   "files": [
@@ -93,7 +93,7 @@
     },
     {
       "path": "locked.js",
-      "sha256": "d31beef2ac3d0d0d535c4d6b87b5abbfe609ae8af2dc0dd180c29085cd1c169a"
+      "sha256": "60a3df0323ab5b81c67bf059e517c52534ee1f7d6db684e45f7bd9cf7d879e4f"
     },
     {
       "path": "opa-dependencies.json",
