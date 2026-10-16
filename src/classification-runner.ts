@@ -4,6 +4,7 @@ import { exactFields, frozenClone, sha256, stableSerialize } from '../vendor/com
 import { bounded, fail, slug, LIMITS, validateState } from './state.js';
 import { findClassification } from './classification-operations.js';
 import { classification as legacy_classification } from "./compat/index.mjs";
+import { nativeFrozenClone } from '../vendor/compatibility/v1/native.mjs';
 const { analyzePreparedSourceTaxonomy } = legacy_classification;
 
 export function classificationProviders(input: TrustedProviders): Readonly<TrustedProviders> {
@@ -11,10 +12,12 @@ export function classificationProviders(input: TrustedProviders): Readonly<Trust
   const ds = Object.getOwnPropertyDescriptors(input), out: TrustedProviders = {};
   for (const key of Reflect.ownKeys(ds)) {
     const d = (ds as Record<PropertyKey, PropertyDescriptor>)[key];
-    if (typeof key !== 'string' || !['resolveLegacyHarness', 'resolveClassificationSource', 'classificationAdvisor', 'classificationModel'].includes(key) || !Object.hasOwn(d, 'value')) fail('INVALID_REQUEST', 'Invalid trusted provider descriptors');
-    if (key === 'classificationModel') {
+    if (typeof key !== 'string' || !['nativeToolchain', 'resolveLegacyHarness', 'resolveClassificationSource', 'classificationAdvisor', 'classificationModel'].includes(key) || !Object.hasOwn(d, 'value')) fail('INVALID_REQUEST', 'Invalid trusted provider descriptors');
+    if (key === 'nativeToolchain') {
+      out.nativeToolchain = nativeFrozenClone(d.value) as TrustedProviders['nativeToolchain'];
+    } else if (key === 'classificationModel') {
       bounded(d.value); exactFields(d.value, ['providerId', 'modelId', 'revision', 'timeoutMs']);
-      for (const field of ['providerId', 'modelId', 'revision']) slug(d.value[field]);
+      for (const field of ['providerId', 'modelId', 'revision'] as const) slug(d.value[field]);
       if (!Number.isInteger(d.value.timeoutMs) || (d.value.timeoutMs as number) < 1 || (d.value.timeoutMs as number) > 180000) fail('INVALID_REQUEST', 'Invalid advisor deadline');
       out[key] = frozenClone(d.value) as unknown as ClassificationModel;
     } else {

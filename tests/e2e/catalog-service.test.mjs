@@ -1,10 +1,11 @@
+// Frozen v0.2.0 historical behavior; current native lifecycle is tested separately.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, realpathSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createOntologyService } from '../../dist/service.js';
+import { createOntologyService } from '../fixtures/historical-v020/dist/service.js';
 import { sha256 } from '../../vendor/compatibility/v1/reference.mjs';
 import { catalogClient, ownedCatalogMaterials, trustedHarness } from '../fixtures/catalog-service-materials.mjs';
 

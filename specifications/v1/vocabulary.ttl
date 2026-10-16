@@ -1,0 +1,3 @@
+@prefix evo: <https://evopilot.dev/vocabulary/v1/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+evo:SourceBinding a rdfs:Class; rdfs:label "Source binding"; rdfs:comment "EvoPilot package convention; not an additional W3C constraint language." .

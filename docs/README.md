@@ -1,11 +1,14 @@
 # Ontology documentation
 
+Current work: [native service](native-service.md), [corrected v1](../specifications/v1/README.md), [adopted standards](../specifications/v1/adoption.md) and [source-based re-extraction](../specifications/v1/re-extraction.md). The earlier JSON/compatibility guides below describe retained history only.
+
+
 EvoPilot Ontology v0.1.1 Preview separates the native v1 model and delivery contract from retained historical capabilities.
 
 | Your task | Read |
 | --- | --- |
 | Understand concepts and the three asset levels | [Asset overview](../README.md#three-levels-of-semantic-assets), [forward/reverse workflows](asset-workflows.md#concepts-and-format-choices) |
-| Author a native model | [Specification](../specifications/v1/README.md), [schema](../specifications/v1/asset.schema.json), [template](../specifications/v1/templates/model.json), [synthetic examples](../examples/synthetic-models.json) |
+| Author a native model | [Specification](../specifications/v1/README.md), [schema](../specifications/v1/package.schema.json), [template](../specifications/v1/examples/positive/model.ttl), [synthetic examples](../examples/synthetic-models.json) |
 | Build or install | [Quickstart](../README.md#quickstart), [package installation](../README.md#install-the-preview-package) |
 | Use Codex and unified Expert | [Parent four journeys](https://github.com/yeliang-wang/evopilot/blob/main/docs/first-journey.md) |
 | Submit commands or embed the service | [CLI](cli.md), [service API](service.md) |

@@ -1,0 +1,288 @@
+{
+  "schema": "evopilot-toolchain-lock/v1",
+  "productVersion": "0.3.0",
+  "nodeVersion": "24.14.0",
+  "pythonDependencies": [
+    {
+      "name": "html5rdf",
+      "version": "1.2.1",
+      "url": "https://files.pythonhosted.org/packages/7d/c9/f6e1e8567660bc5b0aba281f2b0017b2a7665fcad6bf3ed67286a0c72cd4/html5rdf-1.2.1-py2.py3-none-any.whl",
+      "sha256": "1f519121bc366af3e485310dc8041d2e86e5173c1a320fac3dc9d2604069b83e",
+      "size": 109765,
+      "requiresPython": ">=3.8",
+      "requiresDist": null,
+      "licenseExpression": null,
+      "license": "Copyright (c) 2006-2013 James Graham and other contributors  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.  THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. ",
+      "licenseClassifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "filename": "html5rdf-1.2.1-py2.py3-none-any.whl"
+    },
+    {
+      "name": "owlrl",
+      "version": "7.6.2",
+      "url": "https://files.pythonhosted.org/packages/4a/5e/314be7440bf28dbd47f85321a7434c5b74179a762228487d6493c01bddce/owlrl-7.6.2-py3-none-any.whl",
+      "sha256": "83347bf7f133979e87b2b18695d51d25510b99cec3f6919b5df05d4fbf058ae0",
+      "size": 55814,
+      "requiresPython": ">=3.9",
+      "requiresDist": [
+        "rdflib>=7.6.0",
+        "pyoxigraph>=0.5.6; extra == \"oxigraph\""
+      ],
+      "licenseExpression": null,
+      "license": "W3C-20150513",
+      "licenseClassifiers": [
+        "License :: OSI Approved"
+      ],
+      "filename": "owlrl-7.6.2-py3-none-any.whl"
+    },
+    {
+      "name": "packaging",
+      "version": "26.3",
+      "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+      "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+      "size": 129956,
+      "requiresPython": ">=3.9",
+      "requiresDist": null,
+      "licenseExpression": "Apache-2.0 OR BSD-2-Clause",
+      "license": null,
+      "licenseClassifiers": [],
+      "filename": "packaging-26.3-py3-none-any.whl"
+    },
+    {
+      "name": "prettytable",
+      "version": "3.18.0",
+      "url": "https://files.pythonhosted.org/packages/fe/be/2e6798ace5cc036f5d05d36b7b2fd85346f1a708c87060890b070d0ec607/prettytable-3.18.0-py3-none-any.whl",
+      "sha256": "b3346e0e6f79180833aebaac088ae926340586cf6d7d991b9eb125b65f72313a",
+      "size": 37357,
+      "requiresPython": ">=3.10",
+      "requiresDist": [
+        "wcwidth>=0.3.5",
+        "pytest-cov; extra == \"tests\"",
+        "pytest-lazy-fixtures; extra == \"tests\"",
+        "pytest>=9; extra == \"tests\""
+      ],
+      "licenseExpression": "BSD-3-Clause",
+      "license": null,
+      "licenseClassifiers": [],
+      "filename": "prettytable-3.18.0-py3-none-any.whl"
+    },
+    {
+      "name": "pyparsing",
+      "version": "3.3.3",
+      "url": "https://files.pythonhosted.org/packages/38/bb/d215ee7c73b61497b28a5503f9f53523f294fcc936762b7caf90e0c1c2b5/pyparsing-3.3.3-py3-none-any.whl",
+      "sha256": "ece8c00a69cf01b45d0b1dedabb469c90d8caf996d4fda40f147627a122849a4",
+      "size": 126420,
+      "requiresPython": ">=3.9",
+      "requiresDist": [
+        "railroad-diagrams; extra == \"diagrams\"",
+        "jinja2; extra == \"diagrams\""
+      ],
+      "licenseExpression": "MIT",
+      "license": null,
+      "licenseClassifiers": [],
+      "filename": "pyparsing-3.3.3-py3-none-any.whl"
+    },
+    {
+      "name": "pyshacl",
+      "version": "0.40.1",
+      "url": "https://files.pythonhosted.org/packages/03/90/7f35a79db93032ef20db5b740062b54afba32a2c2475a6f0a43c141a69de/pyshacl-0.40.1-py3-none-any.whl",
+      "sha256": "27dd58c8ddfa103303b4a8c40b2c666332ffc912dbcd3137f7adc7b7bc5e6bda",
+      "size": 1306209,
+      "requiresPython": ">=3.9",
+      "requiresDist": [
+        "coverage!=6.1.1,<7,>6.1; extra == \"dev-coverage\"",
+        "importlib-metadata>6; python_version < \"3.12\"",
+        "mypy>=1.13.0; extra == \"dev-type-checking\"",
+        "owlrl<8,>=7.6.2",
+        "packaging>=21.3",
+        "platformdirs; extra == \"dev-coverage\"",
+        "platformdirs; extra == \"dev-lint\"",
+        "platformdirs; extra == \"dev-type-checking\"",
+        "prettytable>=3.5.0; python_version < \"3.12\"",
+        "prettytable>=3.7.0; python_version >= \"3.12\"",
+        "pyduktape2<1,>=0.4.6; python_version <= \"3.13\" and extra == \"js\"",
+        "pyduktape2<1,>=0.5.0; python_version >= \"3.13\" and extra == \"js\"",
+        "pyoxigraph>=0.5.6; extra == \"oxigraph\"",
+        "pytest-cov<3,>=2.8.1; extra == \"dev-coverage\"",
+        "rdflib[html]<8.0,>=7.3.0",
+        "ruff<0.10,>=0.9.3; extra == \"dev-lint\"",
+        "sanic<23,>=22.12; extra == \"http\"",
+        "sanic-cors==2.2.0; extra == \"http\"",
+        "sanic-ext<23.6,>=23.3; extra == \"http\"",
+        "types-setuptools; extra == \"dev-type-checking\""
+      ],
+      "licenseExpression": null,
+      "license": "Apache License\n                                    Version 2.0, January 2004\n                                 http://www.apache.org/licenses/\n         \n            TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n         \n            1. Definitions.\n         \n               \"License\" shall mean the terms and conditions for use, reproduction,\n               and distribution as defined by Sections 1 through 9 of this document.\n         \n               \"Licensor\" shall mean the copyright owner or entity authorized by\n               the copyright owner that is granting the License.\n         \n               \"Legal Entity\" shall mean the union of the acting entity and all\n               other entities that control, are controlled by, or are under common\n               control with that entity. For the purposes of this definition,\n               \"control\" means (i) the power, direct or indirect, to cause the\n               direction or management of such entity, whether by contract or\n               otherwise, or (ii) ownership of fifty percent (50%) or more of the\n               outstanding shares, or (iii) beneficial ownership of such entity.\n         \n               \"You\" (or \"Your\") shall mean an individual or Legal Entity\n               exercising permissions granted by this License.\n         \n               \"Source\" form shall mean the preferred form for making modifications,\n               including but not limited to software source code, documentation\n               source, and configuration files.\n         \n               \"Object\" form shall mean any form resulting from mechanical\n               transformation or translation of a Source form, including but\n               not limited to compiled object code, generated documentation,\n               and conversions to other media types.\n         \n               \"Work\" shall mean the work of authorship, whether in Source or\n               Object form, made available under the License, as indicated by a\n               copyright notice that is included in or attached to the work\n               (an example is provided in the Appendix below).\n         \n               \"Derivative Works\" shall mean any work, whether in Source or Object\n               form, that is based on (or derived from) the Work and for which the\n               editorial revisions, annotations, elaborations, or other modifications\n               represent, as a whole, an original work of authorship. For the purposes\n               of this License, Derivative Works shall not include works that remain\n               separable from, or merely link (or bind by name) to the interfaces of,\n               the Work and Derivative Works thereof.\n         \n               \"Contribution\" shall mean any work of authorship, including\n               the original version of the Work and any modifications or additions\n               to that Work or Derivative Works thereof, that is intentionally\n               submitted to Licensor for inclusion in the Work by the copyright owner\n               or by an individual or Legal Entity authorized to submit on behalf of\n               the copyright owner. For the purposes of this definition, \"submitted\"\n               means any form of electronic, verbal, or written communication sent\n               to the Licensor or its representatives, including but not limited to\n               communication on electronic mailing lists, source code control systems,\n               and issue tracking systems that are managed by, or on behalf of, the\n               Licensor for the purpose of discussing and improving the Work, but\n               excluding communication that is conspicuously marked or otherwise\n               designated in writing by the copyright owner as \"Not a Contribution.\"\n         \n               \"Contributor\" shall mean Licensor and any individual or Legal Entity\n               on behalf of whom a Contribution has been received by Licensor and\n               subsequently incorporated within the Work.\n         \n            2. Grant of Copyright License. Subject to the terms and conditions of\n               this License, each Contributor hereby grants to You a perpetual,\n               worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n               copyright license to reproduce, prepare Derivative Works of,\n               publicly display, publicly perform, sublicense, and distribute the\n               Work and such Derivative Works in Source or Object form.\n         \n            3. Grant of Patent License. Subject to the terms and conditions of\n               this License, each Contributor hereby grants to You a perpetual,\n               worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n               (except as stated in this section) patent license to make, have made,\n               use, offer to sell, sell, import, and otherwise transfer the Work,\n               where such license applies only to those patent claims licensable\n               by such Contributor that are necessarily infringed by their\n               Contribution(s) alone or by combination of their Contribution(s)\n               with the Work to which such Contribution(s) was submitted. If You\n               institute patent litigation against any entity (including a\n               cross-claim or counterclaim in a lawsuit) alleging that the Work\n               or a Contribution incorporated within the Work constitutes direct\n               or contributory patent infringement, then any patent licenses\n               granted to You under this License for that Work shall terminate\n               as of the date such litigation is filed.\n         \n            4. Redistribution. You may reproduce and distribute copies of the\n               Work or Derivative Works thereof in any medium, with or without\n               modifications, and in Source or Object form, provided that You\n               meet the following conditions:\n         \n               (a) You must give any other recipients of the Work or\n                   Derivative Works a copy of this License; and\n         \n               (b) You must cause any modified files to carry prominent notices\n                   stating that You changed the files; and\n         \n               (c) You must retain, in the Source form of any Derivative Works\n                   that You distribute, all copyright, patent, trademark, and\n                   attribution notices from the Source form of the Work,\n                   excluding those notices that do not pertain to any part of\n                   the Derivative Works; and\n         \n               (d) If the Work includes a \"NOTICE\" text file as part of its\n                   distribution, then any Derivative Works that You distribute must\n                   include a readable copy of the attribution notices contained\n                   within such NOTICE file, excluding those notices that do not\n                   pertain to any part of the Derivative Works, in at least one\n                   of the following places: within a NOTICE text file distributed\n                   as part of the Derivative Works; within the Source form or\n                   documentation, if provided along with the Derivative Works; or,\n                   within a display generated by the Derivative Works, if and\n                   wherever such third-party notices normally appear. The contents\n                   of the NOTICE file are for informational purposes only and\n                   do not modify the License. You may add Your own attribution\n                   notices within Derivative Works that You distribute, alongside\n                   or as an addendum to the NOTICE text from the Work, provided\n                   that such additional attribution notices cannot be construed\n                   as modifying the License.\n         \n               You may add Your own copyright statement to Your modifications and\n               may provide additional or different license terms and conditions\n               for use, reproduction, or distribution of Your modifications, or\n               for any such Derivative Works as a whole, provided Your use,\n               reproduction, and distribution of the Work otherwise complies with\n               the conditions stated in this License.\n         \n            5. Submission of Contributions. Unless You explicitly state otherwise,\n               any Contribution intentionally submitted for inclusion in the Work\n               by You to the Licensor shall be under the terms and conditions of\n               this License, without any additional terms or conditions.\n               Notwithstanding the above, nothing herein shall supersede or modify\n               the terms of any separate license agreement you may have executed\n               with Licensor regarding such Contributions.\n         \n            6. Trademarks. This License does not grant permission to use the trade\n               names, trademarks, service marks, or product names of the Licensor,\n               except as required for reasonable and customary use in describing the\n               origin of the Work and reproducing the content of the NOTICE file.\n         \n            7. Disclaimer of Warranty. Unless required by applicable law or\n               agreed to in writing, Licensor provides the Work (and each\n               Contributor provides its Contributions) on an \"AS IS\" BASIS,\n               WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or\n               implied, including, without limitation, any warranties or conditions\n               of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A\n               PARTICULAR PURPOSE. You are solely responsible for determining the\n               appropriateness of using or redistributing the Work and assume any\n               risks associated with Your exercise of permissions under this License.\n         \n            8. Limitation of Liability. In no event and under no legal theory,\n               whether in tort (including negligence), contract, or otherwise,\n               unless required by applicable law (such as deliberate and grossly\n               negligent acts) or agreed to in writing, shall any Contributor be\n               liable to You for damages, including any direct, indirect, special,\n               incidental, or consequential damages of any character arising as a\n               result of this License or out of the use or inability to use the\n               Work (including but not limited to damages for loss of goodwill,\n               work stoppage, computer failure or malfunction, or any and all\n               other commercial damages or losses), even if such Contributor\n               has been advised of the possibility of such damages.\n         \n            9. Accepting Warranty or Additional Liability. While redistributing\n               the Work or Derivative Works thereof, You may choose to offer,\n               and charge a fee for, acceptance of support, warranty, indemnity,\n               or other liability obligations and/or rights consistent with this\n               License. However, in accepting such obligations, You may act only\n               on Your own behalf and on Your sole responsibility, not on behalf\n               of any other Contributor, and only if You agree to indemnify,\n               defend, and hold each Contributor harmless for any liability\n               incurred by, or claims asserted against, such Contributor by reason\n               of your accepting any such warranty or additional liability.\n         \n            END OF TERMS AND CONDITIONS\n         \n            APPENDIX: How to apply the Apache License to your work.\n         \n               To apply the Apache License to your work, attach the following\n               boilerplate notice, with the fields enclosed by brackets \"[]\"\n               replaced with your own identifying information. (Don't include\n               the brackets!)  The text should be enclosed in the appropriate\n               comment syntax for the file format. We also recommend that a\n               file or class name and description of purpose be included on the\n               same \"printed page\" as the copyright notice for easier\n               identification within third-party archives.\n         \n            Copyright [yyyy] [name of copyright owner]\n         \n            Licensed under the Apache License, Version 2.0 (the \"License\");\n            you may not use this file except in compliance with the License.\n            You may obtain a copy of the License at\n         \n                http://www.apache.org/licenses/LICENSE-2.0\n         \n            Unless required by applicable law or agreed to in writing, software\n            distributed under the License is distributed on an \"AS IS\" BASIS,\n            WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n            See the License for the specific language governing permissions and\n            limitations under the License.",
+      "licenseClassifiers": [
+        "License :: OSI Approved :: Apache Software License"
+      ],
+      "filename": "pyshacl-0.40.1-py3-none-any.whl"
+    },
+    {
+      "name": "rdflib",
+      "version": "7.6.0",
+      "url": "https://files.pythonhosted.org/packages/10/c2/6604a71269e0c1bd75656d5a001432d16f2cc5b8c057140ec797155c295e/rdflib-7.6.0-py3-none-any.whl",
+      "sha256": "30c0a3ebf4c0e09215f066be7246794b6492e054e782d7ac2a34c9f70a15e0dd",
+      "size": 615416,
+      "requiresPython": ">=3.8.1",
+      "requiresDist": [
+        "isodate<1.0.0,>=0.7.2; python_version < \"3.11\"",
+        "pyparsing<4,>=2.1.0",
+        "berkeleydb<19.0.0,>=18.1.0; extra == \"berkeleydb\"",
+        "networkx<4,>=2; extra == \"networkx\"",
+        "html5rdf<2,>=1.2; extra == \"html\"",
+        "lxml<6.0,>=4.3; extra == \"lxml\"",
+        "orjson<4,>=3.9.14; extra == \"orjson\"",
+        "httpx<0.29.0,>=0.28.1; extra == \"rdf4j\" or extra == \"graphdb\""
+      ],
+      "licenseExpression": null,
+      "license": "BSD-3-Clause",
+      "licenseClassifiers": [
+        "License :: OSI Approved :: BSD License"
+      ],
+      "filename": "rdflib-7.6.0-py3-none-any.whl"
+    },
+    {
+      "name": "wcwidth",
+      "version": "0.9.2",
+      "url": "https://files.pythonhosted.org/packages/9c/b4/0bfa065af506540d9d558e3e5548cff00bc1f9b24e6e2a8512498e8628de/wcwidth-0.9.2-py3-none-any.whl",
+      "sha256": "89ca642c5bf0101157a09366be69fad0379db1f700ae39a920e103234573670e",
+      "size": 301667,
+      "requiresPython": ">=3.9",
+      "requiresDist": null,
+      "licenseExpression": null,
+      "license": null,
+      "licenseClassifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "filename": "wcwidth-0.9.2-py3-none-any.whl"
+    }
+  ],
+  "platforms": {
+    "darwin-arm64": {
+      "platform": "darwin",
+      "arch": "arm64",
+      "artifacts": [
+        {
+          "id": "python",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-3.12.12%2B20260211-aarch64-apple-darwin-install_only_stripped.tar.gz",
+          "sha256": "22625deaf5757e7c266cf1a096c9151a06b598b1e14632a2ec9993d58ec5fe84",
+          "bytes": 17667661,
+          "format": "tar.gz",
+          "destination": "."
+        },
+        {
+          "id": "conftest",
+          "url": "https://github.com/open-policy-agent/conftest/releases/download/v0.71.1/conftest_0.71.1_Darwin_arm64.tar.gz",
+          "sha256": "e1cc50d2590b6c5e3da6912666a71264bae82d60bdd62d7ae2b99971ccc8eedd",
+          "bytes": 21812513,
+          "format": "tar.gz",
+          "destination": "conftest"
+        },
+        {
+          "id": "opa",
+          "url": "https://github.com/open-policy-agent/opa/releases/download/v1.21.2/opa_darwin_arm64",
+          "sha256": "e358121f0d96a41103499d878184e493cc5ab10956f98e835089b9de0ac2de62",
+          "bytes": 62448002,
+          "format": "raw",
+          "destination": "bin/opa"
+        }
+      ],
+      "tools": {
+        "conftest": {
+          "executable": "conftest/conftest",
+          "version": "0.71.1",
+          "sha256": "927afb80fdd63cb281ee686c7a859bffdeaf75d5ff661e5d51f816902b9ae050"
+        },
+        "opa": {
+          "executable": "bin/opa",
+          "version": "1.21.2",
+          "sha256": "e358121f0d96a41103499d878184e493cc5ab10956f98e835089b9de0ac2de62"
+        },
+        "python": {
+          "executable": "venv/bin/python3.12",
+          "version": "3.12.12",
+          "sha256": "3874a935f7242b660e652d35c25a1b87415fcfea3ee191ff262fcca5c50102c5"
+        }
+      },
+      "pythonBase": "python/bin/python3.12",
+      "pythonSite": "venv/lib/python3.12/site-packages",
+      "versions": {
+        "python": "3.12.12",
+        "pyshacl": "0.40.1",
+        "rdflib": "7.6.0",
+        "conftest": "0.71.1",
+        "conftestEmbeddedOPA": "1.21.1",
+        "opa": "1.21.2"
+      }
+    }
+  },
+  "limits": {
+    "timeoutMs": 60000,
+    "maxInputBytes": 33554432,
+    "maxPackageBytes": 134217728
+  },
+  "licenses": [
+    {
+      "path": "licenses/conftest-LICENSE",
+      "sha256": "a3fc6a99a82b59b761a6b1aabe8fc540b7046d5f91377fc1d8897dbbf3bd18ac"
+    },
+    {
+      "path": "licenses/html5rdf-0-LICENSE",
+      "sha256": "16a39991619e92f18680932da2a9199fdf7d95df3ecaedc52ea06218aabafd6f"
+    },
+    {
+      "path": "licenses/opa-LICENSE",
+      "sha256": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08"
+    },
+    {
+      "path": "licenses/owlrl-0-LICENSE",
+      "sha256": "4314f05aad7a217e792d310af1b4381d132e03d2f823c29bb7ab0f87c6849257"
+    },
+    {
+      "path": "licenses/packaging-0-LICENSE",
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+    },
+    {
+      "path": "licenses/packaging-1-LICENSE",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "path": "licenses/packaging-2-LICENSE",
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+    },
+    {
+      "path": "licenses/packaging-3-LICENSE",
+      "sha256": "590d12eee73ddbec53b4e9ee5bfc64d9cb3aacb4940e8ebcba260757ce56740b"
+    },
+    {
+      "path": "licenses/packaging-4-LICENSE",
+      "sha256": "596ec35e2ca0ebcba9fd8343ff0a51625af548786257815f24b41f7e08613314"
+    },
+    {
+      "path": "licenses/prettytable-0-LICENSE",
+      "sha256": "0c8adcc204c8af6cdfdf7887dfd1f99c29901f6c1d505a78bba96efa4fb2cb05"
+    },
+    {
+      "path": "licenses/pyparsing-0-LICENSE",
+      "sha256": "a5425f9dc14ac74d4c5f0b679e941f2442e32cca7452a4418d5b1a49893ebe4e"
+    },
+    {
+      "path": "licenses/pyshacl-0-LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "licenses/python-LICENSE",
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+    },
+    {
+      "path": "licenses/rdflib-0-LICENSE",
+      "sha256": "53a705e51bfd199e8c97d0442376cb4bbd4ffcf13ba4f2c4c2794211400e4012"
+    },
+    {
+      "path": "licenses/wcwidth-0-LICENSE",
+      "sha256": "70b98a95a2144eb70af8017fa8c6d95ce247e40867436e8bc649e137fe13d21a"
+    }
+  ]
+}

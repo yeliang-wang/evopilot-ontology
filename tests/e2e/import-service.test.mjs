@@ -1,3 +1,4 @@
+// Frozen v0.2.0 historical behavior; current native lifecycle is tested separately.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, realpathSync, rmSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -5,8 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { createOntologyService } from '../../dist/service.js';
-import { listPublicSources, readPublicSource } from '../../dist/asset-sources.js';
+import { createOntologyService } from '../fixtures/historical-v020/dist/service.js';
+import { listPublicSources, readPublicSource } from '../fixtures/historical-v020/dist/asset-sources.js';
 
 const scope = { visibility: 'public', projectId: 'alpha' };
 const privateScope = { visibility: 'private', projectId: 'alpha' };

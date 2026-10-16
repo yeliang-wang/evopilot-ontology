@@ -13,7 +13,7 @@ export const repositories = Object.freeze({
 });
 const owners = ['runtime', 'harness', 'ontology'];
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-export const tarball = owner => `evopilot-next-${owner}-0.2.0.tgz`;
+export const tarball = owner => `evopilot-next-${owner}-0.3.0.tgz`;
 export function validateInputs(input) {
   assert(Object.hasOwn(repositories, input.repository), 'Repository not allowed');
   assert.match(input.expectedCommit, /^[a-f0-9]{40}$/);
@@ -31,7 +31,7 @@ export function validateInputs(input) {
 export function validateRun(run, input, head, pkg) {
   const owner = validateInputs(input);
   assert.equal(head, input.expectedCommit, 'Checkout HEAD mismatch');
-  assert.equal(pkg.version, '0.2.0');
+  assert.equal(pkg.version, '0.3.0');
   assert.equal(pkg.name, '@evopilot-next/' + owner);
   assert.equal(run.id, Number(input.sourceRunId));
   assert.equal(run.repository?.full_name, input.repository);
@@ -48,7 +48,7 @@ export function validateArtifact(metadata, input) {
   validateInputs(input);
   assert.equal(input.repository, 'yeliang-wang/evopilot');
   assert.equal(metadata.total_count, metadata.artifacts?.length, 'Incomplete artifact metadata');
-  const matches = metadata.artifacts.filter(a => a.name === `evopilot-0.2.0-preview-${input.expectedCommit}`);
+  const matches = metadata.artifacts.filter(a => a.name === `evopilot-0.3.0-preview-${input.expectedCommit}`);
   assert.equal(matches.length, 1, 'Expected exactly one named artifact');
   const a = matches[0];
   assert(Number.isSafeInteger(a.id) && a.id > 0);
@@ -65,7 +65,7 @@ export function validateDigest(bytes, expected) {
   assert.equal(expected.length, 64);
   assert.equal(sha256(bytes), expected, 'SHA256 mismatch');
 }
-export const parentFiles = ['evopilot-0.2.0-preview.tar.gz', ...owners.map(o => `${o}/${tarball(o)}`),
+export const parentFiles = ['evopilot-0.3.0-preview.tar.gz', ...owners.map(o => `${o}/${tarball(o)}`),
   'harness/dependency-lock.json', 'ontology/dependency-lock.json', 'source-revision.txt', 'SHA256SUMS'];
 export function validateArchiveNames(names) {
   assert.equal(new Set(names).size, names.length, 'Duplicate ZIP path');
@@ -100,7 +100,7 @@ export function validatePack(records, owner) {
   assert(owners.includes(owner));
   assert(Array.isArray(records) && records.length === 1);
   assert.equal(records[0].name, '@evopilot-next/' + owner);
-  assert.equal(records[0].version, '0.2.0');
+  assert.equal(records[0].version, '0.3.0');
   assert.equal(records[0].filename, tarball(owner));
   return records[0].filename;
 }
@@ -119,7 +119,7 @@ function environment() {
     expectedDigest: e.EXPECTED_DIGEST, publish: e.PUBLISH, decisionRef: e.DECISION_REF };
 }
 export function assetNames(owner) {
-  return owner === 'stack' ? ['evopilot-0.2.0-preview.tar.gz', ...owners.map(tarball),
+  return owner === 'stack' ? ['evopilot-0.3.0-preview.tar.gz', ...owners.map(tarball),
     'harness-dependency-lock.json', 'ontology-dependency-lock.json', 'source-revision.txt', 'SHA256SUMS']
     : [tarball(owner), ...(owner === 'runtime' ? [] : [owner + '-dependency-lock.json']), 'source-revision.txt', 'SHA256SUMS'];
 }
@@ -178,15 +178,15 @@ export function releaseNotes(input, owner) {
   const repository = `https://github.com/${input.repository}`;
   const docs = `${repository}/blob/${input.expectedCommit}`;
   const api = owner === 'runtime' ? `[Service API](${docs}/docs/service.md) · [CLI](${docs}/docs/cli.md)` : `[Product documentation](${docs}/README.md)`;
-  return `# EvoPilot 0.2.0 Preview
+  return `# EvoPilot 0.3.0 Preview
 
-${role}. Use Node 24.14.0. This release adds private Workspace initialization and attachment through the unified Expert, separate editable project/state roots, owner-validated same-host migration, backup/restore and an explicit 27-scenario Expert catalogue. Existing immutable assets and receipts retain their original identity through signed location lineage. Compiled JavaScript and declarations are shipped from strict TypeScript. Historical specifications/v1, provenance and licenses remain unchanged.
+${role}. Use Node 24.14.0. This release corrects the current specifications/v1 with RDF 1.1/Turtle 1.1, bounded SHACL 2017 validation through pySHACL 0.40.1, and Rego v1 through OPA 1.21.2 and Conftest 0.71.1. Owner-specific standard digests, independent source requirements, native positive/negative cases and protected collection/Run receipts establish the declared verification boundary. Exact human decisions remain separate from technical validation. The unified Expert retains private Workspace initialization and recovery; native tool preparation returns a durable status while bounded downloads run asynchronously. Compiled JavaScript and declarations are shipped from strict TypeScript. Historical commits, releases, assets and receipts retain their original bytes; their old v1 labels do not certify corrected-native conformance.
 
 [Repository](${repository}) · [Exact source commit](${repository}/tree/${input.expectedCommit}) · [Successful source CI](${repository}/actions/runs/${input.sourceRunId})
 
 ## Downloads and installation
 
-[Download v0.2.0 assets](${repository}/releases/tag/v0.2.0). Verify every downloaded asset against SHA256SUMS and inspect source-revision.txt before installation. ${api} · [Installation and source instructions](${docs}/README.md) · [Distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
+[Download v0.3.0 assets](${repository}/releases/tag/v0.3.0). Verify every downloaded asset against SHA256SUMS and inspect source-revision.txt before installation. ${api} · [Installation and source instructions](${docs}/README.md) · [Distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
 
 The parent consumes the exact verified source-CI ZIP without rebuilding. Child preparation installs locked development tools, builds, then packs; its tarball must match the expected source-distribution SHA256. Runtime has no runtime dependencies and no Runtime dependency-lock asset. Compiler development dependencies are not installed runtime dependencies. Harness and Ontology retain their named dependency-lock assets. Installed component tarballs include compiled dist and declarations, and omit development scripts/tests; package scripts are for source maintainers.
 
@@ -216,12 +216,12 @@ function publish(input, owner, out) {
   const revision = files.get('source-revision.txt').toString();
   assert.equal(revision.split('\n')[0], input.expectedCommit);
   if (owner !== 'stack') { assert.equal(revision, input.expectedCommit + '\n'); validateDigest(files.get(tarball(owner)), input.expectedDigest); }
-  requireAbsent(`repos/${input.repository}/releases/tags/v0.2.0`);
-  requireAbsent(`repos/${input.repository}/git/ref/tags/v0.2.0`);
+  requireAbsent(`repos/${input.repository}/releases/tags/v0.3.0`);
+  requireAbsent(`repos/${input.repository}/git/ref/tags/v0.3.0`);
   // No retries or cleanup after either mutation: reconcile an uncertain outcome manually.
-  command('gh', ['api', '--method', 'POST', `repos/${input.repository}/git/refs`, '-f', 'ref=refs/tags/v0.2.0', '-f', `sha=${input.expectedCommit}`]);
-  command('gh', ['release', 'create', 'v0.2.0', '--repo', input.repository, '--verify-tag', '--prerelease', '--latest=false',
-    '--title', 'EvoPilot 0.2.0 Preview', '--notes-file', path.join(out, 'release-notes.md'), ...names.map(n => path.join(out, n))]);
+  command('gh', ['api', '--method', 'POST', `repos/${input.repository}/git/refs`, '-f', 'ref=refs/tags/v0.3.0', '-f', `sha=${input.expectedCommit}`]);
+  command('gh', ['release', 'create', 'v0.3.0', '--repo', input.repository, '--verify-tag', '--prerelease', '--latest=false',
+    '--title', 'EvoPilot 0.3.0 Preview', '--notes-file', path.join(out, 'release-notes.md'), ...names.map(n => path.join(out, n))]);
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {

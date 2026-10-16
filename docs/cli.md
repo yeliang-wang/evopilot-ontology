@@ -1,5 +1,8 @@
 # Ontology CLI
 
+> Historical interface reference. Corrected-v1 work uses the [native service](native-service.md) and [current specification](../specifications/v1/README.md). Retired JSON, producer, Catalog and classification mutation operations are rejected; descriptions below explain retained historical records, not current execution authority.
+
+
 `evopilot-next-ontology` is the independent package bin for `dist/cli.js` (Node 24.14.0). After building, a source checkout can use `node dist/cli.js` or the executable script directly. Installed package-manager symlinks resolve to the same entry. Importing `main` does not initialize storage or run a request.
 
 ```text

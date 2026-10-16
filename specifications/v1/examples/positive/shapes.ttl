@@ -1,0 +1,23 @@
+@prefix ex: <https://example.invalid/r1/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+ex:ProjectShape a sh:NodeShape; sh:targetNode ex:project; sh:class ex:Project;
+ sh:property ex:CapabilitiesShape .
+ex:CapabilitiesShape a sh:PropertyShape; sh:path ex:hasCapability; sh:minCount 2; sh:maxCount 2; sh:class ex:Capability; sh:nodeKind sh:IRI .
+ex:CapabilityShape a sh:NodeShape; sh:targetClass ex:Capability; sh:closed true; sh:ignoredProperties (rdf:type);
+ sh:property ex:KindShape, ex:OperationShape, ex:LimitShape;
+ sh:or ( [ sh:property [ sh:path ex:kind; sh:hasValue "ENGINE" ]; sh:property [ sh:path ex:operation; sh:hasValue "execute" ] ]
+         [ sh:property [ sh:path ex:kind; sh:hasValue "QUERY" ]; sh:property [ sh:path ex:operation; sh:hasValue "search" ] ] ) .
+ex:KindShape a sh:PropertyShape; sh:path ex:kind; sh:minCount 1; sh:maxCount 1; sh:datatype xsd:string; sh:in ("ENGINE" "QUERY") .
+ex:OperationShape a sh:PropertyShape; sh:path ex:operation; sh:minCount 1; sh:maxCount 1; sh:datatype xsd:string .
+ex:LimitShape a sh:PropertyShape; sh:path ex:limit; sh:minCount 1; sh:maxCount 1; sh:datatype xsd:integer; sh:minInclusive 1; sh:maxInclusive 10 .
+
+ex:ProjectShape rdfs:label "ProjectShape"; rdfs:comment "Synthetic constraint ProjectShape"; rdfs:isDefinedBy ex:ontology; rdfs:seeAlso ex:source .
+ex:CapabilitiesShape rdfs:label "CapabilitiesShape"; rdfs:comment "Synthetic constraint CapabilitiesShape"; rdfs:isDefinedBy ex:ontology; rdfs:seeAlso ex:source .
+ex:CapabilityShape rdfs:label "CapabilityShape"; rdfs:comment "Synthetic constraint CapabilityShape"; rdfs:isDefinedBy ex:ontology; rdfs:seeAlso ex:source .
+ex:KindShape rdfs:label "KindShape"; rdfs:comment "Synthetic constraint KindShape"; rdfs:isDefinedBy ex:ontology; rdfs:seeAlso ex:source .
+ex:OperationShape rdfs:label "OperationShape"; rdfs:comment "Synthetic constraint OperationShape"; rdfs:isDefinedBy ex:ontology; rdfs:seeAlso ex:source .
+ex:LimitShape rdfs:label "LimitShape"; rdfs:comment "Synthetic constraint LimitShape"; rdfs:isDefinedBy ex:ontology; rdfs:seeAlso ex:source .

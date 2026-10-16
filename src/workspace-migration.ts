@@ -1,4 +1,6 @@
 /** Public owner API. Call only with all workspace services quiescent. */
+import { nativePackageDigest, nativeSha256, validateNativePackage, referenceForPackage } from '../vendor/compatibility/v1/native.mjs';
+import type { NativeOntologyRecord, NativeOntologyReceipt, NativeOntologyValidation } from './native/types.js';
 import { DatabaseSync } from 'node:sqlite';
 import { join, sep } from 'node:path';
 import { stableSerialize } from '../vendor/compatibility/v1/reference.mjs';
@@ -13,7 +15,7 @@ export interface WorkspaceSnapshot {
   schema: 'evopilot-owner-workspace-snapshot/v1'; product: typeof product; identity: WorkspaceIdentity;
   revision: number; stateDigest: string; receiptsDigest: string; auditDigest: string; recordsDigest: string;
   receiptCount: number; blobs: BlobInventory[]; blobsDigest: string; lineageDigest: string;
-  requiredKeyIds: string[]; unresolved: UnresolvedItem[]; snapshotDigest: string;
+  nativeRecordsDigest?:string; requiredKeyIds: string[]; unresolved: UnresolvedItem[]; snapshotDigest: string;
 }
 export interface RelocationOptions { sourceRoot: string; destinationRoot: string; workspaceId: string; expectedSnapshotDigest: string }
 export interface WorkspaceRelocationResult { schema: 'evopilot-owner-workspace-relocation-result/v1'; product: typeof product; from: WorkspaceIdentity; to: WorkspaceIdentity; sourceSnapshotDigest: string; relocationDigest: string; requiredKeyIds: string[]; snapshot: WorkspaceSnapshot; authority: false }
@@ -61,6 +63,22 @@ function verifyOwnerMaterials(state: unknown, blobs: BlobInventory[]): void {
     if (pointerDigest !== hash(subject)) migrationFail('CORRUPT_STATE', 'Catalog pointer differs');
   }
 }
+function verifyNativeMaterials(records:SnapshotRecords,blobs:BlobInventory[]):UnresolvedItem[]{
+  if(!records.nativeRecords)return [];
+  const pending:UnresolvedItem[]=[];
+  const requireBlob=(scope:{visibility:string;projectId:string},document:unknown)=>{const digest=hash(document),prefix=scope.visibility==='public'?'public/'+product:'private/projects/'+scope.projectId+'/'+product;if(!blobs.some(b=>b.path===prefix+'/'+digest.slice(7)+'.json'&&b.digest===digest))migrationFail('CORRUPT_BLOB','Native owner blob missing');};
+  for(const row of records.nativeRecords.packages){
+    if(typeof row.data!=='string')migrationFail('CORRUPT_STATE','Invalid native package row');
+    const r=JSON.parse(row.data) as NativeOntologyRecord;validateNativePackage(r.package,{owner:'ontology'});
+    if(row.digest!==nativeSha256(r)||row.scope!==stableSerialize(r.scope)||row.id!==r.id||row.version!==r.version||r.packageDigest!==nativePackageDigest(r.package)||r.reference&&stableSerialize(r.reference)!==stableSerialize(referenceForPackage(r.package)))migrationFail('CORRUPT_STATE','Native package identity differs');
+    requireBlob(r.scope,r);
+    if(r.validation){const {reportDigest,...body}=r.validation;if(reportDigest!==nativeSha256(body))migrationFail('CORRUPT_STATE','Native report digest differs');requireBlob(r.scope,r.validation);}
+    if(r.review){const {reviewDigest,...body}=r.review;if(reviewDigest!==nativeSha256(body))migrationFail('CORRUPT_STATE','Native review differs');}
+    if(r.claim&&['RUNNING','UNKNOWN'].includes(r.claim.status))pending.push({kind:'native-validation',id:r.claim.requestId,status:r.claim.status,nextAction:'RECONCILE_OR_CANCEL'});
+  }
+  for(const row of records.nativeRecords.receipts){const r=JSON.parse(row.receipt as string) as NativeOntologyReceipt<NativeOntologyValidation>;if(r.operation==='native.package.validate'&&r.result.schema==='evopilot-ontology-validation/v1')requireBlob(r.scope,r.result);}
+  return pending;
+}
 function snapshot(db: DatabaseSync, identity: WorkspaceIdentity, root: string): { manifest: WorkspaceSnapshot; records: SnapshotRecords } {
   const records = inspectRecords(db, value => validateState(value as Parameters<typeof validateState>[0]));
   const lineage = readRelocations(db, identity, product), blobs = inspectBlobs(root, product);
@@ -68,7 +86,8 @@ function snapshot(db: DatabaseSync, identity: WorkspaceIdentity, root: string): 
     if (stableSerialize(binding.workspace) !== stableSerialize(identity) && !lineage.some(record => record.bindings.some(retained => stableSerialize(retained) === stableSerialize(binding)))) migrationFail('CORRUPT_STATE', 'Unattested historical owner identity');
   }
   verifyOwnerMaterials(records.state, blobs);
-  const subject = { schema: 'evopilot-owner-workspace-snapshot/v1' as const, product, identity, revision: records.revision, stateDigest: records.stateDigest, receiptsDigest: records.receiptsDigest, auditDigest: records.auditDigest, recordsDigest: records.recordsDigest, receiptCount: records.receiptCount, blobs, blobsDigest: hash(blobs), lineageDigest: hash(lineage), requiredKeyIds: [...new Set(lineage.map(record => record.keyId))].sort(), unresolved: unresolved(records.state) };
+  const nativeUnresolved=verifyNativeMaterials(records,blobs);
+  const subject = { schema: 'evopilot-owner-workspace-snapshot/v1' as const, product, identity, revision: records.revision, stateDigest: records.stateDigest, receiptsDigest: records.receiptsDigest, auditDigest: records.auditDigest, recordsDigest: records.recordsDigest, receiptCount: records.receiptCount, blobs, blobsDigest: hash(blobs), lineageDigest: hash(lineage), requiredKeyIds: [...new Set(lineage.map(record => record.keyId))].sort(), unresolved: [...unresolved(records.state),...nativeUnresolved],...(records.nativeRecords?{nativeRecordsDigest:records.nativeRecords.digest}:{}) };
   return { manifest: { ...subject, snapshotDigest: hash(subject) }, records };
 }
 export function inspectWorkspaceSnapshot(value: SnapshotOptions): WorkspaceSnapshot {

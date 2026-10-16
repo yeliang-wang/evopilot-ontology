@@ -1,5 +1,8 @@
 # Retained read/query service API
 
+> Historical interface reference. Corrected-v1 work uses the [native service](native-service.md) and [current specification](../specifications/v1/README.md). Retired JSON, producer, Catalog and classification mutation operations are rejected; descriptions below explain retained historical records, not current execution authority.
+
+
 The synchronous `createOntologyService` API from `@evopilot-next/ontology/service` (compiled `dist/service.js`) exposes 28 finite historical queries. Requests have exactly {operation, scope, input}; scope is {visibility: "public" | "private", projectId}. Query requests reject requestId and expectedRevision. Input is bounded descriptor-safe JSON; object arguments remain objects. Unknown top-level input fields are rejected. Nested typed documents retain their owned compatibility contracts and digest validation. No caller-selected module, export, callback, filesystem path, provider or network execution is available.
 
 Every result is {operation, compatibility: "evopilot-harness@4.8.2", previewOnly: true, authority: false, result}. The inner result preserves historical wire schemas, digest conventions, algorithms and status vocabulary. Historical approval/publication fields are calculation evidence only. They cannot approve, publish, mutate or advance any native service record. No query writes assets, source data, decisions, audit, receipts or the global SQLite revision.

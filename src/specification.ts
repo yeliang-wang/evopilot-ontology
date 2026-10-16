@@ -74,7 +74,7 @@ export function validateOntology(input: unknown): ModelValidation | Rejection {
     for (const m of mappings.values()) {
       path = `$.sourceMappings.${m.id}`;
       const s = sources.get(m.sourceRef as string);
-      if (!semantic.has(m.targetRef as string) || !s || m.sourceLocator !== s.locator || m.sourceRevision !== s.revision || !SOURCE_STATUSES.includes(m.status as string) || m.status !== s.status) throw new TypeError('Source mapping mismatch or dangling reference');
+      if (!semantic.has(m.targetRef as string) || !s || m.sourceLocator !== s.locator || m.sourceRevision !== s.revision || !SOURCE_STATUSES.some(status => status === m.status) || m.status !== s.status) throw new TypeError('Source mapping mismatch or dangling reference');
       const binding = JSON.stringify([m.targetRef, m.sourceRef]);
       if (bindings.has(binding)) throw new TypeError('Duplicate source mapping');
       bindings.add(binding); covered.add(m.targetRef);

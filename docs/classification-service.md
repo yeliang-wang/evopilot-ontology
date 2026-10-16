@@ -1,5 +1,8 @@
 # Owned classification service
 
+> Historical interface reference. Corrected-v1 work uses the [native service](native-service.md) and [current specification](../specifications/v1/README.md). Retired JSON, producer, Catalog and classification mutation operations are rejected; descriptions below explain retained historical records, not current execution authority.
+
+
 The seven migrated operations use the owned `compat/v4/classification` engine. They create evidence, never publication, approval, quality eligibility or Harness assets. The standalone [CLI](cli.md) is implemented and dispatches these operations through the owned service. Parent Preview MCP routing and unified Expert guidance are implemented. Neither the default Preview daemon nor the standalone CLI injects the required providers; see [integration boundaries](service.md#preview-integration-and-provider-boundaries). See [asset workflows](asset-workflows.md) for the user journey.
 
 Import `createOntologyService` from `@evopilot-next/ontology/service` (compiled `dist/service.js`). Construct `createOntologyService({workspaceRoot, workspaceId}, trustedProviders)`, then explicitly `initialize()`. Existing `resolveLegacyHarness` remains supported. The closed trusted provider object additionally accepts:

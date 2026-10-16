@@ -1,13 +1,14 @@
+// Frozen v0.2.0 historical behavior; current native lifecycle is tested separately.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createOntologyService } from '../../dist/service.js';
-import { operateProducer, validateProducerRequest, producerRoutes } from '../../dist/producer-operations.js';
-import { validateState } from '../../dist/state.js';
-import { operateImport } from '../../dist/import-operations.js';
+import { createOntologyService } from '../fixtures/historical-v020/dist/service.js';
+import { operateProducer, validateProducerRequest, producerRoutes } from '../fixtures/historical-v020/dist/producer-operations.js';
+import { validateState } from '../fixtures/historical-v020/dist/state.js';
+import { operateImport } from '../fixtures/historical-v020/dist/import-operations.js';
 import { sha256, stableSerialize } from '../../vendor/compatibility/v1/reference.mjs';
 import { packs as p, grounding as g, interoperability as s } from '../../src/compat/index.mjs';
 import { digest } from '../../src/compat/v3/utils.mjs';

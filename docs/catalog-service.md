@@ -1,5 +1,8 @@
 # Scoped Catalog service
 
+> Historical interface reference. Corrected-v1 work uses the [native service](native-service.md) and [current specification](../specifications/v1/README.md). Retired JSON, producer, Catalog and classification mutation operations are rejected; descriptions below explain retained historical records, not current execution authority.
+
+
 The `@evopilot-next/ontology/service` entry (compiled `dist/service.js`) implements ten `semantic.catalog.*` routes using the existing owned compat `assembleSemanticGeneration` and `resolveSemanticGeneration`. Compat libraries, schemas, historical APIs and their recovery capabilities remain unchanged. The owned lifecycle, [CLI](cli.md), parent Preview MCP routing and unified Expert guidance are implemented. External legacy Harness materials require an explicit application resolver; neither the default Preview daemon nor the standalone CLI supplies it. See [integration boundaries](service.md#preview-integration-and-provider-boundaries).
 
 All requests use the service envelope and exact `{visibility, projectId}` scope. Mutations additionally require `requestId` and global `expectedRevision`. Inputs are closed typed JSON, never legacy home, registry, policy or material paths. Discovery is pure.

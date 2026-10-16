@@ -1,0 +1,12 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix evo: <https://evopilot.dev/vocabulary/v1/> .
+evo:Declaration a sh:NodeShape; sh:targetClass owl:Class,rdfs:Class,owl:ObjectProperty,owl:DatatypeProperty,rdf:Property,sh:NodeShape,sh:PropertyShape;
+ sh:nodeKind sh:IRI;
+ sh:property [sh:path rdfs:label;sh:minCount 1;sh:datatype xsd:string];
+ sh:property [sh:path rdfs:comment;sh:minCount 1;sh:datatype xsd:string];
+ sh:property [sh:path rdfs:isDefinedBy;sh:minCount 1;sh:nodeKind sh:IRI];
+ sh:property [sh:path rdfs:seeAlso;sh:minCount 1;sh:nodeKind sh:IRI] .

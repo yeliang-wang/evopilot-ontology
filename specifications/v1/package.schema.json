@@ -1,0 +1,255 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": "evopilot-native-package/v1"
+        },
+        "specVersion": {
+          "const": "v1"
+        },
+        "owner": {
+          "const": "ontology"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        },
+        "visibility": {
+          "enum": [
+            "private",
+            "public"
+          ]
+        },
+        "standardPins": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "standardDigest": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "standardLockDigest": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "standardDigest",
+            "standardLockDigest"
+          ]
+        },
+        "contractDigest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "producer": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "product": {
+              "const": "ontology"
+            },
+            "version": {
+              "const": "0.3.0"
+            }
+          },
+          "required": [
+            "product",
+            "version"
+          ]
+        },
+        "entrypoints": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "model": {
+              "const": "model.ttl"
+            },
+            "shapes": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^shapes/.+\\.ttl$"
+              }
+            },
+            "instances": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^instances/.+\\.ttl$"
+              }
+            },
+            "coverage": {
+              "const": "scope/coverage.json"
+            },
+            "cases": {
+              "const": "tests/cases.json"
+            }
+          },
+          "required": [
+            "model",
+            "shapes",
+            "instances",
+            "coverage",
+            "cases"
+          ]
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(/|$))(?!.*[\\\\:]).+$"
+              },
+              "mediaType": {
+                "enum": [
+                  "text/turtle",
+                  "application/json",
+                  "text/markdown", "text/plain"
+                ]
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "mediaType",
+              "sha256"
+            ]
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "product": {
+                "enum": [
+                  "ontology",
+                  "harness"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+              },
+              "specVersion": {
+                "const": "v1"
+              },
+              "visibility": {
+                "enum": [
+                  "private",
+                  "public"
+                ]
+              },
+              "digest": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "standardDigest": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "standardLockDigest": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "producer": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "product": {
+                    "enum": [
+                      "ontology",
+                      "harness"
+                    ]
+                  },
+                  "version": {
+                    "const": "0.3.0"
+                  }
+                },
+                "required": [
+                  "product",
+                  "version"
+                ]
+              },
+              "contractDigest": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "product",
+              "id",
+              "version",
+              "specVersion",
+              "visibility",
+              "digest",
+              "standardDigest",
+              "standardLockDigest",
+              "producer",
+              "contractDigest"
+            ]
+          }
+        },
+        "sourceBindingRef": {
+          "const": "sources/bindings.json"
+        }
+      },
+      "required": [
+        "schema",
+        "specVersion",
+        "owner",
+        "id",
+        "version",
+        "visibility",
+        "standardPins",
+        "contractDigest",
+        "producer",
+        "entrypoints",
+        "files",
+        "dependencies",
+        "sourceBindingRef"
+      ]
+    },
+    "files": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "manifest",
+    "files"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://evopilot.dev/ontology/specifications/v1/package.schema.json"
+}

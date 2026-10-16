@@ -25,7 +25,8 @@ export function validateInstances(input: unknown, instances: unknown) {
         if (!p || p.conceptRef !== e.conceptRef || !Array.isArray(values)) throw new TypeError('Unknown property, owner mismatch or non-array values');
         if (values.some(v => !primitive(v, p.type))) reject('TYPE', `Invalid ${p.type} values for ${id}`);
       }
-      for (const p of properties.values()) if (p.conceptRef === e.conceptRef && p.required && !(Object.hasOwn(e.properties, p.id) && (e.properties[p.id] as unknown[]).length)) reject('REQUIRED', `Missing required ${p.id}`);
+      const entityProperties = e.properties as Record<string, unknown[]>;
+      for (const p of properties.values()) if (p.conceptRef === e.conceptRef && p.required && !(Object.hasOwn(entityProperties, p.id) && entityProperties[p.id].length)) reject('REQUIRED', `Missing required ${p.id}`);
     }
     const relations = new Map(asset.relations.map(r => [r.id, r]));
     for (const [i, r] of instances.relations.entries()) {

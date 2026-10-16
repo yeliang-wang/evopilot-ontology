@@ -1,0 +1,10 @@
+{
+  "contractRevision": "1.0.0",
+  "module": "reference.mjs",
+  "sha256": "df4f7246ae35ef9114e2b93663d520e7ff4f44f14f886ac8ba43e9fc080ddc9a",
+  "children": [
+    "projects/evopilot-runtime",
+    "projects/evopilot-harness",
+    "projects/evopilot-ontology"
+  ]
+}

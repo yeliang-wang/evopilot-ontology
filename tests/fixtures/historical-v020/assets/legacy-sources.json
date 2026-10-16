@@ -1,0 +1,64 @@
+{
+  "schema": "evopilot-public-source-archive/v1",
+  "version": 1,
+  "sourceCommit": "372733fd7b67ec3bee9efe6322f0229db77b160d",
+  "owner": "ontology",
+  "entries": {
+    "ontology/builtin/software-engineering.yaml": {
+      "classification": "ontology-pack",
+      "observed": {
+        "kind": "OntologyPack",
+        "schema": null,
+        "apiVersion": "harness.evopilot.io/v1",
+        "id": "software-engineering",
+        "version": "1.1.0",
+        "digest": null
+      },
+      "raw": "apiVersion: harness.evopilot.io/v1\nkind: OntologyPack\nmetadata:\n  id: software-engineering\n  version: 1.1.0\n  lifecycle: published\n  description: Product-neutral concepts used only to determine Harness asset eligibility and candidate relationships.\nspec:\n  evidenceKinds:\n    - source-code\n    - architecture-document\n    - build-manifest\n    - runtime-log\n    - attachment\n    - operator-note\n    - github-repository\n    - historical-harness\n    - research-evidence\n  concepts:\n    - id: distributed-cache\n      terms: [distributed cache, redis compatible, key-value store, ttl, eviction, hash slot, failover, cluster cache, 分布式缓存, 键值存储]\n      parents: [data-infrastructure]\n      conflicts: [redis-client]\n    - id: redis-client\n      terms: [spring-data-redis, jedis, redis client, redis template, redis serializer, connection factory]\n      parents: [client-library]\n      conflicts: [distributed-cache]\n    - id: database-product\n      terms: [database engine, sql parser, query optimizer, transaction, wal, mvcc, storage engine, distributed sql, 数据库内核]\n      parents: [data-infrastructure]\n      conflicts: [database-client]\n    - id: api-gateway\n      terms: [api gateway, reverse proxy, route policy, rate limit, upstream, ingress, traffic gateway, 网关, 限流]\n      parents: [network-infrastructure]\n      conflicts: [http-client]\n    - id: scheduler\n      terms: [scheduler, job scheduling, cron, task dispatch, worker queue, 调度系统, 任务调度]\n      parents: [platform-infrastructure]\n    - id: rpc-framework\n      terms: [rpc framework, dubbo, grpc, service discovery, remoting, rpc context]\n      parents: [network-infrastructure]\n    - id: observability\n      terms: [apm, tracing, telemetry, metrics, span, observability, 可观测性]\n      parents: [platform-infrastructure]\n    - id: management-software\n      terms: [rbac, admin console, workflow approval, reporting, audit trail, crm, enterprise management]\n      parents: [business-application]\n    - id: language-service\n      terms: [spring boot, java service, golang service, node service, python service, rest controller, code generation, 代码生成, 领域驱动设计, ddd, domain service, facade, manager, mybatis, plantuml, 持久层, 门面层, 业务逻辑]\n      parents: [application-runtime]\n    - id: executable-engineering\n      terms: [build, test, validate, deploy, diagnose, benchmark, migrate, verify, rollback, release]\n  roles:\n    - id: distributed-cache-product\n      domain: distributed-cache\n      taskClass: product-engineering\n      concepts: [distributed-cache, executable-engineering]\n      negativeConcepts: [redis-client]\n    - id: redis-client-library\n      domain: redis-client\n      taskClass: library-engineering\n      concepts: [redis-client, executable-engineering]\n      negativeConcepts: [distributed-cache]\n    - id: database-product\n      domain: database\n      taskClass: product-engineering\n      concepts: [database-product, executable-engineering]\n      negativeConcepts: [database-client]\n    - id: api-gateway-product\n      domain: api-gateway\n      taskClass: product-engineering\n      concepts: [api-gateway, executable-engineering]\n      negativeConcepts: [http-client]\n    - id: scheduler-platform\n      domain: scheduler\n      taskClass: platform-engineering\n      concepts: [scheduler, executable-engineering]\n    - id: rpc-framework\n      domain: rpc-framework\n      taskClass: framework-engineering\n      concepts: [rpc-framework, executable-engineering]\n    - id: observability-platform\n      domain: observability\n      taskClass: platform-engineering\n      concepts: [observability, executable-engineering]\n    - id: enterprise-management-application\n      domain: management-software\n      taskClass: application-engineering\n      concepts: [management-software, executable-engineering]\n    - id: language-service\n      domain: language-service\n      taskClass: service-engineering\n      concepts: [language-service, executable-engineering]\n",
+      "sha256": "a04f0c27b4406db5cc534f8823c14e834926b9b1f94779e19137aa457facab53",
+      "bytes": 4014
+    },
+    "ontology/examples/example-crm-product.yaml": {
+      "classification": "ontology-pack",
+      "observed": {
+        "kind": "ProductOntologyPack",
+        "schema": null,
+        "apiVersion": "semantics.evopilot.io/v1",
+        "id": "example-crm-product",
+        "version": "1.0.0",
+        "digest": "sha256:76b5c1edc8f4da963be675b843ff448051e36cd1a2cbe9a7bb9274f2450a43f9"
+      },
+      "raw": "apiVersion: semantics.evopilot.io/v1\nkind: ProductOntologyPack\nmetadata:\n  id: example-crm-product\n  version: 1.0.0\n  name: Example CRM Product\n  namespace: example.crm\n  root: COMMUNITY\n  visibility: PUBLIC\n  generation: 1\n  owner: evopilot-harness-example-maintainers\n  provenance:\n    author: evopilot-harness\n    reviewers: []\n    approvers: []\n    publishers: []\n    sourceRefs:\n      - docs://example-only\n  labels:\n    exampleOnly: \"true\"\n    universalAuthority: \"false\"\n  kind: ProductOntologyPack\n  digest: sha256:76b5c1edc8f4da963be675b843ff448051e36cd1a2cbe9a7bb9274f2450a43f9\nspec:\n  imports: []\n  concepts:\n    - conceptId: example.crm:contact\n      label: Contact\n      metaType: ENTITY\n      definition: An illustrative CRM contact record.\n      aliases: []\n      relationships: []\n      evidenceRefs:\n        - docs://example-only\n      replaces: null\n      deprecated: false\n    - conceptId: example.crm:pipeline\n      label: Pipeline\n      metaType: WORKFLOW\n      definition: An illustrative CRM opportunity pipeline.\n      aliases: []\n      relationships: []\n      evidenceRefs:\n        - docs://example-only\n      replaces: null\n      deprecated: false\n  equivalences: []\n  replacements: []\n  deprecations: []\n  rules: []\n  shapes: []\n  harnessGuidance: []\n  authority:\n    declarativeOnly: true\n    executable: false\n    activationRequiresIndependentDecision: true\nstatus:\n  phase: DRAFT\n  conditions: []\n  observedGeneration: 1\n  engineOwned: true\n",
+      "sha256": "eb5d8ebff0869ba0d74688bf73f0f0675fd72ac7463cd6a14e0985cf036f37f9",
+      "bytes": 1471
+    },
+    "ontology/examples/example-erp-product.yaml": {
+      "classification": "ontology-pack",
+      "observed": {
+        "kind": "ProductOntologyPack",
+        "schema": null,
+        "apiVersion": "semantics.evopilot.io/v1",
+        "id": "example-erp-product",
+        "version": "1.0.0",
+        "digest": "sha256:850171730513b0d40229f6ef8a8d5d258595e5f5b075336f9c5ef7f34c0027c3"
+      },
+      "raw": "apiVersion: semantics.evopilot.io/v1\nkind: ProductOntologyPack\nmetadata:\n  id: example-erp-product\n  version: 1.0.0\n  name: Example ERP Product\n  namespace: example.erp\n  root: COMMUNITY\n  visibility: PUBLIC\n  generation: 1\n  owner: evopilot-harness-example-maintainers\n  provenance:\n    author: evopilot-harness\n    reviewers: []\n    approvers: []\n    publishers: []\n    sourceRefs:\n      - docs://example-only\n  labels:\n    exampleOnly: \"true\"\n    universalAuthority: \"false\"\n  kind: ProductOntologyPack\n  digest: sha256:850171730513b0d40229f6ef8a8d5d258595e5f5b075336f9c5ef7f34c0027c3\nspec:\n  imports: []\n  concepts:\n    - conceptId: example.erp:ledger\n      label: Ledger\n      metaType: DATA_ASSET\n      definition: An illustrative ERP ledger.\n      aliases: []\n      relationships: []\n      evidenceRefs:\n        - docs://example-only\n      replaces: null\n      deprecated: false\n    - conceptId: example.erp:posting\n      label: Posting\n      metaType: ACTION\n      definition: An illustrative ERP posting action.\n      aliases: []\n      relationships: []\n      evidenceRefs:\n        - docs://example-only\n      replaces: null\n      deprecated: false\n  equivalences: []\n  replacements: []\n  deprecations: []\n  rules: []\n  shapes: []\n  harnessGuidance: []\n  authority:\n    declarativeOnly: true\n    executable: false\n    activationRequiresIndependentDecision: true\nstatus:\n  phase: DRAFT\n  conditions: []\n  observedGeneration: 1\n  engineOwned: true\n",
+      "sha256": "86cda1ad3b720e31e5b504151a752960ef3447a404e3c7db2ea2baffb2b02d9a",
+      "bytes": 1455
+    },
+    "ontology/examples/example-finance-domain.yaml": {
+      "classification": "ontology-pack",
+      "observed": {
+        "kind": "DomainOntologyPack",
+        "schema": null,
+        "apiVersion": "semantics.evopilot.io/v1",
+        "id": "example-finance-domain",
+        "version": "1.0.0",
+        "digest": "sha256:615df7665727ebb28bd4b362a22f6fb6003d0f3a1be6a98f14e01b2740c31465"
+      },
+      "raw": "apiVersion: semantics.evopilot.io/v1\nkind: DomainOntologyPack\nmetadata:\n  id: example-finance-domain\n  version: 1.0.0\n  name: Example Finance Domain\n  namespace: example.finance\n  root: COMMUNITY\n  visibility: PUBLIC\n  generation: 1\n  owner: evopilot-harness-example-maintainers\n  provenance:\n    author: evopilot-harness\n    reviewers: []\n    approvers: []\n    publishers: []\n    sourceRefs:\n      - docs://example-only\n  labels:\n    exampleOnly: \"true\"\n    universalAuthority: \"false\"\n  kind: DomainOntologyPack\n  digest: sha256:615df7665727ebb28bd4b362a22f6fb6003d0f3a1be6a98f14e01b2740c31465\nspec:\n  imports: []\n  concepts:\n    - conceptId: example.finance:account\n      label: Account\n      metaType: ENTITY\n      definition: An illustrative financial account; not universal business truth.\n      aliases: []\n      relationships: []\n      evidenceRefs:\n        - docs://example-only\n      replaces: null\n      deprecated: false\n    - conceptId: example.finance:reconciliation\n      label: Reconciliation\n      metaType: WORKFLOW\n      definition: An illustrative reconciliation workflow.\n      aliases: []\n      relationships: []\n      evidenceRefs:\n        - docs://example-only\n      replaces: null\n      deprecated: false\n  equivalences: []\n  replacements: []\n  deprecations: []\n  rules: []\n  shapes: []\n  harnessGuidance: []\n  authority:\n    declarativeOnly: true\n    executable: false\n    activationRequiresIndependentDecision: true\nstatus:\n  phase: DRAFT\n  conditions: []\n  observedGeneration: 1\n  engineOwned: true\n",
+      "sha256": "149ced38dabc79ee1b5d8fe4892fecac2f9235e38e327a17137fee1c519a8a26",
+      "bytes": 1527
+    }
+  }
+}

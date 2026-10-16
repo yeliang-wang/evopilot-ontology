@@ -1,0 +1,222 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "evopilot-source-bindings/v1"
+    },
+    "direction": {
+      "enum": [
+        "forward",
+        "reverse"
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "locator": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "status": {
+            "enum": [
+              "observed",
+              "inferred"
+            ]
+          },
+          "visibility": {
+            "enum": [
+              "private",
+              "public"
+            ]
+          },
+          "contentPath": {
+            "type": "string",
+            "pattern": "^sources/"
+          }
+        },
+        "required": [
+          "id",
+          "locator",
+          "revision",
+          "digest",
+          "status",
+          "visibility",
+          "contentPath"
+        ]
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "disposition": {
+            "enum": [
+              "covered",
+              "unresolved",
+              "not-applicable"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "required",
+          "disposition"
+        ]
+      }
+    },
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requirementId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "targetId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "observed",
+              "inferred"
+            ]
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fileDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "fragmentDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "selector": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "json-pointer"
+                  },
+                  "pointer": {
+                    "type": "string",
+                    "pattern": "^(/.*)?$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "pointer"
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "lines"
+                  },
+                  "start": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "end": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "kind",
+                  "start",
+                  "end"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "requirementId",
+          "targetId",
+          "sourceId",
+          "status",
+          "revision",
+          "fileDigest",
+          "selector",
+          "fragmentDigest"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "inferred"
+                }
+              },
+              "required": [
+                "status"
+              ]
+            },
+            "then": {
+              "required": [
+                "rationale"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "direction",
+    "sources",
+    "requirements",
+    "mappings"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

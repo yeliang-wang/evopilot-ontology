@@ -1,4 +1,4 @@
-import { createOntologyService } from '../../dist/service.js';
+import { createOntologyService } from './historical-v020/dist/service.js';
 import { DatabaseSync } from 'node:sqlite';
 
 // Test-only interception: actual service transaction reaches COMMIT after writing

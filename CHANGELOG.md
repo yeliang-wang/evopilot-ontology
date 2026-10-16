@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 Preview — unreleased candidate
+
+Correct current v1 native contracts and bind standard content digests. New work uses native RDF/Turtle and SHACL or Rego/OPA/Conftest, protected collection/run receipts, and fixed project completion requirements. Historical JSON records retain their original identity; retired mutation paths cannot create new work. This v0.x correction is incompatible with historical writers. Keep a consistent pre-upgrade snapshot; do not point v0.2 at state written by this candidate. Implementation and tests do not establish acceptance or release.
+
 ## 0.2.0 Preview
 
 - Private Workspace initialization and explicit existing-workspace attachment through the unified Expert.

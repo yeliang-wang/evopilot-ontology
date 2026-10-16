@@ -1,13 +1,14 @@
+// Frozen v0.2.0 historical behavior; current native lifecycle is tested separately.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createOntologyService } from '../../dist/service.js';
+import { createOntologyService } from '../fixtures/historical-v020/dist/service.js';
 import { grounding as g, packs as p, projectOntology as o, interoperability as s } from '../../src/compat/index.mjs';
 import { digest } from '../../src/compat/v3/utils.mjs';
-import { operateLegacyQuery, validateLegacyQuery } from '../../dist/legacy-queries.js';
+import { operateLegacyQuery, validateLegacyQuery } from '../fixtures/historical-v020/dist/legacy-queries.js';
 
 const scope = { visibility: 'public', projectId: 'alpha' };
 const read = (service, operation, input = {}, selected = scope) => service.execute({ operation, scope: selected, input });

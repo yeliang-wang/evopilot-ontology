@@ -13,3 +13,11 @@ Release work is conditional on required acceptance and explicit recorded release
 ## Approved v0.2.0 evolution
 
 The current user-approved Workspace v0.2.0 Target supersedes historical repair-only scope for this task. Implement only the owning workspace identity, relocation/snapshot APIs, exact component metadata, tests and documentation needed by that Target. Preserve immutable business records, frozen asset v1 specifications and compatibility/vendor bytes. Real-data cutover follows isolated migration verification. Existing project source and releases stay unchanged. The parent coordinates exact-candidate acceptance and conditional Preview release; tests alone confer no authority.
+
+## Approved v0.3.0 standards correction
+
+The user confirmed the complete v0.3.0 Preview plan. The parent `governance/standards-v03.json` binds its repositories, files, exclusions and fixed acceptance IDs; private bindings retain actual approval and evidence. This supersedes the historical v0.1/v0.2 restrictions only within this correction's explicit scope. Correct current `specifications/v1` and current shared contracts; preserve historical commits, releases, frozen governance, archived sources and existing immutable business records. The parent canonical generator remains the sole producer of shared vendor bytes.
+
+Adopt native RDF/Turtle, bounded SHACL/pySHACL and Rego/OPA/Conftest. Require exact owner-specific standard digests, fixed independent project requirements, real collection receipts and complete candidate-bound results. Empty, missing, skipped, unknown or stale required evidence cannot establish completion. Old v1 labels or historical PASS records cannot certify corrected-v1 conformance. Historical readers do not permit new work under retired validation semantics.
+
+Use strict TypeScript and public product package boundaries. Prove upstream/toolchain and minimum collection/run/recovery behavior in isolation before real-data work. Private project sources remain read-only and private assets must not enter public tests or releases. Conditioned Preview publication follows all fixed pre-release checks; downloaded/installed readback and final closure then complete post-release checks. Technical evidence never invents a human domain decision. No second-project onboarding, v1.0 release, WorkBuddy or production deployment is included.

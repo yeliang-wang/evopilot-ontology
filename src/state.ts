@@ -159,7 +159,7 @@ export function openState(root: string, id: string): Omit<Store, 'trustedProvide
     db.enableDefensive(true);
     if (existed) {
       if (db.prepare('PRAGMA quick_check').get()!.quick_check !== 'ok') fail('CORRUPT_STATE', 'SQLite integrity check failed');
-      if (db.prepare('PRAGMA user_version').get()!.user_version !== 1) fail('CORRUPT_STATE', 'Unknown state schema');
+      if (![1, 2].includes(db.prepare('PRAGMA user_version').get()!.user_version as number)) fail('CORRUPT_STATE', 'Unknown state schema');
       const row = db.prepare('SELECT revision, data FROM state WHERE singleton = 1').get() as { revision: number; data: string } | undefined;
       if (!row || !Number.isSafeInteger(row.revision) || row.revision < 0 || !validateState(JSON.parse(row.data))) fail('CORRUPT_STATE', 'Invalid state');
       db.prepare('SELECT scope, request_id, digest, receipt FROM receipts LIMIT 1').all();
