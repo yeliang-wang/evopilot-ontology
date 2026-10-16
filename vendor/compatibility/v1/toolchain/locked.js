@@ -88,8 +88,10 @@ async function download(directory, asset, mirror, offline) {
             fail('TOOLCHAIN_NOT_READY', 'Offline cache is missing a locked artifact');
         try {
             // This budget covers the complete body, including the 62 MB locked OPA
-            // binary. A one-minute deadline repeatedly aborts valid slow transfers.
-            const response = await fetch(asset.url, { signal: AbortSignal.timeout(300_000), redirect: 'follow' });
+            // binary. At 100 KB/s its complete body needs more than ten minutes.
+            // Admission is asynchronous; keep a bounded deadline without truncating
+            // valid slow transfers at the Host's shorter synchronous-call limit.
+            const response = await fetch(asset.url, { signal: AbortSignal.timeout(900_000), redirect: 'follow' });
             if (!response.ok || !response.body || !response.url.startsWith('https://'))
                 fail('TOOLCHAIN_DOWNLOAD', 'Locked artifact download failed');
             const chunks = [];
