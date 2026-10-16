@@ -26,3 +26,28 @@ jobs:
           echo "EVOPILOT_TEST_NATIVE_TOOLCHAIN=$RUNNER_TEMP/native-toolchain.json" >> "$GITHUB_ENV"
       - run: npm test
 
+      - name: Pack exact candidate (not a Release)
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_dir="$RUNNER_TEMP/evopilot-package"
+          mkdir "$package_dir"
+          npm pack --ignore-scripts --json --pack-destination "$package_dir" > "$package_dir/pack.json"
+          node --input-type=module - "$package_dir" ontology <<'JS'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { createHash } from 'node:crypto';
+          import { validatePack } from './scripts/release-gate.mjs';
+          const [directory, owner] = process.argv.slice(2);
+          const filename = validatePack(JSON.parse(fs.readFileSync(path.join(directory, 'pack.json'), 'utf8')), owner);
+          const sha = createHash('sha256').update(fs.readFileSync(path.join(directory, filename))).digest('hex');
+          fs.writeFileSync(path.join(directory, 'SHA256SUMS'), sha + '  ' + filename + '\n');
+          JS
+          git rev-parse HEAD > "$package_dir/source-revision.txt"
+      - name: Retain independently built candidate package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-${{ github.sha }}-package
+          path: ${{ runner.temp }}/evopilot-package/
+          if-no-files-found: error
+          retention-days: 14
