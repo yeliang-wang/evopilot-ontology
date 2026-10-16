@@ -1,4 +1,5 @@
 import { nativeAssertJSON, nativeExact, nativeText, nativeDigest, nativeStableSerialize, nativeSha256, nativeFrozenClone, nativePackageDigest, validateNativePackage, referenceForPackage } from '../../vendor/compatibility/v1/native.mjs';
+import { verifyDecisionEvidence } from '../../vendor/compatibility/v1/decision-evidence.mjs';
 import type { NativeValidationContext } from '../../vendor/compatibility/v1/native.mjs';
 import type { Store } from '../persistence-types.js';
 import type { Scope } from '../types.js';
@@ -164,10 +165,12 @@ export function createNativeOntologyOperations(getStore:()=>Store|null,isClosed:
       if(r.operation==='native.package.decide'){
         nativeDigest(r.input.reviewDigest);nativeText(r.input.humanEvidenceRef);
         if(!['APPROVE','REJECT'].includes(r.input.decision)||r.input.reviewDigest!==currentReview.reviewDigest)fail('REVIEW_MISMATCH','Decision must bind exact reviewed candidate');
+        verifyDecisionEvidence(r.input.humanEvidenceRef,{owner:'ontology',operation:'native.package.decide',workspaceId:s.identity.id,scope:r.scope,reviewDigest:currentReview.reviewDigest,decision:r.input.decision});
         record.decision={reviewDigest:r.input.reviewDigest,decision:r.input.decision,humanEvidenceRef:r.input.humanEvidenceRef,uid:s.uid};save(s,record);return record.decision;
       }
       if(r.operation!=='native.package.publish')fail('INVALID_REQUEST','Unsupported native mutation');
       if(record.decision?.decision!=='APPROVE'||record.decision.reviewDigest!==currentReview.reviewDigest)fail('APPROVAL_REQUIRED','Exact human domain decision required');
+      verifyDecisionEvidence(record.decision.humanEvidenceRef,{owner:'ontology',operation:'native.package.decide',workspaceId:s.identity.id,scope:r.scope,reviewDigest:currentReview.reviewDigest,decision:'APPROVE'});
       dependencies(s,record);record.reference=referenceForPackage(record.package);save(s,record);return {reference:record.reference,packageDigest:record.packageDigest,validationDigest:record.validation!.reportDigest,authority:false};
     });
   }

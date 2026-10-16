@@ -55,3 +55,5 @@ Explicitly merge multiple shapes/instance RDF graphs when the manifest lists sev
 `native-upstream.test.mjs` verifies 103 pinned upstream fixture/report expectations in separate actual pySHACL processes, including graph equivalence after serialization and changed-report non-equivalence. Fixture byte hashes and upstream license accompany the files. The upstream graph loader is retained for fixture dependencies, preserving upstream literal-normalization behavior. This is native engine conformance evidence; package metadata and independent business completeness have separate tests.
 
 Frozen `tests/fixtures/historical-v020` is compiled from the recorded v0.2.0 commit solely for synthetic historical state and regression. Its sources/outputs are hashed, omitted from package `files`, and never used by current service routing or production installation.
+
+Before a new decision, retain the actual authorization source and bind it using the [decision evidence format](native-decisions.md). Opaque approval labels no longer authorize new native work; historical receipts remain unchanged.

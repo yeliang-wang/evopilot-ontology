@@ -62,3 +62,5 @@ Stop if checksum verification fails; compare `source-revision.txt` with the rele
 ## Documentation and contributions
 
 [Documentation index](docs/README.md), [contribution guide](CONTRIBUTING.md), [security](SECURITY.md), and [Roadmap](docs/roadmap.md). Historical release downloads do not imply they include the current source candidate. Technical validation grants neither domain approval nor release authority.
+
+Native approvals bind readable, digest-pinned evidence to the exact review, Workspace and operation. See [decision evidence](docs/native-decisions.md) for the format, historical readback and trusted-operator boundary.

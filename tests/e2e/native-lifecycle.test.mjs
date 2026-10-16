@@ -1,6 +1,7 @@
+import { syntheticDecisionEvidence } from '../fixtures/native/decision-evidence.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync,readFileSync,rmSync,realpathSync } from 'node:fs';
+import { mkdtempSync,readFileSync,writeFileSync,rmSync,realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -9,10 +10,10 @@ import { validateNativeOntology,validateOntologyPackage } from '../../dist/index
 import { nativePackage,rehash } from '../fixtures/native/package.mjs';
 const config=process.env.EVOPILOT_TEST_NATIVE_TOOLCHAIN;
 function tools(){assert(config,'EVOPILOT_TEST_NATIVE_TOOLCHAIN must name a verified installed toolchain; native E2E never skips missing tools');return JSON.parse(readFileSync(config,'utf8'));}
-const scope={visibility:'private',projectId:'synthetic'};
-function create(){const parent=realpathSync(mkdtempSync(join(tmpdir(),'ontology-native-'))),workspaceRoot=join(parent,'state-root');const options={workspaceRoot,workspaceId:'synthetic'};const service=createOntologyService(options,{nativeToolchain:tools()});service.initialize();return {parent,options,service};}
+const scope={visibility:'private',projectId:'synthetic'},testRoots=new WeakMap();
+function create(){const parent=realpathSync(mkdtempSync(join(tmpdir(),'ontology-native-'))),workspaceRoot=join(parent,'state-root');const options={workspaceRoot,workspaceId:'synthetic'};const service=createOntologyService(options,{nativeToolchain:tools()});service.initialize();testRoots.set(service,parent);return {parent,options,service};}
 function revision(s){return s.execute({operation:'workspace.inspect',scope,input:{}}).revision;}
-function mutate(s,operation,input,requestId){return s.native({operation,scope,input,requestId,expectedRevision:revision(s)});}
+function mutate(s,operation,input,requestId){if(input.humanEvidenceRef?.startsWith('synthetic'))input={...input,humanEvidenceRef:syntheticDecisionEvidence(testRoots.get(s),{owner:'ontology',operation,workspaceId:'synthetic',scope,reviewDigest:input.reviewDigest,decision:input.decision})};return s.native({operation,scope,input,requestId,expectedRevision:revision(s)});}
 test('O01/C04/M02: actual native lifecycle, exact review decision, immutable readback and restart',async()=>{
  const {parent,options,service:s}=create();let restarted;
  try{
@@ -23,9 +24,13 @@ test('O01/C04/M02: actual native lifecycle, exact review decision, immutable rea
   assert.deepEqual(await mutate(s,'native.package.validate',identity,'validate'),validation);
   const review=await mutate(s,'native.package.review',identity,'review');
   await assert.rejects(mutate(s,'native.package.publish',identity,'publish-early'),{code:'APPROVAL_REQUIRED'});
-  await mutate(s,'native.package.decide',{...identity,reviewDigest:review.result.reviewDigest,decision:'APPROVE',humanEvidenceRef:'synthetic-test-decision-not-real-user'},'decide');
+  await assert.rejects(s.native({operation:'native.package.decide',scope,input:{...identity,reviewDigest:review.result.reviewDigest,decision:'APPROVE',humanEvidenceRef:'synthetic-forged-no-evidence'},requestId:'forged-decision',expectedRevision:revision(s)}),{code:'HUMAN_EVIDENCE_REQUIRED'});
+  const decided=await mutate(s,'native.package.decide',{...identity,reviewDigest:review.result.reviewDigest,decision:'APPROVE',humanEvidenceRef:'synthetic-test-decision-not-real-user'},'decide');
+  const approval=JSON.parse(readFileSync(new URL(decided.result.humanEvidenceRef),'utf8')),source=new URL(approval.source.reference),approvedBytes=readFileSync(source);writeFileSync(source,'changed');
+  await assert.rejects(mutate(s,'native.package.publish',identity,'publish-drift'),{code:'HUMAN_EVIDENCE_REQUIRED'});writeFileSync(source,approvedBytes);
   const published=await mutate(s,'native.package.publish',identity,'publish');assert.equal(published.result.reference.standardDigest,pkg.manifest.standardPins.standardDigest);
   await assert.rejects(mutate(s,'native.package.put',{package:pkg},'overwrite'),{code:'IMMUTABLE_VERSION'});
+  writeFileSync(source,'changed after immutable publication');
   s.close();restarted=createOntologyService(options,{nativeToolchain:tools()});restarted.initialize();
   const record=await restarted.native({operation:'native.package.readback',scope,input:identity});assert.deepEqual(record.package,pkg);assert.deepEqual(record.reference,published.result.reference);
   assert.deepEqual(await restarted.native({operation:'native.receipt.inspect',scope,input:{requestId:'validate'}}),validation);

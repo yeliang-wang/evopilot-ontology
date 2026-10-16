@@ -134,7 +134,7 @@ export async function checkSource() {
       if (PRODUCT === 'ontology' && path.includes('/src/compat/') && specifier === 'ajv/dist/2020.js') continue;
       assert(specifier.startsWith('.'), 'Undeclared import: ' + specifier);
       const target = resolve(dirname(path), path.endsWith('.ts') && specifier.endsWith('.js') ? specifier.slice(0, -3) + '.ts' : specifier);
-      assert(target.startsWith(resolve(ROOT, 'src') + sep) || path.startsWith(generatedRoot + sep) && target.startsWith(generatedRoot + sep) || [resolve(vendor, 'reference.mjs'),resolve(vendor,'native.mjs')].includes(target), 'Foreign source import');
+      assert(target.startsWith(resolve(ROOT, 'src') + sep) || path.startsWith(generatedRoot + sep) && target.startsWith(generatedRoot + sep) || [resolve(vendor, 'reference.mjs'),resolve(vendor,'native.mjs'),resolve(vendor,'decision-evidence.mjs')].includes(target), 'Foreign source import');
       assert((await lstat(target)).isFile(), 'Import must be an owned regular file');
     }
   }
