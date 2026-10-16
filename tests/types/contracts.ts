@@ -52,3 +52,16 @@ service.classify({ operation: 'classification.inspect', scope, input: { id: 'ses
 service.classify({ operation: 'classification.start', scope, input: { id: 'session', sourceId: 'source', taxonomy: {} }, requestId: 'classify' });
 void [valid, deliveryDigest, putDigest, putOperation, reviewDigest, publishedModel, raw];
 service.close();
+
+import type { NativePackage, NativeOntologyValidation, NativeOntologyRecord, NativeToolchain } from '@evopilot-next/ontology';
+async function nativeContracts(service:ReturnType<typeof createOntologyService>,pkg:NativePackage,toolchain:NativeToolchain){
+ const standard=await service.native({operation:'standard.inspect',scope,input:{}});
+ const digest:string=standard.standardDigest;
+ const record:NativeOntologyRecord=await service.native({operation:'native.package.inspect',scope,input:{id:'example',version:'1.0.0'}});
+ const receipt=await service.native({operation:'native.package.validate',scope,input:{id:'example',version:'1.0.0'},requestId:'validate',expectedRevision:0});
+ if(receipt.result.status!=='RUNNING'){const result:NativeOntologyValidation=receipt.result;const ids:string[]=result.criteria.map(c=>c.criterionId);void ids;}
+ // @ts-expect-error native mutation requires CAS and request identity
+ await service.native({operation:'native.package.put',scope,input:{package:pkg}});
+ void [digest,record,toolchain];
+}
+void nativeContracts;

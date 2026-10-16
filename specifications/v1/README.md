@@ -1,40 +1,58 @@
-# EvoPilot Ontology v1 — normative minimal core
+# Ontology v1: native RDF and SHACL
 
-JSON is the native interchange. This document, [asset.schema.json](asset.schema.json), and runtime semantic validation jointly define v1. Schema checks syntax; runtime additionally checks duplicate IDs, closed references, ownership, complete source coverage, matching source revisions/statuses, typed enums and ordered bounds. Both checks are required. The API performs syntax and semantics itself without a schema dependency.
+This corrects current v1 directly. Software version, asset content version, specification label and actual standard digest are separate. Retired JSON validators are historical readback only.
 
-The common envelope requires id/version/product/specVersion/visibility/provenance/dependencies/extensions. Product is ontology, specVersion is v1, and versions are strict SemVer core (major.minor.patch, no leading zeros, prerelease or build suffix). The frozen six-field reference wire and independent CONTRACT_REVISION 1.0.0 remain unchanged. Dependencies are exact references including digests; duplicate product/id identities and private dependencies of public assets are rejected.
+## Adopted standards
 
-Only finite acyclic descriptor-safe JSON is accepted: plain objects, dense arrays, strings, finite numbers, booleans and null. Accessors, symbols, nonenumerable properties, executable values, undefined, sparse/decorated arrays and cycles are rejected before value traversal. Serialization sorts object keys, preserves array order and uses JSON number/string encoding; SHA256 hashes the serialized UTF-8 bytes. This is not a claim of an external canonicalization standard. Snapshots/reports are deeply frozen clones; inputs remain unchanged.
+| Layer | Standard / tool | Adopted scope |
+|---|---|---|
+| Data/syntax | [RDF 1.1](https://www.w3.org/TR/rdf11-concepts/), [Turtle 1.1](https://www.w3.org/TR/turtle/) | UTF-8 Turtle, stable business IRIs, RDF set semantics |
+| Declarations | [RDFS 1.1](https://www.w3.org/TR/rdf-schema/), [OWL 2](https://www.w3.org/TR/owl2-overview/) | Named classes/properties, labels, definitions, domain/range and inheritance; no OWL reasoning claim |
+| Constraints | [SHACL 2017](https://www.w3.org/TR/2017/REC-shacl-20170720/) | Core and bounded local SELECT interpreted by pySHACL |
+| Validator | [pySHACL](https://github.com/RDFLib/pySHACL/tree/v0.40.1) | Exact installed toolchain, no fallback custom engine |
+| Integration | EvoPilot convention | Manifest, directories, source scope, coverage, review, decision and immutable publication |
 
-Provenance requires direction forward|reverse and nonempty sources. Every source has id/kind/locator/revision/digest/status. Status is design-proposed, design-confirmed, source-observed, inferred, runtime-observed, human-reviewed or synthetic. This vocabulary is EvoPilot design; no status grants approval or is automatically promoted. Source digests are declared pins, not evidence external bytes were fetched or authenticated.
+[Support matrix](support-matrix.json), [adoption table](adoption.md), [cases](conformance-cases.json) and [standard lock](standards.lock.json) define supported, restricted and unsupported behavior. The installed toolchain lock is the sole installer byte identity; standard declarations cannot override it.
 
-All outer fields and six model arrays are mandatory; unknown fields fail closed:
+## Package and layout
 
-- concepts: at least one row with id/label/definition.
-- properties: id/conceptRef/type/required. Type is string|number|integer|boolean; required is boolean.
-- relations: id/from/to/directed; directed must be true and ends reference concepts.
-- constraints: id/conceptRef/propertyRef/kind/required plus kind-specific fields below. Property ownership must match conceptRef.
-- sourceMappings: id/targetRef/sourceRef/sourceLocator/sourceRevision/status. Every concept, property, relation and constraint needs coverage. Locator, revision and status exactly match its source. Duplicate target/source pairs fail.
-- unresolvedIssues: id/description/targetRef/required. Targets are semantic rows; required issues give valid draft status PENDING but block delivery.
+```text
+model.ttl
+shapes/*.ttl
+instances/*.ttl
+sources/bindings.json
+sources/** (original UTF-8 source snapshots)
+scope/coverage.json
+tests/cases.json
+tests/*.ttl
+```
 
-Row IDs are globally unique across sources, semantic rows, mappings and issues. Text fields are nonempty trimmed strings without control characters. All internal references are closed.
+`NativePackage` contains a JSON manifest and UTF-8 files map. The exact manifest is case-fold unique, safe-relative-path and SHA-256 checked. No links, traversal, unmanifested files, executable graph extensions, implicit JSON conversion or second model.json source. Source snapshots may contain program text; they are inert provenance bytes and never executed. See [package schema](package.schema.json) and [directory contract](directory-layout.json). Entry points are exactly model, shapes, instances, coverage and cases.
 
-numeric-range requires finite minimum/maximum, inclusive and ordered, on numeric properties. enum requires nonempty typed unique values. cardinality requires safe-integer nonnegative minCount/maxCount in order. descriptive-range requires description and required:false; it is always UNSUPPORTED. Unknown kinds, including required ones, are rejected. Unsupported is never PASS.
+## Definitions and constraints
 
-Extensions remain additive and inert. Envelopes are exactly namespace/version/required/data. Namespace is dotted lowercase identifiers; versions are strict SemVer core. Duplicate namespaces and base-field conflicts/overrides fail. local.notes@1.0.0 validates data:{annotation:{text,language?}}, both nonempty text strings, no extra fields. Required local.notes is meaningful typed annotation validation, without executable behavior. Unknown optional extensions are retained and reported NOT_EVALUATED; unknown required ones fail. Caller string arrays cannot register support.
+Named classes, properties and required shapes have stable IRIs, label, definition (`rdfs:comment`), namespace (`rdfs:isDefinedBy`) and source (`rdfs:seeAlso`). [Meta shapes](meta-shapes.ttl) execute these EvoPilot requirements. Business projects add their own namespaces and constraints without redefining standard vocabulary.
 
-validateOntology(asset) returns an immutable structured report, errors with code/path/message, pending issues, extensions and constraint instance statuses NOT_CHECKED or UNSUPPORTED. Malformed nested input produces rejection reports rather than escaping validation exceptions.
+SHACL class/type, cardinality, range, string/language, pair, logical, qualified, closed and membership constraints retain native meanings. domain/range declarations cannot replace required explicit instance types. Inference is none. Duplicate triples do not count as multiple events; distinct events require distinct identities.
 
-validateInstances(asset, instances) accepts exactly {entities,relations}. Entities are id/conceptRef/properties, with properties mapping property IDs to arrays of values, even for single values. Required properties need at least one value; false and zero count. Relations are id/relationRef/from/to, with existing entity endpoints matching declared concept types. IDs are unique across entity/relation rows. Primitive types and numeric-range/enum/cardinality are enforced independently. Coverage records actual tested entity counts and PASS/FAIL/NOT_CHECKED/UNSUPPORTED for each constraint. Empty data is never full coverage. Empty optional values leave value constraints untested; cardinality still evaluates count. valid concerns supplied data; complete and untested disclose coverage. This is not proof about all possible instances.
+Local SHACL-SPARQL SELECT is syntax-tree checked. SERVICE, FROM, named graphs, VALUES, MINUS, Update and custom functions are refused. JS, AF rules, custom components, recursive shapes, automatic imports, deactivated shapes and selecting only part of required validation are unsupported. Unknown executable SHACL vocabulary is rejected even if upstream would silently ignore it. Required Warning and Info results are not exempted.
 
-buildDelivery(asset) rejects invalid models and required unresolved issues. It returns model/provenance/sourceMappings/unresolvedIssues/validationReport/buildReport/manifest/digest. Without instance data the build always records instanceValidation:NOT_CHECKED. Manifest pins spec v1, implementation productVersion, asset identity/version/visibility, modelDigest, contentDigest and exact dependency references/digests. Content digest covers all fields preceding manifest; outer digest covers content plus manifest. No time/random values enter artifacts.
+## Independent coverage and sources
 
-verifyDelivery(delivery) validates the model and rebuilds/compares the entire deterministic artifact, rejecting unknown fields and tampered reports. A self-consistent rebuilt model is a different artifact, not proof of matching an external trusted pin. Integrity is not authority: authority/businessConfirmed/released remain false.
+`scope/coverage.json`: schema evopilot-ontology-coverage/v1; projectRoot; namespace; expectedEntities `{id,type}`; requiredShapeIds; requiredCaseIds. Establish these from independent authorized source scope before authoring. A required shape targets projectRoot using targetNode. Empty graphs, deleted IDs/types, missing shapes or missing tests cannot pass through zero targets.
 
-[sources.json](sources.json) records exact sources, clause boundaries and test names. No full OWL/RDF/SHACL/PROV compliance, RDF serialization, inference, ontology reasoning or ROBOT execution is claimed.
+[Source bindings](source-bindings.schema.json) contain direction, sources, requirements and mappings. Sources carry id, locator, revision, digest, status, visibility and contentPath. contentPath identifies original manifested UTF-8 bytes under sources/; digest is their complete SHA-256. Mappings bind requirementId, targetId, sourceId, matching status, revision, fileDigest, selector and fragmentDigest. The owner recomputes both digests, requires exact source revision, and rejects absent selectors. A selector is `{kind:"lines",start,end}` (1-based inclusive) or `{kind:"json-pointer",pointer}` (RFC 6901). Line fragments are `text.split("\n").slice(start-1,end).join("\n")`, preserving CR and adding no trailing LF; hash their UTF-8 bytes. JSON Pointer fragments use nativeSha256 of the selected JSON value. Inferred mappings require a nonempty rationale. The parent separately checks the original project inventory; copying self-consistent fabricated bytes is not original-source evidence. Observations and modeling inferences have separately classified sources. Public packages reject private sources. Covered requirements need mappings; required unresolved interpretations block admission. Non-covered dispositions require a reason.
 
-[Template](templates/model.json) and [examples](../../examples/synthetic-models.json) are entirely synthetic: orchard and observatory × forward requirement-only/reverse invented source-derived × public/private = eight assets. Each exact synthetic locator identifies record-1 at synthetic-r1. Source digest bytes are UTF-8 text "Synthetic <domain> <direction> record-1". No real implementation or private data is represented.
+See executable [coverage](coverage.schema.json) and [case catalog](cases.schema.json) schemas.
 
-This source checkout ships its own pinned vendored reference. Run `npm run check`, `npm run build` and `npm test` independently here; no parent build is required. Canonical vendor regeneration remains parent-only. E01–E19, full legacy migration, service/Host acceptance and release remain pending.
+`tests/cases.json`: schema evopilot-ontology-cases/v1; cases `{id,data,expectedConforms,requirementIds,shapeIds}`. Every required shape and covered required requirement has positive and negative cases. All named NodeShape/PropertyShape declarations belong to the fixed shape set; owned model declarations and expected identities use the declared namespace. Negative cases must actually report their declared shape; labels and counts alone do not establish coverage. Case IDs exactly equal the fixed coverage set. Runtime additionally binds the independently established project-wide requirement contract; owner-supplied coverage is not proof of the full business scope.
 
-[Historical source inspection and explicit native derivation](legacy-derivation.md) use a separate public migration subpath and do not change the native contract.
+## Execution and authority
+
+The owner checks package/source scope, syntax/adoption, meta-SHACL and declaration metadata, fixed identity closure, raw instances and required cases. Reports preserve native focus/path/sourceShape/constraint/severity/value/message. Invalid or missing reports, native execution errors, unsupported features, timeout and process failures never become CONFORMS.
+
+Review binds exact bytes, validation, toolchain, owner standard and workspace. A real human decision binds the review; published asset versions are immutable. Runtime validation adds candidate/claim/source/configuration/requirement context. Graph equivalence explains differences but does not reuse approval for changed bytes.
+
+`standard.inspect` / `inspectOntologyStandard()` derive digests from actual installed normative files in sorted path order; the index does not hash itself. See [native service](../../docs/native-service.md), [re-extraction](re-extraction.md) and [independent replay](../../docs/native-service.md#independent-replay).
+
+Source-binding `status` is `observed` or `inferred`, matching the project and Harness contracts. An inferred mapping may interpret an observed source but must retain a rationale and exact domain review. An inferred source cannot be relabeled as an observed mapping. These interpretation labels are separate from raw evidence origin (design/source declaration, execution result, runtime observation or synthetic evidence).

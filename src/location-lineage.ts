@@ -10,11 +10,12 @@ export interface WorkspaceIdentity { schema: 'evopilot-workspace/v1'; id: string
 export interface HistoricalBinding { workspace: WorkspaceIdentity; digest: string }
 export interface RelocationRecord {
   schema: 'evopilot-workspace-relocation/v1'; product: string; from: WorkspaceIdentity; to: WorkspaceIdentity;
-  sourceSnapshotDigest: string; historyRevision: number; receiptsDigest: string; auditDigest: string;
+  nativeAuditDigest?: string; sourceSnapshotDigest: string; historyRevision: number; receiptsDigest: string; auditDigest: string;
   bindings: HistoricalBinding[]; previousDigest: string | null; hostDigest: string; keyId: string; at: string;
   recordDigest: string; signature: string;
 }
-export interface SnapshotRecords { revision: number; state: unknown; stateDigest: string; receiptsDigest: string; auditDigest: string; recordsDigest: string; receiptCount: number }
+export interface NativeSnapshotRecords { packages: Record<string,unknown>[]; receipts: Record<string,unknown>[]; audit: Record<string,unknown>[]; digest:string; auditDigest:string }
+export interface SnapshotRecords { nativeRecords?: NativeSnapshotRecords; revision: number; state: unknown; stateDigest: string; receiptsDigest: string; auditDigest: string; recordsDigest: string; receiptCount: number }
 export const hash = (value: unknown): string => 'sha256:' + createHash('sha256').update(stableSerialize(value)).digest('hex');
 export function migrationFail(code: string, message: string): never { throw Object.assign(new Error(message), { code }); }
 export function pathStat(path: string) { try { return lstatSync(path); } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; } }
@@ -86,7 +87,9 @@ function hasLineage(db: DatabaseSync): boolean { return !!db.prepare("SELECT nam
 function prefix(db: DatabaseSync, revision: number) {
   const receipts = db.prepare('SELECT scope,request_id,digest,receipt FROM receipts WHERE CAST(json_extract(receipt,\'$.revision\') AS INTEGER)<=? ORDER BY scope,request_id').all(revision);
   const audit = db.prepare('SELECT revision,uid,operation,request_digest,result_digest FROM audit WHERE revision<=? ORDER BY revision').all(revision);
-  return { receiptsDigest: hash(receipts), auditDigest: hash(audit) };
+  const legacyReceipts=receipts.filter(r=>!String(JSON.parse(r.receipt as string).operation).startsWith('native.'));
+  const nativeAudit=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='native_audit'").get()?db.prepare('SELECT revision,scope,request_id,receipt FROM native_audit WHERE revision<=? ORDER BY revision').all(revision):[];
+  return { receiptsDigest: hash(legacyReceipts), auditDigest: hash(audit), ...(nativeAudit.length?{nativeAuditDigest:hash(nativeAudit)}:{}) };
 }
 export function readRelocations(db: DatabaseSync, identity: WorkspaceIdentity, product: string): RelocationRecord[] {
   if (!hasLineage(db)) return [];
@@ -104,7 +107,7 @@ export function readRelocations(db: DatabaseSync, identity: WorkspaceIdentity, p
     const previous = records.at(-1);
     if (record.previousDigest !== (previous?.recordDigest ?? null) || (previous && stableSerialize(record.from) !== stableSerialize(previous.to)) || stableSerialize(record.from) === stableSerialize(record.to)) migrationFail('INVALID_LINEAGE', 'Relocation chain differs');
     const saved = prefix(db, record.historyRevision);
-    if (saved.receiptsDigest !== record.receiptsDigest || saved.auditDigest !== record.auditDigest) migrationFail('INVALID_LINEAGE', 'Historical receipts or audit changed');
+    if (saved.receiptsDigest !== record.receiptsDigest || saved.auditDigest !== record.auditDigest || saved.nativeAuditDigest !== record.nativeAuditDigest) migrationFail('INVALID_LINEAGE', 'Historical receipts or audit changed');
     for (const binding of record.bindings) if (binding.workspace.id !== identity.id || binding.workspace.ownerUid !== identity.ownerUid || !/^sha256:[a-f0-9]{64}$/.test(binding.digest)) migrationFail('INVALID_LINEAGE', 'Historical binding differs');
     records.push(record);
   }
@@ -116,13 +119,14 @@ export function acceptsWorkspace(db: DatabaseSync, identity: WorkspaceIdentity, 
   return readRelocations(db, identity, product).some(record => record.bindings.some(binding => stableSerialize(binding.workspace) === stableSerialize(historical) && binding.digest === digest));
 }
 export function inspectRecords(db: DatabaseSync, validateState: (value: unknown) => unknown): SnapshotRecords {
-  if (db.prepare('PRAGMA quick_check').get()?.quick_check !== 'ok' || db.prepare('PRAGMA user_version').get()?.user_version !== 1) migrationFail('CORRUPT_STATE', 'Invalid owner database');
+  if (db.prepare('PRAGMA quick_check').get()?.quick_check !== 'ok' || ![1,2].includes(db.prepare('PRAGMA user_version').get()?.user_version as number)) migrationFail('CORRUPT_STATE', 'Invalid owner database');
   const row = db.prepare('SELECT revision,data FROM state WHERE singleton=1').get();
   if (!row || typeof row.revision !== 'number' || !Number.isSafeInteger(row.revision) || row.revision < 0 || typeof row.data !== 'string' || Buffer.byteLength(row.data) > 8388608) migrationFail('CORRUPT_STATE', 'Invalid owner state');
   const state = validateState(JSON.parse(row.data));
-  const receipts = db.prepare('SELECT scope,request_id,digest,receipt FROM receipts ORDER BY scope,request_id').all();
+  const allReceipts = db.prepare('SELECT scope,request_id,digest,receipt FROM receipts ORDER BY scope,request_id').all();
+  const receipts=allReceipts.filter(r=>!String(JSON.parse(r.receipt as string).operation).startsWith('native.'));
   const audit = db.prepare('SELECT revision,uid,operation,request_digest,result_digest FROM audit ORDER BY revision').all();
-  if (receipts.length > 10000 || receipts.length !== row.revision || audit.length !== row.revision) migrationFail('CORRUPT_STATE', 'Incomplete owner history');
+  if (receipts.length > 10000 || audit.length !== row.revision) migrationFail('CORRUPT_STATE', 'Incomplete owner history');
   const revisions = new Set<number>();
   for (const saved of receipts) {
     if (typeof saved.receipt !== 'string' || Buffer.byteLength(saved.receipt) > 1048576) migrationFail('CORRUPT_STATE', 'Invalid retained receipt');
@@ -132,8 +136,27 @@ export function inspectRecords(db: DatabaseSync, validateState: (value: unknown)
     const entry = audit[receipt.revision - 1];
     if (!entry || entry.revision !== receipt.revision || saved.scope !== stableSerialize(receipt.scope) || saved.request_id !== receipt.requestId || saved.digest !== receipt.requestDigest || entry.uid !== receipt.uid || entry.operation !== receipt.operation || entry.request_digest !== receipt.requestDigest || entry.result_digest !== hash(receipt.result)) migrationFail('CORRUPT_STATE', 'Receipt audit binding differs');
   }
+  let nativeRecords:NativeSnapshotRecords|undefined;
+  if(db.prepare('PRAGMA user_version').get()?.user_version===2){
+    const packages=db.prepare('SELECT scope,id,version,data,digest FROM native_packages ORDER BY scope,id,version').all();
+    const nativeReceipts=allReceipts.filter(r=>String(JSON.parse(r.receipt as string).operation).startsWith('native.'));
+    const nativeAudit=db.prepare('SELECT revision,scope,request_id,receipt FROM native_audit ORDER BY revision').all();
+    if(packages.length>10000||nativeAudit.length>20000) migrationFail('CORRUPT_STATE','Unbounded native history');
+    const latest=new Map<string,Record<string,unknown>>();
+    for(const event of nativeAudit){
+      if(typeof event.receipt!=='string'||Buffer.byteLength(event.receipt)>16777216)migrationFail('CORRUPT_STATE','Invalid native event');
+      const r=JSON.parse(event.receipt) as Record<string,unknown>,key=String(event.scope)+':'+String(event.request_id),prior=latest.get(key),entry=audit[Number(r.revision)-1];
+      if(typeof r.revision!=='number'||r.revision!==event.revision||revisions.has(r.revision)||event.scope!==stableSerialize(r.scope)||event.request_id!==r.requestId||!entry||entry.revision!==r.revision||entry.uid!==r.uid||entry.operation!==r.operation||entry.request_digest!==r.requestDigest||entry.result_digest!==hash(r.result))migrationFail('CORRUPT_STATE','Native event identity/audit differs');
+      if(prior&&(r.operation!=='native.package.validate'||(prior.result as Record<string,unknown>).status!=='RUNNING'||(r.result as Record<string,unknown>).status==='RUNNING'||prior.requestDigest!==r.requestDigest||prior.operation!==r.operation))migrationFail('CORRUPT_STATE','Invalid native terminal transition');
+      revisions.add(r.revision);latest.set(key,r);
+    }
+    if(latest.size!==nativeReceipts.length)migrationFail('CORRUPT_STATE','Incomplete native receipts');
+    for(const saved of nativeReceipts){const r=latest.get(String(saved.scope)+':'+String(saved.request_id));if(!r||saved.receipt!==stableSerialize(r)||saved.digest!==r.requestDigest)migrationFail('CORRUPT_STATE','Native retained receipt differs');}
+    nativeRecords={packages,receipts:nativeReceipts,audit:nativeAudit,digest:hash({packages,receipts:nativeReceipts,audit:nativeAudit}),auditDigest:hash(nativeAudit)};
+  }
+  if(revisions.size!==row.revision||audit.some((entry,index)=>entry.revision!==index+1||!revisions.has(index+1)))migrationFail('CORRUPT_STATE','Incomplete global revision history');
   const stateDigest = hash({ revision: row.revision, data: row.data }), receiptsDigest = hash(receipts), auditDigest = hash(audit);
-  return { revision: row.revision, state, stateDigest, receiptsDigest, auditDigest, recordsDigest: hash({ stateDigest, receiptsDigest, auditDigest }), receiptCount: receipts.length };
+  return { revision: row.revision, state, stateDigest, receiptsDigest, auditDigest, recordsDigest: hash({ stateDigest, receiptsDigest, auditDigest,...(nativeRecords?{nativeRecordsDigest:nativeRecords.digest}:{}) }), receiptCount: allReceipts.length,...(nativeRecords?{nativeRecords}:{}) };
 }
 export function collectBindings(state: unknown): HistoricalBinding[] {
   const value = state as Record<string, unknown>, bindings = new Map<string, HistoricalBinding>();
@@ -150,7 +173,7 @@ export function collectBindings(state: unknown): HistoricalBinding[] {
 export function appendRelocation(db: DatabaseSync, product: string, from: WorkspaceIdentity, to: WorkspaceIdentity, snapshotDigest: string, records: SnapshotRecords): RelocationRecord {
   const previous = readRelocations(db, from, product).at(-1);
   const keyId = previous?.keyId ?? newKey();
-  const subject = { schema: 'evopilot-workspace-relocation/v1' as const, product, from, to, sourceSnapshotDigest: snapshotDigest, historyRevision: records.revision, receiptsDigest: records.receiptsDigest, auditDigest: records.auditDigest, bindings: collectBindings(records.state), previousDigest: previous?.recordDigest ?? null, hostDigest: hostDigest(), keyId, at: new Date().toISOString() };
+  const subject = { schema: 'evopilot-workspace-relocation/v1' as const, product, from, to, sourceSnapshotDigest: snapshotDigest, historyRevision: records.revision, receiptsDigest: records.receiptsDigest, auditDigest: records.auditDigest, ...(records.nativeRecords?.audit.length?{nativeAuditDigest:records.nativeRecords.auditDigest}:{}), bindings: collectBindings(records.state), previousDigest: previous?.recordDigest ?? null, hostDigest: hostDigest(), keyId, at: new Date().toISOString() };
   const record = { ...subject, recordDigest: hash(subject), signature: createHmac('sha256', readKey(keyId)).update(stableSerialize(subject)).digest('hex') };
   db.exec('CREATE TABLE IF NOT EXISTS workspace_relocations (sequence INTEGER PRIMARY KEY, record TEXT NOT NULL)');
   db.prepare('INSERT INTO workspace_relocations(record) VALUES(?)').run(stableSerialize(record)); return record;

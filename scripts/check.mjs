@@ -11,7 +11,7 @@ const PRODUCT = 'ontology';
 const PIN = 'df4f7246ae35ef9114e2b93663d520e7ff4f44f14f886ac8ba43e9fc080ddc9a';
 const expected = {
   "name": "@evopilot-next/ontology",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -106,19 +106,24 @@ export async function checkSource() {
   assert((await readFile(resolve(ROOT, 'dist/cli.js'), 'utf8')).startsWith('#!/usr/bin/env node\n'));
   const vendor = resolve(ROOT, 'vendor/compatibility/v1');
   const manifest = JSON.parse(await readFile(resolve(vendor, 'manifest.json'), 'utf8'));
-  assert.deepEqual(manifest, {
-    contractRevision: '1.0.0', module: 'reference.mjs', sha256: PIN,
-    children: ['projects/evopilot-runtime', 'projects/evopilot-harness', 'projects/evopilot-ontology'],
-  });
-  const bytes = await readFile(resolve(vendor, manifest.module));
-  assert.equal(createHash('sha256').update(bytes).digest('hex'), PIN);
+  assert.equal(manifest.contractRevision,'1.1.0');assert.equal(manifest.module,'native.mjs');assert.equal(manifest.legacyModule,'reference.mjs');assert.equal(manifest.legacySha256,PIN);
+  assert.deepEqual(manifest.children,['projects/evopilot-runtime','projects/evopilot-harness','projects/evopilot-ontology']);
+  for(const [name,hash] of Object.entries({...manifest.files,[manifest.module]:manifest.sha256,[manifest.legacyModule]:PIN}))assert.equal(createHash('sha256').update(await readFile(resolve(vendor,name))).digest('hex'),hash);
+  const generatedRoot = resolve(vendor, 'toolchain');
+  const generated = JSON.parse(await readFile(resolve(generatedRoot, 'manifest.json'), 'utf8'));
+  assert.equal(generated.schema, 'evopilot-generated-toolchain/v1');
+  for (const entry of generated.files) {
+    assert(/^[a-zA-Z0-9_./-]+$/.test(entry.path) && !entry.path.split('/').includes('..'));
+    assert.equal(createHash('sha256').update(await readFile(resolve(generatedRoot, entry.path))).digest('hex'), entry.sha256);
+  }
   const sources = [...await files(resolve(ROOT, 'src')), ...await files(resolve(ROOT, 'vendor'))];
   for (const path of sources) {
     if (path.endsWith('.d.ts') || path.endsWith('.d.mts')) continue;
-    if (!path.endsWith('.mjs') && !path.endsWith('.ts')) continue;
+    if (!path.endsWith('.mjs') && !path.endsWith('.ts') && !path.startsWith(generatedRoot + sep)) continue;
+    if (path.startsWith(generatedRoot + sep) && !/\.(js|ts)$/.test(path)) continue;
     assert(!(dirname(path) === resolve(ROOT, 'src') && path.endsWith('.mjs')), 'Transitional top-level .mjs implementation must be removed: ' + path);
     const source = await readFile(path, 'utf8');
-    if (path.endsWith('.mjs')) {
+    if (path.endsWith('.mjs') || path.endsWith('.js')) {
     const syntax = spawnSync(process.execPath, ['--check', path], { encoding: 'utf8' });
     assert.ifError(syntax.error); assert.equal(syntax.status, 0, syntax.stderr);
     }
@@ -129,7 +134,7 @@ export async function checkSource() {
       if (PRODUCT === 'ontology' && path.includes('/src/compat/') && specifier === 'ajv/dist/2020.js') continue;
       assert(specifier.startsWith('.'), 'Undeclared import: ' + specifier);
       const target = resolve(dirname(path), path.endsWith('.ts') && specifier.endsWith('.js') ? specifier.slice(0, -3) + '.ts' : specifier);
-      assert(target.startsWith(resolve(ROOT, 'src') + sep) || target === resolve(vendor, 'reference.mjs'), 'Foreign source import');
+      assert(target.startsWith(resolve(ROOT, 'src') + sep) || path.startsWith(generatedRoot + sep) && target.startsWith(generatedRoot + sep) || [resolve(vendor, 'reference.mjs'),resolve(vendor,'native.mjs')].includes(target), 'Foreign source import');
       assert((await lstat(target)).isFile(), 'Import must be an owned regular file');
     }
   }
@@ -137,15 +142,15 @@ export async function checkSource() {
     "import assert from 'node:assert/strict';",
     'const api = await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'dist/index.js')).href) + ');',
     'assert.equal(api.PRODUCT, ' + JSON.stringify(PRODUCT) + ');',
-    "assert.equal(api.VERSION, '0.2.0');",
+    "assert.equal(api.VERSION, '0.3.0');",
     'assert.equal(api.capabilities().authority, false);',
     'assert.equal(api.capabilities().businessOperationsReady, true);',
     'await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'dist/cli.js')).href) + ');',
     'const service = await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'dist/service.js')).href) + ');',
     "const discovery = service.createOntologyService({ workspaceRoot: '/explicit-discovery-only', workspaceId: 'discovery' });",
-    "assert(discovery.capabilities().operations.includes('asset.publish'));",
-    "assert.equal(typeof discovery.classify, 'function');",
-    "assert.equal(discovery.capabilities().operations.filter(x => x.startsWith('classification.')).length, 7); discovery.close();",
+    "assert(discovery.capabilities().nativeOperations.includes('native.package.publish'));assert(!discovery.capabilities().operations.includes('asset.publish'));",
+    "assert.equal(typeof discovery.native, 'function');",
+    "assert.equal(discovery.capabilities().historicalOperationsReadOnly,true); discovery.close();",
   ].join('\n');
   const result = spawnSync(process.execPath, ['--permission', '--allow-fs-read=' + ROOT, '--input-type=module', '-e', code], {
     cwd: ROOT, encoding: 'utf8', env: { ...process.env, NODE_OPTIONS: '', OPENSSL_CONF: '/dev/null' },

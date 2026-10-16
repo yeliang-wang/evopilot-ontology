@@ -1,0 +1,9 @@
+@prefix ex: <https://example.invalid/r1/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+ex:project a ex:Project; ex:hasCapability ex:engine, ex:query .
+ex:engine a ex:Capability; ex:kind "ENGINE"; ex:operation "search"; ex:limit 3 .
+ex:query a ex:Capability; ex:kind "QUERY"; ex:operation "search"; ex:limit 5 .

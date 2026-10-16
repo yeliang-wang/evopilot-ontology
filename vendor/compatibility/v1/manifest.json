@@ -1,7 +1,14 @@
 {
-  "contractRevision": "1.0.0",
-  "module": "reference.mjs",
-  "sha256": "df4f7246ae35ef9114e2b93663d520e7ff4f44f14f886ac8ba43e9fc080ddc9a",
+  "contractRevision": "1.1.0",
+  "module": "native.mjs",
+  "sha256": "c613b972cee9aa5638797880fab6a48839e74ee79545fdfb74ebe9b2b23c9a11",
+  "sourceSha256": "2e8d69e167f017d9ad54c747f94381f3310903d6b1248f5f1d1777490b46db66",
+  "legacyModule": "reference.mjs",
+  "legacySha256": "df4f7246ae35ef9114e2b93663d520e7ff4f44f14f886ac8ba43e9fc080ddc9a",
+  "files": {
+    "reference.d.mts": "c83de0e77269bff05faade1471cc337cedcdee009b52bc084f48a1987846f765",
+    "native.d.mts": "94e8e3a40c0fcc68a66a21f92e617452d9399e84f249b3188ae6b54a79a42454"
+  },
   "children": [
     "projects/evopilot-runtime",
     "projects/evopilot-harness",

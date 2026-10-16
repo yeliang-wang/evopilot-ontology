@@ -1,84 +1,28 @@
 {
-  "specVersion": "v1",
-  "representation": "EvoPilot native JSON",
-  "sourceStatusVocabulary": "EvoPilot design; no approval",
-  "sources": [
-    {
-      "id": "owl2",
-      "locator": "https://www.w3.org/TR/2012/REC-owl2-overview-20121211/",
-      "revision": "2012-12-11",
-      "clauses": [
-        "concepts",
-        "properties",
-        "directed relations"
-      ],
-      "adoptionBoundary": "Concept/property vocabulary only; no OWL syntax, entailment or conformance.",
-      "tests": [
-        "closed syntax, ownership and complete source mappings"
-      ]
-    },
-    {
-      "id": "shacl",
-      "locator": "https://www.w3.org/TR/2017/REC-shacl-20170720/",
-      "revision": "2017-07-20",
-      "clauses": [
-        "#DatatypeConstraintComponent",
-        "#MinCountConstraintComponent",
-        "#MaxCountConstraintComponent",
-        "#MinInclusiveConstraintComponent",
-        "#MaxInclusiveConstraintComponent",
-        "#InConstraintComponent"
-      ],
-      "adoptionBoundary": "Primitive datatype, minCount/maxCount, inclusive bounds and typed membership subset on native arrays; no RDF shapes or full SHACL.",
-      "tests": [
-        "typed constraint boundaries preserve false and zero",
-        "coverage distinguishes unsupported and untested from pass"
-      ]
-    },
-    {
-      "id": "prov-o",
-      "locator": "https://www.w3.org/TR/2013/REC-prov-o-20130430/",
-      "revision": "2013-04-30",
-      "clauses": [
-        "#Entity",
-        "#Activity",
-        "#Agent",
-        "#wasDerivedFrom",
-        "#hadPrimarySource",
-        "#wasRevisionOf"
-      ],
-      "adoptionBoundary": "Inspiration for explicit source identity, derivation and revision pins. No Activity/Agent engine, RDF model or PROV entailment; no provenance-based approval.",
-      "tests": [
-        "closed syntax, ownership and complete source mappings",
-        "deterministic delivery rejects tampering and required pending issues"
-      ]
-    },
-    {
-      "id": "linkml",
-      "locator": "https://github.com/linkml/linkml/blob/b64c36c61d049291c43f788d08d538e7c66f9696/docs/data/validating-data.rst",
-      "revision": "b64c36c61d049291c43f788d08d538e7c66f9696",
-      "clauses": [
-        "docs/data/validating-data.rst: schema-directed instance validation"
-      ],
-      "adoptionBoundary": "Separate schema/model and instance checks; no LinkML runtime, format interoperability or validation engine.",
-      "tests": [
-        "typed constraint boundaries preserve false and zero",
-        "synthetic matrix and immutable pure API facts"
-      ]
-    },
-    {
-      "id": "robot",
-      "locator": "https://github.com/ontodev/robot/tree/37d514d2ac8970b6ce7b9f5cfe83ba08dc97e9d8/docs",
-      "revision": "37d514d2ac8970b6ce7b9f5cfe83ba08dc97e9d8",
-      "clauses": [
-        "docs/report.md",
-        "docs/reason.md"
-      ],
-      "adoptionBoundary": "Separate validation reports from reasoning/acceptance. No ROBOT execution or reasoner implemented.",
-      "tests": [
-        "coverage distinguishes unsupported and untested from pass",
-        "deterministic delivery rejects tampering and required pending issues"
-      ]
-    }
+  "normativeSources": [
+    "https://github.com/yeliang-wang/evopilot-ontology",
+    "https://www.w3.org/TR/2017/REC-shacl-20170720/#core-components-count",
+    "https://www.w3.org/TR/2017/REC-shacl-20170720/#core-components-logical",
+    "https://www.w3.org/TR/2017/REC-shacl-20170720/#core-components-other",
+    "https://www.w3.org/TR/2017/REC-shacl-20170720/#core-components-property-pairs",
+    "https://www.w3.org/TR/2017/REC-shacl-20170720/#core-components-range",
+    "https://www.w3.org/TR/2017/REC-shacl-20170720/#core-components-shape",
+    "https://www.w3.org/TR/2017/REC-shacl-20170720/#core-components-string",
+    "https://www.w3.org/TR/2017/REC-shacl-20170720/#core-components-value-type",
+    "https://www.w3.org/TR/2017/REC-shacl-20170720/#shapes-graph",
+    "https://www.w3.org/TR/2017/REC-shacl-20170720/#sparql-constraints",
+    "https://www.w3.org/TR/2017/REC-shacl-20170720/#targets",
+    "https://www.w3.org/TR/2017/REC-shacl-20170720/#validation-report",
+    "https://www.w3.org/TR/owl2-overview/",
+    "https://www.w3.org/TR/shacl-af/",
+    "https://www.w3.org/TR/turtle/"
+  ],
+  "implementation": "https://github.com/RDFLib/pySHACL/tree/v0.40.1",
+  "ownConventions": [
+    "package manifest",
+    "directory layout",
+    "coverage",
+    "source bindings",
+    "approval and immutable delivery"
   ]
 }

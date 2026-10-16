@@ -1,10 +1,11 @@
+// Frozen v0.2.0 historical behavior; current native lifecycle is tested separately.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createOntologyService } from '../../dist/service.js';
+import { createOntologyService } from '../fixtures/historical-v020/dist/service.js';
 import { fixture, taxonomy, supportingAdvisor } from '../fixtures/classification-service.mjs';
-import { prepareClassification } from '../../dist/classification-operations.js';
+import { prepareClassification } from '../fixtures/historical-v020/dist/classification-operations.js';
 const scope = { visibility: 'private', projectId: 'synthetic' };
 const read = (service, operation = 'inspect', input = { id: 'session' }, selected = scope) => service.execute({ operation: 'classification.' + operation, scope: selected, input });
 const revision = service => service.execute({ operation: 'workspace.inspect', scope, input: {} }).revision;

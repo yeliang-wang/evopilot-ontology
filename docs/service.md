@@ -1,5 +1,8 @@
 # Owned Ontology service
 
+> Historical interface reference. Corrected-v1 work uses the [native service](native-service.md) and [current specification](../specifications/v1/README.md). Retired JSON, producer, Catalog and classification mutation operations are rejected; descriptions below explain retained historical records, not current execution authority.
+
+
 For modeling concepts, see the [asset overview](../README.md#three-levels-of-semantic-assets); for standalone transport, see [CLI](cli.md). This reference describes current owned API and persistence boundaries. See the [current roadmap](roadmap.md) for implementation status and [migration provenance](../provenance/migration-current.json) for historical evidence.
 
 Import `createOntologyService` from `@evopilot-next/ontology/service`. The factory accepts `createOntologyService({workspaceRoot, workspaceId}, trustedProviders)`. The optional second argument is trusted application code: classification uses `resolveClassificationSource`, `classificationAdvisor` and `classificationModel`; foreign Catalog material uses `resolveLegacyHarness`. Their exact contracts are in [Classification service](classification-service.md) and [Catalog service](catalog-service.md). Public JSON cannot inject callbacks; missing required providers fail explicitly. Neither the standalone CLI nor the default Preview daemon configures these providers. The returned API has `capabilities()`, `initialize()`, `execute(request)` and `close()`, plus async `classify(request)` for classification start/reanalyze. Import, construction and capabilities create nothing. `initialize()` explicitly opens or creates an external workspace; `close()` is idempotent and ends the instance. No ambient environment/default workspace is used.

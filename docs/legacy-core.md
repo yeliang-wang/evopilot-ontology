@@ -1,5 +1,8 @@
 # Historical calculation compatibility
 
+> Historical interface reference. Corrected-v1 work uses the [native service](native-service.md) and [current specification](../specifications/v1/README.md). Retired JSON, producer, Catalog and classification mutation operations are rejected; descriptions below explain retained historical records, not current execution authority.
+
+
 These retained calculation libraries originate from EvoPilot Harness 4.8.2, commit `372733fd7b67ec3bee9efe6322f0229db77b160d`. Core v1 specifications remain the sole native normative basis. Use the [owned service](service.md) and [query/producer contracts](legacy-api.md) for scoped persistence and decisions. Compatibility calculations convey no acceptance or release authority.
 
 Import the six named namespaces from `@evopilot-next/ontology/compat`: `taxonomy`, `grounding`, `packs`, `projectOntology`, `interoperability`, and `validation`. They compute synchronously over supplied values. Taxonomy can explicitly read a user-selected file. Validation lazily reads this package's bundled schema map; no external product, default home, session, store, credentials or network is consulted. Importing the module performs no filesystem reads or writes. Functions with historical names such as publish, transition, install or activate only calculate documents and validate supplied proof/role/digest bindings; they do not carry out persistent operations or grant authority.

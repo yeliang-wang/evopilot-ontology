@@ -1,5 +1,8 @@
 # Inspect and derive historical sources
 
+> Historical interface reference. Corrected-v1 work uses the [native service](native-service.md) and [current specification](../specifications/v1/README.md). Retired JSON, producer, Catalog and classification mutation operations are rejected; descriptions below explain retained historical records, not current execution authority.
+
+
 Use the separate [migration contract](../specifications/v1/legacy-derivation.md) for explicit inspection and native-v1 derivation of structured historical assets. These APIs are not arbitrary source-code parsers. For source reverse modeling, the Host inspects explicitly authorized files and authors native v1 observations with real locator/revision/digest pins, then stores the model through `asset.put`; see [asset workflows](asset-workflows.md#reverse-explicit-source-evidence-to-the-same-draft).
 
 ```js

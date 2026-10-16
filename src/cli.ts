@@ -1,18 +1,20 @@
 #!/usr/bin/env node
 import type { ExecuteRequest, ClassificationRequest } from './types.js';
-import { constants, realpathSync } from 'node:fs';
+import { constants, realpathSync, readFileSync, lstatSync } from 'node:fs';
 import { lstat, open } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PRODUCT, VERSION, capabilities } from './index.js';
 import { createOntologyService } from './service.js';
-import { operations, validateRequest } from './native-operations.js';
+import { operations, mutations, validateRequest } from './native-operations.js';
 import { classificationDispatch } from './classification-operations.js';
 import { bounded, fail, LIMITS, slug, errorCode } from './state.js';
+import { ontologyNativeOperations } from './native/service.js';
+import type { OntologyNativeRequest, NativeToolchain } from './native/types.js';
 
-const serviceCodes = new Set("APPROVAL_REQUIRED ASSET_EXISTS ASYNC_REQUIRED CLASSIFICATION_FAILED CLASSIFICATION_HANDOFF_BLOCKED CLASSIFICATION_MATCH_REQUIRED CLASSIFICATION_PROVIDER_UNAVAILABLE CLASSIFICATION_PROVIDER_UNRESOLVED CLASSIFICATION_REPLAY_INTEGRITY_FAILED CLASSIFICATION_SOURCE_ASYNC CLASSIFICATION_SOURCE_DRIFT CLASSIFICATION_SOURCE_INVALID CLASSIFICATION_SOURCE_UNAVAILABLE CLASSIFICATION_UNRESOLVED CLOSED CORRUPT_BLOB CORRUPT_STATE DEPENDENCY_CHANGED EMPTY_PUBLICATION EXPLICIT_HANDOFF_DECISION_REQUIRED FOREIGN_MATERIAL HEAD_CONFLICT HUMAN_EVIDENCE_MISMATCH IDENTITY_MISMATCH IMMUTABLE_VERSION INVALID_DELIVERY INVALID_ENCODING INVALID_FORMAT INVALID_MODEL INVALID_REQUEST INVALID_SOURCE INVALID_TAXONOMY LIMIT MATERIAL_REQUIRED NOT_DERIVABLE NOT_FOUND NOT_INITIALIZED OWNED_MATERIAL_REQUIRED PENDING_MODEL PLAN_CONSUMED PLAN_OPERATION_MISMATCH PROVIDER_ASYNC PROVIDER_FAILED PROVIDER_MISMATCH PROVIDER_REQUIRED REQUEST_CONFLICT REVIEW_MISMATCH REVIEW_REQUIRED REVISION_CONFLICT REVOKED_MATERIAL SCOPE_MISMATCH SESSION_EXISTS SOURCE_BINDING_MISMATCH SOURCE_MISMATCH SOURCE_QUARANTINED STATE_ERROR UNKNOWN UNKNOWN_REVOCATION UNKNOWN_SOURCE UNKNOWN_WORKSPACE UNSAFE_WORKSPACE UNSUPPORTED_DEPENDENCY UNSUPPORTED_KIND UNSUPPORTED_OPERATION UNSUPPORTED_PLATFORM".split(' '));
+const serviceCodes = new Set("HISTORICAL_READ_ONLY TOOLCHAIN_NOT_READY TOOLCHAIN_DRIFT INVALID_PACKAGE INVALID_LAYOUT INVALID_COVERAGE INVALID_BINDINGS INVALID_CASES MISSING_CASE MISSING_COVERAGE UNRESOLVED_REQUIREMENT INVALID_STANDARD VALIDATION_REQUIRED NOT_PUBLISHED PACKAGE_LIMIT APPROVAL_REQUIRED ASSET_EXISTS ASYNC_REQUIRED CLASSIFICATION_FAILED CLASSIFICATION_HANDOFF_BLOCKED CLASSIFICATION_MATCH_REQUIRED CLASSIFICATION_PROVIDER_UNAVAILABLE CLASSIFICATION_PROVIDER_UNRESOLVED CLASSIFICATION_REPLAY_INTEGRITY_FAILED CLASSIFICATION_SOURCE_ASYNC CLASSIFICATION_SOURCE_DRIFT CLASSIFICATION_SOURCE_INVALID CLASSIFICATION_SOURCE_UNAVAILABLE CLASSIFICATION_UNRESOLVED CLOSED CORRUPT_BLOB CORRUPT_STATE DEPENDENCY_CHANGED EMPTY_PUBLICATION EXPLICIT_HANDOFF_DECISION_REQUIRED FOREIGN_MATERIAL HEAD_CONFLICT HUMAN_EVIDENCE_MISMATCH IDENTITY_MISMATCH IMMUTABLE_VERSION INVALID_DELIVERY INVALID_ENCODING INVALID_FORMAT INVALID_MODEL INVALID_REQUEST INVALID_SOURCE INVALID_TAXONOMY LIMIT MATERIAL_REQUIRED NOT_DERIVABLE NOT_FOUND NOT_INITIALIZED OWNED_MATERIAL_REQUIRED PENDING_MODEL PLAN_CONSUMED PLAN_OPERATION_MISMATCH PROVIDER_ASYNC PROVIDER_FAILED PROVIDER_MISMATCH PROVIDER_REQUIRED REQUEST_CONFLICT REVIEW_MISMATCH REVIEW_REQUIRED REVISION_CONFLICT REVOKED_MATERIAL SCOPE_MISMATCH SESSION_EXISTS SOURCE_BINDING_MISMATCH SOURCE_MISMATCH SOURCE_QUARANTINED STATE_ERROR UNKNOWN UNKNOWN_REVOCATION UNKNOWN_SOURCE UNKNOWN_WORKSPACE UNSAFE_WORKSPACE UNSUPPORTED_DEPENDENCY UNSUPPORTED_KIND UNSUPPORTED_OPERATION UNSUPPORTED_PLATFORM".split(' '));
 const help = {
-  usage: ['evopilot-next-ontology capabilities', 'evopilot-next-ontology help', 'evopilot-next-ontology version', 'evopilot-next-ontology request --workspace <canonicalAbsoluteRoot> --workspace-id <slug> [--request-file <absoluteJSONpath>]'],
+  usage: ['evopilot-next-ontology capabilities', 'evopilot-next-ontology help', 'evopilot-next-ontology version', 'evopilot-next-ontology request --workspace <canonicalAbsoluteRoot> --workspace-id <slug> [--request-file <absoluteJSONpath>] [--toolchain <installedNativeToolchainJSON>]'],
   input: 'One bounded JSON request from stdin or the exact explicit regular file.',
   exitCodes: { success: 0, serviceFailure: 1, invalidInput: 2 },
 };
@@ -28,7 +30,7 @@ function parseArgs(args: string[]) {
   const flags: Record<string, string> = {};
   for (let i = 0; i < rest.length; i += 2) {
     const key = rest[i], value = rest[i + 1];
-    if (!['--workspace', '--workspace-id', '--request-file'].includes(key) || Object.hasOwn(flags, key) || !value || value.startsWith('--')) fail('USAGE', 'Invalid request flags');
+    if (!['--workspace', '--workspace-id', '--request-file', '--toolchain'].includes(key) || Object.hasOwn(flags, key) || !value || value.startsWith('--')) fail('USAGE', 'Invalid request flags');
     flags[key] = value;
   }
   const root = flags['--workspace'];
@@ -36,7 +38,9 @@ function parseArgs(args: string[]) {
   slug(flags['--workspace-id']);
   const file = flags['--request-file'];
   if (file && !isAbsolute(file)) fail('USAGE', 'Absolute request file required');
-  return { command, root, id: flags['--workspace-id'], file };
+  const toolchainFile=flags['--toolchain'];
+  if(toolchainFile&&(!isAbsolute(toolchainFile)||!lstatSync(toolchainFile).isFile()||lstatSync(toolchainFile).isSymbolicLink()))fail('USAGE','Explicit installed regular toolchain file required');
+  return { command, root, id: flags['--workspace-id'], file, toolchainFile };
 }
 async function readInput(file: string | undefined, stdin: AsyncIterable<string | Buffer>) {
   const chunks: Buffer[] = []; let size = 0;
@@ -74,8 +78,9 @@ async function readInput(file: string | undefined, stdin: AsyncIterable<string |
   let request;
   try { request = JSON.parse(text); } catch { fail('INVALID_REQUEST', 'Expected one JSON request'); }
   bounded(request);
-  validateRequest(request);
-  return request as unknown as ExecuteRequest | ClassificationRequest;
+  const operation=request&&typeof request==='object'&&!Array.isArray(request)?request.operation:undefined;
+  if(typeof operation!=='string'||!ontologyNativeOperations.includes(operation))validateRequest(request);
+  return request as unknown as ExecuteRequest | ClassificationRequest | OntologyNativeRequest;
 }
 
 // Injected streams are trusted test/host code, never request-configurable providers.
@@ -87,18 +92,19 @@ export async function main(args: string[], { stdin = process.stdin, stdout = pro
     if (parsed.command === 'help') result = help;
     else if (parsed.command === 'version') result = { product: PRODUCT, version: VERSION };
     else if (parsed.command === 'capabilities') result = {
-      ...capabilities(), stage: 'M2_STANDALONE_CLI', operations,
+      ...capabilities(), stage: 'NATIVE_STANDARDS_CLI', operations: [...operations.filter(op=>!mutations.includes(op)),...ontologyNativeOperations],
       limits: LIMITS, authority: false, softwareRelease: false,
       pending: ['M3 trusted provider wiring', 'MCP', 'Expert', 'full Host acceptance'],
       providers: { resolveClassificationSource: false, classificationAdvisor: false, classificationModel: false, resolveLegacyHarness: false },
     };
     else {
       const request = await readInput(parsed.file, stdin);
-      const service = createOntologyService({ workspaceRoot: parsed.root!, workspaceId: parsed.id! });
+      const nativeToolchain=parsed.toolchainFile?JSON.parse(readFileSync(parsed.toolchainFile,'utf8')) as NativeToolchain:undefined;
+      const service = createOntologyService({ workspaceRoot: parsed.root!, workspaceId: parsed.id! },nativeToolchain?{nativeToolchain}:{});
       try {
         executing = true;
         service.initialize();
-        result = classificationDispatch.includes(request.operation) ? await service.classify(request as ClassificationRequest) : service.execute(request as ExecuteRequest);
+        result = ontologyNativeOperations.includes(request.operation)?await service.native(request as OntologyNativeRequest):classificationDispatch.includes(request.operation) ? await service.classify(request as ClassificationRequest) : service.execute(request as ExecuteRequest);
       } finally { service.close(); }
     }
     response = { ok: true, product: PRODUCT, version: VERSION, result, authority: false };

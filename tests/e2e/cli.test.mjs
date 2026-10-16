@@ -1,3 +1,4 @@
+// Frozen v0.2.0 historical behavior; current native lifecycle is tested separately.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -5,12 +6,12 @@ import { existsSync, mkdtempSync, realpathSync, readFileSync, writeFileSync, sym
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { operations } from '../../dist/native-operations.js';
-import { LIMITS } from '../../dist/state.js';
-import { main } from '../../dist/cli.js';
+import { operations } from '../fixtures/historical-v020/dist/native-operations.js';
+import { LIMITS } from '../fixtures/historical-v020/dist/state.js';
+import { main } from '../fixtures/historical-v020/dist/cli.js';
 import { taxonomy } from '../fixtures/classification-service.mjs';
 
-const cli = fileURLToPath(new URL('../../dist/cli.js', import.meta.url));
+const cli = fileURLToPath(new URL('../fixtures/historical-v020/dist/cli.js', import.meta.url));
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const scope = { visibility: 'public', projectId: 'alpha' };
 const asset = JSON.parse(readFileSync(new URL('../../examples/synthetic-models.json', import.meta.url))).assets[0];

@@ -1,0 +1,66 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "evopilot-ontology-coverage/v1"
+    },
+    "projectRoot": {
+      "type": "string",
+      "pattern": "^(https?://|urn:)"
+    },
+    "namespace": {
+      "type": "string",
+      "pattern": "^(https?://|urn:)"
+    },
+    "expectedEntities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^(https?://|urn:)"
+          },
+          "type": {
+            "type": "string",
+            "pattern": "^(https?://|urn:)"
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ]
+      }
+    },
+    "requiredShapeIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(https?://|urn:)"
+      }
+    },
+    "requiredCaseIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "projectRoot",
+    "namespace",
+    "expectedEntities",
+    "requiredShapeIds",
+    "requiredCaseIds"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

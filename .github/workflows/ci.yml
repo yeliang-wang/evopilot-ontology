@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   source:
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,5 +17,12 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run build
       - run: npm run check
+      - name: Prepare locked native validators for the supported platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "if(process.platform !== 'darwin' || process.arch !== 'arm64') process.exit(1)"
+          node vendor/compatibility/v1/toolchain/cli.js prepare --cache "$RUNNER_TEMP/evopilot-native-cache" > "$RUNNER_TEMP/native-toolchain.json"
+          echo "EVOPILOT_TEST_NATIVE_TOOLCHAIN=$RUNNER_TEMP/native-toolchain.json" >> "$GITHUB_ENV"
       - run: npm test
 

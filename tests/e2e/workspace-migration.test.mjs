@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { inspectWorkspaceSnapshot, relocateWorkspaceSnapshot } from '@evopilot-next/ontology/workspace-migration';
 import { keyDirectory } from '../../dist/location-lineage.js';
 import { createOntologyService } from '../../dist/service.js';
+import { createOntologyService as createHistoricalService } from '../fixtures/historical-v020/dist/service.js';
 import { sha256 } from '../../vendor/compatibility/v1/reference.mjs';
 const product = 'ontology', createService = createOntologyService;
 const scope = { visibility: 'public', projectId: 'synthetic' };
@@ -33,7 +34,7 @@ async function populate(options) {
   const provider = ({ reference, workspace }) => ({ reference, workspace, scope, published: true, materialDigest: digest, descriptor: { kind: reference.product + '-composition/v1', digest } });
   const result = claim => ({ claimId: claim.claimId, inputDigest: claim.inputDigest, pins: claim.pins, providerReceiptId: 'synthetic-original', status: 'SUCCEEDED', result: { evaluation: 'PASS', evidenceDigest: digest } });
   const providers = product === 'runtime' ? { resolveOntology: provider, resolveHarness: provider, execute: claim => { executions++; return claim.id === 'unknown' ? undefined : result(claim); }, inspectReceipt: result } : {};
-  const service = createService(options, providers); service.initialize();
+  const service = createHistoricalService(options, providers); service.initialize();
   if (product === 'runtime') {
     write(service, 'project.create', { name: 'Synthetic migration' }); write(service, 'goal.create', { id: 'goal', description: 'Owner migration E2E' });
     for (const id of ['completed', 'unknown', 'prepared']) {
@@ -80,9 +81,7 @@ test('same-host relocation preserves owner records, blobs, pins, receipts and su
     const asset = read(service, 'asset.list')[0], retained = read(service, 'asset.inspect', { id: asset.id, version: asset.version });
     assert(retained.delivery); assert.equal(retained.review.workspace.canonicalRoot, sourceRoot);
     const changed = structuredClone(retained.model); changed.version = '2.0.0';
-    write(service, 'asset.put', product === 'ontology' ? { model: changed } : { asset: changed });
-    const review = write(service, 'asset.review', { id: changed.id, version: changed.version }).result;
-    assert.equal(review.workspace.canonicalRoot, destinationRoot);
+    assert.throws(()=>write(service,'asset.put',{model:changed}),{code:'HISTORICAL_READ_ONLY'});
   }
 });
 test('forged lineage, missing local key, wrong owner/root and modified copy fail closed', async t => {
@@ -128,7 +127,7 @@ test('retained producer and Catalog readback survive relocation without inheriti
   const { catalogClient, ownedCatalogMaterials, trustedHarness } = await import('../fixtures/catalog-service-materials.mjs');
   const { parent, sourceRoot, destinationRoot } = setup(t), workspaceId = 'catalog-test';
   const selected = { visibility: 'public', projectId: 'alpha' }, providers = { resolveLegacyHarness: trustedHarness };
-  let service = createService({ workspaceRoot: sourceRoot, workspaceId }, providers); service.initialize();
+  let service = createHistoricalService({ workspaceRoot: sourceRoot, workspaceId }, providers); service.initialize();
   const client = catalogClient({ execute: request => service.execute(request) }, selected);
   const set = ownedCatalogMaterials(client);
   const parameters = { action: 'PUBLISH', catalogId: 'main', expectedHead: 'EMPTY', sets: [set] };
@@ -144,7 +143,7 @@ test('retained producer and Catalog readback survive relocation without inheriti
   assert.deepEqual(client.read('semantic.catalog.inspect', { catalogId: 'main' }), before);
   assert.deepEqual(client.read('semantic.catalog.readback', { requestId: receipt.requestId }), receipt);
   assert.equal(client.read('semantic.catalog.recovery-readback', { requestId: receipt.requestId, intentDigest: receipt.requestDigest }).status, 'COMMITTED');
-  assert.throws(() => client.write('semantic.catalog.publish', { planId: pending.planId }), { code: 'RELOCATION_REVIEW_REQUIRED' });
+  assert.throws(() => client.write('semantic.catalog.publish', { planId: pending.planId }), { code: 'HISTORICAL_READ_ONLY' });
 });
 
 test('snapshot does not attest missing material or an unbound historical review', async t => {

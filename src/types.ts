@@ -1,3 +1,4 @@
+import type { NativeToolchain } from '../vendor/compatibility/v1/native.mjs';
 import type { AssetRecord, SourceRecord, ClassificationSession, ClassificationHandoff } from './persistence-types.js';
 import type { buildDelivery } from './delivery.js';
 import type { deriveLegacyModel } from './migration.js';
@@ -86,6 +87,7 @@ export interface DispatchRequest {
   requestId: string; expectedRevision: number;
 }
 export interface TrustedProviders {
+  nativeToolchain?: NativeToolchain;
   resolveLegacyHarness?: (input: unknown) => unknown;
   resolveClassificationSource?: (input: { sourceId: string; scope: Scope; workspace: WorkspaceIdentity }) => unknown;
   classificationAdvisor?: (input: unknown, context: unknown) => unknown | Promise<unknown>;

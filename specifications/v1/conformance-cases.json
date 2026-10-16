@@ -1,0 +1,337 @@
+{
+  "schema": "evopilot-standard-cases/v1",
+  "entries": [
+    {
+      "clauseId": "rdf-turtle",
+      "requiredTestIds": [
+        "O01",
+        "O04",
+        "O10"
+      ],
+      "upstreamFixtureSet": null,
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs",
+        "tests/e2e/native-semantic.test.mjs",
+        "tests/e2e/native-process.test.mjs"
+      ],
+      "upstreamCases": []
+    },
+    {
+      "clauseId": "rdfs-owl-declarations",
+      "requiredTestIds": [
+        "O02",
+        "O07"
+      ],
+      "upstreamFixtureSet": null,
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs"
+      ],
+      "upstreamCases": []
+    },
+    {
+      "clauseId": "core-value-type",
+      "requiredTestIds": [
+        "O02",
+        "O04"
+      ],
+      "upstreamFixtureSet": "tests/fixtures/upstream-shacl/source.json",
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs",
+        "tests/e2e/native-upstream.test.mjs"
+      ],
+      "upstreamCases": [
+        "core/node/class-001.ttl",
+        "core/node/class-002.ttl",
+        "core/node/class-003.ttl",
+        "core/node/datatype-001.ttl",
+        "core/node/datatype-002.ttl",
+        "core/node/nodeKind-001.ttl",
+        "core/property/class-001.ttl",
+        "core/property/datatype-001.ttl",
+        "core/property/datatype-002.ttl",
+        "core/property/datatype-003.ttl",
+        "core/property/datatype-ill-formed.ttl",
+        "core/property/nodeKind-001.ttl"
+      ]
+    },
+    {
+      "clauseId": "core-cardinality",
+      "requiredTestIds": [
+        "O04"
+      ],
+      "upstreamFixtureSet": "tests/fixtures/upstream-shacl/source.json",
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs",
+        "tests/e2e/native-upstream.test.mjs"
+      ],
+      "upstreamCases": [
+        "core/property/maxCount-001.ttl",
+        "core/property/maxCount-002.ttl",
+        "core/property/minCount-001.ttl",
+        "core/property/minCount-002.ttl"
+      ]
+    },
+    {
+      "clauseId": "core-range",
+      "requiredTestIds": [
+        "O02"
+      ],
+      "upstreamFixtureSet": "tests/fixtures/upstream-shacl/source.json",
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs",
+        "tests/e2e/native-upstream.test.mjs"
+      ],
+      "upstreamCases": [
+        "core/node/maxExclusive-001.ttl",
+        "core/node/maxInclusive-001.ttl",
+        "core/node/minExclusive-001.ttl",
+        "core/node/minInclusive-001.ttl",
+        "core/node/minInclusive-002.ttl",
+        "core/node/minInclusive-003.ttl",
+        "core/property/maxExclusive-001.ttl",
+        "core/property/maxInclusive-001.ttl",
+        "core/property/minExclusive-001.ttl",
+        "core/property/minExclusive-002.ttl"
+      ]
+    },
+    {
+      "clauseId": "core-string",
+      "requiredTestIds": [
+        "O02"
+      ],
+      "upstreamFixtureSet": "tests/fixtures/upstream-shacl/source.json",
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs",
+        "tests/e2e/native-upstream.test.mjs"
+      ],
+      "upstreamCases": [
+        "core/node/languageIn-001.ttl",
+        "core/node/maxLength-001.ttl",
+        "core/node/minLength-001.ttl",
+        "core/node/pattern-001.ttl",
+        "core/node/pattern-002.ttl",
+        "core/property/languageIn-001.ttl",
+        "core/property/maxLength-001.ttl",
+        "core/property/minLength-001.ttl",
+        "core/property/pattern-001.ttl",
+        "core/property/pattern-002.ttl",
+        "core/property/uniqueLang-001.ttl",
+        "core/property/uniqueLang-002.ttl"
+      ]
+    },
+    {
+      "clauseId": "core-property-pair",
+      "requiredTestIds": [
+        "O03"
+      ],
+      "upstreamFixtureSet": "tests/fixtures/upstream-shacl/source.json",
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs",
+        "tests/e2e/native-upstream.test.mjs"
+      ],
+      "upstreamCases": [
+        "core/node/disjoint-001.ttl",
+        "core/node/equals-001.ttl",
+        "core/property/disjoint-001.ttl",
+        "core/property/equals-001.ttl",
+        "core/property/lessThan-001.ttl",
+        "core/property/lessThan-002.ttl",
+        "core/property/lessThanOrEquals-001.ttl"
+      ]
+    },
+    {
+      "clauseId": "core-logical",
+      "requiredTestIds": [
+        "O03",
+        "O07"
+      ],
+      "upstreamFixtureSet": "tests/fixtures/upstream-shacl/source.json",
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs",
+        "tests/e2e/native-upstream.test.mjs"
+      ],
+      "upstreamCases": [
+        "core/node/and-001.ttl",
+        "core/node/and-002.ttl",
+        "core/node/not-001.ttl",
+        "core/node/not-002.ttl",
+        "core/node/or-001.ttl",
+        "core/node/xone-001.ttl",
+        "core/node/xone-duplicate.ttl",
+        "core/property/and-001.ttl",
+        "core/property/not-001.ttl",
+        "core/property/or-001.ttl",
+        "core/property/or-datatypes-001.ttl"
+      ]
+    },
+    {
+      "clauseId": "core-shape",
+      "requiredTestIds": [
+        "O03",
+        "O07"
+      ],
+      "upstreamFixtureSet": "tests/fixtures/upstream-shacl/source.json",
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs",
+        "tests/e2e/native-upstream.test.mjs"
+      ],
+      "upstreamCases": [
+        "core/node/node-001.ttl",
+        "core/node/qualified-001.ttl",
+        "core/property/node-001.ttl",
+        "core/property/node-002.ttl",
+        "core/property/qualifiedMinCountDisjoint-001.ttl",
+        "core/property/qualifiedValueShape-001.ttl",
+        "core/property/qualifiedValueShapesDisjoint-001.ttl"
+      ]
+    },
+    {
+      "clauseId": "core-other",
+      "requiredTestIds": [
+        "O02",
+        "O03"
+      ],
+      "upstreamFixtureSet": "tests/fixtures/upstream-shacl/source.json",
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs",
+        "tests/e2e/native-upstream.test.mjs"
+      ],
+      "upstreamCases": [
+        "core/node/closed-001.ttl",
+        "core/node/closed-002.ttl",
+        "core/node/hasValue-001.ttl",
+        "core/node/in-001.ttl",
+        "core/property/hasValue-001.ttl",
+        "core/property/in-001.ttl"
+      ]
+    },
+    {
+      "clauseId": "targets-paths",
+      "requiredTestIds": [
+        "O05",
+        "O06"
+      ],
+      "upstreamFixtureSet": "tests/fixtures/upstream-shacl/source.json",
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs",
+        "tests/e2e/native-upstream.test.mjs"
+      ],
+      "upstreamCases": [
+        "core/path/path-alternative-001.ttl",
+        "core/path/path-complex-001.ttl",
+        "core/path/path-complex-002.ttl",
+        "core/path/path-inverse-001.ttl",
+        "core/path/path-oneOrMore-001.ttl",
+        "core/path/path-sequence-001.ttl",
+        "core/path/path-sequence-002.ttl",
+        "core/path/path-sequence-duplicate-001.ttl",
+        "core/path/path-strange-001.ttl",
+        "core/path/path-strange-002.ttl",
+        "core/path/path-unused-001.ttl",
+        "core/path/path-zeroOrMore-001.ttl",
+        "core/path/path-zeroOrOne-001.ttl",
+        "core/targets/multipleTargets-001.ttl",
+        "core/targets/targetClass-001.ttl",
+        "core/targets/targetClassImplicit-001.ttl",
+        "core/targets/targetNode-001.ttl",
+        "core/targets/targetObjectsOf-001.ttl",
+        "core/targets/targetSubjectsOf-001.ttl",
+        "core/targets/targetSubjectsOf-002.ttl"
+      ]
+    },
+    {
+      "clauseId": "sparql",
+      "requiredTestIds": [
+        "O08",
+        "O09"
+      ],
+      "upstreamFixtureSet": "tests/fixtures/upstream-shacl/source.json",
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs",
+        "tests/e2e/native-semantic.test.mjs",
+        "tests/e2e/native-process.test.mjs",
+        "tests/e2e/native-upstream.test.mjs"
+      ],
+      "upstreamCases": [
+        "sparql/node/prefixes-001.ttl",
+        "sparql/node/sparql-001.ttl",
+        "sparql/node/sparql-002.ttl",
+        "sparql/node/sparql-003.ttl",
+        "sparql/property/sparql-001.ttl"
+      ]
+    },
+    {
+      "clauseId": "meta",
+      "requiredTestIds": [
+        "O07"
+      ],
+      "upstreamFixtureSet": null,
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs"
+      ],
+      "upstreamCases": []
+    },
+    {
+      "clauseId": "extensions",
+      "requiredTestIds": [
+        "O07",
+        "O08"
+      ],
+      "upstreamFixtureSet": null,
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs"
+      ],
+      "upstreamCases": []
+    },
+    {
+      "clauseId": "scope-bindings",
+      "requiredTestIds": [
+        "O03",
+        "O05",
+        "O06",
+        "O12"
+      ],
+      "upstreamFixtureSet": null,
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs"
+      ],
+      "upstreamCases": []
+    },
+    {
+      "clauseId": "report",
+      "requiredTestIds": [
+        "O10",
+        "O11"
+      ],
+      "upstreamFixtureSet": "tests/fixtures/upstream-shacl/source.json",
+      "productTests": [
+        "tests/e2e/native-lifecycle.test.mjs",
+        "tests/e2e/native-package.test.mjs",
+        "tests/e2e/native-semantic.test.mjs",
+        "tests/e2e/native-process.test.mjs",
+        "tests/e2e/native-upstream.test.mjs"
+      ],
+      "upstreamCases": [
+        "core/misc/message-001.ttl",
+        "core/misc/severity-001.ttl",
+        "core/misc/severity-002.ttl",
+        "core/validation-reports/shared.ttl"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "schema": "evopilot-native-directory/v1",
+  "files": [
+    "model.ttl",
+    "shapes/*.ttl",
+    "instances/*.ttl",
+    "scope/coverage.json",
+    "sources/bindings.json",
+    "tests/cases.json",
+    "tests/*.ttl",
+    "sources/** (manifested immutable original UTF-8 source bytes)"
+  ],
+  "requiredEntrypoints": [
+    "model",
+    "shapes",
+    "instances",
+    "coverage",
+    "cases"
+  ],
+  "uniquePrimaryModel": "model.ttl",
+  "privateAndPublicUseSameStandard": true
+}

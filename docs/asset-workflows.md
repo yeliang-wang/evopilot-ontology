@@ -1,5 +1,8 @@
 # Ontology asset workflows
 
+> Historical interface reference. Corrected-v1 work uses the [native service](native-service.md) and [current specification](../specifications/v1/README.md). Retired JSON, producer, Catalog and classification mutation operations are rejected; descriptions below explain retained historical records, not current execution authority.
+
+
 Start with the meaning you need to describe and the evidence you have. Ontology 0.1.0 supports a native v1 model lifecycle and retained compatibility workflows. Both produce evidence; neither documentation nor an LLM supplies a human decision.
 
 ## Concepts and format choices
@@ -8,7 +11,7 @@ A model describes concepts, properties, relations and constraints. Source mappin
 
 | Format | Contract and purpose |
 | --- | --- |
-| Native Ontology v1 | `product: "ontology"`, `specVersion: "v1"`, strict asset version; [published package specification](../specifications/v1/README.md), [schema](../specifications/v1/asset.schema.json), [template](../specifications/v1/templates/model.json) |
+| Native Ontology v1 | `product: "ontology"`, `specVersion: "v1"`, strict asset version; [published package specification](../specifications/v1/README.md), [schema](../specifications/v1/package.schema.json), [template](../specifications/v1/examples/positive/model.ttl) |
 | Retained H 4.8.2 compatibility | Historical `OntologyPack`, `semantics.evopilot.io/v1` Packs, and `evopilot-harness-…/v1` documents; [legacy contracts](legacy-core.md) and [schema map](../schemas/legacy/v1.json) |
 
 A legacy schema ending in v1 is not native Ontology v1. Native delivery and legacy Catalog are separate wire formats with different digest and material contracts. There is no implicit conversion; [explicit derivation](legacy-migration.md) reports mapping coverage and gaps.

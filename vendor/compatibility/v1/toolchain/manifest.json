@@ -1,0 +1,111 @@
+{
+  "schema": "evopilot-generated-toolchain/v1",
+  "producer": "evopilot/scripts/sync-toolchain.mjs",
+  "sourceDigests": {
+    "cli.ts": "caa029aecbbe1d3b1a8876477eef8647bbe67f00efbb6f526cb3f7b3f312dba5",
+    "locked.ts": "ce6be4df3b119026ae2977b7462beedc5c21d2c7cacb0639a286a647795d0467",
+    "archive.ts": "6577c26b63b059fcae66757fffd67442fb06d7394d51060069168dff06aa37d2"
+  },
+  "files": [
+    {
+      "path": "archive.d.ts",
+      "sha256": "e328f5499e4c52dd5ac15b1507cdce768facdba556e8af53574429ccdbcd09f5"
+    },
+    {
+      "path": "archive.js",
+      "sha256": "51e1e4b8edd62aec93744a7b652d89e96c08afb622660b85b35469ab433dd4d1"
+    },
+    {
+      "path": "cli.d.ts",
+      "sha256": "e07d939d33254ed3b51094104edf18265e7e888499c8f080f39845e7dcb75047"
+    },
+    {
+      "path": "cli.js",
+      "sha256": "798871e8da5d0ef5a0ea80e6dd3d3aa72745ba83fd6ec996c82121584a4b4dfd"
+    },
+    {
+      "path": "conftest-dependencies.json",
+      "sha256": "0b29225e50f93d1c411e0f473e984fb39b084ca13631502f6173e7437ee1a7bd"
+    },
+    {
+      "path": "licenses/conftest-LICENSE",
+      "sha256": "a3fc6a99a82b59b761a6b1aabe8fc540b7046d5f91377fc1d8897dbbf3bd18ac"
+    },
+    {
+      "path": "licenses/html5rdf-0-LICENSE",
+      "sha256": "16a39991619e92f18680932da2a9199fdf7d95df3ecaedc52ea06218aabafd6f"
+    },
+    {
+      "path": "licenses/opa-LICENSE",
+      "sha256": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08"
+    },
+    {
+      "path": "licenses/owlrl-0-LICENSE",
+      "sha256": "4314f05aad7a217e792d310af1b4381d132e03d2f823c29bb7ab0f87c6849257"
+    },
+    {
+      "path": "licenses/packaging-0-LICENSE",
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+    },
+    {
+      "path": "licenses/packaging-1-LICENSE",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "path": "licenses/packaging-2-LICENSE",
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+    },
+    {
+      "path": "licenses/packaging-3-LICENSE",
+      "sha256": "590d12eee73ddbec53b4e9ee5bfc64d9cb3aacb4940e8ebcba260757ce56740b"
+    },
+    {
+      "path": "licenses/packaging-4-LICENSE",
+      "sha256": "596ec35e2ca0ebcba9fd8343ff0a51625af548786257815f24b41f7e08613314"
+    },
+    {
+      "path": "licenses/prettytable-0-LICENSE",
+      "sha256": "0c8adcc204c8af6cdfdf7887dfd1f99c29901f6c1d505a78bba96efa4fb2cb05"
+    },
+    {
+      "path": "licenses/pyparsing-0-LICENSE",
+      "sha256": "a5425f9dc14ac74d4c5f0b679e941f2442e32cca7452a4418d5b1a49893ebe4e"
+    },
+    {
+      "path": "licenses/pyshacl-0-LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "licenses/python-LICENSE",
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+    },
+    {
+      "path": "licenses/rdflib-0-LICENSE",
+      "sha256": "53a705e51bfd199e8c97d0442376cb4bbd4ffcf13ba4f2c4c2794211400e4012"
+    },
+    {
+      "path": "licenses/wcwidth-0-LICENSE",
+      "sha256": "70b98a95a2144eb70af8017fa8c6d95ce247e40867436e8bc649e137fe13d21a"
+    },
+    {
+      "path": "locked.d.ts",
+      "sha256": "bffcfeef4ed6976f16ed22c832df5b58d63f5ce3a451e37047b6fc0d4a4b6e48"
+    },
+    {
+      "path": "locked.js",
+      "sha256": "712f62aa37981d77cc53665a386a04da6f1acb61f2845e5804e45b8d32d0c077"
+    },
+    {
+      "path": "opa-dependencies.json",
+      "sha256": "e9830f06e88df0b6268aec45910a50774f007bce6199eed73db213bb6449830e"
+    },
+    {
+      "path": "requirements.lock",
+      "sha256": "70ebd465ae53f649be376871487271be9bedc0ff1e80321de126be2fa3d8bcb9"
+    },
+    {
+      "path": "toolchain.lock.json",
+      "sha256": "4b0f4a4d71d426a56ca791b1583e2764d49ce7bf785bdc4c8daa7f5fc61c4e33"
+    }
+  ]
+}

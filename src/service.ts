@@ -5,10 +5,12 @@ import type { Store } from './persistence-types.js';
 import { errorCode } from './state.js';
 import { exactFields, frozenClone, sha256, stableSerialize } from '../vendor/compatibility/v1/reference.mjs';
 import { openState, bounded, fail, LIMITS, validateState } from './state.js';
-import { operations, validateRequest, operate } from './native-operations.js';
+import { operations, mutations, validateRequest, operate } from './native-operations.js';
 import { catalogMutations, verifyCatalogReceipt } from './catalog-operations.js';
 import { classificationDispatch, classificationOperations, findClassification } from './classification-operations.js';
 import { classificationProviders, createClassificationRunner } from './classification-runner.js';
+import { createNativeOntologyOperations, ontologyNativeOperations } from './native/service.js';
+export type * from './native/types.js';
 
 // Construction and discovery are pure. Persistence begins only at initialize().
 export function createOntologyService(options: WorkspaceOptions, trustedProviders: TrustedProviders = {}) {
@@ -16,18 +18,20 @@ export function createOntologyService(options: WorkspaceOptions, trustedProvider
   const providers = classificationProviders(trustedProviders);
   const { workspaceRoot, workspaceId } = options;
   let store: Store | null = null, closed = false;
-  const capabilities = () => frozenClone({ product: 'ontology', version: '0.2.0', stage: 'M2_OWNED_SERVICE', operations, limits: LIMITS, authority: false, softwareRelease: false, pending: ['MCP', 'Expert integration', 'trusted Harness provider wiring'] });
+  const capabilities = () => frozenClone({ product: 'ontology', version: '0.3.0', stage: 'NATIVE_STANDARDS', operations: operations.filter(op => !mutations.includes(op)), nativeOperations: ontologyNativeOperations, historicalOperationsReadOnly: true, limits: LIMITS, authority: false, softwareRelease: false, pending: ['exact-candidate acceptance'] });
   function initialize() {
     if (closed) fail('CLOSED', 'Service is closed');
     if (!store) { store = Object.assign(openState(workspaceRoot, workspaceId), { trustedProviders: providers }); }
     return frozenClone({ workspaceId, initialized: true, authority: false });
   }
   const runClassification = createClassificationRunner(() => store);
+  const native = createNativeOntologyOperations(() => store, () => closed);
   function executeCore(request: unknown, onDispatch?: () => void): unknown {
     let transaction = false, validatedOperation = "";
     try {
       bounded(request);
       const r = frozenClone(request) as unknown as DispatchRequest, write = validateRequest(r);
+      if (write) fail('HISTORICAL_READ_ONLY', 'Retired JSON/compatibility mutations cannot create current work; use native package operations');
       validatedOperation = r.operation;
       if (classificationDispatch.includes(r.operation) && !onDispatch) fail('ASYNC_REQUIRED', 'Use service.classify for classification dispatch');
       if (closed) fail('CLOSED', 'Service is closed');
@@ -128,7 +132,7 @@ export function createOntologyService(options: WorkspaceOptions, trustedProvider
     return (created ? await runClassification(r, receipt as ClassificationReceipt) : receipt) as ClassificationReceipt;
   }
   function close() { if (store) { store.db.close(); store = null; } closed = true; }
-  return Object.freeze({ capabilities, initialize, execute, classify, close });
+  return Object.freeze({ capabilities, initialize, execute, native, classify, close });
 }
 
 export type OntologyService = ReturnType<typeof createOntologyService>;

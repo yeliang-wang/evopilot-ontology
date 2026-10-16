@@ -1,0 +1,10 @@
+@prefix ex: <https://example.invalid/r1/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+ex:Project a owl:Class; rdfs:label "Project"; rdfs:comment "Synthetic project"; rdfs:isDefinedBy ex:ontology; rdfs:seeAlso ex:source .
+ex:Capability a owl:Class; rdfs:label "Capability"; rdfs:comment "Synthetic capability"; rdfs:isDefinedBy ex:ontology; rdfs:seeAlso ex:source .
+ex:hasCapability a owl:ObjectProperty; rdfs:label "has capability"; rdfs:comment "Project capability link"; rdfs:domain ex:Project; rdfs:range ex:Capability; rdfs:isDefinedBy ex:ontology; rdfs:seeAlso ex:source .
+ex:ontology a owl:Ontology; owl:versionIRI ex:v1; owl:versionInfo "synthetic-r1" .

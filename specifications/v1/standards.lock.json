@@ -1,0 +1,34 @@
+{
+  "schema": "evopilot-standards-lock/v1",
+  "owner": "ontology",
+  "specVersion": "v1",
+  "normativeVersions": {
+    "RDF": "1.1",
+    "Turtle": "1.1",
+    "RDFS": "1.1",
+    "OWL": "2-2012-declaration-subset",
+    "SHACL": "2017-07-20"
+  },
+  "verifiedBaseline": {
+    "python": "3.12.12",
+    "pyshacl": "0.40.1",
+    "rdflib": "7.6.0",
+    "sourceCommit": "469cca7a22a078b36c167c1e8dadecf5e5ec6c75"
+  },
+  "installationLock": {
+    "schema": "evopilot-native-toolchain/v1",
+    "binding": "trusted service-construction NativeToolchain.lockDigest; distribution bytes and complete dependency tree belong to the installed toolchain lock"
+  },
+  "configuration": {
+    "inference": "none",
+    "metaShacl": true,
+    "advanced": false,
+    "js": false,
+    "owlImports": false,
+    "allowInfos": false,
+    "allowWarnings": false,
+    "timeoutMs": 60000
+  },
+  "engineSource": "https://github.com/RDFLib/pySHACL/tree/v0.40.1",
+  "engineLicense": "Apache-2.0"
+}

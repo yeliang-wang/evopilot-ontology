@@ -38,20 +38,20 @@ test('package boundary: changed bindings and unsupported input fail closed', () 
 });
 
 test('package boundary: default capabilities are truthful immutable data', () => {
-  assert.equal(api.VERSION, '0.2.0');
+  assert.equal(api.VERSION, '0.3.0');
   assert.equal(api.PRODUCT, 'ontology');
   const capabilities = api.capabilities();
   assert.equal(capabilities.businessOperationsReady, true);
-  assert.equal(capabilities.implementationStage, 'M2_OWNED_SERVICE');
+  assert.equal(capabilities.implementationStage, 'NATIVE_STANDARDS');
   assert.equal(capabilities.persistentBusinessOperationsReady, true);
   assert.equal(capabilities.hostReady, false);
   assert.equal(capabilities.productionReady, false);
-  assert.deepEqual(capabilities.serviceApi.methods, ['capabilities', 'initialize', 'execute', 'classify', 'close']);
+  assert.deepEqual(capabilities.serviceApi.methods, ['capabilities', 'initialize', 'execute', 'native', 'close']);
   assert(Object.isFrozen(capabilities.serviceApi.methods));
   assert.equal(capabilities.authority, false);
   assert(Object.isFrozen(capabilities));
   assert(Object.isFrozen(capabilities.referenceApi));
-  assert.deepEqual(Object.keys(api).sort(), ['PRODUCT', 'VERSION', 'capabilities', 'inspectArtifactReference', 'validateOntology', 'validateInstances', 'buildDelivery', 'verifyDelivery'].sort());
+  assert.deepEqual(Object.keys(api).sort(), ['PRODUCT', 'VERSION', 'capabilities', 'inspectArtifactReference', 'validateOntology', 'validateInstances', 'buildDelivery', 'verifyDelivery','inspectOntologyStandard','validateOntologyPackage','validateNativeOntology','verifyOntologyToolchain'].sort());
 });
 
 test('vendored v1 wire and public boundary are independent of implementation revision', () => {

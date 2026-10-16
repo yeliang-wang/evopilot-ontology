@@ -157,9 +157,9 @@ test("malformed JSON and non-finite JSON numbers produce typed serialization blo
 });
 
 
-test("compat namespaces remain separate from the eight native exports", () => {
+test("compat namespaces remain separate from native-standard exports", () => {
   assert.deepEqual(Object.keys(compat).sort(), ["catalogBudget","catalogContract","catalogGeneration","catalogMaterials","catalogStore","catalogSupply","classification","classificationAdvisor","classificationEvaluation","classifier","grounding","interoperability","packs","projectOntology","sourceConcept","sourceDescriptor","taxonomy","validation"]);
-  assert.equal(Object.keys(native).length, 8);
+  assert.equal(Object.keys(native).length, 12);
   assert.equal(compat.taxonomy.COMPATIBILITY_ENGINE_VERSION, "4.8.2");
   assert.throws(() => resolveTaxonomy({...declaration, spec: {...declaration.spec, engineRange: ">=5.0.0"}}), {code: "TAXONOMY_ENGINE_RANGE_UNSUPPORTED"});
 });

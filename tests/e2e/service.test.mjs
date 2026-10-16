@@ -1,3 +1,4 @@
+// Frozen v0.2.0 historical behavior; current native lifecycle is tested separately.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, realpathSync, readFileSync, existsSync, mkdirSync, writeFileSync, symlinkSync, rmSync, chmodSync, readdirSync } from 'node:fs';
@@ -6,7 +7,7 @@ import { join } from 'node:path';
 import { fork } from 'node:child_process';
 import { once } from 'node:events';
 import { DatabaseSync } from 'node:sqlite';
-import { createOntologyService } from '../../dist/service.js';
+import { createOntologyService } from '../fixtures/historical-v020/dist/service.js';
 import { sha256, stableSerialize } from '../../vendor/compatibility/v1/reference.mjs';
 
 const fixtures = JSON.parse(readFileSync(new URL('../../examples/synthetic-models.json', import.meta.url)));
