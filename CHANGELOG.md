@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 Preview
+
+- Align public package and composition release metadata with the online Harness evolution.
+- Preserve corrected-v1 ontology standard bytes, immutable deliveries and the reviewed v0.4 feedback lifecycle. Online findings do not mutate Ontology.
+- Keep acceptance and publication evidence separate from source metadata.
+
+
 ## 0.4.0 Preview
 
 - Add explicitly configured registered-Run feedback, durable delivery and retained owner receipt recovery.

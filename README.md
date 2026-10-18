@@ -1,8 +1,8 @@
-# EvoPilot Ontology · v0.4.0 Preview
+# EvoPilot Ontology · v0.5.0 Preview
 
 [Quickstart](#quickstart) · [Standards](specifications/README.md) · [Native API](docs/native-service.md) · [Documentation](docs/README.md) · [Contribute](CONTRIBUTING.md)
 
-v0.4 adds source-bound semantic-impact review and exact-version reuse or new native delivery while preserving corrected-v1 standards. Use [Releases](https://github.com/yeliang-wang/evopilot-ontology/releases) for published artifacts; source availability does not prove acceptance. Ontology owns domain definitions, relationships, constraints, source grounding and immutable semantic deliveries. It works with [EvoPilot Expert](https://github.com/yeliang-wang/evopilot), [Harness](https://github.com/yeliang-wang/evopilot-harness) for QA/evidence and [Runtime](https://github.com/yeliang-wang/evopilot-runtime) for actual execution and project completion.
+v0.5 aligns the composition release while retaining v0.4 source-bound semantic-impact review and exact-version reuse or new native delivery. Corrected-v1 ontology standards are unchanged. Online Harness observations do not mutate ontology definitions or supply domain approval. Use [Releases](https://github.com/yeliang-wang/evopilot-ontology/releases) for published artifacts; source availability does not prove acceptance. Ontology owns domain definitions, relationships, constraints, source grounding and immutable semantic deliveries. It works with [EvoPilot Expert](https://github.com/yeliang-wang/evopilot), [Harness](https://github.com/yeliang-wang/evopilot-harness) for QA/evidence and [Runtime](https://github.com/yeliang-wang/evopilot-runtime) for actual execution and project completion.
 
 ## Adopted standards and tools
 

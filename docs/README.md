@@ -21,3 +21,7 @@ EvoPilot Ontology v0.1.1 Preview separates the native v1 model and delivery cont
 Native authoring needs no external LLM. Classification and foreign Catalog materials require the explicit trusted SDK providers in the service guides. Legacy JSON/YAML import is a structured-asset bridge; the Host interprets authorized repository sources for reverse native modeling. Evidence retains uncertainty about business meaning.
 
 Historical schemas, specifications and provenance preserve their original identifiers and historical statements. Current build and installation instructions are in the [quickstart](../README.md#quickstart). Compatibility outputs do not automatically become native v1 deliveries.
+
+## v0.5 online integration
+
+The parent adds online Harness evaluation. Ontology retains its existing native standards and semantic-review lifecycle; observations never authorize automatic model changes.
