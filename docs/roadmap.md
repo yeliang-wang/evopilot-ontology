@@ -12,9 +12,9 @@ The [native specification](../specifications/v1/README.md), [service](service.md
 
 ## v0.2.0 Workspace history
 
-The current package version is 0.2.0. Its Workspace scope separates editable project files from protected owner state and provides workspace identity, explicit attachment, same-host relocation/snapshot support and recovery documentation. Historical asset records and receipts remain immutable. See the [CHANGELOG](../CHANGELOG.md) and [parent Workspace Target](https://github.com/yeliang-wang/evopilot/blob/main/governance/workspace-v02.json). This history summary does not claim new acceptance or publish a user's project status.
+v0.2.0 introduced the Workspace scope, which separates editable project files from protected owner state and provides workspace identity, explicit attachment, same-host relocation/snapshot support and recovery documentation. Historical asset records and receipts remain immutable. See the [CHANGELOG](../CHANGELOG.md) and [parent Workspace Target](https://github.com/yeliang-wang/evopilot/blob/main/governance/workspace-v02.json). This history summary does not claim new acceptance or publish a user's project status.
 
-## v0.3.0 standards correction — IMPLEMENTING
+## v0.3.0 standards correction
 
 The approved Preview correction corrects **`specifications/v1` directly**. It does not create a `specifications/v2` migration route. The correction adopts RDF 1.1/Turtle 1.1, an explicit RDFS/OWL declaration subset, SHACL 2017 Core and restricted local SHACL-SPARQL, with pySHACL as the native validator. EvoPilot retains project/package identity, source bindings, lifecycle decisions and immutable delivery; its directory and packaging conventions are not W3C standards.
 
@@ -22,7 +22,7 @@ The approved scope includes declarations, configuration, relations, constraints,
 
 Readme and reference documentation must identify each adopted standard, its supported subset, limitations, upstream executor and executable conformance tests. Acceptance must include missing entities/relations, empty validation targets, disabled required shapes, unsupported constructs, old-report reuse and independent upstream replay. Validation does not establish complete business meaning or grant delivery/release authority. Source interpretation and unresolved modeling questions remain explicit review work.
 
-Standards and implementation references: [RDF 1.1](https://www.w3.org/TR/2014/REC-rdf11-concepts-20140225/), [Turtle 1.1](https://www.w3.org/TR/2014/REC-turtle-20140225/), [RDFS 1.1](https://www.w3.org/TR/2014/REC-rdf-schema-20140225/), [OWL 2](https://www.w3.org/TR/2012/REC-owl2-overview-20121211/), [SHACL 2017](https://www.w3.org/TR/2017/REC-shacl-20170720/) and [pySHACL](https://github.com/RDFLib/pySHACL). Implementation follows the approved parent `governance/standards-v03.json` Target. Current source is the 0.3.0 candidate; acceptance, installed cutover and conditional publication remain pending. Historical releases remain unchanged.
+Standards and implementation references: [RDF 1.1](https://www.w3.org/TR/2014/REC-rdf11-concepts-20140225/), [Turtle 1.1](https://www.w3.org/TR/2014/REC-turtle-20140225/), [RDFS 1.1](https://www.w3.org/TR/2014/REC-rdf-schema-20140225/), [OWL 2](https://www.w3.org/TR/2012/REC-owl2-overview-20121211/), [SHACL 2017](https://www.w3.org/TR/2017/REC-shacl-20170720/) and [pySHACL](https://github.com/RDFLib/pySHACL). The correction was published in the v0.3.0 Preview under the approved parent `governance/standards-v03.json` Target. Current v0.5 source preserves those native standards. Publication does not imply daily cutover or business approval; historical releases remain unchanged.
 
 ## Future candidates outside v0.3.0
 
@@ -72,4 +72,23 @@ Technical validation, actual workflow acceptance and software release authorizat
 
 ## Approved v0.4 execution feedback
 
-Status: implementing the parent [36-variant Target](https://github.com/yeliang-wang/evopilot/blob/main/governance/feedback-v04.json). Add this owner's capture/delivery or impact-review responsibilities through public APIs, preserve native v0.3 standards and historical records, and verify real Host, restart, upgrade, source CI and release readback. v0.5 online Harness work remains a separate target; neither authorizes v1.0.
+Published in the v0.4 Preview under the parent [36-variant Target](https://github.com/yeliang-wang/evopilot/blob/main/governance/feedback-v04.json). This owner participates in registered execution feedback through its public APIs while preserving native v0.3 standards and historical records. Candidate-specific Host, recovery and release evidence remain private. v0.5 online Harness has the separate scope below; neither version authorizes v1.0.
+
+## Approved v0.5: online Harness
+
+The fixed [36-variant parent Target](https://github.com/yeliang-wang/evopilot/blob/main/governance/online-harness-v05.json) follows the published v0.4 Preview. This checkout implements that scope; exact candidate acceptance and release receipts remain external.
+
+Harness owns immutable service/environment/deployment/SLO/policy bindings, actual Prometheus measurements, authenticated Alertmanager findings, native Rego evaluation, retained incidents and reviewable regression comparisons. Runtime receives trusted repair candidates; it does not infer a software version or dispatch an autonomous repair. Ontology standards and reviewed semantic evolution remain unchanged. The parent provides the explicitly enabled independent local worker and Expert journeys, with actual installed Codex acceptance.
+
+The delivered scope is a bounded OpenSLO v1 RatioTimeslices profile and macOS arm64/launchd supervision. It does not establish full OpenSLO/Sloth compatibility, production business-SLO acceptance or v1.0 readiness. No second real project, WorkBuddy or original project mutation is included.
+
+### Deferred online follow-ups
+
+| Target candidate | Trigger | Required future evidence / boundary |
+|---|---|---|
+| Online retention and scale | Real projects reach bounded history/backlog limits | Reviewed retention/export semantics, immutable historical evidence, restart/load tests and explicit no-loss acceptance; no silent pruning |
+| Additional supervisors/providers | A concrete project requires another platform or telemetry source | Pinned supported subset, real provider/Host E2E, credentials/network isolation and owned stop/recovery; no blanket compatibility claim |
+| Reviewed repair execution linkage | Real users need repair candidates connected to a concrete approved Target | Explicit candidate/Target/source/version mapping, reviewed authority, real executor receipts, failure/recovery tests; never automatic patch release from Warning |
+| Additional SLO semantics | Several projects need calendar/composite/other budgeting methods | Versioned profile compatibility, upstream field/calculation comparisons, negative cases and preserved earlier approvals |
+
+These candidates are not uncompleted v0.5 criteria and have no assigned release date. They require their own reviewed Target. Existing v1.0 readiness conditions remain unchanged.

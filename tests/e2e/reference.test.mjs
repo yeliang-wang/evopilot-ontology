@@ -38,7 +38,7 @@ test('package boundary: changed bindings and unsupported input fail closed', () 
 });
 
 test('package boundary: default capabilities are truthful immutable data', () => {
-  assert.equal(api.VERSION, '0.4.0');
+  assert.equal(api.VERSION, '0.5.0');
   assert.equal(api.PRODUCT, 'ontology');
   const capabilities = api.capabilities();
   assert.equal(capabilities.businessOperationsReady, true);

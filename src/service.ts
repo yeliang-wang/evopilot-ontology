@@ -21,7 +21,7 @@ export function createOntologyService(options: WorkspaceOptions, trustedProvider
   const providers = classificationProviders(trustedProviders);
   const { workspaceRoot, workspaceId } = options;
   let store: Store | null = null, closed = false;
-  const capabilities = () => frozenClone({ product: 'ontology', version: '0.4.0', stage: 'NATIVE_STANDARDS', operations: operations.filter(op => !mutations.includes(op)), nativeOperations: ontologyNativeOperations, feedbackOperations: OWNER_FEEDBACK_OPERATIONS, historicalOperationsReadOnly: true, limits: LIMITS, authority: false, softwareRelease: false, pending: ['exact-candidate acceptance'] });
+  const capabilities = () => frozenClone({ product: 'ontology', version: '0.5.0', stage: 'NATIVE_STANDARDS', operations: operations.filter(op => !mutations.includes(op)), nativeOperations: ontologyNativeOperations, feedbackOperations: OWNER_FEEDBACK_OPERATIONS, historicalOperationsReadOnly: true, limits: LIMITS, authority: false, softwareRelease: false, pending: ['exact-candidate acceptance'] });
   function initialize() {
     if (closed) fail('CLOSED', 'Service is closed');
     if (!store) { store = Object.assign(openState(workspaceRoot, workspaceId), { trustedProviders: providers }); }
