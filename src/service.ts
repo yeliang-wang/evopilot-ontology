@@ -1,3 +1,6 @@
+import {createOwnerFeedback,OWNER_FEEDBACK_OPERATIONS} from '../vendor/compatibility/feedback/v1/owner.mjs';
+import type {FeedbackEnvelope} from '../vendor/compatibility/feedback/v1/feedback.mjs';
+export type * from '../vendor/compatibility/feedback/v1/feedback.mjs';
 import type { NativeRequest, NativeOutputs, LegacyQueryRequest, LegacyQueryOutput, HistoricalRequest, HistoricalMutation, ClassificationControlRequest, ClassificationOutputs, ClassificationReceipt, ExecuteRequest } from './types.js';
 export type * from './types.js';
 import type { WorkspaceOptions, TrustedProviders, DispatchRequest, ClassificationRequest, Receipt } from './types.js';
@@ -18,7 +21,7 @@ export function createOntologyService(options: WorkspaceOptions, trustedProvider
   const providers = classificationProviders(trustedProviders);
   const { workspaceRoot, workspaceId } = options;
   let store: Store | null = null, closed = false;
-  const capabilities = () => frozenClone({ product: 'ontology', version: '0.3.0', stage: 'NATIVE_STANDARDS', operations: operations.filter(op => !mutations.includes(op)), nativeOperations: ontologyNativeOperations, historicalOperationsReadOnly: true, limits: LIMITS, authority: false, softwareRelease: false, pending: ['exact-candidate acceptance'] });
+  const capabilities = () => frozenClone({ product: 'ontology', version: '0.4.0', stage: 'NATIVE_STANDARDS', operations: operations.filter(op => !mutations.includes(op)), nativeOperations: ontologyNativeOperations, feedbackOperations: OWNER_FEEDBACK_OPERATIONS, historicalOperationsReadOnly: true, limits: LIMITS, authority: false, softwareRelease: false, pending: ['exact-candidate acceptance'] });
   function initialize() {
     if (closed) fail('CLOSED', 'Service is closed');
     if (!store) { store = Object.assign(openState(workspaceRoot, workspaceId), { trustedProviders: providers }); }
@@ -131,8 +134,10 @@ export function createOntologyService(options: WorkspaceOptions, trustedProvider
     // The runner returns that same receipt after asynchronously recording completion.
     return (created ? await runClassification(r, receipt as ClassificationReceipt) : receipt) as ClassificationReceipt;
   }
-  function close() { if (store) { store.db.close(); store = null; } closed = true; }
-  return Object.freeze({ capabilities, initialize, execute, native, classify, close });
+  let activeFeedback=0;
+  async function feedback(request:FeedbackEnvelope):Promise<unknown>{if(closed)fail('CLOSED','Service closed');if(!store)fail('NOT_INITIALIZED','Explicit initialize required');activeFeedback++;try{return await createOwnerFeedback(store,'ontology',providers).feedback(request);}finally{activeFeedback--;}}
+  function close() { if(activeFeedback)fail('BUSY','Feedback operation is still in progress'); if (store) { store.db.close(); store = null; } closed = true; }
+  return Object.freeze({ capabilities, initialize, execute, native, feedback, classify, close });
 }
 
 export type OntologyService = ReturnType<typeof createOntologyService>;

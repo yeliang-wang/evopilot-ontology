@@ -69,3 +69,7 @@ Ontology's role is to maintain project domain assets and their traceable evoluti
 Each candidate requires a reviewed trigger, explicit scope and exclusions, exact repository/file bindings, compatibility impacts and executable acceptance before implementation. Broader modeling languages, provider integrations and additional real-project workflows remain subject to that review. Candidate registration does not authorize a future standards-version change, implementation or release. User-specific choices, progress, approvals and evidence stay in private workspace/audit records; public Roadmaps contain generic product criteria only.
 
 Technical validation, actual workflow acceptance and software release authorization remain distinct. Release requires applicable acceptance and explicit recorded authorization for the exact candidate, following the [parent release workflow](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
+
+## Approved v0.4 execution feedback
+
+Status: implementing the parent [36-variant Target](https://github.com/yeliang-wang/evopilot/blob/main/governance/feedback-v04.json). Add this owner's capture/delivery or impact-review responsibilities through public APIs, preserve native v0.3 standards and historical records, and verify real Host, restart, upgrade, source CI and release readback. v0.5 online Harness work remains a separate target; neither authorizes v1.0.

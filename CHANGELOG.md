@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 Preview
+
+- Add explicitly configured registered-Run feedback, durable delivery and retained owner receipt recovery.
+- Add source-bound regression/semantic-impact proposals and exact reviewed reuse or new native asset delivery.
+- Require current owner dispositions and matching evaluated asset pins for dependent completion.
+- Preserve native v0.3 contracts and historical records; add feedback-state backup/restore and old-reader rejection.
+- Preview publication remains conditional on the fixed v0.4 acceptance, actual Codex journeys and exact source CI.
+
 ## 0.3.0 Preview — unreleased candidate
 
 Correct current v1 native contracts and bind standard content digests. New work uses native RDF/Turtle and SHACL or Rego/OPA/Conftest, protected collection/run receipts, and fixed project completion requirements. Historical JSON records retain their original identity; retired mutation paths cannot create new work. This v0.x correction is incompatible with historical writers. Keep a consistent pre-upgrade snapshot; do not point v0.2 at state written by this candidate. Implementation and tests do not establish acceptance or release.

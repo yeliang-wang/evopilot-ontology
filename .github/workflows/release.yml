@@ -15,7 +15,7 @@ on:
         required: true
         type: string
       publish:
-        description: Publish only after exact-candidate v0.3 acceptance and explicit human decision
+        description: Publish only after exact-candidate v0.4 acceptance and explicit human decision
         type: boolean
         default: false
       decision_ref:
@@ -26,7 +26,7 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: ${{ github.repository }}-v0.3.0
+  group: ${{ github.repository }}-v0.4.0
   cancel-in-progress: false
 env:
   GH_TOKEN: ${{ github.token }}

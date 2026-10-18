@@ -103,3 +103,7 @@ and historical receipt digests must still verify. A foreign configured/current
 name or missing key is rejected; caller-provided host overrides are unsupported.
 Existing signed records and business data are never rewritten. This does not
 provide cross-machine restore.
+
+## Registered execution feedback
+
+The public `feedback(envelope)` API has its own revision from `feedback.inspect`; do not use the native workspace revision for feedback mutations. See [feedback contract and workflow](feedback.md). Trusted providers are configured by the parent composition, never through caller payloads.
