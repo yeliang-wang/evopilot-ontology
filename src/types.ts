@@ -1,3 +1,4 @@
+import type {FeedbackOwnerProviders} from '../vendor/compatibility/feedback/v1/feedback.mjs';
 import type { NativeToolchain } from '../vendor/compatibility/v1/native.mjs';
 import type { AssetRecord, SourceRecord, ClassificationSession, ClassificationHandoff } from './persistence-types.js';
 import type { buildDelivery } from './delivery.js';
@@ -86,7 +87,7 @@ export interface DispatchRequest {
   operation: string; scope: Scope; input: Record<string, unknown>;
   requestId: string; expectedRevision: number;
 }
-export interface TrustedProviders {
+export interface TrustedProviders extends FeedbackOwnerProviders {
   nativeToolchain?: NativeToolchain;
   resolveLegacyHarness?: (input: unknown) => unknown;
   resolveClassificationSource?: (input: { sourceId: string; scope: Scope; workspace: WorkspaceIdentity }) => unknown;

@@ -1,3 +1,5 @@
+import {inspectFeedbackSnapshot} from '../vendor/compatibility/feedback/v1/feedback.mjs';
+import type {FeedbackSnapshot} from '../vendor/compatibility/feedback/v1/feedback.mjs';
 /** Owner-controlled, same-host location lineage. Business records are never rewritten. */
 import { DatabaseSync } from 'node:sqlite';
 import { execFileSync } from 'node:child_process';
@@ -16,7 +18,7 @@ export interface RelocationRecord {
   recordDigest: string; signature: string;
 }
 export interface NativeSnapshotRecords { packages: Record<string,unknown>[]; receipts: Record<string,unknown>[]; audit: Record<string,unknown>[]; digest:string; auditDigest:string }
-export interface SnapshotRecords { nativeRecords?: NativeSnapshotRecords; revision: number; state: unknown; stateDigest: string; receiptsDigest: string; auditDigest: string; recordsDigest: string; receiptCount: number }
+export interface SnapshotRecords { feedback?:FeedbackSnapshot; nativeRecords?: NativeSnapshotRecords; revision: number; state: unknown; stateDigest: string; receiptsDigest: string; auditDigest: string; recordsDigest: string; receiptCount: number }
 export const hash = (value: unknown): string => 'sha256:' + createHash('sha256').update(stableSerialize(value)).digest('hex');
 export function migrationFail(code: string, message: string): never { throw Object.assign(new Error(message), { code }); }
 export function pathStat(path: string) { try { return lstatSync(path); } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; } }
@@ -135,7 +137,7 @@ export function acceptsWorkspace(db: DatabaseSync, identity: WorkspaceIdentity, 
   return readRelocations(db, identity, product).some(record => record.bindings.some(binding => stableSerialize(binding.workspace) === stableSerialize(historical) && binding.digest === digest));
 }
 export function inspectRecords(db: DatabaseSync, validateState: (value: unknown) => unknown): SnapshotRecords {
-  if (db.prepare('PRAGMA quick_check').get()?.quick_check !== 'ok' || ![1,2].includes(db.prepare('PRAGMA user_version').get()?.user_version as number)) migrationFail('CORRUPT_STATE', 'Invalid owner database');
+  if (db.prepare('PRAGMA quick_check').get()?.quick_check !== 'ok' || ![1,2,3].includes(db.prepare('PRAGMA user_version').get()?.user_version as number)) migrationFail('CORRUPT_STATE', 'Invalid owner database');
   const row = db.prepare('SELECT revision,data FROM state WHERE singleton=1').get();
   if (!row || typeof row.revision !== 'number' || !Number.isSafeInteger(row.revision) || row.revision < 0 || typeof row.data !== 'string' || Buffer.byteLength(row.data) > 8388608) migrationFail('CORRUPT_STATE', 'Invalid owner state');
   const state = validateState(JSON.parse(row.data));
@@ -153,7 +155,7 @@ export function inspectRecords(db: DatabaseSync, validateState: (value: unknown)
     if (!entry || entry.revision !== receipt.revision || saved.scope !== stableSerialize(receipt.scope) || saved.request_id !== receipt.requestId || saved.digest !== receipt.requestDigest || entry.uid !== receipt.uid || entry.operation !== receipt.operation || entry.request_digest !== receipt.requestDigest || entry.result_digest !== hash(receipt.result)) migrationFail('CORRUPT_STATE', 'Receipt audit binding differs');
   }
   let nativeRecords:NativeSnapshotRecords|undefined;
-  if(db.prepare('PRAGMA user_version').get()?.user_version===2){
+  if(db.prepare("SELECT name FROM sqlite_master WHERE name='native_packages'").get()){
     const packages=db.prepare('SELECT scope,id,version,data,digest FROM native_packages ORDER BY scope,id,version').all();
     const nativeReceipts=allReceipts.filter(r=>String(JSON.parse(r.receipt as string).operation).startsWith('native.'));
     const nativeAudit=db.prepare('SELECT revision,scope,request_id,receipt FROM native_audit ORDER BY revision').all();
@@ -171,8 +173,9 @@ export function inspectRecords(db: DatabaseSync, validateState: (value: unknown)
     nativeRecords={packages,receipts:nativeReceipts,audit:nativeAudit,digest:hash({packages,receipts:nativeReceipts,audit:nativeAudit}),auditDigest:hash(nativeAudit)};
   }
   if(revisions.size!==row.revision||audit.some((entry,index)=>entry.revision!==index+1||!revisions.has(index+1)))migrationFail('CORRUPT_STATE','Incomplete global revision history');
+  const feedback=inspectFeedbackSnapshot(db);
   const stateDigest = hash({ revision: row.revision, data: row.data }), receiptsDigest = hash(receipts), auditDigest = hash(audit);
-  return { revision: row.revision, state, stateDigest, receiptsDigest, auditDigest, recordsDigest: hash({ stateDigest, receiptsDigest, auditDigest,...(nativeRecords?{nativeRecordsDigest:nativeRecords.digest}:{}) }), receiptCount: allReceipts.length,...(nativeRecords?{nativeRecords}:{}) };
+  return { ...(feedback?{feedback}:{}),revision: row.revision, state, stateDigest, receiptsDigest, auditDigest, recordsDigest: hash({...(feedback?{feedback}:{}), stateDigest, receiptsDigest, auditDigest,...(nativeRecords?{nativeRecordsDigest:nativeRecords.digest}:{}) }), receiptCount: allReceipts.length,...(nativeRecords?{nativeRecords}:{}) };
 }
 export function collectBindings(state: unknown): HistoricalBinding[] {
   const value = state as Record<string, unknown>, bindings = new Map<string, HistoricalBinding>();

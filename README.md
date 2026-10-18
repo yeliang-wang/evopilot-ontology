@@ -1,8 +1,8 @@
-# EvoPilot Ontology · v0.2.0 Preview
+# EvoPilot Ontology · v0.4.0 Preview
 
 [Quickstart](#quickstart) · [Standards](specifications/README.md) · [Native API](docs/native-service.md) · [Documentation](docs/README.md) · [Contribute](CONTRIBUTING.md)
 
-Current source implements the approved corrected-v1 candidate; its exact next Preview acceptance and release remain separate. Ontology owns domain definitions, relationships, constraints, source grounding and immutable semantic deliveries. It works with [EvoPilot Expert](https://github.com/yeliang-wang/evopilot), [Harness](https://github.com/yeliang-wang/evopilot-harness) for QA/evidence and [Runtime](https://github.com/yeliang-wang/evopilot-runtime) for actual execution and project completion.
+v0.4 adds source-bound semantic-impact review and exact-version reuse or new native delivery while preserving corrected-v1 standards. Use [Releases](https://github.com/yeliang-wang/evopilot-ontology/releases) for published artifacts; source availability does not prove acceptance. Ontology owns domain definitions, relationships, constraints, source grounding and immutable semantic deliveries. It works with [EvoPilot Expert](https://github.com/yeliang-wang/evopilot), [Harness](https://github.com/yeliang-wang/evopilot-harness) for QA/evidence and [Runtime](https://github.com/yeliang-wang/evopilot-runtime) for actual execution and project completion.
 
 ## Adopted standards and tools
 
@@ -64,3 +64,7 @@ Stop if checksum verification fails; compare `source-revision.txt` with the rele
 [Documentation index](docs/README.md), [contribution guide](CONTRIBUTING.md), [security](SECURITY.md), and [Roadmap](docs/roadmap.md). Historical release downloads do not imply they include the current source candidate. Technical validation grants neither domain approval nor release authority.
 
 Native approvals bind readable, digest-pinned evidence to the exact review, Workspace and operation. See [decision evidence](docs/native-decisions.md) for the format, historical readback and trusted-operator boundary.
+
+## Execution feedback (v0.4)
+
+v0.4 adds private, source-bound feedback through the public service API. This owner receives protected Runtime evidence and records reviewed impact, exact-version reuse or a new native delivery. Receiving evidence does not approve or publish assets. See [feedback](docs/feedback.md). Native v0.3 standard and contract bytes remain unchanged. Publication and exact installed acceptance are recorded separately.

@@ -7,7 +7,7 @@ export { validateOntologyPackage } from './native/package.js';
 export { validateNativeOntology, verifyOntologyToolchain } from './native/validator.js';
 export type * from './native/types.js';
 
-export const VERSION = '0.3.0';
+export const VERSION = '0.4.0';
 export const PRODUCT = 'ontology';
 
 export function capabilities() {

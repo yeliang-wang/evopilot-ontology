@@ -12,7 +12,7 @@ export function classificationProviders(input: TrustedProviders): Readonly<Trust
   const ds = Object.getOwnPropertyDescriptors(input), out: TrustedProviders = {};
   for (const key of Reflect.ownKeys(ds)) {
     const d = (ds as Record<PropertyKey, PropertyDescriptor>)[key];
-    if (typeof key !== 'string' || !['nativeToolchain', 'resolveLegacyHarness', 'resolveClassificationSource', 'classificationAdvisor', 'classificationModel'].includes(key) || !Object.hasOwn(d, 'value')) fail('INVALID_REQUEST', 'Invalid trusted provider descriptors');
+    if (typeof key !== 'string' || !['readFeedback','resolveFeedbackMaterial','nativeToolchain', 'resolveLegacyHarness', 'resolveClassificationSource', 'classificationAdvisor', 'classificationModel'].includes(key) || !Object.hasOwn(d, 'value')) fail('INVALID_REQUEST', 'Invalid trusted provider descriptors');
     if (key === 'nativeToolchain') {
       out.nativeToolchain = nativeFrozenClone(d.value) as TrustedProviders['nativeToolchain'];
     } else if (key === 'classificationModel') {
@@ -23,7 +23,7 @@ export function classificationProviders(input: TrustedProviders): Readonly<Trust
     } else {
       if (typeof d.value !== 'function') fail('INVALID_REQUEST', 'Trusted callback required');
       // Never read properties (including modelBinding) from supplied callbacks.
-      out[key as "resolveLegacyHarness" | "resolveClassificationSource" | "classificationAdvisor"] = d.value;
+      out[key as "resolveLegacyHarness" | "resolveClassificationSource" | "classificationAdvisor" | "readFeedback" | "resolveFeedbackMaterial"] = d.value;
     }
   }
   return Object.freeze(out);

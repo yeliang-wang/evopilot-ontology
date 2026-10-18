@@ -1,0 +1,14 @@
+{
+  "schema": "evopilot-feedback-distribution/v1",
+  "nativeContractUnchanged": true,
+  "files": {
+    "feedback.mjs": "3f120c62c501cd4482b3104176e96290d757099a38c815174f9dd58195d566ce",
+    "feedback.d.mts": "379824ce669dac3451d9c20cb91e8884151f76714e4938ebb5c1dcda49a00d78",
+    "owner.mjs": "782b53f7715f66055382c5493f4e2b3e27bd08c5c4d644f46ecffa85c435bf19",
+    "owner.d.mts": "8bd9723c119f6a64ebeabf0800a0dc993f7f6453511ca20f9357dfc6f221cc3c"
+  },
+  "sources": {
+    "feedback.mts": "54ec0723b38680a1fae0a030b64e733dccdeaaea088f125d3f27945d2f40ddd1",
+    "owner.mts": "1abb90febcd07d211d9e04ef6f813e7cd7f3ed23ccdde2b7e7f08e31cddb4627"
+  }
+}
