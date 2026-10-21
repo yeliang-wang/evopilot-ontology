@@ -1,0 +1,34 @@
+{
+  "id": "checkout",
+  "namespace": "https://example.invalid/checkout/",
+  "direction": "forward",
+  "description": "Synthetic order checkout design: failed payment authorization impacts order submission; a suspected gateway dependency remains unconfirmed.",
+  "capability": "Order submission",
+  "service": "Checkout API",
+  "environment": "isolated-rehearsal",
+  "revision": "checkout-design-1",
+  "classification": "SUSPECTED",
+  "rationale": "Design hypothesis to be verified; no production incident is asserted.",
+  "domain": {
+    "classes": [
+      "Order",
+      "PaymentAuthorization"
+    ],
+    "entities": [
+      [
+        "order",
+        "Order"
+      ],
+      [
+        "authorization",
+        "PaymentAuthorization"
+      ]
+    ],
+    "relation": "authorizesOrder",
+    "expectedProperty": "orderAmount",
+    "actualProperty": "authorizedAmount",
+    "expectedValue": 12500,
+    "shape": "PaymentAmountShape",
+    "rule": "PaymentAuthorization must reference exactly one Order; authorizedAmount must equal its nonnegative orderAmount."
+  }
+}

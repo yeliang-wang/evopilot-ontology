@@ -1,8 +1,10 @@
-# EvoPilot Ontology · v0.5.0 Preview
+# EvoPilot Ontology · v0.6.0 Preview — candidate source
 
 [Quickstart](#quickstart) · [Standards](specifications/README.md) · [Native API](docs/native-service.md) · [Documentation](docs/README.md) · [Contribute](CONTRIBUTING.md)
 
 v0.5 aligns the composition release while retaining v0.4 source-bound semantic-impact review and exact-version reuse or new native delivery. Corrected-v1 ontology standards are unchanged. Online Harness observations do not mutate ontology definitions or supply domain approval. Use [Releases](https://github.com/yeliang-wang/evopilot-ontology/releases) for published artifacts; source availability does not prove acceptance. Ontology owns domain definitions, relationships, constraints, source grounding and immutable semantic deliveries. It works with [EvoPilot Expert](https://github.com/yeliang-wang/evopilot), [Harness](https://github.com/yeliang-wang/evopilot-harness) for QA/evidence and [Runtime](https://github.com/yeliang-wang/evopilot-runtime) for actual execution and project completion.
+
+This **v0.6.0 candidate** adds an optional pinned operations profile with project-local declarations, provenance and SHACL constraints. Read [the implementation guide](docs/operations-profile.md). Acceptance and installation require exact-candidate evidence; the v0.5 downloads below remain the previously published release. Core implementation uses strict TypeScript; generated JavaScript is the installed runtime format.
 
 ## Adopted standards and tools
 

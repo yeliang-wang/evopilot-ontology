@@ -1,0 +1,233 @@
+{
+  "schema": "evopilot-operations-profile-description/v1",
+  "id": "operations-v1",
+  "version": "1.0.0",
+  "canonical": "https://evopilot.dev/profiles/operations/v1/",
+  "terms": [
+    {
+      "name": "Project",
+      "kind": "rdfs:Class",
+      "description": "A project using the optional operations profile."
+    },
+    {
+      "name": "BusinessCapability",
+      "kind": "rdfs:Class",
+      "description": "A business capability affected by service behavior."
+    },
+    {
+      "name": "Service",
+      "kind": "rdfs:Class",
+      "description": "A service implementing one or more capabilities."
+    },
+    {
+      "name": "Deployment",
+      "kind": "rdfs:Class",
+      "description": "A specific source-bound service deployment."
+    },
+    {
+      "name": "ProblemAssessment",
+      "kind": "rdfs:Class",
+      "description": "A reviewed interpretation of an operational problem, not a mutable incident record."
+    },
+    {
+      "name": "CauseAssertion",
+      "kind": "rdfs:Class",
+      "description": "A separately classified observed fact, hypothesis or confirmed cause."
+    },
+    {
+      "name": "RunbookReference",
+      "kind": "rdfs:Class",
+      "description": "An immutable reference to Harness guidance; it grants no execution permission."
+    },
+    {
+      "name": "OwnerEvidenceReference",
+      "kind": "rdfs:Class",
+      "description": "A reference to an authoritative owner record, never a replacement for that record."
+    },
+    {
+      "name": "ActorReference",
+      "kind": "rdfs:Class",
+      "description": "An operator-declared actor reference; not an authenticated identity."
+    },
+    {
+      "name": "hasCapability",
+      "kind": "owl:ObjectProperty",
+      "description": "Project capability membership."
+    },
+    {
+      "name": "implementsCapability",
+      "kind": "owl:ObjectProperty",
+      "description": "Service to business capability."
+    },
+    {
+      "name": "deployedService",
+      "kind": "owl:ObjectProperty",
+      "description": "Deployment to exactly one service."
+    },
+    {
+      "name": "assessesDeployment",
+      "kind": "owl:ObjectProperty",
+      "description": "Problem assessment to deployment."
+    },
+    {
+      "name": "affectsCapability",
+      "kind": "owl:ObjectProperty",
+      "description": "Problem assessment to impacted capability."
+    },
+    {
+      "name": "hasCause",
+      "kind": "owl:ObjectProperty",
+      "description": "Problem assessment to one or more cause assertions."
+    },
+    {
+      "name": "hasEvidence",
+      "kind": "owl:ObjectProperty",
+      "description": "Cause to source-linked owner evidence."
+    },
+    {
+      "name": "decisionEvidence",
+      "kind": "owl:ObjectProperty",
+      "description": "A confirmed cause to separately retained decision evidence."
+    },
+    {
+      "name": "runbook",
+      "kind": "owl:ObjectProperty",
+      "description": "Problem assessment to pinned guidance."
+    },
+    {
+      "name": "assessedBy",
+      "kind": "owl:ObjectProperty",
+      "description": "Problem assessment to operator-declared actor."
+    },
+    {
+      "name": "derivedFrom",
+      "kind": "owl:ObjectProperty",
+      "description": "Provenance relationship to owner evidence."
+    },
+    {
+      "name": "label",
+      "kind": "owl:DatatypeProperty",
+      "description": "Human-facing project label."
+    },
+    {
+      "name": "workspaceId",
+      "kind": "owl:DatatypeProperty",
+      "description": "Exact workspace identifier."
+    },
+    {
+      "name": "projectId",
+      "kind": "owl:DatatypeProperty",
+      "description": "Exact project identifier."
+    },
+    {
+      "name": "environment",
+      "kind": "owl:DatatypeProperty",
+      "description": "Deployment environment."
+    },
+    {
+      "name": "sourceRevision",
+      "kind": "owl:DatatypeProperty",
+      "description": "Fixed deployment source revision."
+    },
+    {
+      "name": "classification",
+      "kind": "owl:DatatypeProperty",
+      "description": "OBSERVED, SUSPECTED or CONFIRMED; these are distinct assertions."
+    },
+    {
+      "name": "owner",
+      "kind": "owl:DatatypeProperty",
+      "description": "Owner of the referenced record."
+    },
+    {
+      "name": "recordKind",
+      "kind": "owl:DatatypeProperty",
+      "description": "Supported authoritative owner record kind."
+    },
+    {
+      "name": "recordId",
+      "kind": "owl:DatatypeProperty",
+      "description": "Stable owner record identity."
+    },
+    {
+      "name": "revision",
+      "kind": "owl:DatatypeProperty",
+      "description": "Immutable owner record revision."
+    },
+    {
+      "name": "digest",
+      "kind": "owl:DatatypeProperty",
+      "description": "Exact sha256 digest of the referenced record."
+    },
+    {
+      "name": "at",
+      "kind": "owl:DatatypeProperty",
+      "description": "Reference observation or execution time in Unix seconds."
+    },
+    {
+      "name": "runbookId",
+      "kind": "owl:DatatypeProperty",
+      "description": "Guidance identity."
+    },
+    {
+      "name": "runbookVersion",
+      "kind": "owl:DatatypeProperty",
+      "description": "Immutable guidance version."
+    },
+    {
+      "name": "actorId",
+      "kind": "owl:DatatypeProperty",
+      "description": "Operator-declared actor identifier."
+    },
+    {
+      "name": "rationale",
+      "kind": "owl:DatatypeProperty",
+      "description": "Explanation of the cause interpretation."
+    }
+  ],
+  "shapeNames": [
+    "ProjectShape",
+    "ServiceDeploymentShape",
+    "ImpactShape",
+    "CauseShape",
+    "OwnerReferenceShape",
+    "RunbookShape",
+    "ActorShape",
+    "ScopeShape"
+  ],
+  "rootLocalName": "project",
+  "limits": {
+    "inference": "none",
+    "externalImports": false,
+    "maxTemplateFileBytes": 262144
+  },
+  "provenanceMappings": [
+    {
+      "local": "OwnerEvidenceReference",
+      "upstream": "http://www.w3.org/ns/prov#Entity",
+      "relationship": "rdfs:subClassOf"
+    },
+    {
+      "local": "ProblemAssessment",
+      "upstream": "http://www.w3.org/ns/prov#Entity",
+      "relationship": "rdfs:subClassOf"
+    },
+    {
+      "local": "ActorReference",
+      "upstream": "http://www.w3.org/ns/prov#Agent",
+      "relationship": "rdfs:subClassOf"
+    },
+    {
+      "local": "derivedFrom",
+      "upstream": "http://www.w3.org/ns/prov#wasDerivedFrom",
+      "relationship": "rdfs:subPropertyOf"
+    }
+  ],
+  "unsupported": [
+    "PROV-O inference or qualified relations",
+    "OWL imports/reasoning",
+    "Automatic cause confirmation",
+    "Owner-record authenticity from RDF alone",
+    "Mutable operational state in Ontology"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "evopilot-response-distribution/v1",
+  "nativeContractUnchanged": true,
+  "files": {
+    "response.mjs": "09b67b236bb7ddf7808b56938f7a2eff1cf0c28e4941d6acce937b9907973a31",
+    "response.d.mts": "2b382f8f39306bbbcd29f09d0a1f12eaec90f50d02802aaa03079545ef5ebfeb"
+  },
+  "sources": {
+    "response.mts": "c6e21662d10bdb4ef5abcc10148d390854a27ef5b408277a60346423a91f0a2d"
+  }
+}

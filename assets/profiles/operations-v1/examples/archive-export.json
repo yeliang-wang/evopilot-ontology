@@ -1,0 +1,34 @@
+{
+  "id": "archive-export",
+  "namespace": "https://example.invalid/archive-export/",
+  "direction": "reverse",
+  "description": "Synthetic archival export source: export accounting mismatch affects archive completeness; an observed count difference is not a confirmed cause.",
+  "capability": "Archive completeness",
+  "service": "Scheduled export worker",
+  "environment": "isolated-replay",
+  "revision": "export-source-7",
+  "classification": "OBSERVED",
+  "rationale": "The fixed synthetic source shows mismatched counts; cause remains unconfirmed.",
+  "domain": {
+    "classes": [
+      "ExportJob",
+      "ExportManifest"
+    ],
+    "entities": [
+      [
+        "exportJob",
+        "ExportJob"
+      ],
+      [
+        "manifest",
+        "ExportManifest"
+      ]
+    ],
+    "relation": "manifestForJob",
+    "expectedProperty": "sourceRowCount",
+    "actualProperty": "exportedRowCount",
+    "expectedValue": 420,
+    "shape": "ExportCompletenessShape",
+    "rule": "ExportManifest must reference exactly one ExportJob; exportedRowCount must equal its nonnegative sourceRowCount."
+  }
+}

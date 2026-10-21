@@ -27,3 +27,7 @@ Earlier JSON assets, producers, Catalog and classification material remain histo
 - [Classification reference](classification-service.md) and [classification library](legacy-classification.md).
 
 Use the current native workflow above for new assets. Source, validation results and documentation do not establish business acceptance, stable v1.0 readiness or software-release authority.
+
+## v0.6 candidate
+
+Read [an optional pinned operations profile with project-local declarations, provenance and SHACL constraints](operations-profile.md). The optional/additive response work preserves native v1 specifications. Current source implementation is distinct from accepted installation or a published release.

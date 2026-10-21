@@ -155,7 +155,7 @@ export declare function feedbackScope(scope: unknown): asserts scope is NativeSc
 export declare function validateFeedbackEvent(value: unknown): asserts value is FeedbackEvent;
 export declare function validateFeedbackReceipt(r: unknown, event: FeedbackEvent, owner: FeedbackOwner): asserts r is FeedbackReceipt;
 /** Owner-local tables share the owner's SQLite transaction, never a second file. */
-export declare function createFeedbackStore(store: FeedbackStore, owner: 'runtime' | FeedbackOwner, minimumSchema?: 3 | 4): {
+export declare function createFeedbackStore(store: FeedbackStore, owner: 'runtime' | FeedbackOwner, minimumSchema?: 3 | 4 | 5): {
     get: <T>(scope: NativeScope, kind: string, id: string) => T | null;
     list: <T>(scope: NativeScope, kind: string) => T[];
     put: (scope: NativeScope, kind: string, id: string, value: unknown) => void;

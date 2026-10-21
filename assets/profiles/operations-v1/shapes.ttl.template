@@ -1,0 +1,80 @@
+@prefix ex: <{{NS}}> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+ex:ProjectShape a sh:NodeShape; sh:targetNode ex:project;
+ rdfs:label "ProjectShape"; rdfs:comment "Required operations profile constraint ProjectShape";
+ rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/ProjectShape>;
+ sh:sparql [ sh:message "Operations profile violation: ProjectShape"; sh:select """
+PREFIX ex: <{{NS}}>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT $this WHERE { FILTER(!EXISTS { $this a ex:Project } || !(EXISTS { $this ex:workspaceId ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { $this ex:workspaceId ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { $this ex:projectId ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { $this ex:projectId ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { $this ex:hasCapability ?v . ?v a ex:BusinessCapability } && !EXISTS { $this ex:hasCapability ?v . FILTER(!isIRI(?v) || !EXISTS { ?v a ex:BusinessCapability }) })) }
+""" ] .
+
+ex:ServiceDeploymentShape a sh:NodeShape; sh:targetNode ex:project;
+ rdfs:label "ServiceDeploymentShape"; rdfs:comment "Required operations profile constraint ServiceDeploymentShape";
+ rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/ServiceDeploymentShape>;
+ sh:sparql [ sh:message "Operations profile violation: ServiceDeploymentShape"; sh:select """
+PREFIX ex: <{{NS}}>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT $this WHERE { FILTER(!EXISTS { ?svc a <{{NS}}Service> } || !EXISTS { ?deployment a ex:Deployment } || EXISTS { ?svc a <{{NS}}Service> . FILTER(!(EXISTS { ?svc ex:implementsCapability ?v . ?v a ex:BusinessCapability } && !EXISTS { ?svc ex:implementsCapability ?v . FILTER(!isIRI(?v) || !EXISTS { ?v a ex:BusinessCapability }) })) } || EXISTS { ?deployment a ex:Deployment . FILTER(!(EXISTS { ?deployment <{{NS}}deployedService> ?v . ?v a <{{NS}}Service> } && !EXISTS { ?deployment <{{NS}}deployedService> ?v . FILTER(!isIRI(?v) || !EXISTS { ?v a <{{NS}}Service> }) } && !EXISTS { ?deployment <{{NS}}deployedService> ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { ?deployment ex:environment ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?deployment ex:environment ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { ?deployment ex:sourceRevision ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?deployment ex:sourceRevision ?v1, ?v2 . FILTER(?v1 != ?v2) })) }) }
+""" ] .
+
+ex:ImpactShape a sh:NodeShape; sh:targetNode ex:project;
+ rdfs:label "ImpactShape"; rdfs:comment "Required operations profile constraint ImpactShape";
+ rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/ImpactShape>;
+ sh:sparql [ sh:message "Operations profile violation: ImpactShape"; sh:select """
+PREFIX ex: <{{NS}}>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT $this WHERE { FILTER(!EXISTS { ?problem a ex:ProblemAssessment } || EXISTS { ?problem a ex:ProblemAssessment . FILTER(!(EXISTS { ?problem ex:assessesDeployment ?v . ?v a ex:Deployment } && !EXISTS { ?problem ex:assessesDeployment ?v . FILTER(!isIRI(?v) || !EXISTS { ?v a ex:Deployment }) } && EXISTS { ?problem ex:affectsCapability ?v . ?v a ex:BusinessCapability } && !EXISTS { ?problem ex:affectsCapability ?v . FILTER(!isIRI(?v) || !EXISTS { ?v a ex:BusinessCapability }) } && EXISTS { ?problem ex:hasCause ?v . ?v a ex:CauseAssertion } && !EXISTS { ?problem ex:hasCause ?v . FILTER(!isIRI(?v) || !EXISTS { ?v a ex:CauseAssertion }) } && EXISTS { ?problem ex:runbook ?v . ?v a ex:RunbookReference } && !EXISTS { ?problem ex:runbook ?v . FILTER(!isIRI(?v) || !EXISTS { ?v a ex:RunbookReference }) } && EXISTS { ?problem ex:assessedBy ?v . ?v a ex:ActorReference } && !EXISTS { ?problem ex:assessedBy ?v . FILTER(!isIRI(?v) || !EXISTS { ?v a ex:ActorReference }) } && EXISTS { ?problem ex:derivedFrom ?v . ?v a ex:OwnerEvidenceReference } && !EXISTS { ?problem ex:derivedFrom ?v . FILTER(!isIRI(?v) || !EXISTS { ?v a ex:OwnerEvidenceReference }) })) }) }
+""" ] .
+
+ex:CauseShape a sh:NodeShape; sh:targetNode ex:project;
+ rdfs:label "CauseShape"; rdfs:comment "Required operations profile constraint CauseShape";
+ rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/CauseShape>;
+ sh:sparql [ sh:message "Operations profile violation: CauseShape"; sh:select """
+PREFIX ex: <{{NS}}>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT $this WHERE { FILTER(!EXISTS { ?cause a ex:CauseAssertion } || EXISTS { ?cause a ex:CauseAssertion . FILTER(!(EXISTS { ?cause ex:classification ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?cause ex:classification ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { ?cause ex:classification ?kind . FILTER(?kind IN ("OBSERVED", "SUSPECTED", "CONFIRMED")) } && EXISTS { ?cause ex:rationale ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?cause ex:rationale ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { ?cause ex:hasEvidence ?v . ?v a ex:OwnerEvidenceReference } && !EXISTS { ?cause ex:hasEvidence ?v . FILTER(!isIRI(?v) || !EXISTS { ?v a ex:OwnerEvidenceReference }) })) } || EXISTS { ?cause a ex:CauseAssertion; ex:classification "CONFIRMED" . FILTER(!EXISTS { ?cause ex:decisionEvidence ?decision . ?decision a ex:OwnerEvidenceReference; ex:recordKind "decision" }) } || EXISTS { ?cause ex:classification ?kind; ex:decisionEvidence ?decision . FILTER(?kind != "CONFIRMED") }) }
+""" ] .
+
+ex:OwnerReferenceShape a sh:NodeShape; sh:targetNode ex:project;
+ rdfs:label "OwnerReferenceShape"; rdfs:comment "Required operations profile constraint OwnerReferenceShape";
+ rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/OwnerReferenceShape>;
+ sh:sparql [ sh:message "Operations profile violation: OwnerReferenceShape"; sh:select """
+PREFIX ex: <{{NS}}>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT $this WHERE { FILTER(!EXISTS { ?ref a ex:OwnerEvidenceReference } || EXISTS { ?ref a ex:OwnerEvidenceReference . FILTER(!(EXISTS { ?ref ex:owner ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?ref ex:owner ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { ?ref ex:recordKind ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?ref ex:recordKind ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { ?ref ex:recordId ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?ref ex:recordId ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { ?ref ex:revision ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?ref ex:revision ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { ?ref ex:digest ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?ref ex:digest ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { ?ref ex:workspaceId ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?ref ex:workspaceId ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { ?ref ex:projectId ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?ref ex:projectId ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { ?ref ex:owner ?owner . FILTER(?owner IN ("runtime","harness","ontology","workspace")) } && EXISTS { ?ref ex:recordKind ?kind . FILTER(?kind IN ("finding","observation","problem","run","collection","native-package","decision","runbook")) } && EXISTS { ?ref ex:digest ?digest . FILTER(REGEX(STR(?digest), "^sha256:[a-f0-9]{64}$")) } && EXISTS { ?ref ex:at ?at . FILTER(datatype(?at) = xsd:integer && ?at >= 0) } && !EXISTS { ?ref ex:at ?v1, ?v2 . FILTER(?v1 != ?v2) })) }) }
+""" ] .
+
+ex:RunbookShape a sh:NodeShape; sh:targetNode ex:project;
+ rdfs:label "RunbookShape"; rdfs:comment "Required operations profile constraint RunbookShape";
+ rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/RunbookShape>;
+ sh:sparql [ sh:message "Operations profile violation: RunbookShape"; sh:select """
+PREFIX ex: <{{NS}}>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT $this WHERE { FILTER(!EXISTS { ?runbook a ex:RunbookReference } || EXISTS { ?runbook a ex:RunbookReference . FILTER(!EXISTS { ?runbook a ex:OwnerEvidenceReference; ex:owner "harness"; ex:recordKind "runbook" } || !(EXISTS { ?runbook ex:runbookId ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?runbook ex:runbookId ?v1, ?v2 . FILTER(?v1 != ?v2) } && EXISTS { ?runbook ex:runbookVersion ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?runbook ex:runbookVersion ?v1, ?v2 . FILTER(?v1 != ?v2) }) || !EXISTS { ?runbook ex:runbookVersion ?version . FILTER(REGEX(STR(?version), "^[0-9]+[.][0-9]+[.][0-9]+(-[A-Za-z0-9.-]+)?$")) }) }) }
+""" ] .
+
+ex:ActorShape a sh:NodeShape; sh:targetNode ex:project;
+ rdfs:label "ActorShape"; rdfs:comment "Required operations profile constraint ActorShape";
+ rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/ActorShape>;
+ sh:sparql [ sh:message "Operations profile violation: ActorShape"; sh:select """
+PREFIX ex: <{{NS}}>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT $this WHERE { FILTER(!EXISTS { ?actor a ex:ActorReference } || EXISTS { ?actor a ex:ActorReference . FILTER(!(EXISTS { ?actor ex:actorId ?v . FILTER(datatype(?v) = xsd:string && STRLEN(STR(?v)) > 0) } && !EXISTS { ?actor ex:actorId ?v1, ?v2 . FILTER(?v1 != ?v2) })) }) }
+""" ] .
+
+ex:ScopeShape a sh:NodeShape; sh:targetNode ex:project;
+ rdfs:label "ScopeShape"; rdfs:comment "Required operations profile constraint ScopeShape";
+ rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/ScopeShape>;
+ sh:sparql [ sh:message "Operations profile violation: ScopeShape"; sh:select """
+PREFIX ex: <{{NS}}>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT $this WHERE { FILTER(EXISTS { ?ref a ex:OwnerEvidenceReference; ex:workspaceId ?w; ex:projectId ?p . $this ex:workspaceId ?expectedW; ex:projectId ?expectedP . FILTER(?w != ?expectedW || ?p != ?expectedP) }) }
+""" ] .
+

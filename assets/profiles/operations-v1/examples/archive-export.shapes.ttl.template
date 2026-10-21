@@ -1,0 +1,18 @@
+@prefix ex: <{{NS}}> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+ex:ExportCompletenessShape a sh:NodeShape; sh:targetNode ex:project;
+ rdfs:label "ExportCompletenessShape"; rdfs:comment "ExportManifest must reference exactly one ExportJob; exportedRowCount must equal its nonnegative sourceRowCount.";
+ rdfs:isDefinedBy <{{NS}}>; rdfs:seeAlso ex:ExportCompletenessShape;
+ sh:sparql [ sh:message "Synthetic domain contract violation: ExportCompletenessShape"; sh:select """
+PREFIX ex: <{{NS}}>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT $this WHERE { FILTER(
+ !EXISTS { ex:exportJob a ex:ExportJob; ex:sourceRowCount ?expected . FILTER(datatype(?expected)=xsd:integer && ?expected >= 0) } ||
+ !EXISTS { ex:manifest a ex:ExportManifest; ex:manifestForJob ex:exportJob; ex:exportedRowCount ?actual . ex:exportJob ex:sourceRowCount ?expected . FILTER(datatype(?actual)=xsd:integer && ?actual = ?expected) } ||
+ EXISTS { ex:manifest ex:manifestForJob ?other . FILTER(?other != ex:exportJob) } ||
+ EXISTS { ex:exportJob ex:sourceRowCount ?a, ?b . FILTER(?a != ?b) } ||
+ EXISTS { ex:manifest ex:exportedRowCount ?a, ?b . FILTER(?a != ?b) }
+ ) }
+""" ] .
