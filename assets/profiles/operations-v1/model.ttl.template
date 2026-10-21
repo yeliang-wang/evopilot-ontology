@@ -1,0 +1,50 @@
+@prefix ex: <{{NS}}> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+ex:Project a rdfs:Class; rdfs:label "Project"; rdfs:comment "A project using the optional operations profile."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/Project> .
+ex:BusinessCapability a rdfs:Class; rdfs:label "BusinessCapability"; rdfs:comment "A business capability affected by service behavior."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/BusinessCapability> .
+ex:Service a rdfs:Class; rdfs:label "Service"; rdfs:comment "A service implementing one or more capabilities."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/Service> .
+ex:Deployment a rdfs:Class; rdfs:label "Deployment"; rdfs:comment "A specific source-bound service deployment."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/Deployment> .
+ex:ProblemAssessment a rdfs:Class; rdfs:label "ProblemAssessment"; rdfs:comment "A reviewed interpretation of an operational problem, not a mutable incident record."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/ProblemAssessment> .
+ex:CauseAssertion a rdfs:Class; rdfs:label "CauseAssertion"; rdfs:comment "A separately classified observed fact, hypothesis or confirmed cause."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/CauseAssertion> .
+ex:RunbookReference a rdfs:Class; rdfs:label "RunbookReference"; rdfs:comment "An immutable reference to Harness guidance; it grants no execution permission."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/RunbookReference> .
+ex:OwnerEvidenceReference a rdfs:Class; rdfs:label "OwnerEvidenceReference"; rdfs:comment "A reference to an authoritative owner record, never a replacement for that record."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/OwnerEvidenceReference> .
+ex:ActorReference a rdfs:Class; rdfs:label "ActorReference"; rdfs:comment "An operator-declared actor reference; not an authenticated identity."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/ActorReference> .
+ex:hasCapability a owl:ObjectProperty; rdfs:label "hasCapability"; rdfs:comment "Project capability membership."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/hasCapability> .
+ex:implementsCapability a owl:ObjectProperty; rdfs:label "implementsCapability"; rdfs:comment "Service to business capability."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/implementsCapability> .
+ex:deployedService a owl:ObjectProperty; rdfs:label "deployedService"; rdfs:comment "Deployment to exactly one service."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/deployedService> .
+ex:assessesDeployment a owl:ObjectProperty; rdfs:label "assessesDeployment"; rdfs:comment "Problem assessment to deployment."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/assessesDeployment> .
+ex:affectsCapability a owl:ObjectProperty; rdfs:label "affectsCapability"; rdfs:comment "Problem assessment to impacted capability."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/affectsCapability> .
+ex:hasCause a owl:ObjectProperty; rdfs:label "hasCause"; rdfs:comment "Problem assessment to one or more cause assertions."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/hasCause> .
+ex:hasEvidence a owl:ObjectProperty; rdfs:label "hasEvidence"; rdfs:comment "Cause to source-linked owner evidence."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/hasEvidence> .
+ex:decisionEvidence a owl:ObjectProperty; rdfs:label "decisionEvidence"; rdfs:comment "A confirmed cause to separately retained decision evidence."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/decisionEvidence> .
+ex:runbook a owl:ObjectProperty; rdfs:label "runbook"; rdfs:comment "Problem assessment to pinned guidance."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/runbook> .
+ex:assessedBy a owl:ObjectProperty; rdfs:label "assessedBy"; rdfs:comment "Problem assessment to operator-declared actor."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/assessedBy> .
+ex:derivedFrom a owl:ObjectProperty; rdfs:label "derivedFrom"; rdfs:comment "Provenance relationship to owner evidence."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/derivedFrom> .
+ex:label a owl:DatatypeProperty; rdfs:label "label"; rdfs:comment "Human-facing project label."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/label> .
+ex:workspaceId a owl:DatatypeProperty; rdfs:label "workspaceId"; rdfs:comment "Exact workspace identifier."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/workspaceId> .
+ex:projectId a owl:DatatypeProperty; rdfs:label "projectId"; rdfs:comment "Exact project identifier."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/projectId> .
+ex:environment a owl:DatatypeProperty; rdfs:label "environment"; rdfs:comment "Deployment environment."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/environment> .
+ex:sourceRevision a owl:DatatypeProperty; rdfs:label "sourceRevision"; rdfs:comment "Fixed deployment source revision."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/sourceRevision> .
+ex:classification a owl:DatatypeProperty; rdfs:label "classification"; rdfs:comment "OBSERVED, SUSPECTED or CONFIRMED; these are distinct assertions."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/classification> .
+ex:owner a owl:DatatypeProperty; rdfs:label "owner"; rdfs:comment "Owner of the referenced record."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/owner> .
+ex:recordKind a owl:DatatypeProperty; rdfs:label "recordKind"; rdfs:comment "Supported authoritative owner record kind."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/recordKind> .
+ex:recordId a owl:DatatypeProperty; rdfs:label "recordId"; rdfs:comment "Stable owner record identity."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/recordId> .
+ex:revision a owl:DatatypeProperty; rdfs:label "revision"; rdfs:comment "Immutable owner record revision."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/revision> .
+ex:digest a owl:DatatypeProperty; rdfs:label "digest"; rdfs:comment "Exact sha256 digest of the referenced record."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/digest> .
+ex:at a owl:DatatypeProperty; rdfs:label "at"; rdfs:comment "Reference observation or execution time in Unix seconds."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/at> .
+ex:runbookId a owl:DatatypeProperty; rdfs:label "runbookId"; rdfs:comment "Guidance identity."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/runbookId> .
+ex:runbookVersion a owl:DatatypeProperty; rdfs:label "runbookVersion"; rdfs:comment "Immutable guidance version."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/runbookVersion> .
+ex:actorId a owl:DatatypeProperty; rdfs:label "actorId"; rdfs:comment "Operator-declared actor identifier."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/actorId> .
+ex:rationale a owl:DatatypeProperty; rdfs:label "rationale"; rdfs:comment "Explanation of the cause interpretation."; rdfs:isDefinedBy <https://evopilot.dev/profiles/operations/v1/>; rdfs:seeAlso <https://evopilot.dev/profiles/operations/v1/rationale> .
+
+# These are explicit vocabulary mappings only; inference is disabled.
+ex:OwnerEvidenceReference rdfs:subClassOf prov:Entity .
+ex:ProblemAssessment rdfs:subClassOf prov:Entity .
+ex:ActorReference rdfs:subClassOf prov:Agent .
+ex:derivedFrom rdfs:subPropertyOf prov:wasDerivedFrom .

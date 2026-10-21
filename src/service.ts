@@ -1,8 +1,14 @@
 import {createOwnerFeedback,OWNER_FEEDBACK_OPERATIONS} from '../vendor/compatibility/feedback/v1/owner.mjs';
 import type {FeedbackEnvelope} from '../vendor/compatibility/feedback/v1/feedback.mjs';
+import {feedbackScope} from '../vendor/compatibility/feedback/v1/feedback.mjs';
+import {nativeExact} from '../vendor/compatibility/v1/native.mjs';
+import type {ResponseEnvelope} from '../vendor/compatibility/response/v1/response.mjs';
+import {inspectOperationsProfile, instantiateOperationsProfile} from './operations-profile.js';
 export type * from '../vendor/compatibility/feedback/v1/feedback.mjs';
 import type { NativeRequest, NativeOutputs, LegacyQueryRequest, LegacyQueryOutput, HistoricalRequest, HistoricalMutation, ClassificationControlRequest, ClassificationOutputs, ClassificationReceipt, ExecuteRequest } from './types.js';
 export type * from './types.js';
+export { inspectOperationsProfile, instantiateOperationsProfile, verifyOperationsProfileMaterial, verifyOperationsProfilePackage } from './operations-profile.js';
+export type { OperationsProfileBinding, OperationsProfileMaterial } from './operations-profile.js';
 import type { WorkspaceOptions, TrustedProviders, DispatchRequest, ClassificationRequest, Receipt } from './types.js';
 import type { Store } from './persistence-types.js';
 import { errorCode } from './state.js';
@@ -21,7 +27,7 @@ export function createOntologyService(options: WorkspaceOptions, trustedProvider
   const providers = classificationProviders(trustedProviders);
   const { workspaceRoot, workspaceId } = options;
   let store: Store | null = null, closed = false;
-  const capabilities = () => frozenClone({ product: 'ontology', version: '0.5.0', stage: 'NATIVE_STANDARDS', operations: operations.filter(op => !mutations.includes(op)), nativeOperations: ontologyNativeOperations, feedbackOperations: OWNER_FEEDBACK_OPERATIONS, historicalOperationsReadOnly: true, limits: LIMITS, authority: false, softwareRelease: false, pending: ['exact-candidate acceptance'] });
+  const capabilities = () => frozenClone({ product: 'ontology', version: '0.6.0', stage: 'NATIVE_STANDARDS', operations: operations.filter(op => !mutations.includes(op)), nativeOperations: ontologyNativeOperations, feedbackOperations: OWNER_FEEDBACK_OPERATIONS, responseOperations: ['response.profile.inspect', 'response.profile.instantiate'], historicalOperationsReadOnly: true, limits: LIMITS, authority: false, softwareRelease: false, pending: ['exact-candidate acceptance'] });
   function initialize() {
     if (closed) fail('CLOSED', 'Service is closed');
     if (!store) { store = Object.assign(openState(workspaceRoot, workspaceId), { trustedProviders: providers }); }
@@ -136,8 +142,18 @@ export function createOntologyService(options: WorkspaceOptions, trustedProvider
   }
   let activeFeedback=0;
   async function feedback(request:FeedbackEnvelope):Promise<unknown>{if(closed)fail('CLOSED','Service closed');if(!store)fail('NOT_INITIALIZED','Explicit initialize required');activeFeedback++;try{return await createOwnerFeedback(store,'ontology',providers).feedback(request);}finally{activeFeedback--;}}
+  async function response(request:ResponseEnvelope):Promise<unknown>{
+    if(closed)fail('CLOSED','Service closed');
+    bounded(request);nativeExact(request,['operation','scope','input']);feedbackScope(request.scope);
+    if(request.operation==='response.profile.inspect'){nativeExact(request.input,[]);return inspectOperationsProfile();}
+    if(request.operation==='response.profile.instantiate'){
+      nativeExact(request.input,['namespace','direction']);
+      return instantiateOperationsProfile(request.input as {namespace:string;direction:'forward'|'reverse'});
+    }
+    fail('RESPONSE_OPERATION','Unknown read-only operations profile operation');
+  }
   function close() { if(activeFeedback)fail('BUSY','Feedback operation is still in progress'); if (store) { store.db.close(); store = null; } closed = true; }
-  return Object.freeze({ capabilities, initialize, execute, native, feedback, classify, close });
+  return Object.freeze({ capabilities, initialize, execute, native, feedback, response, classify, close });
 }
 
 export type OntologyService = ReturnType<typeof createOntologyService>;

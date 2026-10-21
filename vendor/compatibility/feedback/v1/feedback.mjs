@@ -84,7 +84,7 @@ export function createFeedbackStore(store, owner, minimumSchema = 3) {
         db.exec('CREATE TABLE IF NOT EXISTS feedback_identity(singleton INTEGER PRIMARY KEY CHECK(singleton=1),schema TEXT NOT NULL,owner TEXT NOT NULL,revision INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS feedback_records(scope TEXT NOT NULL,kind TEXT NOT NULL,id TEXT NOT NULL,data TEXT NOT NULL,digest TEXT NOT NULL,PRIMARY KEY(scope,kind,id)); CREATE TABLE IF NOT EXISTS feedback_receipts(scope TEXT NOT NULL,id TEXT NOT NULL,intent TEXT NOT NULL,data TEXT NOT NULL,digest TEXT NOT NULL,PRIMARY KEY(scope,id)); CREATE TABLE IF NOT EXISTS feedback_audit(revision INTEGER PRIMARY KEY,request_digest TEXT NOT NULL,result_digest TEXT NOT NULL);');
         if (!db.prepare('SELECT owner FROM feedback_identity WHERE singleton=1').get())
             db.prepare('INSERT INTO feedback_identity VALUES(1,?,?,0)').run('evopilot-feedback-store/v1', owner);
-        // Additive online records require v4 readers. Feedback/native writes never downgrade it.
+        // Online records require v4 readers; response records require v5. Never downgrade historical markers.
         if (Number(db.prepare('PRAGMA user_version').get().user_version) < minimumSchema)
             db.exec('PRAGMA user_version=' + minimumSchema);
     }

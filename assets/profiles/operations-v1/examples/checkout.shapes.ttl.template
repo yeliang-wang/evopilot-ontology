@@ -1,0 +1,18 @@
+@prefix ex: <{{NS}}> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+ex:PaymentAmountShape a sh:NodeShape; sh:targetNode ex:project;
+ rdfs:label "PaymentAmountShape"; rdfs:comment "PaymentAuthorization must reference exactly one Order; authorizedAmount must equal its nonnegative orderAmount.";
+ rdfs:isDefinedBy <{{NS}}>; rdfs:seeAlso ex:PaymentAmountShape;
+ sh:sparql [ sh:message "Synthetic domain contract violation: PaymentAmountShape"; sh:select """
+PREFIX ex: <{{NS}}>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT $this WHERE { FILTER(
+ !EXISTS { ex:order a ex:Order; ex:orderAmount ?expected . FILTER(datatype(?expected)=xsd:integer && ?expected >= 0) } ||
+ !EXISTS { ex:authorization a ex:PaymentAuthorization; ex:authorizesOrder ex:order; ex:authorizedAmount ?actual . ex:order ex:orderAmount ?expected . FILTER(datatype(?actual)=xsd:integer && ?actual = ?expected) } ||
+ EXISTS { ex:authorization ex:authorizesOrder ?other . FILTER(?other != ex:order) } ||
+ EXISTS { ex:order ex:orderAmount ?a, ?b . FILTER(?a != ?b) } ||
+ EXISTS { ex:authorization ex:authorizedAmount ?a, ?b . FILTER(?a != ?b) }
+ ) }
+""" ] .

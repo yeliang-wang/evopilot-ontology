@@ -1,0 +1,23 @@
+@prefix ex: <{{NS}}> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+# SYNTHETIC: these owner IDs/digests are placeholders, never trusted live receipts.
+ex:project a ex:Project; ex:label "Synthetic archival export source: export accounting mismatch affects archive completeness; an observed count difference is not a confirmed cause."; ex:workspaceId "synthetic-workspace"; ex:projectId "archive-export"; ex:hasCapability ex:capability .
+ex:capability a ex:BusinessCapability; ex:label "Archive completeness" .
+ex:service a ex:Service; ex:label "Scheduled export worker"; ex:implementsCapability ex:capability .
+ex:deployment a ex:Deployment; ex:deployedService ex:service; ex:environment "isolated-replay"; ex:sourceRevision "export-source-7" .
+ex:problem a ex:ProblemAssessment; ex:assessesDeployment ex:deployment; ex:affectsCapability ex:capability; ex:hasCause ex:cause; ex:runbook ex:guidance; ex:assessedBy ex:actor; ex:derivedFrom ex:observation .
+ex:cause a ex:CauseAssertion; ex:classification "OBSERVED"; ex:rationale "The fixed synthetic source shows mismatched counts; cause remains unconfirmed."; ex:hasEvidence ex:observation .
+ex:actor a ex:ActorReference; ex:actorId "synthetic-operator" .
+ex:observation a ex:OwnerEvidenceReference; ex:owner "harness"; ex:recordKind "observation"; ex:recordId "archive-export-observation"; ex:revision "1"; ex:digest "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; ex:at 1700000000; ex:workspaceId "synthetic-workspace"; ex:projectId "archive-export" .
+ex:guidance a ex:OwnerEvidenceReference; ex:owner "harness"; ex:recordKind "runbook"; ex:recordId "archive-export-guidance"; ex:revision "1"; ex:digest "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; ex:at 1700000000; ex:workspaceId "synthetic-workspace"; ex:projectId "archive-export" .
+ex:guidance a ex:RunbookReference; ex:runbookId "archive-export-diagnosis"; ex:runbookVersion "1.0.0" .
+
+# Domain-specific entities and accounting contract.
+ex:exportJob a ex:ExportJob; ex:sourceRowCount 420 .
+ex:manifest a ex:ExportManifest; ex:manifestForJob ex:exportJob; ex:exportedRowCount 420 .

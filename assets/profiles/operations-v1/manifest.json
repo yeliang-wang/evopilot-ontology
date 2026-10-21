@@ -1,0 +1,18 @@
+{
+  "schema": "evopilot-operations-profile-manifest/v1",
+  "id": "operations-v1",
+  "version": "1.0.0",
+  "files": {
+    "examples/archive-export.json": "09f153186aea9c78cb1deb958a55bab0c31a0995a591f5513ce1301a00ee0ca6",
+    "examples/archive-export.model.ttl.template": "9e74852fab4273c844c2b5b1435f30fe8186b6125fc820f043b5af4f204c3373",
+    "examples/archive-export.shapes.ttl.template": "db6c0b4cd780e3d832843873ef199476348b9b019459492629d48b8e9cb8ebd0",
+    "examples/archive-export.ttl.template": "8f9116bf7fa45a018bfd5e3870af3c26ec9da2219fefc5dc80b49171d7633893",
+    "examples/checkout.json": "cb7f192944526d3c29d03cc0322bc1d2dbbac8b48a12ec295391a73ff087546a",
+    "examples/checkout.model.ttl.template": "4d2acdb4730cd8e8dd204768c0a90218e82e45a5fe290701e0c3c1d7dfa1a66c",
+    "examples/checkout.shapes.ttl.template": "0edad33e6cc96adcdbeaf86370271d34c0064e292688b388eeca7a1d7ff2e231",
+    "examples/checkout.ttl.template": "c2afbaa3565ec8be276fc49f65e7359b381c90f2caaadf80946a8762e2c41cb0",
+    "model.ttl.template": "714ca4bd413ce33ce008450822a6dcd61f3c6806dfb8d3bbcc045c70beef21f2",
+    "profile.json": "5a560cf93ec6d7a72e28b494dfdcd5b0cb350382cf10fa186e3bc431a8645f8f",
+    "shapes.ttl.template": "4d68b2855c1f57b24b20ecabc65c91efb2ae13677e07ab39c4f1c4428da2f515"
+  }
+}
