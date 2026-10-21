@@ -1,10 +1,10 @@
-# EvoPilot Ontology · v0.6.0 Preview — candidate source
+# EvoPilot Ontology · v0.6.0 Preview
 
 [Quickstart](#quickstart) · [Standards](specifications/README.md) · [Native API](docs/native-service.md) · [Documentation](docs/README.md) · [Contribute](CONTRIBUTING.md)
 
-v0.5 aligns the composition release while retaining v0.4 source-bound semantic-impact review and exact-version reuse or new native delivery. Corrected-v1 ontology standards are unchanged. Online Harness observations do not mutate ontology definitions or supply domain approval. Use [Releases](https://github.com/yeliang-wang/evopilot-ontology/releases) for published artifacts; source availability does not prove acceptance. Ontology owns domain definitions, relationships, constraints, source grounding and immutable semantic deliveries. It works with [EvoPilot Expert](https://github.com/yeliang-wang/evopilot), [Harness](https://github.com/yeliang-wang/evopilot-harness) for QA/evidence and [Runtime](https://github.com/yeliang-wang/evopilot-runtime) for actual execution and project completion.
+Ontology owns domain definitions, relationships, constraints, source grounding and immutable semantic deliveries. It works with [EvoPilot Expert](https://github.com/yeliang-wang/evopilot), [Harness](https://github.com/yeliang-wang/evopilot-harness) for QA/evidence and [Runtime](https://github.com/yeliang-wang/evopilot-runtime) for execution and project completion.
 
-This **v0.6.0 candidate** adds an optional pinned operations profile with project-local declarations, provenance and SHACL constraints. Read [the implementation guide](docs/operations-profile.md). Acceptance and installation require exact-candidate evidence; the v0.5 downloads below remain the previously published release. Core implementation uses strict TypeScript; generated JavaScript is the installed runtime format.
+**v0.6.0** adds an optional pinned operations profile with project-local declarations, provenance and SHACL constraints. It retains source-bound semantic-impact review and exact-version reuse or new native delivery. Corrected-v1 ontology standards are unchanged; online findings and valid graphs do not confirm causes or approve domain changes. Read [the operations profile guide](docs/operations-profile.md). The [release tag](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.6.0) records the exact published source and artifacts.
 
 ## Adopted standards and tools
 
@@ -38,11 +38,11 @@ Native tests require the verified installed toolchain in `EVOPILOT_TEST_NATIVE_T
 
 ## Install the Preview package
 
-Download the exact [v0.5.0 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.5.0). The published [v0.1.0 release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.1.0) remains historical. See [changes](CHANGELOG.md) and the parent [distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
+For packaged installation, use the exact [v0.6.0 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.6.0). The published [v0.1.0 release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.1.0) remains historical. See [changes](CHANGELOG.md) and the parent [distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
 
 Place all four release assets in one new directory before checking checksums:
 
-- `evopilot-next-ontology-0.5.0.tgz`
+- `evopilot-next-ontology-0.6.0.tgz`
 - `ontology-dependency-lock.json` (the Ontology `dependency-lock.json` asset uses this owner-prefixed release name)
 - `source-revision.txt`
 - `SHA256SUMS`
@@ -50,10 +50,10 @@ Place all four release assets in one new directory before checking checksums:
 ```sh
 shasum -a 256 -c SHA256SUMS
 cat source-revision.txt
-mkdir ontology-0.5.0
-tar -xzf evopilot-next-ontology-0.5.0.tgz -C ontology-0.5.0
-cp ontology-dependency-lock.json ontology-0.5.0/package/package-lock.json
-cd ontology-0.5.0/package
+mkdir ontology-0.6.0
+tar -xzf evopilot-next-ontology-0.6.0.tgz -C ontology-0.6.0
+cp ontology-dependency-lock.json ontology-0.6.0/package/package-lock.json
+cd ontology-0.6.0/package
 npm ci --omit=dev --ignore-scripts
 node dist/cli.js help
 node dist/cli.js version
@@ -63,10 +63,14 @@ Stop if checksum verification fails; compare `source-revision.txt` with the rele
 
 ## Documentation and contributions
 
-[Documentation index](docs/README.md), [contribution guide](CONTRIBUTING.md), [security](SECURITY.md), and [Roadmap](docs/roadmap.md). Historical release downloads do not imply they include the current source candidate. Technical validation grants neither domain approval nor release authority.
+[Documentation index](docs/README.md), [contribution guide](CONTRIBUTING.md), [security](SECURITY.md), and [Roadmap](docs/roadmap.md). Match package versions to their release tag; historical downloads retain their original capabilities. Technical validation grants neither domain approval nor release authority.
 
 Native approvals bind readable, digest-pinned evidence to the exact review, Workspace and operation. See [decision evidence](docs/native-decisions.md) for the format, historical readback and trusted-operator boundary.
 
-## Execution feedback (v0.4)
+## Execution feedback
 
-v0.4 adds private, source-bound feedback through the public service API. This owner receives protected Runtime evidence and records reviewed impact, exact-version reuse or a new native delivery. Receiving evidence does not approve or publish assets. See [feedback](docs/feedback.md). Native v0.3 standard and contract bytes remain unchanged. Publication and exact installed acceptance are recorded separately.
+Introduced in v0.4 and retained in v0.6, this flow adds private, source-bound feedback through the public service API. This owner receives protected Runtime evidence and records reviewed impact, exact-version reuse or a new native delivery. Receiving evidence does not approve or publish assets. See [feedback](docs/feedback.md). Native v0.3 standard and contract bytes remain unchanged. Publication and exact installed acceptance are recorded separately.
+
+## Implementation languages
+
+Product services, lifecycle and the operations-profile implementation use strict TypeScript. Installed processes execute compiled JavaScript, and packages expose TypeScript declarations; handwritten JavaScript is limited to build/package/test drivers and hash-pinned historical compatibility modules. The pinned Python adapter invokes RDFLib/pySHACL, while domain models and constraints remain native Turtle/SHACL. See the parent [language policy](https://github.com/yeliang-wang/evopilot/blob/main/docs/language-policy.md) for exact boundaries and checks.

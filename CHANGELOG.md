@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.6.0 Preview — candidate, not published
+## 0.6.0 Preview
 
-- Add an optional pinned operations profile with project-local declarations, provenance and SHACL constraints.
+- Add the optional `operations-v1` profile with deterministic project-namespace instantiation, exact profile/source digests, bounded PROV-O mappings and SHACL constraints.
+- Provide distinct synthetic forward/reverse examples and native counterexamples; distinguish observed, suspected and confirmed causes and resolve operational evidence through its owner.
 - Keep new core and contracts in strict TypeScript with compiled runtime/declarations.
 - Preserve native v1 specifications and immutable historical evidence.
 
@@ -22,9 +23,9 @@
 - Preserve native v0.3 contracts and historical records; add feedback-state backup/restore and old-reader rejection.
 - Preview publication remains conditional on the fixed v0.4 acceptance, actual Codex journeys and exact source CI.
 
-## 0.3.0 Preview — unreleased candidate
+## 0.3.0 Preview
 
-Correct current v1 native contracts and bind standard content digests. New work uses native RDF/Turtle and SHACL or Rego/OPA/Conftest, protected collection/run receipts, and fixed project completion requirements. Historical JSON records retain their original identity; retired mutation paths cannot create new work. This v0.x correction is incompatible with historical writers. Keep a consistent pre-upgrade snapshot; do not point v0.2 at state written by this candidate. Implementation and tests do not establish acceptance or release.
+Correct current v1 native contracts and bind standard content digests. New work uses native RDF/Turtle and SHACL or Rego/OPA/Conftest, protected collection/run receipts, and fixed project completion requirements. Historical JSON records retain their original identity; retired mutation paths cannot create new work. This v0.x correction is incompatible with historical writers. Keep a consistent pre-upgrade snapshot; do not point v0.2 at state written by v0.3. Implementation and tests do not establish acceptance or release.
 
 ## 0.2.0 Preview
 
