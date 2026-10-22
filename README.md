@@ -1,10 +1,12 @@
-# EvoPilot Ontology · v0.6.0 Preview
+# EvoPilot Ontology · v0.7.0 Preview
 
 [Quickstart](#quickstart) · [Standards](specifications/README.md) · [Native API](docs/native-service.md) · [Documentation](docs/README.md) · [Contribute](CONTRIBUTING.md)
 
 Ontology owns domain definitions, relationships, constraints, source grounding and immutable semantic deliveries. It works with [EvoPilot Expert](https://github.com/yeliang-wang/evopilot), [Harness](https://github.com/yeliang-wang/evopilot-harness) for QA/evidence and [Runtime](https://github.com/yeliang-wang/evopilot-runtime) for execution and project completion.
 
-**v0.6.0** adds an optional pinned operations profile with project-local declarations, provenance and SHACL constraints. It retains source-bound semantic-impact review and exact-version reuse or new native delivery. Corrected-v1 ontology standards are unchanged; online findings and valid graphs do not confirm causes or approve domain changes. Read [the operations profile guide](docs/operations-profile.md). The [release tag](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.6.0) records the exact published source and artifacts.
+Earlier **v0.6.0** introduced an optional pinned operations profile with project-local declarations, provenance and SHACL constraints. It retains source-bound semantic-impact review and exact-version reuse or new native delivery. Corrected-v1 ontology standards are unchanged; online findings and valid graphs do not confirm causes or approve domain changes. Read [the operations profile guide](docs/operations-profile.md). The [release tag](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.6.0) records the exact published source and artifacts.
+
+v0.7 adds [readable owner reports](docs/readable-api.md), exact-version pagination and explicit evidence boundaries. Native standards and decision authority are unchanged. Publication records are on the [v0.7.0 release page](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.7.0).
 
 ## Adopted standards and tools
 
@@ -74,3 +76,7 @@ Introduced in v0.4 and retained in v0.6, this flow adds private, source-bound fe
 ## Implementation languages
 
 Product services, lifecycle and the operations-profile implementation use strict TypeScript. Installed processes execute compiled JavaScript, and packages expose TypeScript declarations; handwritten JavaScript is limited to build/package/test drivers and hash-pinned historical compatibility modules. The pinned Python adapter invokes RDFLib/pySHACL, while domain models and constraints remain native Turtle/SHACL. See the parent [language policy](https://github.com/yeliang-wang/evopilot/blob/main/docs/language-policy.md) for exact boundaries and checks.
+
+### Isolated v0.7 candidate
+
+The approved candidate adds a [readable API](docs/readable-api.md) with pinned snapshots, fixed denominators and explicit evidence limits. Candidate validation is ongoing; this is not a v0.7 release or daily installation claim.

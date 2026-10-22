@@ -11,7 +11,7 @@ const PRODUCT = 'ontology';
 const PIN = 'df4f7246ae35ef9114e2b93663d520e7ff4f44f14f886ac8ba43e9fc080ddc9a';
 const expected = {
   "name": "@evopilot-next/ontology",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -135,6 +135,13 @@ export async function checkSource() {
   assert.deepEqual(Object.keys(responseManifest.files).sort(),['response.d.mts','response.mjs']);
   for(const [file,digest] of Object.entries(responseManifest.files))assert.equal(createHash('sha256').update(await readFile(resolve(responseRoot,file))).digest('hex'),digest,'Response vendor changed');
   const responseImports=[resolve(responseRoot,'response.mjs')];
+  const readabilityRoot=resolve(ROOT,'vendor/readability/v1');
+  const readabilityManifest=JSON.parse(await readFile(resolve(readabilityRoot,'manifest.json'),'utf8'));
+  assert.equal(readabilityManifest.schema,'evopilot-readability-distribution/v1');
+  assert.deepEqual(Object.keys(readabilityManifest.files).sort(),['presentation.d.mts','presentation.mjs','readability.d.mts','readability.mjs']);
+  for(const [name,hash] of Object.entries(readabilityManifest.files))assert.equal(createHash('sha256').update(await readFile(resolve(readabilityRoot,name))).digest('hex'),hash);
+  const readabilityImports=['readability.mjs','presentation.mjs'].map(name=>resolve(readabilityRoot,name));
+
 
   const sources = [...await files(resolve(ROOT, 'src')), ...await files(resolve(ROOT, 'vendor'))];
   for (const path of sources) {
@@ -154,7 +161,7 @@ export async function checkSource() {
       if (PRODUCT === 'ontology' && path.includes('/src/compat/') && specifier === 'ajv/dist/2020.js') continue;
       assert(specifier.startsWith('.'), 'Undeclared import: ' + specifier);
       const target = resolve(dirname(path), path.endsWith('.ts') && specifier.endsWith('.js') ? specifier.slice(0, -3) + '.ts' : specifier);
-      assert(target.startsWith(resolve(ROOT, 'src') + sep) || feedbackImports.includes(target) || onlineImports.includes(target) || responseImports.includes(target) || path.startsWith(generatedRoot + sep) && target.startsWith(generatedRoot + sep) || [resolve(vendor, 'reference.mjs'),resolve(vendor,'native.mjs'),resolve(vendor,'decision-evidence.mjs')].includes(target), 'Foreign source import');
+      assert(target.startsWith(resolve(ROOT, 'src') + sep) || feedbackImports.includes(target) || onlineImports.includes(target) || responseImports.includes(target) || readabilityImports.includes(target) || path.startsWith(generatedRoot + sep) && target.startsWith(generatedRoot + sep) || [resolve(vendor, 'reference.mjs'),resolve(vendor,'native.mjs'),resolve(vendor,'decision-evidence.mjs')].includes(target), 'Foreign source import');
       assert((await lstat(target)).isFile(), 'Import must be an owned regular file');
     }
   }
@@ -162,7 +169,7 @@ export async function checkSource() {
     "import assert from 'node:assert/strict';",
     'const api = await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'dist/index.js')).href) + ');',
     'assert.equal(api.PRODUCT, ' + JSON.stringify(PRODUCT) + ');',
-    "assert.equal(api.VERSION, '0.6.0');",
+    "assert.equal(api.VERSION, '0.7.0');",
     'assert.equal(api.capabilities().authority, false);',
     'assert.equal(api.capabilities().businessOperationsReady, true);',
     'await import(' + JSON.stringify(pathToFileURL(resolve(ROOT, 'dist/cli.js')).href) + ');',

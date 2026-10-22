@@ -1,3 +1,8 @@
+import type {NativeOntologyRecord} from './native/types.js';
+import type {ReadRequest} from '../vendor/readability/v1/readability.mjs';
+import {createReadableAPI,READABLE_OPERATIONS} from '../vendor/readability/v1/readability.mjs';
+import {ontologyReadSnapshot} from './readable.js';
+export type {ReadSnapshot,ReadRow,ReadQuery,ReadRequest,ReadScope} from '../vendor/readability/v1/readability.mjs';
 import {createOwnerFeedback,OWNER_FEEDBACK_OPERATIONS} from '../vendor/compatibility/feedback/v1/owner.mjs';
 import type {FeedbackEnvelope} from '../vendor/compatibility/feedback/v1/feedback.mjs';
 import {feedbackScope} from '../vendor/compatibility/feedback/v1/feedback.mjs';
@@ -27,7 +32,7 @@ export function createOntologyService(options: WorkspaceOptions, trustedProvider
   const providers = classificationProviders(trustedProviders);
   const { workspaceRoot, workspaceId } = options;
   let store: Store | null = null, closed = false;
-  const capabilities = () => frozenClone({ product: 'ontology', version: '0.6.0', stage: 'NATIVE_STANDARDS', operations: operations.filter(op => !mutations.includes(op)), nativeOperations: ontologyNativeOperations, feedbackOperations: OWNER_FEEDBACK_OPERATIONS, responseOperations: ['response.profile.inspect', 'response.profile.instantiate'], historicalOperationsReadOnly: true, limits: LIMITS, authority: false, softwareRelease: false, pending: ['exact-candidate acceptance'] });
+  const capabilities = () => frozenClone({ product: 'ontology', version: '0.7.0', stage: 'NATIVE_STANDARDS', readableOperations:READABLE_OPERATIONS, operations: operations.filter(op => !mutations.includes(op)), nativeOperations: ontologyNativeOperations, feedbackOperations: OWNER_FEEDBACK_OPERATIONS, responseOperations: ['response.profile.inspect', 'response.profile.instantiate'], historicalOperationsReadOnly: true, limits: LIMITS, authority: false, softwareRelease: false, pending: ['exact-candidate acceptance'] });
   function initialize() {
     if (closed) fail('CLOSED', 'Service is closed');
     if (!store) { store = Object.assign(openState(workspaceRoot, workspaceId), { trustedProviders: providers }); }
@@ -152,8 +157,11 @@ export function createOntologyService(options: WorkspaceOptions, trustedProvider
     }
     fail('RESPONSE_OPERATION','Unknown read-only operations profile operation');
   }
-  function close() { if(activeFeedback)fail('BUSY','Feedback operation is still in progress'); if (store) { store.db.close(); store = null; } closed = true; }
-  return Object.freeze({ capabilities, initialize, execute, native, feedback, response, classify, close });
+  let activeReadable=0;
+  const readableAPI=createReadableAPI({kind:'asset',list:scope=>native({operation:'native.package.list',scope,input:{}}),get:async(scope,identity)=>{const record=await native({operation:'native.package.inspect',scope,input:{id:identity.id,version:identity.version!}});if(!trustedProviders.nativeToolchain)fail('TOOLCHAIN_NOT_READY','Readable graph requires the pinned RDF toolchain');return ontologyReadSnapshot(record as NativeOntologyRecord,workspaceId,scope,trustedProviders.nativeToolchain);}});
+  async function readable(request:ReadRequest):Promise<unknown>{if(closed)fail('CLOSED','Service is closed');if(!store)fail('NOT_INITIALIZED','Explicit initialize required');activeReadable++;try{return await readableAPI(request);}finally{activeReadable--;}}
+  function close() { if(activeReadable)fail('BUSY','Readable snapshot is in progress'); if(activeFeedback)fail('BUSY','Feedback operation is still in progress'); if (store) { store.db.close(); store = null; } closed = true; }
+  return Object.freeze({ capabilities, initialize, execute, native, readable, feedback, response, classify, close });
 }
 
 export type OntologyService = ReturnType<typeof createOntologyService>;

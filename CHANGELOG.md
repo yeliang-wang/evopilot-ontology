@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 Preview candidate — unreleased
+
+- Add owner-verified, table-first reports with exact references and explicit unknown, missing, not-executed and tool-error states. Expected rejection remains distinct from business success.
+- Preserve corrected native v1 standards, immutable history and independent decision/release authority. No Dashboard is included.
+- Project RDF/OWL declarations and SHACL constraints using the pinned RDFLib adapter; preserve native IDs, language/datatype and bounded graph comparison.
+- Candidate verification is in progress; shared maintenance and daily installation cutover remain deferred. This entry is not a release or acceptance receipt.
+
+
 ## 0.6.0 Preview
 
 - Add the optional `operations-v1` profile with deterministic project-namespace instantiation, exact profile/source digests, bounded PROV-O mappings and SHACL constraints.

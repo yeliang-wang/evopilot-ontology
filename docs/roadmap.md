@@ -1,5 +1,7 @@
 # Ontology roadmap
 
+Current edition: [ONT-F06 / v0.7 readable assets and comparisons](#ont-f06--v07-readable-assets-and-comparisons). Implemented for the v0.7 edition; exact publication and download records remain on the versioned Release page.
+
 ## v0.1.0 history
 
 The [published v0.1.0 Preview](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.1.0) established native v1 modeling, instance validation and deterministic deliveries; scoped drafts, reviews, decisions and receipts; structured source import/derivation; retained queries and producers; Catalog and classification; and the standalone CLI. Historical extraction and mapping evidence remains in [migration provenance](../provenance/migration-current.json).
@@ -30,7 +32,7 @@ Ontology's role is to maintain project domain assets and their traceable evoluti
 
 ### ONT-F01 — Semantic evolution and compatibility
 
-- **Status:** `CANDIDATE`; separate Target review required.
+- **Status:** `CANDIDATE`; broader semantic evolution requires separate Target review. Bounded readable comparisons are included in ONT-F06's accepted v0.7 plan below; implementation is isolated.
 - **Trigger:** Repeated real-project changes need reliable rename, deprecation, replacement or relationship-change handling beyond the current source-bound impact review.
 - **Scope:** Build on the baseline's stable IRIs and version bindings. Add explicit label-only rename versus identifier replacement, deprecation/replacement lineage, semantic diffs and affected Harness/Runtime reference reports. Preserve past deliveries and distinguish compatible changes from changes requiring a new review.
 - **Acceptance:** Fixtures demonstrate rename, property/range/cardinality changes, deprecation and replacement; every changed semantic element has a classified impact. Referenced deprecated identifiers cannot disappear silently; old deliveries remain readable; stale dependent references are detected; a new review is required where the declared compatibility contract demands it. Compare a real two-round project change with the reviewed expected impact set, including unaffected assets that may be reused.
@@ -106,3 +108,19 @@ These follow-ups were outside v0.5. Response linkage is now implemented in the v
 ## v0.6.0 response linkage
 
 ONT-F05 is implemented for the approved parent [v0.6 response Target](https://github.com/yeliang-wang/evopilot/blob/main/governance/response-v06.json), which fixes the bounded implementation and 36 required cross-product variants. The [operations guide](operations-profile.md) describes the profile, supported standards and executable examples. Exact technical and Host evidence stays outside the public generic criteria; the [release tag](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.6.0) identifies published source and artifacts. Maintained core source uses strict TypeScript; native standards and historical records stay intact.
+
+## ONT-F06 — v0.7 readable assets and comparisons
+
+**Status:** `IMPLEMENTED` for v0.7.0 Preview. The parent execution Target fixes 50 acceptance variants. Actual source, installed Host, recovery and release evidence remain private and candidate-bound; this roadmap does not itself grant authority.
+
+**Scope:** own the Ontology part of V07-T1–T3: validate required declaration metadata/layout before immutable materialization; expose stable entities, labels, definitions, properties, relationships, constraints and source mappings through scoped public queries; provide bounded comparison of two exact deliveries. The parent uses these projections for readable reports directly in Codex. Preserve native SHACL focus/path/sourceShape/constraint/severity/value/message and raw report references when supplied; do not generate unsupported explanations or missing business meaning as facts.
+
+Retain RDF/Turtle, the documented RDFS/OWL subset, supported SHACL/pySHACL and frozen `specifications/v1`. Use existing declaration annotations and supported display metadata; version additive presentation contracts separately. Native bytes remain the asset source; no second editable JSON/YAML model is introduced. Changed labels or model content still create changed bytes and require the applicable new candidate review. Formatting equivalence must not authorize reuse of an old byte-bound approval. Unsupported comparisons and unknown downstream impact are explicit.
+
+**Acceptance mapping:** V07-E02 preflight required metadata without creating an immutable candidate on failure; E03 exact constraint diagnostics and expected/actual case semantics; E04 model conformance distinct from business/production acceptance; E05 classify formatting, labels, identifier, relation and constraint changes under a declared bounded profile, preserving history and affected-reference evidence; E06 matching identity/status/counts in queries and all rendered formats; E07 historical owner snapshots survive maintenance; E08 scoped read-only browsing, adversarial labels, accessible entity navigation and exact installed documentation. Bind executable owner `tests/e2e` and parent integration/Codex variants before implementation; no acceptance is claimed by this entry.
+
+References: [WebProtégé](https://github.com/protegeproject/webprotege) for entity views and revision history, [ROBOT diff](https://robot.obolibrary.org/diff) for labeled Markdown/HTML comparisons, and [SHACL display metadata](https://www.w3.org/TR/shacl/#nonValidation). Their full editors, OWL reasoning and import platforms are outside scope. ONT-F01's broader semantic migration/compatibility lifecycle and ONT-F02's interchange generation remain separate. Real project models stay private; v1.0 criteria are unchanged; installing a newer version is a separate operation.
+
+### v0.7 project planning addition
+
+The approved parent V07-T0 adds project-scoped conversation provenance, immutable planning revisions and Runtime-owned Roadmap decisions/execution bindings. Ontology and Harness assets retain independent native validation and review. User planning stays private; native specifications/v1 remain unchanged. Installation changes follow the separately authorized stopped-state backup, recovery and Host verification procedure. See the parent [planning decision](https://github.com/yeliang-wang/evopilot/blob/main/docs/adr-planning.md).

@@ -32,3 +32,7 @@ Use the current native workflow above for new assets. Source, validation results
 ## v0.6 operations profile
 
 Read [an optional pinned operations profile with project-local declarations, provenance and SHACL constraints](operations-profile.md). The optional/additive response work preserves native v1 specifications. The [v0.6.0 release tag](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.6.0) records distribution identity; project-domain acceptance and installed Host evidence remain separate.
+
+## v0.7 candidate
+
+Read [owner-readable API](readable-api.md) for exact snapshots, table-first reports and bounded comparisons. Native v1 formats and validators remain unchanged. Candidate verification does not establish installed Host acceptance.
