@@ -20,3 +20,7 @@ Preserve frozen native v1 schemas/templates, historical schema IDs, compatibilit
 Use commits attributed to your own GitHub account: configure a GitHub-verified email or your account's GitHub noreply address. Do not fabricate identities or rewrite historical v0.1.0 attribution. Include the concrete behavior change and actual validation in pull requests.
 
 The parent records exact child commits as gitlinks. Complete child review and checks, then update the parent gitlink to that exact reviewed commit through the [parent workflow](https://github.com/yeliang-wang/evopilot/blob/main/CONTRIBUTING.md); do not substitute a branch name or an uncommitted working tree. See [release mechanics](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md) for source-revision and artifact binding. Publication requires applicable acceptance and explicit release authorization.
+
+## Documentation consistency
+
+`npm run check` includes `scripts/check-documentation.mjs`. Keep the README, documentation index, current changelog section and default installation examples aligned with `package.json`; retain explicitly historical version records. Run `node --test tests/e2e/documentation.test.mjs` for the gate regression cases. Source documentation updates do not replace existing tags or release archives.

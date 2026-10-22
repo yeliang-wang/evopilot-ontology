@@ -1,4 +1,4 @@
-# Readable API in the v0.7 candidate
+# Readable API in the v0.7.0 Preview
 
 The public service adds `readable(request)` with explicit project scope. Operations are `readable.list`, `readable.snapshot`, `readable.query`, `readable.export` and (asset owners only) `readable.compare`. Construction remains pure; initialize private owner state explicitly. Reads do not grant mutation, semantic approval or software release authority.
 

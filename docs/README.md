@@ -1,6 +1,6 @@
 # Ontology documentation
 
-EvoPilot Ontology v0.6.0 Preview adds an optional operations and fault profile over unchanged corrected-v1 RDF/Turtle and SHACL assets. It retains source-bound semantic-impact review and exact-version reuse or new immutable delivery. Online observations and graph validation do not approve or mutate domain models.
+EvoPilot Ontology v0.7.0 Preview adds readable model, constraint and comparison reports over unchanged corrected-v1 RDF/Turtle and SHACL assets, retaining the optional operations and fault profile. It retains source-bound semantic-impact review and exact-version reuse or new immutable delivery. Online observations and graph validation do not approve or mutate domain models.
 
 ## Current workflows and references
 
@@ -12,7 +12,7 @@ EvoPilot Ontology v0.6.0 Preview adds an optional operations and fault profile o
 | Review, decide and publish exact asset versions | [Native lifecycle](native-service.md), [decision evidence](native-decisions.md) |
 | Describe service impact, causes and response evidence | [Operations profile](operations-profile.md) |
 | Review Runtime feedback and asset impact | [Execution feedback](feedback.md) |
-| Build or install | [Quickstart](../README.md#quickstart), [v0.6.0 package installation](../README.md#install-the-preview-package) |
+| Build or install | [Quickstart](../README.md#quickstart), [v0.7.0 package installation](../README.md#install-the-preview-package) |
 | Use Codex and the unified Expert | [Parent installation](https://github.com/yeliang-wang/evopilot/blob/main/docs/installation.md), [Expert scenarios](https://github.com/yeliang-wang/evopilot/blob/main/docs/expert-scenarios.md) |
 | Embed the service or inspect retained receipts | [Native service API](native-service.md), [service reference](service.md), [CLI](cli.md) |
 | Contribute or inspect future scope | [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [changelog](../CHANGELOG.md), [roadmap](roadmap.md) |
@@ -33,6 +33,10 @@ Use the current native workflow above for new assets. Source, validation results
 
 Read [an optional pinned operations profile with project-local declarations, provenance and SHACL constraints](operations-profile.md). The optional/additive response work preserves native v1 specifications. The [v0.6.0 release tag](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.6.0) records distribution identity; project-domain acceptance and installed Host evidence remain separate.
 
-## v0.7 candidate
+## v0.7.0 Preview
 
-Read [owner-readable API](readable-api.md) for exact snapshots, table-first reports and bounded comparisons. Native v1 formats and validators remain unchanged. Candidate verification does not establish installed Host acceptance.
+Read [owner-readable API](readable-api.md) for exact snapshots, table-first reports and bounded comparisons. Native v1 formats and validators remain unchanged. The [v0.7.0 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.7.0) records publication. Installing it and accepting a business project remain separate operations.
+
+## Documentation maintenance
+
+This default branch includes post-release documentation corrections for v0.7.0. Original tagged archives are immutable. See the [documentation correction policy](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md#documentation-corrections-after-publication).

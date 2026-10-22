@@ -24,7 +24,7 @@ The approved scope includes declarations, configuration, relations, constraints,
 
 Readme and reference documentation must identify each adopted standard, its supported subset, limitations, upstream executor and executable conformance tests. Acceptance must include missing entities/relations, empty validation targets, disabled required shapes, unsupported constructs, old-report reuse and independent upstream replay. Validation does not establish complete business meaning or grant delivery/release authority. Source interpretation and unresolved modeling questions remain explicit review work.
 
-Standards and implementation references: [RDF 1.1](https://www.w3.org/TR/2014/REC-rdf11-concepts-20140225/), [Turtle 1.1](https://www.w3.org/TR/2014/REC-turtle-20140225/), [RDFS 1.1](https://www.w3.org/TR/2014/REC-rdf-schema-20140225/), [OWL 2](https://www.w3.org/TR/2012/REC-owl2-overview-20121211/), [SHACL 2017](https://www.w3.org/TR/2017/REC-shacl-20170720/) and [pySHACL](https://github.com/RDFLib/pySHACL). The correction was published in the v0.3.0 Preview under the approved parent `governance/standards-v03.json` Target. Current v0.6 source preserves those native standards. Publication does not imply daily cutover or business approval; historical releases remain unchanged.
+Standards and implementation references: [RDF 1.1](https://www.w3.org/TR/2014/REC-rdf11-concepts-20140225/), [Turtle 1.1](https://www.w3.org/TR/2014/REC-turtle-20140225/), [RDFS 1.1](https://www.w3.org/TR/2014/REC-rdf-schema-20140225/), [OWL 2](https://www.w3.org/TR/2012/REC-owl2-overview-20121211/), [SHACL 2017](https://www.w3.org/TR/2017/REC-shacl-20170720/) and [pySHACL](https://github.com/RDFLib/pySHACL). The correction was published in the v0.3.0 Preview under the approved parent `governance/standards-v03.json` Target. Current v0.7 source preserves those native standards. Publication does not imply daily cutover or business approval; historical releases remain unchanged.
 
 ## Evolution directions after v0.3.0
 
@@ -32,7 +32,7 @@ Ontology's role is to maintain project domain assets and their traceable evoluti
 
 ### ONT-F01 — Semantic evolution and compatibility
 
-- **Status:** `CANDIDATE`; broader semantic evolution requires separate Target review. Bounded readable comparisons are included in ONT-F06's accepted v0.7 plan below; implementation is isolated.
+- **Status:** `CANDIDATE`; broader semantic evolution requires separate Target review. Bounded readable comparisons are implemented in ONT-F06's bounded v0.7 scope below.
 - **Trigger:** Repeated real-project changes need reliable rename, deprecation, replacement or relationship-change handling beyond the current source-bound impact review.
 - **Scope:** Build on the baseline's stable IRIs and version bindings. Add explicit label-only rename versus identifier replacement, deprecation/replacement lineage, semantic diffs and affected Harness/Runtime reference reports. Preserve past deliveries and distinguish compatible changes from changes requiring a new review.
 - **Acceptance:** Fixtures demonstrate rename, property/range/cardinality changes, deprecation and replacement; every changed semantic element has a classified impact. Referenced deprecated identifiers cannot disappear silently; old deliveries remain readable; stale dependent references are detected; a new review is required where the declared compatibility contract demands it. Compare a real two-round project change with the reviewed expected impact set, including unaffected assets that may be reused.

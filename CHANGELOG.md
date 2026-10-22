@@ -1,11 +1,16 @@
 # Changelog
 
-## 0.7.0 Preview candidate — unreleased
+## 0.7.0 Preview — 2026-10-22
 
 - Add owner-verified, table-first reports with exact references and explicit unknown, missing, not-executed and tool-error states. Expected rejection remains distinct from business success.
 - Preserve corrected native v1 standards, immutable history and independent decision/release authority. No Dashboard is included.
 - Project RDF/OWL declarations and SHACL constraints using the pinned RDFLib adapter; preserve native IDs, language/datatype and bounded graph comparison.
-- Candidate verification is in progress; shared maintenance and daily installation cutover remain deferred. This entry is not a release or acceptance receipt.
+- Published as [v0.7.0 Preview](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.7.0). Exact source and downloadable artifacts are retained in that Release; installation and project acceptance retain their own evidence.
+
+### Post-release documentation corrections
+
+- Correct current installation versions, documentation entry points and obsolete candidate/status wording; add a documentation consistency check to `npm run check`.
+- These corrections are on the default branch. The v0.7.0 tag, original release archives and installed files retain their original bytes; this documentation maintenance does not create another software release.
 
 
 ## 0.6.0 Preview

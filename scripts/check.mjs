@@ -1,3 +1,4 @@
+import { checkDocumentation } from './check-documentation.mjs';
 import assert from 'node:assert/strict';
 import { lstat, readFile, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -86,6 +87,7 @@ async function files(directory) {
 }
 
 export async function checkSource() {
+  await checkDocumentation();
   const pkg = JSON.parse(await readFile(resolve(ROOT, 'package.json'), 'utf8'));
   for (const [key, value] of Object.entries(expected)) assert.deepEqual(pkg[key], value, key);
   for (const key of ['peerDependencies', 'optionalDependencies']) assert.deepEqual(pkg[key] ?? {}, {});

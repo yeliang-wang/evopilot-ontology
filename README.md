@@ -40,11 +40,11 @@ Native tests require the verified installed toolchain in `EVOPILOT_TEST_NATIVE_T
 
 ## Install the Preview package
 
-For packaged installation, use the exact [v0.6.0 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.6.0). The published [v0.1.0 release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.1.0) remains historical. See [changes](CHANGELOG.md) and the parent [distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
+For packaged installation, use the exact [v0.7.0 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.7.0). Earlier editions remain available in the [release history](https://github.com/yeliang-wang/evopilot-ontology/releases). See [changes](CHANGELOG.md) and the parent [distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
 
 Place all four release assets in one new directory before checking checksums:
 
-- `evopilot-next-ontology-0.6.0.tgz`
+- `evopilot-next-ontology-0.7.0.tgz`
 - `ontology-dependency-lock.json` (the Ontology `dependency-lock.json` asset uses this owner-prefixed release name)
 - `source-revision.txt`
 - `SHA256SUMS`
@@ -52,10 +52,10 @@ Place all four release assets in one new directory before checking checksums:
 ```sh
 shasum -a 256 -c SHA256SUMS
 cat source-revision.txt
-mkdir ontology-0.6.0
-tar -xzf evopilot-next-ontology-0.6.0.tgz -C ontology-0.6.0
-cp ontology-dependency-lock.json ontology-0.6.0/package/package-lock.json
-cd ontology-0.6.0/package
+mkdir ontology-0.7.0
+tar -xzf evopilot-next-ontology-0.7.0.tgz -C ontology-0.7.0
+cp ontology-dependency-lock.json ontology-0.7.0/package/package-lock.json
+cd ontology-0.7.0/package
 npm ci --omit=dev --ignore-scripts
 node dist/cli.js help
 node dist/cli.js version
@@ -76,7 +76,3 @@ Introduced in v0.4 and retained in v0.6, this flow adds private, source-bound fe
 ## Implementation languages
 
 Product services, lifecycle and the operations-profile implementation use strict TypeScript. Installed processes execute compiled JavaScript, and packages expose TypeScript declarations; handwritten JavaScript is limited to build/package/test drivers and hash-pinned historical compatibility modules. The pinned Python adapter invokes RDFLib/pySHACL, while domain models and constraints remain native Turtle/SHACL. See the parent [language policy](https://github.com/yeliang-wang/evopilot/blob/main/docs/language-policy.md) for exact boundaries and checks.
-
-### Isolated v0.7 candidate
-
-The approved candidate adds a [readable API](docs/readable-api.md) with pinned snapshots, fixed denominators and explicit evidence limits. Candidate validation is ongoing; this is not a v0.7 release or daily installation claim.
