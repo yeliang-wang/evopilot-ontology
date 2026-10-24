@@ -1,3 +1,4 @@
+import { validateExecutionEvidence, executionIsolated } from './execution.mjs';
 import { BEHAVIOR_FACETS, usabilityStable, usabilityDigest, usabilityFail as fail, validateUsabilityScope, validateUsabilityDigest } from './contract.mjs';
 export const ORACLE_OBSERVABLE_FACETS = Object.freeze(['outputs', 'states', 'errors', 'sideEffects', 'idempotency', 'concurrency', 'recovery']);
 export const ORACLE_LIMITS = Object.freeze({ cases: 256, negativeControls: 128, tolerancesPerCase: 32 });
@@ -99,8 +100,9 @@ export function validateBehaviorOracle(raw) {
 export const behaviorOracleDigest = (oracle) => usabilityDigest(validateBehaviorOracle(oracle));
 export function validateReconstructionObservation(raw) {
     usabilityStable(raw);
-    const r = exact(raw, ['schema', 'workspaceId', 'scope', 'attemptId', 'inventoryDigest', 'specificationDigest', 'oracleDigest', 'inputManifestDigest', 'environmentDigest', 'dependenciesDigest', 'outputDigest', 'executorDigest', 'origin', 'inputMode', 'independent', 'isolated', 'status', 'cases', 'digest'], ['execution']);
-    if (r.schema !== 'evopilot-reconstruction-observation/v1')
+    const v2 = !!raw && typeof raw === 'object' && 'schema' in raw && raw.schema === 'evopilot-reconstruction-observation/v2';
+    const r = exact(raw, ['schema', 'workspaceId', 'scope', 'attemptId', 'inventoryDigest', 'specificationDigest', 'oracleDigest', 'inputManifestDigest', 'environmentDigest', 'dependenciesDigest', 'outputDigest', 'executorDigest', 'origin', 'inputMode', 'independent', 'isolated', 'status', 'cases', 'digest', ...(v2 ? ['authority'] : [])], ['execution']);
+    if (!['evopilot-reconstruction-observation/v1', 'evopilot-reconstruction-observation/v2'].includes(String(r.schema)))
         fail('ORACLE_SCHEMA');
     id(r.workspaceId);
     id(r.attemptId);
@@ -109,6 +111,11 @@ export function validateReconstructionObservation(raw) {
         validateUsabilityDigest(r[k]);
     if (!['ACTUAL', 'SYNTHETIC'].includes(String(r.origin)) || !['ASSETS_ONLY', 'SOURCE_ASSISTED'].includes(String(r.inputMode)) || typeof r.independent !== 'boolean' || typeof r.isolated !== 'boolean' || !['SUCCEEDED', 'FAILED', 'INCOMPLETE', 'UNKNOWN'].includes(String(r.status)))
         fail('ORACLE_SCHEMA');
+    if (v2) {
+        const authority = validateExecutionEvidence(r.authority);
+        if (r.isolated !== executionIsolated(authority))
+            fail('ORACLE_AUTHORITY_BINDING');
+    }
     if (r.execution !== undefined) {
         const execution = exact(r.execution, ['planDigest', 'claimId', 'cleanWorkspaceId', 'receiptDigest']);
         for (const k of ['planDigest', 'claimId', 'receiptDigest'])

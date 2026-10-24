@@ -149,9 +149,9 @@ export async function checkSource() {
   const usabilityManifest=JSON.parse(await readFile(resolve(usabilityRoot,'manifest.json'),'utf8'));
   assert.equal(usabilityManifest.schema,'evopilot-usability-distribution/v1');
   assert.equal(usabilityManifest.nativeContractUnchanged,true);
-  assert.deepEqual(Object.keys(usabilityManifest.files).sort(),['assessment.d.mts','assessment.mjs','authoring.d.mts','authoring.mjs','contract.d.mts','contract.mjs','oracle.d.mts','oracle.mjs']);
+  assert.deepEqual(Object.keys(usabilityManifest.files).sort(),['assessment.d.mts','assessment.mjs','authoring.d.mts','authoring.mjs','contract.d.mts','contract.mjs','execution.d.mts','execution.mjs','oracle.d.mts','oracle.mjs']);
   for(const [name,hash] of Object.entries(usabilityManifest.files))assert.equal(createHash('sha256').update(await readFile(resolve(usabilityRoot,name))).digest('hex'),hash);
-  const usabilityImports=['contract.mjs','authoring.mjs','assessment.mjs','oracle.mjs'].map(name=>resolve(usabilityRoot,name));
+  const usabilityImports=['contract.mjs','authoring.mjs','assessment.mjs','execution.mjs','oracle.mjs'].map(name=>resolve(usabilityRoot,name));
 
   const sources = [...await files(resolve(ROOT, 'src')), ...await files(resolve(ROOT, 'vendor'))];
   for (const path of sources) {
