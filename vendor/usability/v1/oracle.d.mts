@@ -1,3 +1,4 @@
+import type { EvaluationEvidence } from './evaluation.mjs';
 import type { ExecutionEvidence } from './execution.mjs';
 import type { BehaviorFacet, UsabilityScope } from './contract.mjs';
 export type OracleJSON = null | boolean | number | string | OracleJSON[] | {
@@ -74,6 +75,10 @@ export type ReconstructionObservation = ReconstructionObservationFields & ({
 } | {
     schema: 'evopilot-reconstruction-observation/v2';
     authority: ExecutionEvidence;
+} | {
+    schema: 'evopilot-reconstruction-observation/v3';
+    authority: ExecutionEvidence;
+    evaluation: EvaluationEvidence;
 });
 export interface BehaviorOracleResult {
     schema: 'evopilot-behavior-oracle-result/v1';

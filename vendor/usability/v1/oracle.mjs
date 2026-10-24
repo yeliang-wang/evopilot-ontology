@@ -1,3 +1,4 @@
+import { validateEvaluationEvidence } from './evaluation.mjs';
 import { validateExecutionEvidence, executionIsolated } from './execution.mjs';
 import { BEHAVIOR_FACETS, usabilityStable, usabilityDigest, usabilityFail as fail, validateUsabilityScope, validateUsabilityDigest } from './contract.mjs';
 export const ORACLE_OBSERVABLE_FACETS = Object.freeze(['outputs', 'states', 'errors', 'sideEffects', 'idempotency', 'concurrency', 'recovery']);
@@ -100,9 +101,10 @@ export function validateBehaviorOracle(raw) {
 export const behaviorOracleDigest = (oracle) => usabilityDigest(validateBehaviorOracle(oracle));
 export function validateReconstructionObservation(raw) {
     usabilityStable(raw);
-    const v2 = !!raw && typeof raw === 'object' && 'schema' in raw && raw.schema === 'evopilot-reconstruction-observation/v2';
-    const r = exact(raw, ['schema', 'workspaceId', 'scope', 'attemptId', 'inventoryDigest', 'specificationDigest', 'oracleDigest', 'inputManifestDigest', 'environmentDigest', 'dependenciesDigest', 'outputDigest', 'executorDigest', 'origin', 'inputMode', 'independent', 'isolated', 'status', 'cases', 'digest', ...(v2 ? ['authority'] : [])], ['execution']);
-    if (!['evopilot-reconstruction-observation/v1', 'evopilot-reconstruction-observation/v2'].includes(String(r.schema)))
+    const v3 = !!raw && typeof raw === 'object' && 'schema' in raw && raw.schema === 'evopilot-reconstruction-observation/v3';
+    const v2 = v3 || !!raw && typeof raw === 'object' && 'schema' in raw && raw.schema === 'evopilot-reconstruction-observation/v2';
+    const r = exact(raw, ['schema', 'workspaceId', 'scope', 'attemptId', 'inventoryDigest', 'specificationDigest', 'oracleDigest', 'inputManifestDigest', 'environmentDigest', 'dependenciesDigest', 'outputDigest', 'executorDigest', 'origin', 'inputMode', 'independent', 'isolated', 'status', 'cases', 'digest', ...(v2 ? ['authority'] : []), ...(v3 ? ['evaluation'] : [])], ['execution']);
+    if (!['evopilot-reconstruction-observation/v1', 'evopilot-reconstruction-observation/v2', 'evopilot-reconstruction-observation/v3'].includes(String(r.schema)))
         fail('ORACLE_SCHEMA');
     id(r.workspaceId);
     id(r.attemptId);
@@ -115,6 +117,16 @@ export function validateReconstructionObservation(raw) {
         const authority = validateExecutionEvidence(r.authority);
         if (r.isolated !== executionIsolated(authority))
             fail('ORACLE_AUTHORITY_BINDING');
+    }
+    if (v3) {
+        const e = validateEvaluationEvidence(r.evaluation), p = e.plan;
+        if (p.workspaceId !== r.workspaceId || usabilityStable(p.scope) !== usabilityStable(r.scope) || p.reconstruction.attemptId !== r.attemptId || p.reconstruction.outputDigest !== r.outputDigest || p.origin !== r.origin || ['oracleDigest', 'environmentDigest', 'dependenciesDigest'].some(k => p[k] !== r[k]) || e.receipt.status !== 'SUCCEEDED')
+            fail('ORACLE_EVALUATION_BINDING');
+        if (!r.execution)
+            fail('ORACLE_EVALUATION_BINDING');
+        const x = r.execution;
+        if (x.planDigest !== p.reconstruction.planDigest || x.claimId !== p.reconstruction.claimId || x.receiptDigest !== p.reconstruction.receiptDigest)
+            fail('ORACLE_EVALUATION_BINDING');
     }
     if (r.execution !== undefined) {
         const execution = exact(r.execution, ['planDigest', 'claimId', 'cleanWorkspaceId', 'receiptDigest']);
