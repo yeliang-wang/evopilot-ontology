@@ -1,0 +1,20 @@
+{
+  "schema": "evopilot-usability-distribution/v1",
+  "nativeContractUnchanged": true,
+  "files": {
+    "assessment.mjs": "9e5a2ebce61d23e1176ada699d7d7776d86ca9517c6bd215ee9c708575e8e515",
+    "assessment.d.mts": "591d4349af49d13c928a7ad38886fdf5f0447d5ca544316631e6e1c06a25a3d0",
+    "authoring.mjs": "981859a72095bb2edde932f6a5be631dec11d209323a993e8ed4b7534038122a",
+    "authoring.d.mts": "70f40da5a7fcc3e21760e428353a881caafc9dcb7ad6002b4deff2ca19a242e5",
+    "contract.mjs": "a364e497778f453776e937f24791b9bedf2bbab2c40780b1880bdcfe3bde801e",
+    "contract.d.mts": "d2f514a48fe3c59ce0306ded9512e1c39742d687165c3a3294bfa1cb7be43ffa",
+    "oracle.mjs": "016f487ac0942b3724d16049bc980f9652c9fc07e79bf6ae9009ec1c77cb1567",
+    "oracle.d.mts": "516fd558724962265b5a00acfff39fdeb3bc7316509062ca2e784b04d628f521"
+  },
+  "sources": {
+    "assessment.mts": "5213d609d88c05827a8ed26d8801f35a44731b98c695c6198a495d64a513252e",
+    "authoring.mts": "81fe61bf7dde8218000d27456d7d5e0a67dcd04b8965535a52f35fba9040b92f",
+    "contract.mts": "6385dc7880789ed2cf1bb4e7ac37fb86dafe124e67b29075b672f4c4984ea2d9",
+    "oracle.mts": "a183157832affd2d7f5dd20cbb6d2b582dd8c3658e2d4814b9fc194405022bb8"
+  }
+}

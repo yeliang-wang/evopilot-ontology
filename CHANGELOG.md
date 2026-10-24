@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0 Preview — 2026-10-24
+
+- v0.8 adds independent asset consumption, explicit L1/L2/L3 usability assessment, mandatory purpose/scope/level admission before reverse modeling, and controlled reconstruction with an independent fixed oracle. Verified L3 is limited to the reviewed functional slice and requires two clean complete reconstructions; it does not mean byte-identical source, whole-project coverage, production readiness or automatic release.
+- Preserve native v1 standards, frozen planning and immutable receipts. Retain unknown historical levels and original pending requests; changed inputs make current assessments stale.
+- Require exact candidate acceptance, actual Host and recovery evidence, and conditional release gates. The [v0.8.0 release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.0) records publication and downloads when published; this changelog is not an acceptance record.
+
 ## 0.7.0 Preview — 2026-10-22
 
 - Add owner-verified, table-first reports with exact references and explicit unknown, missing, not-executed and tool-error states. Expected rejection remains distinct from business success.

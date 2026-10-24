@@ -1,3 +1,4 @@
+import {syntheticAuthoring} from '../fixtures/native/authoring.mjs';
 import { syntheticDecisionEvidence } from '../fixtures/native/decision-evidence.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,7 +12,7 @@ import { nativePackage,rehash } from '../fixtures/native/package.mjs';
 const config=process.env.EVOPILOT_TEST_NATIVE_TOOLCHAIN;
 function tools(){assert(config,'EVOPILOT_TEST_NATIVE_TOOLCHAIN must name a verified installed toolchain; native E2E never skips missing tools');return JSON.parse(readFileSync(config,'utf8'));}
 const scope={visibility:'private',projectId:'synthetic'},testRoots=new WeakMap();
-function create(){const parent=realpathSync(mkdtempSync(join(tmpdir(),'ontology-native-'))),workspaceRoot=join(parent,'state-root');const options={workspaceRoot,workspaceId:'synthetic'};const service=createOntologyService(options,{nativeToolchain:tools()});service.initialize();testRoots.set(service,parent);return {parent,options,service};}
+function create(){const parent=realpathSync(mkdtempSync(join(tmpdir(),'ontology-native-'))),workspaceRoot=join(parent,'state-root');const options={workspaceRoot,workspaceId:'synthetic'};const service=createOntologyService(options,{resolveNativeAuthoring:syntheticAuthoring,nativeToolchain:tools()});service.initialize();testRoots.set(service,parent);return {parent,options,service};}
 function revision(s){return s.execute({operation:'workspace.inspect',scope,input:{}}).revision;}
 function mutate(s,operation,input,requestId){if(input.humanEvidenceRef?.startsWith('synthetic'))input={...input,humanEvidenceRef:syntheticDecisionEvidence(testRoots.get(s),{owner:'ontology',operation,workspaceId:'synthetic',scope,reviewDigest:input.reviewDigest,decision:input.decision})};return s.native({operation,scope,input,requestId,expectedRevision:revision(s)});}
 test('O01/C04/M02: actual native lifecycle, exact review decision, immutable readback and restart',async()=>{
@@ -31,10 +32,10 @@ test('O01/C04/M02: actual native lifecycle, exact review decision, immutable rea
   const published=await mutate(s,'native.package.publish',identity,'publish');assert.equal(published.result.reference.standardDigest,pkg.manifest.standardPins.standardDigest);
   await assert.rejects(mutate(s,'native.package.put',{package:pkg},'overwrite'),{code:'IMMUTABLE_VERSION'});
   writeFileSync(source,'changed after immutable publication');
-  s.close();restarted=createOntologyService(options,{nativeToolchain:tools()});restarted.initialize();
+  s.close();restarted=createOntologyService(options,{resolveNativeAuthoring:syntheticAuthoring,nativeToolchain:tools()});restarted.initialize();
   const record=await restarted.native({operation:'native.package.readback',scope,input:identity});assert.deepEqual(record.package,pkg);assert.deepEqual(record.reference,published.result.reference);
   assert.deepEqual(await restarted.native({operation:'native.receipt.inspect',scope,input:{requestId:'validate'}}),validation);
-  const db=new DatabaseSync(join(options.workspaceRoot,'state/ontology/ontology.db'));assert.equal(db.prepare('PRAGMA user_version').get().user_version,2);db.close();
+  const db=new DatabaseSync(join(options.workspaceRoot,'state/ontology/ontology.db'));assert.equal(db.prepare('PRAGMA user_version').get().user_version,4);db.close();
  }finally{s.close();restarted?.close();rmSync(parent,{recursive:true,force:true});}
 });
 test('C05: runtime context is retained by the actual owner; wrong scope is refused',async()=>{
@@ -100,7 +101,7 @@ test('O11: close during actual validation becomes UNKNOWN on restart; replay nev
  const {parent,options,service:s}=create();let next;try{
   const p=nativePackage(),id={id:p.manifest.id,version:p.manifest.version};await mutate(s,'native.package.put',{package:p},'put');
   const running=mutate(s,'native.package.validate',id,'interrupted');s.close();await assert.rejects(running,{code:'CLOSED'});
-  next=createOntologyService(options,{nativeToolchain:tools()});next.initialize();const inspect=()=>next.native({operation:'native.package.inspect',scope,input:id});
+  next=createOntologyService(options,{resolveNativeAuthoring:syntheticAuthoring,nativeToolchain:tools()});next.initialize();const inspect=()=>next.native({operation:'native.package.inspect',scope,input:id});
   assert.equal((await inspect()).claim.status,'UNKNOWN');const before=revision(next),pending=await mutate(next,'native.package.validate',id,'interrupted');assert.equal(pending.result.status,'RUNNING');assert.equal(revision(next),before);assert.equal((await inspect()).claim.attempt,1);
   const reconciled=await mutate(next,'native.package.reconcile',id,'reconcile');assert.equal(reconciled.result.claim.status,'UNKNOWN');assert.equal(reconciled.result.redispatched,false);
   const retried=await mutate(next,'native.package.validate',id,'new-reviewed-attempt');assert.equal(retried.result.status,'CONFORMS');assert.equal((await inspect()).claim.attempt,2);

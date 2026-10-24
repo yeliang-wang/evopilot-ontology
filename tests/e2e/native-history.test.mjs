@@ -1,3 +1,4 @@
+import {syntheticAuthoring} from '../fixtures/native/authoring.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,realpathSync,rmSync,cpSync,readFileSync,lstatSync,readdirSync,chmodSync} from 'node:fs';
@@ -23,19 +24,19 @@ test('M02/M03: pinned historical reader writes synthetic state; current reader p
   old.initialize();const asset=JSON.parse(readFileSync(new URL('../../examples/synthetic-models.json',import.meta.url))).assets[0],oldScope={visibility:asset.visibility,projectId:'old'};
   old.execute({operation:'asset.put',scope:oldScope,input:{model:asset},requestId:'old-put',expectedRevision:0});old.close();
   let db=new DatabaseSync(join(options.workspaceRoot,'state/ontology/ontology.db'));const saved=db.prepare('SELECT data FROM state').get().data,receipt=db.prepare('SELECT receipt FROM receipts').get().receipt;db.close();
-  current=createOntologyService(options,{nativeToolchain:tools()});current.initialize();assert.deepEqual(current.execute({operation:'asset.inspect',scope:oldScope,input:{id:asset.id,version:asset.version}}).model,asset);
+  current=createOntologyService(options,{resolveNativeAuthoring:syntheticAuthoring,nativeToolchain:tools()});current.initialize();assert.deepEqual(current.execute({operation:'asset.inspect',scope:oldScope,input:{id:asset.id,version:asset.version}}).model,asset);
   await write(current,'native.package.put',{package:nativePackage()},'native-put');current.close();
   db=new DatabaseSync(join(options.workspaceRoot,'state/ontology/ontology.db'));assert.equal(db.prepare('SELECT data FROM state').get().data,saved);assert.equal(db.prepare("SELECT receipt FROM receipts WHERE request_id='old-put'").get().receipt,receipt);db.close();
   old=historical(options);assert.throws(()=>old.initialize(),{code:'CORRUPT_STATE'});
  }finally{old.close();current?.close();rmSync(root,{recursive:true,force:true});}
 });
 test('M06: native snapshot/relocation keeps package, report and immutable audit; later native writes preserve lineage',async t=>{
- const root=realpathSync(mkdtempSync(join(tmpdir(),'ontology-native-move-'))),options={workspaceRoot:join(root,'source'),workspaceId:'moving'},dest=join(root,'destination');let s=createOntologyService(options,{nativeToolchain:tools()});let keyIds=[];
+ const root=realpathSync(mkdtempSync(join(tmpdir(),'ontology-native-move-'))),options={workspaceRoot:join(root,'source'),workspaceId:'moving'},dest=join(root,'destination');let s=createOntologyService(options,{resolveNativeAuthoring:syntheticAuthoring,nativeToolchain:tools()});let keyIds=[];
  try{
   s.initialize();const pkg=nativePackage(),identity={id:pkg.manifest.id,version:pkg.manifest.version};await write(s,'native.package.put',{package:pkg},'put');await write(s,'native.package.validate',identity,'validate');s.close();
   const snapshot=inspectWorkspaceSnapshot(options);assert.match(snapshot.nativeRecordsDigest,/^sha256:/);assert.equal(snapshot.unresolved.length,0);privateCopy(options.workspaceRoot,dest);
   const moved=relocateWorkspaceSnapshot({sourceRoot:options.workspaceRoot,destinationRoot:dest,workspaceId:options.workspaceId,expectedSnapshotDigest:snapshot.snapshotDigest});keyIds=moved.requiredKeyIds;assert.equal(moved.snapshot.recordsDigest,snapshot.recordsDigest);
-  s=createOntologyService({...options,workspaceRoot:dest},{nativeToolchain:tools()});s.initialize();const record=await s.native({operation:'native.package.inspect',scope,input:identity});assert.deepEqual(record.package,pkg);
+  s=createOntologyService({...options,workspaceRoot:dest},{resolveNativeAuthoring:syntheticAuthoring,nativeToolchain:tools()});s.initialize();const record=await s.native({operation:'native.package.inspect',scope,input:identity});assert.deepEqual(record.package,pkg);
   await write(s,'native.package.review',identity,'review-after-move');s.close();assert(inspectWorkspaceSnapshot({...options,workspaceRoot:dest}).revision>snapshot.revision);
   const db=new DatabaseSync(join(dest,'state/ontology/ontology.db'));db.prepare('DELETE FROM native_audit WHERE revision=2').run();db.close();assert.throws(()=>inspectWorkspaceSnapshot({...options,workspaceRoot:dest}),{code:'INVALID_LINEAGE'});
  }finally{s.close();for(const id of keyIds)rmSync(join(keyDirectory(),id+'.key'),{force:true});rmSync(root,{recursive:true,force:true});}

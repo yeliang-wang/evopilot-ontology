@@ -1,3 +1,4 @@
+import type {NativeAuthoringAdmission} from '../../vendor/usability/v1/authoring.mjs';
 import type { NativePackage, NativeReference, NativeScope, NativeToolchain, NativeValidationContext, NativeCriterionResult, StandardPins } from '../../vendor/compatibility/v1/native.mjs';
 import type { WorkspaceIdentity } from '../types.js';
 export type { NativePackage, NativeReference, NativeToolchain, NativeValidationContext, NativeCriterionResult, StandardPins };
@@ -17,6 +18,7 @@ export interface NativeOntologyValidation {
   context: NativeValidationContext | null; authority: false; businessConfirmed: false;
 }
 export interface NativeOntologyRecord {
+  authoring?: NativeAuthoringAdmission;
   scope: NativeScope; workspace: WorkspaceIdentity; id: string; version: string;
   package: NativePackage; packageDigest: string; standardPins: StandardPins;
   validation: NativeOntologyValidation | null;

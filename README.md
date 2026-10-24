@@ -1,4 +1,4 @@
-# EvoPilot Ontology · v0.7.0 Preview
+# EvoPilot Ontology · v0.8.0 Preview
 
 [Quickstart](#quickstart) · [Standards](specifications/README.md) · [Native API](docs/native-service.md) · [Documentation](docs/README.md) · [Contribute](CONTRIBUTING.md)
 
@@ -6,7 +6,7 @@ Ontology owns domain definitions, relationships, constraints, source grounding a
 
 Earlier **v0.6.0** introduced an optional pinned operations profile with project-local declarations, provenance and SHACL constraints. It retains source-bound semantic-impact review and exact-version reuse or new native delivery. Corrected-v1 ontology standards are unchanged; online findings and valid graphs do not confirm causes or approve domain changes. Read [the operations profile guide](docs/operations-profile.md). The [release tag](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.6.0) records the exact published source and artifacts.
 
-v0.7 adds [readable owner reports](docs/readable-api.md), exact-version pagination and explicit evidence boundaries. Native standards and decision authority are unchanged. Publication records are on the [v0.7.0 release page](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.7.0).
+v0.8 adds independent asset consumption, explicit L1/L2/L3 usability assessment, mandatory purpose/scope/level admission before reverse modeling, and controlled reconstruction with an independent fixed oracle. Verified L3 is limited to the reviewed functional slice and requires two clean complete reconstructions; it does not mean byte-identical source, whole-project coverage, production readiness or automatic release. See [the owning API](docs/native-service.md) and the [v0.8.0 release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.0).
 
 ## Adopted standards and tools
 
@@ -40,11 +40,11 @@ Native tests require the verified installed toolchain in `EVOPILOT_TEST_NATIVE_T
 
 ## Install the Preview package
 
-For packaged installation, use the exact [v0.7.0 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.7.0). Earlier editions remain available in the [release history](https://github.com/yeliang-wang/evopilot-ontology/releases). See [changes](CHANGELOG.md) and the parent [distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
+For packaged installation, use the exact [v0.8.0 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.0). Earlier editions remain available in the [release history](https://github.com/yeliang-wang/evopilot-ontology/releases). See [changes](CHANGELOG.md) and the parent [distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
 
 Place all four release assets in one new directory before checking checksums:
 
-- `evopilot-next-ontology-0.7.0.tgz`
+- `evopilot-next-ontology-0.8.0.tgz`
 - `ontology-dependency-lock.json` (the Ontology `dependency-lock.json` asset uses this owner-prefixed release name)
 - `source-revision.txt`
 - `SHA256SUMS`
@@ -52,10 +52,10 @@ Place all four release assets in one new directory before checking checksums:
 ```sh
 shasum -a 256 -c SHA256SUMS
 cat source-revision.txt
-mkdir ontology-0.7.0
-tar -xzf evopilot-next-ontology-0.7.0.tgz -C ontology-0.7.0
-cp ontology-dependency-lock.json ontology-0.7.0/package/package-lock.json
-cd ontology-0.7.0/package
+mkdir ontology-0.8.0
+tar -xzf evopilot-next-ontology-0.8.0.tgz -C ontology-0.8.0
+cp ontology-dependency-lock.json ontology-0.8.0/package/package-lock.json
+cd ontology-0.8.0/package
 npm ci --omit=dev --ignore-scripts
 node dist/cli.js help
 node dist/cli.js version

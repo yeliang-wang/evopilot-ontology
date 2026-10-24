@@ -26,7 +26,7 @@ NativeToolchain has portable lockDigest, dependencyLockDigest (nativeSha256 of d
 
 Results distinguish CONFORMS, NONCONFORMING, ERROR, UNSUPPORTED and UNKNOWN. Raw upstream reports, stderr, exit/signal, timeout and per-case results are retained. `criteria` maps each actual case to its declared requirementId/variantId, with a digest binding the raw report, package and Runtime context. Missing cases or a failing overall report never yield PASS criteria. The adapter exits 0 for completed conformance and completed nonconformance; status and native graph carry that distinction. Native exceptions exit 2; signal, malformed output and deadline are execution errors. Review/publish require current actual conformance and a distinct human domain decision. Repeating an admitted request reads its receipt. An interrupted claim reconciles without dispatching again.
 
-Historical execute() mutations return HISTORICAL_READ_ONLY. Existing records retain their bytes. First native write sets SQLite user_version=2, while old 0.2 readers require 1 and reject it. Restore an old complete snapshot when reverting. Append-only native_audit retains admission and completion independently of the latest receipt. Snapshots and same-host relocation verify these events, native package/report blobs and historical records; pending work remains unresolved and is not replayed.
+Historical execute() mutations return HISTORICAL_READ_ONLY. Existing records retain their bytes. The historical native state marker was 2; the first v0.8 admitted authoring write raises it to 4, so older writers reject the new state. Restore an old complete snapshot when reverting. Append-only native_audit retains admission and completion independently of the latest receipt. Snapshots and same-host relocation verify these events, native package/report blobs and historical records; pending work remains unresolved and is not replayed.
 
 The CLI uses the same API:
 
@@ -57,3 +57,12 @@ Explicitly merge multiple shapes/instance RDF graphs when the manifest lists sev
 Frozen `tests/fixtures/historical-v020` is compiled from the recorded v0.2.0 commit solely for synthetic historical state and regression. Its sources/outputs are hashed, omitted from package `files`, and never used by current service routing or production installation.
 
 Before a new decision, retain the actual authorization source and bind it using the [decision evidence format](native-decisions.md). Opaque approval labels no longer authorize new native work; historical receipts remain unchanged.
+
+
+## v0.8 source candidate: trusted authoring admission
+
+For new asset authoring, configure `trustedProviders.resolveNativeAuthoring` in trusted host code. This synchronous callback must use bounded local reads of reviewed project/source state. It receives Workspace, scope, owner, package digest, source-binding digest and direction, and returns the typed `evopilot-native-authoring-admission/v1` binding with candidate, inventory and requirements digests. Reverse sources also require an actual modeling-intent digest and target L1/L2/L3; forward sources require trusted forward context and null intent/target. Every admission has `authority: false` and grants no verified level or publication decision.
+
+The parent supplies this callback from the exact frozen and materialized project. Missing, stale, ambiguous, asynchronous or malformed results block authoring. There is no request bypass flag. The owner retains the binding separately from native package bytes and rechecks draft validation, review, decision and publication. It rechecks again after validation, so changed evidence cannot commit a passing report; reconcile any retained unresolved claim without redispatch.
+
+Direct SDK hosts must implement the trusted resolver contract. The standalone CLI has no project-context resolver and rejects new authoring with `AUTHORING_CONTEXT_REQUIRED`; use the configured parent service or a trusted SDK host. Published reads and validation remain available. Old unfinished drafts require a fresh bound put with a new request ID; exact old receipts still replay. Upgraded snapshots accept state marker 4. Restore a stopped complete pre-upgrade backup when reverting to old code; never lower the marker manually. This source candidate does not change an existing v0.7 installation.

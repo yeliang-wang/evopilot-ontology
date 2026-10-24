@@ -65,3 +65,8 @@ async function nativeContracts(service:ReturnType<typeof createOntologyService>,
  void [digest,record,toolchain];
 }
 void nativeContracts;
+
+// Authoring callbacks are trusted host configuration, never a boolean bypass.
+createOntologyService({workspaceRoot:'/explicit/workspace',workspaceId:'consumer'},{resolveNativeAuthoring:request=>({...request,schema:'evopilot-native-authoring-admission/v1',candidateDigest:'sha256:'+'a'.repeat(64),sourceInventoryDigest:'sha256:'+'b'.repeat(64),requirementsDigest:'sha256:'+'c'.repeat(64),modelingIntentDigest:null,targetLevel:null,authority:false})});
+// @ts-expect-error A caller flag cannot replace a typed trusted authoring resolver.
+createOntologyService({workspaceRoot:'/explicit/workspace',workspaceId:'consumer'},{resolveNativeAuthoring:true});

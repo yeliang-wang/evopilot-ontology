@@ -8,6 +8,7 @@ import { inspectOntologyStandard } from './standard.js';
 import { validateOntologyPackage } from './package.js';
 import { validateNativeOntology, verifyOntologyToolchain, ontologyAdapterDigest } from './validator.js';
 import { fail, slug } from '../state.js';
+import {requireNativeAuthoring, type NativeAuthoringAdmission} from '../../vendor/usability/v1/authoring.mjs';
 export const ontologyNativeOperations = Object.freeze(['standard.inspect','native.package.put','native.package.inspect','native.package.list','native.package.validate','native.package.review','native.package.decide','native.package.publish','native.package.readback','native.package.reconcile','native.receipt.inspect']);
 const writes=new Set(['native.package.put','native.package.validate','native.package.review','native.package.decide','native.package.publish','native.package.reconcile']);
 function table(store:Store):boolean{return !!store.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='native_packages'").get();}
@@ -23,9 +24,19 @@ function read(store:Store,scope:Scope,id:string,version:string):NativeOntologyRe
   return record;
 }
 function save(store:Store,record:NativeOntologyRecord):void{
+  if(record.authoring&&Number(store.db.prepare('PRAGMA user_version').get()!.user_version)<4)store.db.exec('PRAGMA user_version=4');
   if(Buffer.byteLength(nativeStableSerialize(record))>8388608)fail('LIMIT','Native record limit');
   store.blob(record.scope,record);
   store.db.prepare('INSERT INTO native_packages(scope,id,version,data,digest) VALUES(?,?,?,?,?) ON CONFLICT(scope,id,version) DO UPDATE SET data=excluded.data,digest=excluded.digest').run(nativeStableSerialize(record.scope),record.id,record.version,nativeStableSerialize(record),nativeSha256(record));
+}
+function authoring(store:Store,scope:Scope,pkg:NativeOntologyRecord['package'],retained?:NativeAuthoringAdmission):NativeAuthoringAdmission{
+  const bindings=JSON.parse(pkg.files[pkg.manifest.sourceBindingRef]);
+  return requireNativeAuthoring(store.trustedProviders.resolveNativeAuthoring,{workspaceId:store.identity.id,scope,owner:'ontology',packageDigest:nativePackageDigest(pkg),sourceBindingsDigest:nativeSha256(bindings),sourceDirection:bindings.direction},retained);
+}
+function requireDraftAuthoring(store:Store,record:NativeOntologyRecord):void{
+  if(record.reference)return;
+  if(!record.authoring)fail('AUTHORING_CONTEXT_REQUIRED','Legacy draft requires a new bound authoring admission');
+  authoring(store,record.scope,record.package,record.authoring);
 }
 function verifyContext(context:NativeValidationContext,scope:Scope,workspaceId:string):NativeValidationContext{
   nativeExact(context,['workspaceId','scope','projectCandidateDigest','claimId','inputDigest','effectiveConfigDigest','sourceScopeDigest','requirementSetDigest']);
@@ -113,7 +124,7 @@ export function createNativeOntologyOperations(getStore:()=>Store|null,isClosed:
       const tools=verifyOntologyToolchain(store.trustedProviders.nativeToolchain);
       let admitted=false;
       const admission=transact(r,s=>{
-        const record=read(s,r.scope,r.input.id,r.input.version);requireCurrent(record);
+        const record=read(s,r.scope,r.input.id,r.input.version);requireCurrent(record);requireDraftAuthoring(s,record);
         if(record.claim?.status==='RUNNING')fail('UNKNOWN','Reconcile previous validation before another attempt');
         const context=r.input.context?verifyContext(r.input.context,r.scope,s.identity.id):null;
         record.claim={requestId:r.requestId,status:'RUNNING',attempt:(record.claim?.attempt??0)+1,packageDigest:record.packageDigest,context};
@@ -130,7 +141,7 @@ export function createNativeOntologyOperations(getStore:()=>Store|null,isClosed:
         try{
           const record=read(s,r.scope,r.input.id,r.input.version);
           if(record.claim?.requestId!==r.requestId||record.claim.status!=='RUNNING'||record.packageDigest!==validation.packageDigest)fail('REVIEW_REQUIRED','Package changed during validation');
-          requireCurrent(record);record.claim.status='COMPLETE';
+          requireCurrent(record);requireDraftAuthoring(s,record);record.claim.status='COMPLETE';
           if(!record.reference)record.validation=validation;
           save(s,record);
           const revision=(db.prepare('SELECT revision FROM state WHERE singleton=1').get()!.revision as number)+1;
@@ -149,7 +160,8 @@ export function createNativeOntologyOperations(getStore:()=>Store|null,isClosed:
         let prior:NativeOntologyRecord|null=null;try{prior=read(s,r.scope,m.id,m.version);}catch(e){if(!(e instanceof Error&&'code'in e&&e.code==='NOT_FOUND'))throw e;}
         if(prior?.reference)fail('IMMUTABLE_VERSION','Published native bytes cannot be replaced');
         if(prior?.claim?.status==='RUNNING')fail('UNKNOWN','Reconcile outstanding validation before editing');
-        const record:NativeOntologyRecord={scope:r.scope,workspace:s.identity,id:m.id,version:m.version,package:pkg,packageDigest:nativePackageDigest(pkg),standardPins:m.standardPins,validation:null,claim:null,review:null,decision:null,reference:null};
+        const admission=authoring(s,r.scope,pkg);
+        const record:NativeOntologyRecord={authoring:admission,scope:r.scope,workspace:s.identity,id:m.id,version:m.version,package:pkg,packageDigest:nativePackageDigest(pkg),standardPins:m.standardPins,validation:null,claim:null,review:null,decision:null,reference:null};
         dependencies(s,record);save(s,record);return {id:m.id,version:m.version,packageDigest:record.packageDigest,standardPins:record.standardPins};
       }
       if(!('id'in r.input))fail('INVALID_REQUEST','Native identity required');
@@ -159,6 +171,7 @@ export function createNativeOntologyOperations(getStore:()=>Store|null,isClosed:
         return {claim:record.claim,validation:record.validation,redispatched:false};
       }
       if(record.reference)fail('IMMUTABLE_VERSION','Published delivery decisions are immutable');
+      requireDraftAuthoring(s,record);
       if(r.operation==='native.package.review'){record.review=reviewOf(s,record);record.decision=null;save(s,record);return record.review;}
       const currentReview=reviewOf(s,record);
       if(!record.review||record.review.reviewDigest!==currentReview.reviewDigest)fail('REVIEW_REQUIRED','Exact current review required');

@@ -137,7 +137,7 @@ export function acceptsWorkspace(db: DatabaseSync, identity: WorkspaceIdentity, 
   return readRelocations(db, identity, product).some(record => record.bindings.some(binding => stableSerialize(binding.workspace) === stableSerialize(historical) && binding.digest === digest));
 }
 export function inspectRecords(db: DatabaseSync, validateState: (value: unknown) => unknown): SnapshotRecords {
-  if (db.prepare('PRAGMA quick_check').get()?.quick_check !== 'ok' || ![1,2,3].includes(db.prepare('PRAGMA user_version').get()?.user_version as number)) migrationFail('CORRUPT_STATE', 'Invalid owner database');
+  if (db.prepare('PRAGMA quick_check').get()?.quick_check !== 'ok' || ![1,2,3,4].includes(db.prepare('PRAGMA user_version').get()?.user_version as number)) migrationFail('CORRUPT_STATE', 'Invalid owner database');
   const row = db.prepare('SELECT revision,data FROM state WHERE singleton=1').get();
   if (!row || typeof row.revision !== 'number' || !Number.isSafeInteger(row.revision) || row.revision < 0 || typeof row.data !== 'string' || Buffer.byteLength(row.data) > 8388608) migrationFail('CORRUPT_STATE', 'Invalid owner state');
   const state = validateState(JSON.parse(row.data));
