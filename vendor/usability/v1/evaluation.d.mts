@@ -42,7 +42,7 @@ export interface DatabaseDependency {
     }[];
     statements: {
         id: string;
-        operation: 'READ' | 'INSERT' | 'UPDATE' | 'DELETE' | 'CREATE_TABLE' | 'DROP_TABLE';
+        operation: 'READ' | 'INSERT' | 'UPDATE' | 'DELETE' | 'CREATE_TABLE' | 'DROP_TABLE' | 'BEGIN' | 'COMMIT' | 'ROLLBACK';
         objectIds: string[];
         templateDigest: string;
         parameters: ParameterRule[];

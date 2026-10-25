@@ -76,13 +76,15 @@ export function validateEvaluationPolicy(raw, workspaceId) {
                 const s = exact(rawStatement, ['id', 'operation', 'objectIds', 'templateDigest', 'parameters']);
                 id(s.id);
                 statementIds.push(s.id);
-                if (!['READ', 'INSERT', 'UPDATE', 'DELETE', 'CREATE_TABLE', 'DROP_TABLE'].includes(String(s.operation)))
+                if (!['READ', 'INSERT', 'UPDATE', 'DELETE', 'CREATE_TABLE', 'DROP_TABLE', 'BEGIN', 'COMMIT', 'ROLLBACK'].includes(String(s.operation)))
                     fail('EVALUATION_STATEMENT');
                 validateUsabilityDigest(s.templateDigest);
                 const targets = array(s.objectIds, 16, 1);
                 unique(targets);
                 if (targets.some(k => !objectIds.includes(String(k))))
                     fail('EVALUATION_OWNERSHIP');
+                if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(String(s.operation)) && array(s.parameters, 256).length !== 0)
+                    fail('EVALUATION_PARAMETER');
                 for (const param of array(s.parameters, 256)) {
                     if (!param || typeof param !== 'object' || !('kind' in param))
                         fail('EVALUATION_PARAMETER');
