@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1 Preview
+
+v0.8.1 adds explicit usability **v2** content grades: L1 domain understanding, L2 implementation specification and L3 reconstruction specification closure. L3 does not require running the original environment or reconstructing software. Content assessment and optional reconstruction verification are separate; `v2 / L3 / NOT_REQUESTED` is valid. It does not establish generated functional equivalence, byte-identical source, production readiness or release authority. Historical usability v1 APIs and records retain their original meaning. Explicit purpose/scope/level admission now covers source reverse, document forward and asset composition. Preserve a stopped pre-upgrade backup before v2 writes; old writers reject the new state markers.
+
+[Versioned release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.1). Publication status belongs to that release.
+
 ## 0.8.0 Preview — 2026-10-24
 
 - v0.8 adds independent asset consumption, explicit L1/L2/L3 usability assessment, mandatory purpose/scope/level admission before reverse modeling, and controlled reconstruction with an independent fixed oracle. Verified L3 is limited to the reviewed functional slice and requires two clean complete reconstructions; it does not mean byte-identical source, whole-project coverage, production readiness or automatic release.

@@ -1,3 +1,4 @@
+import {requireReadinessAuthoring} from '../../vendor/compatibility/usability/v2/authoring.mjs';
 import { nativeAssertJSON, nativeExact, nativeText, nativeDigest, nativeStableSerialize, nativeSha256, nativeFrozenClone, nativePackageDigest, validateNativePackage, referenceForPackage } from '../../vendor/compatibility/v1/native.mjs';
 import { verifyDecisionEvidence } from '../../vendor/compatibility/v1/decision-evidence.mjs';
 import type { NativeValidationContext } from '../../vendor/compatibility/v1/native.mjs';
@@ -24,6 +25,7 @@ function read(store:Store,scope:Scope,id:string,version:string):NativeOntologyRe
   return record;
 }
 function save(store:Store,record:NativeOntologyRecord):void{
+  if(Object.hasOwn(record.package.files,'readiness/specification-v2.json')&&Number(store.db.prepare('PRAGMA user_version').get()!.user_version)<5)store.db.exec('PRAGMA user_version=5');
   if(record.authoring&&Number(store.db.prepare('PRAGMA user_version').get()!.user_version)<4)store.db.exec('PRAGMA user_version=4');
   if(Buffer.byteLength(nativeStableSerialize(record))>8388608)fail('LIMIT','Native record limit');
   store.blob(record.scope,record);
@@ -31,6 +33,7 @@ function save(store:Store,record:NativeOntologyRecord):void{
 }
 function authoring(store:Store,scope:Scope,pkg:NativeOntologyRecord['package'],retained?:NativeAuthoringAdmission):NativeAuthoringAdmission{
   const bindings=JSON.parse(pkg.files[pkg.manifest.sourceBindingRef]);
+  requireReadinessAuthoring(pkg,store.identity.id,scope,store.trustedProviders.resolveReadinessAuthoring);
   return requireNativeAuthoring(store.trustedProviders.resolveNativeAuthoring,{workspaceId:store.identity.id,scope,owner:'ontology',packageDigest:nativePackageDigest(pkg),sourceBindingsDigest:nativeSha256(bindings),sourceDirection:bindings.direction},retained);
 }
 function requireDraftAuthoring(store:Store,record:NativeOntologyRecord):void{

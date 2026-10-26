@@ -1,3 +1,5 @@
+import {createOntologyReadiness,READINESS_ONTOLOGY_OPERATIONS} from './readiness.js';
+export type * from './readiness.js';
 import type {NativeOntologyRecord} from './native/types.js';
 import type {ReadRequest} from '../vendor/readability/v1/readability.mjs';
 import {createReadableAPI,READABLE_OPERATIONS} from '../vendor/readability/v1/readability.mjs';
@@ -32,7 +34,7 @@ export function createOntologyService(options: WorkspaceOptions, trustedProvider
   const providers = classificationProviders(trustedProviders);
   const { workspaceRoot, workspaceId } = options;
   let store: Store | null = null, closed = false;
-  const capabilities = () => frozenClone({ product: 'ontology', version: '0.8.0', stage: 'NATIVE_STANDARDS', readableOperations:READABLE_OPERATIONS, operations: operations.filter(op => !mutations.includes(op)), nativeOperations: ontologyNativeOperations, feedbackOperations: OWNER_FEEDBACK_OPERATIONS, responseOperations: ['response.profile.inspect', 'response.profile.instantiate'], historicalOperationsReadOnly: true, limits: LIMITS, authority: false, softwareRelease: false, pending: ['exact-candidate acceptance'] });
+  const capabilities = () => frozenClone({ product: 'ontology', version: '0.8.1', stage: 'NATIVE_STANDARDS', readinessOperations:READINESS_ONTOLOGY_OPERATIONS, readableOperations:READABLE_OPERATIONS, operations: operations.filter(op => !mutations.includes(op)), nativeOperations: ontologyNativeOperations, feedbackOperations: OWNER_FEEDBACK_OPERATIONS, responseOperations: ['response.profile.inspect', 'response.profile.instantiate'], historicalOperationsReadOnly: true, limits: LIMITS, authority: false, softwareRelease: false, pending: ['exact-candidate acceptance'] });
   function initialize() {
     if (closed) fail('CLOSED', 'Service is closed');
     if (!store) { store = Object.assign(openState(workspaceRoot, workspaceId), { trustedProviders: providers }); }
@@ -160,8 +162,11 @@ export function createOntologyService(options: WorkspaceOptions, trustedProvider
   let activeReadable=0;
   const readableAPI=createReadableAPI({kind:'asset',list:scope=>native({operation:'native.package.list',scope,input:{}}),get:async(scope,identity)=>{const record=await native({operation:'native.package.inspect',scope,input:{id:identity.id,version:identity.version!}});if(!trustedProviders.nativeToolchain)fail('TOOLCHAIN_NOT_READY','Readable graph requires the pinned RDF toolchain');return ontologyReadSnapshot(record as NativeOntologyRecord,workspaceId,scope,trustedProviders.nativeToolchain);}});
   async function readable(request:ReadRequest):Promise<unknown>{if(closed)fail('CLOSED','Service is closed');if(!store)fail('NOT_INITIALIZED','Explicit initialize required');activeReadable++;try{return await readableAPI(request);}finally{activeReadable--;}}
-  function close() { if(activeReadable)fail('BUSY','Readable snapshot is in progress'); if(activeFeedback)fail('BUSY','Feedback operation is still in progress'); if (store) { store.db.close(); store = null; } closed = true; }
-  return Object.freeze({ capabilities, initialize, execute, native, readable, feedback, response, classify, close });
+  let activeReadiness=0;
+  const readinessAPI=createOntologyReadiness(workspaceId,async(scope,id,version)=>{const r=await native({operation:'native.package.inspect',scope,input:{id,version}}) as NativeOntologyRecord;return {package:r.package,published:r.reference!==null,reference:r.reference};});
+  async function readiness(request:FeedbackEnvelope):Promise<unknown>{if(closed)fail('CLOSED','Service closed');if(!store)fail('NOT_INITIALIZED','Explicit initialize required');activeReadiness++;try{return await readinessAPI.readiness(request);}finally{activeReadiness--;}}
+  function close() { if(activeReadiness)fail('BUSY','Readiness operation in progress'); if(activeReadable)fail('BUSY','Readable snapshot is in progress'); if(activeFeedback)fail('BUSY','Feedback operation is still in progress'); if (store) { store.db.close(); store = null; } closed = true; }
+  return Object.freeze({ readiness, capabilities, initialize, execute, native, readable, feedback, response, classify, close });
 }
 
 export type OntologyService = ReturnType<typeof createOntologyService>;

@@ -1,0 +1,14 @@
+{
+  "schema": "evopilot-usability-distribution/v2",
+  "nativeContractUnchanged": true,
+  "files": {
+    "authoring.mjs": "7b00d47b981848a0eb3660e5abc685602e48760a6470e3895b723b88527bc6df",
+    "authoring.d.mts": "ca1e4016b3136ba21613aa6a55dcc10268d3e6d143b37ef3bd752049715bccdf",
+    "contract.mjs": "e5017f6b5da711b3006e32a53c8499f547dd01657e0e6e10b85e32cce72a0374",
+    "contract.d.mts": "41871ce0d9ea69380d76c851124a01ea7db1f95ef5ae895314a20aebeaf41daa"
+  },
+  "sources": {
+    "authoring.mts": "f93d6b7dc4b04908cd88a02493faae4d8256f419bfacd6ced125352244a9aba9",
+    "contract.mts": "f6a6790c58b10ed2596f057efcc1c31f641c0aa9160e5ddc516344a7658542ad"
+  }
+}

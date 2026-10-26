@@ -1,3 +1,4 @@
+import type {ReadinessAuthoringResolver} from '../vendor/compatibility/usability/v2/authoring.mjs';
 import type {NativeAuthoringResolver} from '../vendor/usability/v1/authoring.mjs';
 import type {FeedbackOwnerProviders} from '../vendor/compatibility/feedback/v1/feedback.mjs';
 import type { NativeToolchain } from '../vendor/compatibility/v1/native.mjs';
@@ -90,6 +91,7 @@ export interface DispatchRequest {
 }
 export interface TrustedProviders extends FeedbackOwnerProviders {
   resolveNativeAuthoring?: NativeAuthoringResolver;
+  resolveReadinessAuthoring?:ReadinessAuthoringResolver;
   nativeToolchain?: NativeToolchain;
   resolveLegacyHarness?: (input: unknown) => unknown;
   resolveClassificationSource?: (input: { sourceId: string; scope: Scope; workspace: WorkspaceIdentity }) => unknown;

@@ -45,3 +45,8 @@ The user explicitly started the readable-assets Roadmap. Parent `governance/read
 The subsequently approved V07-T0 planning addition is bound by parent `governance/planning-v07.json` and V07-E09–E11. Runtime owns planning revisions/decisions/bindings; conversation material never substitutes for owner semantic approval. Native v1 standards remain fixed.
 
 The user corrected v0.7 scope: no Dashboard pages, web server or browser acceptance. Deliver standards-grounded business-readable Codex reports with exact evidence, expected/actual outcomes, severity, blocking policy and next steps. Preserve structured public owner read APIs for service clients. Before the v1.0 Release is published, Dashboard design, implementation, web UI, browser journeys and related acceptance obligations are excluded across all EvoPilot versions. Historical proposals do not authorize this work. After that release, any such work still requires a separately accepted plan; it does not start automatically. Standalone asset JSON APIs and Codex-readable reports remain in scope.
+
+
+## Approved v0.8.1 asset readiness correction
+
+The current explicit user instruction authorizes the accepted parent `governance/asset-readiness-v081.json` plan through both full private project asset upgrades, conditional release and current Codex deployment. Follow its precise file binding and fixed acceptance; do not repeat routine confirmations. New shared v2 contracts are generated only by the parent. Preserve v1 behavior, historical bytes, native standards and private evidence. Content grades do not dispatch reconstruction or require business databases/SSH. Full acceptance and exact candidate evidence remain mandatory; no fabricated semantic decisions or PASS.

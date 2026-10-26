@@ -38,7 +38,7 @@ test('package boundary: changed bindings and unsupported input fail closed', () 
 });
 
 test('package boundary: default capabilities are truthful immutable data', () => {
-  assert.equal(api.VERSION, '0.8.0');
+  assert.equal(api.VERSION, '0.8.1');
   assert.equal(api.PRODUCT, 'ontology');
   const capabilities = api.capabilities();
   assert.equal(capabilities.businessOperationsReady, true);
@@ -51,7 +51,7 @@ test('package boundary: default capabilities are truthful immutable data', () =>
   assert.equal(capabilities.authority, false);
   assert(Object.isFrozen(capabilities));
   assert(Object.isFrozen(capabilities.referenceApi));
-  assert.deepEqual(Object.keys(api).sort(), ['PRODUCT', 'VERSION', 'capabilities', 'inspectArtifactReference', 'validateOntology', 'validateInstances', 'buildDelivery', 'verifyDelivery','inspectOntologyStandard','validateOntologyPackage','validateNativeOntology','verifyOntologyToolchain'].sort());
+  assert.deepEqual(Object.keys(api).sort(), ['READINESS_CLOSURE', 'READINESS_FACETS', 'READINESS_SPEC_PATH', 'READINESS_STANDARD', 'READINESS_STANDARD_DIGEST', 'assertReadinessVersion', 'boundedReadiness', 'noReconstruction', 'readinessBytesDigest', 'readinessCriteria', 'readinessDigest', 'readinessFail', 'readinessId', 'readinessPath', 'readinessText', 'validateReadinessIntent', 'validateReadinessReconstruction', 'validateReadinessReview', 'validateReadinessSpecification', 'verifyReadinessProjection', 'projectReadinessPackage', 'PRODUCT', 'VERSION', 'capabilities', 'inspectArtifactReference', 'validateOntology', 'validateInstances', 'buildDelivery', 'verifyDelivery','inspectOntologyStandard','validateOntologyPackage','validateNativeOntology','verifyOntologyToolchain'].sort());
 });
 
 test('vendored v1 wire and public boundary are independent of implementation revision', () => {
