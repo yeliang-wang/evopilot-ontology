@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.2 Preview — 2026-10-26
+
+[Versioned Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.2).
+
+Correct the parent native transport guide to include the existing 8 MiB preflight and freeze routes and the separately bounded readiness/readable responses. The synchronized distribution carries the corrected offline documentation. Product operations, native standards, state markers and runtime behavior are unchanged from v0.8.1. Existing tags, packages and historical evidence remain immutable. Private asset corrections require their own exact native lifecycle; this changelog does not grant a project grade.
+
 ## 0.8.1 Preview
 
 v0.8.1 adds explicit usability **v2** content grades: L1 domain understanding, L2 implementation specification and L3 reconstruction specification closure. L3 does not require running the original environment or reconstructing software. Content assessment and optional reconstruction verification are separate; `v2 / L3 / NOT_REQUESTED` is valid. It does not establish generated functional equivalence, byte-identical source, production readiness or release authority. Historical usability v1 APIs and records retain their original meaning. Explicit purpose/scope/level admission now covers source reverse, document forward and asset composition. Preserve a stopped pre-upgrade backup before v2 writes; old writers reject the new state markers.

@@ -124,3 +124,7 @@ References: [WebProtégé](https://github.com/protegeproject/webprotege) for ent
 ### v0.7 project planning addition
 
 The approved parent V07-T0 adds project-scoped conversation provenance, immutable planning revisions and Runtime-owned Roadmap decisions/execution bindings. Ontology and Harness assets retain independent native validation and review. User planning stays private; native specifications/v1 remain unchanged. Installation changes follow the separately authorized stopped-state backup, recovery and Host verification procedure. See the parent [planning decision](https://github.com/yeliang-wang/evopilot/blob/main/docs/adr-planning.md).
+
+## v0.8.2 Preview: transport documentation correction
+
+This synchronized patch supports the parent transport guide and immutable content-specification correction. No owner operations, state markers, native standards or business behavior change. The parent correction Target retains the v0.8.1 acceptance obligations and requires new exact release/install verification. Existing releases and private records remain preserved.
