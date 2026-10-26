@@ -1,3 +1,5 @@
+import type { EvaluationEvidence } from './evaluation.mjs';
+import type { ExecutionEvidence } from './execution.mjs';
 import type { BehaviorFacet, UsabilityScope } from './contract.mjs';
 export type OracleJSON = null | boolean | number | string | OracleJSON[] | {
     [key: string]: OracleJSON;
@@ -37,8 +39,7 @@ export interface BehaviorOracle {
         actual: BehaviorObservation;
     }[];
 }
-export interface ReconstructionObservation {
-    schema: 'evopilot-reconstruction-observation/v1';
+interface ReconstructionObservationFields {
     workspaceId: string;
     scope: UsabilityScope;
     attemptId: string;
@@ -69,6 +70,16 @@ export interface ReconstructionObservation {
     }[];
     digest: string;
 }
+export type ReconstructionObservation = ReconstructionObservationFields & ({
+    schema: 'evopilot-reconstruction-observation/v1';
+} | {
+    schema: 'evopilot-reconstruction-observation/v2';
+    authority: ExecutionEvidence;
+} | {
+    schema: 'evopilot-reconstruction-observation/v3';
+    authority: ExecutionEvidence;
+    evaluation: EvaluationEvidence;
+});
 export interface BehaviorOracleResult {
     schema: 'evopilot-behavior-oracle-result/v1';
     workspaceId: string;
@@ -106,3 +117,4 @@ export declare function compareBehavior(expected: BehaviorObservation, actual: B
 export declare function validateBehaviorOracle(raw: unknown): BehaviorOracle;
 export declare const behaviorOracleDigest: (oracle: BehaviorOracle) => string;
 export declare function validateReconstructionObservation(raw: unknown): ReconstructionObservation;
+export {};

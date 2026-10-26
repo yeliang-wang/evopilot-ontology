@@ -1,6 +1,6 @@
 # Ontology roadmap
 
-Current edition: [ONT-F06 / v0.7 readable assets and comparisons](#ont-f06--v07-readable-assets-and-comparisons). Implemented for the v0.7 edition; exact publication and download records remain on the versioned Release page.
+Current edition: [ONT-F07 / v0.8 independent asset consumption and modeling admission](#ont-f07--v08-independent-asset-consumption-and-modeling-admission), delivered in [v0.8.0 Preview](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.0). Earlier v0.7 capabilities remain available. Exact publication, installation and project acceptance are separate records.
 
 ## v0.1.0 history
 
@@ -124,3 +124,11 @@ References: [WebProtégé](https://github.com/protegeproject/webprotege) for ent
 ### v0.7 project planning addition
 
 The approved parent V07-T0 adds project-scoped conversation provenance, immutable planning revisions and Runtime-owned Roadmap decisions/execution bindings. Ontology and Harness assets retain independent native validation and review. User planning stays private; native specifications/v1 remain unchanged. Installation changes follow the separately authorized stopped-state backup, recovery and Host verification procedure. See the parent [planning decision](https://github.com/yeliang-wang/evopilot/blob/main/docs/adr-planning.md).
+
+## ONT-F07 — v0.8 independent asset consumption and modeling admission
+
+**Status:** `RELEASED_PREVIEW`. See the [current guide](native-service.md) and [v0.8.0 release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.0).
+
+Ontology exposes immutable native asset identity, source mappings and bounded readable projections. New reverse modeling requires an explicit purpose, scope, exclusions, target level, independent requirements and actual user-intent binding. The parent asset service composes owner reads for independent clients; it does not require a Runtime Goal/Run or Codex activation for authorized asset consumption. Reading a published asset never upgrades its level or authorizes reconstruction or publication.
+
+The [parent v0.8 plan](https://github.com/yeliang-wang/evopilot/blob/main/docs/asset-usability-v08.md) retains 18 requirements and 20 acceptance IDs. Planning projections and synthetic examples are not completed execution evidence. Published software does not automatically upgrade original project assets, prove whole-project functional equivalence or authorize a later correction release. Preserve native specifications, immutable history and exact candidate evidence. Project-specific environment deferrals stay in private acceptance records and never count as passed requirements.
