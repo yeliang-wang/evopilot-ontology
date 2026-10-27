@@ -24,3 +24,7 @@ The parent records exact child commits as gitlinks. Complete child review and ch
 ## Documentation consistency
 
 `npm run check` includes `scripts/check-documentation.mjs`. Keep the README, documentation index, current changelog section and default installation examples aligned with `package.json`; retain explicitly historical version records. Run `node --test tests/e2e/documentation.test.mjs` for the gate regression cases. Source documentation updates do not replace existing tags or release archives.
+
+## Bilingual entry points
+
+Update `README.md` and `README_CN.md` together when changing behavior descriptions, versions, prerequisites, commands or limits. Follow [bilingual maintenance](docs/documentation-languages.md) ([简体中文](docs/zh-CN/documentation-languages.md)). `npm run check` runs the synchronization guard; semantic translation review remains required. Include available Chinese pages in future packages without replacing historical releases.

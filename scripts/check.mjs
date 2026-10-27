@@ -23,6 +23,7 @@ const expected = {
     "src",
     "vendor",
     "README.md",
+    "README_CN.md",
     "specifications",
     "examples",
     "schemas",

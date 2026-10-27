@@ -1,53 +1,35 @@
 # EvoPilot Ontology · v0.8.3 Preview
 
-[Quickstart](#quickstart) · [Standards](specifications/README.md) · [Native API](docs/native-service.md) · [Documentation](docs/README.md) · [Contribute](CONTRIBUTING.md)
+English | [简体中文](README_CN.md)
 
-Ontology owns domain definitions, relationships, constraints, source grounding and immutable semantic deliveries. It works with [EvoPilot Expert](https://github.com/yeliang-wang/evopilot), [Harness](https://github.com/yeliang-wang/evopilot-harness) for QA/evidence and [Runtime](https://github.com/yeliang-wang/evopilot-runtime) for execution and project completion.
+Ontology defines domain concepts, relationships, constraints and provenance, then preserves reviewed immutable semantic assets. It works with [EvoPilot Expert](https://github.com/yeliang-wang/evopilot/blob/main/README.md), [Harness](https://github.com/yeliang-wang/evopilot-harness/blob/main/README.md) for quality and evidence, and [Runtime](https://github.com/yeliang-wang/evopilot-runtime/blob/main/README.md) for execution and project completion.
 
-Earlier **v0.6.0** introduced an optional pinned operations profile with project-local declarations, provenance and SHACL constraints. It retains source-bound semantic-impact review and exact-version reuse or new native delivery. Corrected-v1 ontology standards are unchanged; online findings and valid graphs do not confirm causes or approve domain changes. Read [the operations profile guide](docs/operations-profile.md). The [release tag](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.6.0) records the exact published source and artifacts.
+[Quickstart](#quickstart) · [Standards](specifications/README.md) · [Native API](docs/native-service.md) · [Documentation](docs/README.md) · [Release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.3)
 
-v0.8.3 synchronizes current v2 content-grade guidance, installation and migration routes, plugin naming and offline documentation. Product behavior is unchanged. v0.8.1 introduced explicit usability **v2** content grades: L1 domain understanding, L2 implementation specification and L3 reconstruction specification closure. L3 does not require running the original environment or reconstructing software. Content assessment and optional reconstruction verification are separate; `v2 / L3 / NOT_REQUESTED` is valid. It does not establish generated functional equivalence, byte-identical source, production readiness or release authority. Historical usability v1 APIs and records retain their original meaning. Read [the v2 API](docs/readiness-v2.md).
+<a id="what-is-an-ontology-asset"></a>
 
-## Adopted standards and tools
+## Assets and standards
 
-| Basis | Adoption |
+| Basis | Supported use |
 |---|---|
-| RDF 1.1 / Turtle 1.1 | Native model, shapes and instance files with stable IRIs |
-| RDFS 1.1 / OWL 2 declarations | Bounded concepts/properties/relations and metadata; no full OWL reasoning |
-| SHACL 2017 / pySHACL | Core and restricted local SELECT, original upstream reports |
-| EvoPilot conventions | Package layout, exact source/coverage bindings, lifecycle and immutable delivery |
+| RDF 1.1 / Turtle 1.1 | Native models, shapes and instances with stable IRIs |
+| RDFS 1.1 / OWL 2 declarations | Bounded concepts, properties, relations and metadata; no full OWL reasoning |
+| SHACL 2017 / pySHACL | Core and restricted local SELECT validation, preserving upstream reports |
+| EvoPilot conventions | Package layout, source and requirement bindings, review and immutable publication |
 
-The [v1 specification](specifications/v1/README.md), [support matrix](specifications/v1/support-matrix.json), [adoption table](specifications/v1/adoption.md) and [toolchain reference](specifications/v1/standards.lock.json) state exact versions, limits and executable tests. Public/private projects and forward/reverse workflows use this same basis. Required unsupported or unresolved work never becomes a completed project.
+The editable model is `model.ttl`; `shapes/` contains native constraints and `instances/` contains actual or explicitly synthetic facts. Source bindings distinguish observed facts from inference. Independent coverage fixes expected identities, shapes and cases before generation.
 
-## What is an Ontology asset?
+Current `service.native()` operations perform package admission, validation, exact review, a separate domain decision, publication and protected readback. Successful validation alone does not approve business meaning or prove complete coverage. Historical JSON models and Catalog queries remain read-only; old mutation entrypoints reject new work.
 
-The editable model is `model.ttl`; relationships and constraints use native RDF and SHACL under `shapes/`, while `instances/` supplies actual or explicitly synthetic facts. Source bindings separate observed facts from inferred modeling choices. Independent coverage fixes expected identities, shapes and cases before generation; a successful validator alone cannot prove a project is complete.
-
-Current work uses `service.native()`: package admission, real validation, exact review, a distinct domain decision, immutable publication and protected readback. `standard.inspect` reports installed normative bytes. Old JSON models, Catalog and historical queries remain read-only evidence; retired mutation entrypoints reject new work. See [re-extraction](specifications/v1/re-extraction.md).
+Read the [v1 specification](specifications/v1/README.md), [support matrix](specifications/v1/support-matrix.json), [tool versions](specifications/v1/standards.lock.json) and [re-extraction guide](specifications/v1/re-extraction.md). The same basis applies to forward/reverse modeling and public/private projects.
 
 ## Quickstart
 
-Users start through the parent distribution's unified Expert. It initializes a private Workspace and guides scope, modeling, validation and review. Source developers use Node 24.14.0 and locked dependencies:
+For Codex, start with the [parent installation](https://github.com/yeliang-wang/evopilot/blob/main/docs/installation.md) and unified Expert. It guides purpose, scope, modeling, validation and review; no separate Ontology plugin is required.
 
-```sh
-npm ci --ignore-scripts
-npm run build
-npm run check
-npm test
-```
+### Install the Preview package
 
-Native tests require the verified installed toolchain in `EVOPILOT_TEST_NATIVE_TOOLCHAIN`; missing tools fail explicitly. Production tool paths come only from trusted service construction, not asset JSON. Owned orchestration is strict TypeScript; a small Python adapter invokes upstream RDF/SHACL rather than implementing another rule language. [Native API and independent replay](docs/native-service.md) document exact operations and errors.
-
-## Install the Preview package
-
-For packaged installation, use the exact [v0.8.3 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.3). Earlier editions remain available in the [release history](https://github.com/yeliang-wang/evopilot-ontology/releases). See [changes](CHANGELOG.md) and the parent [distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
-
-Place all four release assets in one new directory before checking checksums:
-
-- `evopilot-next-ontology-0.8.3.tgz`
-- `ontology-dependency-lock.json` (the Ontology `dependency-lock.json` asset uses this owner-prefixed release name)
-- `source-revision.txt`
-- `SHA256SUMS`
+Use **Node 24.14.0**. Place all four assets from [v0.8.3 Preview](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.3) in a new directory: `evopilot-next-ontology-0.8.3.tgz`, `ontology-dependency-lock.json`, `source-revision.txt` and `SHA256SUMS`.
 
 ```sh
 shasum -a 256 -c SHA256SUMS
@@ -61,18 +43,34 @@ node dist/cli.js help
 node dist/cli.js version
 ```
 
-Stop if checksum verification fails; compare `source-revision.txt` with the release's exact source commit. Distribution uses release tarballs, not a public npm registry. The installed bin is `evopilot-next-ontology`; SDK subpaths resolve compiled JavaScript and declarations.
+Stop on checksum failure and compare the revision with the release source. Distribution uses GitHub Releases, not an npm registry. SDK exports resolve compiled JavaScript and declarations; the installed bin is `evopilot-next-ontology`. Development scripts and tests are excluded from installed packages.
 
-## Documentation and contributions
+### Develop from source
 
-[Documentation index](docs/README.md), [contribution guide](CONTRIBUTING.md), [security](SECURITY.md), and [Roadmap](docs/roadmap.md). Match package versions to their release tag; historical downloads retain their original capabilities. Technical validation grants neither domain approval nor release authority.
+In a source checkout, prepare the parent-pinned native toolchain and use locked development dependencies:
 
-Native approvals bind readable, digest-pinned evidence to the exact review, Workspace and operation. See [decision evidence](docs/native-decisions.md) for the format, historical readback and trusted-operator boundary.
+```sh
+npm ci --ignore-scripts
+npm run build
+npm run check
+EVOPILOT_TEST_NATIVE_TOOLCHAIN=/absolute/path/to/verified/native-toolchain.json npm test
+```
 
-## Execution feedback
+Missing native tools fail explicitly. Trusted service construction supplies tool paths; asset JSON cannot choose executables. Maintained services and lifecycle logic use strict TypeScript; a pinned Python adapter invokes RDFLib/pySHACL. See [native API and independent replay](docs/native-service.md).
 
-Introduced in v0.4 and retained in v0.6, this flow adds private, source-bound feedback through the public service API. This owner receives protected Runtime evidence and records reviewed impact, exact-version reuse or a new native delivery. Receiving evidence does not approve or publish assets. See [feedback](docs/feedback.md). Native v0.3 standard and contract bytes remain unchanged. Publication and exact installed acceptance are recorded separately.
+## Content levels and modeling scope
 
-## Implementation languages
+Before source reverse modeling, document-driven design or asset composition, fix purpose, full scope, source revisions, independent requirements and target level. Current grading selects `standardVersion: "v2"`: L1 domain understanding, L2 implementation specifications, L3 complete reconstruction specifications. Ontology holds the normative content; Harness assesses it. See the [v2 API](docs/readiness-v2.md).
 
-Product services, lifecycle and the operations-profile implementation use strict TypeScript. Installed processes execute compiled JavaScript, and packages expose TypeScript declarations; handwritten JavaScript is limited to build/package/test drivers and hash-pinned historical compatibility modules. The pinned Python adapter invokes RDFLib/pySHACL, while domain models and constraints remain native Turtle/SHACL. See the parent [language policy](https://github.com/yeliang-wang/evopilot/blob/main/docs/language-policy.md) for exact boundaries and checks.
+L3 does not require software reconstruction or the original environment. `assetAssessment` and `reconstructionVerification` are separate; `L3 / NOT_REQUESTED` is valid. It does not prove generated functional equivalence, identical code, production readiness or release authority. Missing required content blocks qualification. Historical usability v1 records retain their original meaning.
+
+Public visibility does not authorize upload. Received execution feedback proposes semantic impact and exact-version reuse or new delivery; it never approves or publishes assets. Optional operations profiles retain source bindings and constraints. Preview is not GA.
+
+## Documentation and contribution
+
+- [Documentation index](docs/README.md), [native decisions](docs/native-decisions.md), [readable API](docs/readable-api.md) and [operations profiles](docs/operations-profile.md).
+- [Feedback](docs/feedback.md), [changelog](CHANGELOG.md), [Roadmap](docs/roadmap.md) and [contribution guide](CONTRIBUTING.md).
+- [Bilingual maintenance](docs/documentation-languages.md), [security](SECURITY.md), [Apache-2.0 license](LICENSE) and [notices](NOTICE).
+- [Parent implementation-language policy](https://github.com/yeliang-wang/evopilot/blob/main/docs/language-policy.md) and [distribution/checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
+
+These source pages include documentation improvements after v0.8.3. Existing tagged archives retain their original documentation; future releases package the updated pages.

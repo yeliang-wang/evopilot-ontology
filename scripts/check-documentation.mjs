@@ -1,3 +1,4 @@
+import { checkBilingualDocumentation } from './check-bilingual-documentation.mjs';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -58,6 +59,7 @@ export function validateDocumentation({ version, owner, documents }) {
 }
 
 export async function checkDocumentation(root = fileURLToPath(new URL('../', import.meta.url))) {
+  await checkBilingualDocumentation(root);
   const pkg = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8'));
   const owner = pkg.name.replace('@evopilot-next/', '');
   const names = ['README.md', 'CHANGELOG.md', ...(await readdir(resolve(root, 'docs')))

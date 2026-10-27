@@ -2,6 +2,8 @@
 
 EvoPilot Ontology v0.8.3 Preview provides readable model, constraint and comparison reports over unchanged corrected-v1 RDF/Turtle and SHACL assets, retaining the optional operations and fault profile. It retains source-bound semantic-impact review and exact-version reuse or new immutable delivery. Online observations and graph validation do not approve or mutate domain models.
 
+English | [简体中文](zh-CN/README.md)
+
 ## Current workflows and references
 
 | Your task | Read |
