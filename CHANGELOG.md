@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.3 Preview — 2026-10-27
+
+[Versioned Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.3).
+
+v0.8.3 synchronizes current v2 content-grade guidance, installation and migration routes, plugin naming and offline documentation. Product behavior is unchanged. Explicit v2 L3 content completeness remains separate from optional reconstruction. Current migration distinguishes Runtime/Harness marker 8 and Ontology marker 5; historical v1 guides and records remain labeled and preserved. Private assets require their independent native review, publication and assessment.
+
 ## 0.8.2 Preview — 2026-10-26
 
 [Versioned Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.2).

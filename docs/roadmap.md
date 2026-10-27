@@ -128,3 +128,7 @@ The approved parent V07-T0 adds project-scoped conversation provenance, immutabl
 ## v0.8.2 Preview: transport documentation correction
 
 This synchronized patch supports the parent transport guide and immutable content-specification correction. No owner operations, state markers, native standards or business behavior change. The parent correction Target retains the v0.8.1 acceptance obligations and requires new exact release/install verification. Existing releases and private records remain preserved.
+
+## v0.8.3 Preview documentation closure
+
+This synchronized maintenance release follows the accepted parent v0.8.1 plan and its 72 fixed variants. It corrects current-versus-historical guidance and installation routing, retains all original APIs and state semantics, and requires exact source, package, publication and installed readback evidence. No new product capability or execution authority is introduced.

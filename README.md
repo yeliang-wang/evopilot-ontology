@@ -1,4 +1,4 @@
-# EvoPilot Ontology · v0.8.2 Preview
+# EvoPilot Ontology · v0.8.3 Preview
 
 [Quickstart](#quickstart) · [Standards](specifications/README.md) · [Native API](docs/native-service.md) · [Documentation](docs/README.md) · [Contribute](CONTRIBUTING.md)
 
@@ -6,7 +6,7 @@ Ontology owns domain definitions, relationships, constraints, source grounding a
 
 Earlier **v0.6.0** introduced an optional pinned operations profile with project-local declarations, provenance and SHACL constraints. It retains source-bound semantic-impact review and exact-version reuse or new native delivery. Corrected-v1 ontology standards are unchanged; online findings and valid graphs do not confirm causes or approve domain changes. Read [the operations profile guide](docs/operations-profile.md). The [release tag](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.6.0) records the exact published source and artifacts.
 
-v0.8.2 corrects the parent transport guide and refreshes the synchronized offline distribution. Runtime behavior is unchanged. v0.8.1 introduced explicit usability **v2** content grades: L1 domain understanding, L2 implementation specification and L3 reconstruction specification closure. L3 does not require running the original environment or reconstructing software. Content assessment and optional reconstruction verification are separate; `v2 / L3 / NOT_REQUESTED` is valid. It does not establish generated functional equivalence, byte-identical source, production readiness or release authority. Historical usability v1 APIs and records retain their original meaning. Read [the v2 API](docs/readiness-v2.md).
+v0.8.3 synchronizes current v2 content-grade guidance, installation and migration routes, plugin naming and offline documentation. Product behavior is unchanged. v0.8.1 introduced explicit usability **v2** content grades: L1 domain understanding, L2 implementation specification and L3 reconstruction specification closure. L3 does not require running the original environment or reconstructing software. Content assessment and optional reconstruction verification are separate; `v2 / L3 / NOT_REQUESTED` is valid. It does not establish generated functional equivalence, byte-identical source, production readiness or release authority. Historical usability v1 APIs and records retain their original meaning. Read [the v2 API](docs/readiness-v2.md).
 
 ## Adopted standards and tools
 
@@ -40,11 +40,11 @@ Native tests require the verified installed toolchain in `EVOPILOT_TEST_NATIVE_T
 
 ## Install the Preview package
 
-For packaged installation, use the exact [v0.8.2 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.2). Earlier editions remain available in the [release history](https://github.com/yeliang-wang/evopilot-ontology/releases). See [changes](CHANGELOG.md) and the parent [distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
+For packaged installation, use the exact [v0.8.3 Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.3). Earlier editions remain available in the [release history](https://github.com/yeliang-wang/evopilot-ontology/releases). See [changes](CHANGELOG.md) and the parent [distribution and checksum guide](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md).
 
 Place all four release assets in one new directory before checking checksums:
 
-- `evopilot-next-ontology-0.8.2.tgz`
+- `evopilot-next-ontology-0.8.3.tgz`
 - `ontology-dependency-lock.json` (the Ontology `dependency-lock.json` asset uses this owner-prefixed release name)
 - `source-revision.txt`
 - `SHA256SUMS`
@@ -52,10 +52,10 @@ Place all four release assets in one new directory before checking checksums:
 ```sh
 shasum -a 256 -c SHA256SUMS
 cat source-revision.txt
-mkdir ontology-0.8.2
-tar -xzf evopilot-next-ontology-0.8.2.tgz -C ontology-0.8.2
-cp ontology-dependency-lock.json ontology-0.8.2/package/package-lock.json
-cd ontology-0.8.2/package
+mkdir ontology-0.8.3
+tar -xzf evopilot-next-ontology-0.8.3.tgz -C ontology-0.8.3
+cp ontology-dependency-lock.json ontology-0.8.3/package/package-lock.json
+cd ontology-0.8.3/package
 npm ci --omit=dev --ignore-scripts
 node dist/cli.js help
 node dist/cli.js version

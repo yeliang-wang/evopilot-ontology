@@ -1,6 +1,6 @@
 # Ontology documentation
 
-EvoPilot Ontology v0.8.2 Preview adds readable model, constraint and comparison reports over unchanged corrected-v1 RDF/Turtle and SHACL assets, retaining the optional operations and fault profile. It retains source-bound semantic-impact review and exact-version reuse or new immutable delivery. Online observations and graph validation do not approve or mutate domain models.
+EvoPilot Ontology v0.8.3 Preview adds readable model, constraint and comparison reports over unchanged corrected-v1 RDF/Turtle and SHACL assets, retaining the optional operations and fault profile. It retains source-bound semantic-impact review and exact-version reuse or new immutable delivery. Online observations and graph validation do not approve or mutate domain models.
 
 ## Current workflows and references
 
@@ -42,8 +42,12 @@ Read [owner-readable API](readable-api.md) for exact snapshots, table-first repo
 This default branch includes post-release documentation corrections for v0.7.0. Original tagged archives are immutable. See the [documentation correction policy](https://github.com/yeliang-wang/evopilot/blob/main/docs/github-release.md#documentation-corrections-after-publication).
 
 
-## v0.8.2 Preview
+## v0.8.3 Preview
 
-v0.8 adds independent asset consumption, explicit L1/L2/L3 usability assessment, mandatory purpose/scope/level admission before reverse modeling, and controlled reconstruction with an independent fixed oracle. Verified L3 is limited to the reviewed functional slice and requires two clean complete reconstructions; it does not mean byte-identical source, whole-project coverage, production readiness or automatic release. Read [the current workflow/API](native-service.md). Publication and project acceptance retain separate evidence.
+Current content grading explicitly selects `standardVersion: "v2"`: L1 covers domain understanding, L2 implementation specifications, and L3 reconstruction specification completeness. L3 does not require software reconstruction or access to the original runtime environment. `assetAssessment` and `reconstructionVerification` remain independent; `L3 / NOT_REQUESTED` is valid and makes no generated-equivalence claim. Read the [current v2 API](readiness-v2.md). Publication and project acceptance retain separate evidence.
+
+### Historical usability v1
+
+Historical v0.8.0 usability v1 added independent asset consumption, explicit L1/L2/L3 usability assessment, mandatory purpose/scope/level admission before reverse modeling, and controlled reconstruction with an independent fixed oracle. Verified L3 is limited to the reviewed functional slice and requires two clean complete reconstructions; it does not mean byte-identical source, whole-project coverage, production readiness or automatic release. Read [the retained v1 workflow/API](native-service.md). Publication and project acceptance retain separate evidence.
 
 - [Asset readiness v2 API](readiness-v2.md)

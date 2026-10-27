@@ -26,7 +26,7 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: ${{ github.repository }}-v0.8.2
+  group: ${{ github.repository }}-v0.8.3
   cancel-in-progress: false
 env:
   GH_TOKEN: ${{ github.token }}
