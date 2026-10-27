@@ -1,6 +1,6 @@
 # Ontology documentation
 
-EvoPilot Ontology v0.8.3 Preview adds readable model, constraint and comparison reports over unchanged corrected-v1 RDF/Turtle and SHACL assets, retaining the optional operations and fault profile. It retains source-bound semantic-impact review and exact-version reuse or new immutable delivery. Online observations and graph validation do not approve or mutate domain models.
+EvoPilot Ontology v0.8.3 Preview provides readable model, constraint and comparison reports over unchanged corrected-v1 RDF/Turtle and SHACL assets, retaining the optional operations and fault profile. It retains source-bound semantic-impact review and exact-version reuse or new immutable delivery. Online observations and graph validation do not approve or mutate domain models.
 
 ## Current workflows and references
 
@@ -12,7 +12,7 @@ EvoPilot Ontology v0.8.3 Preview adds readable model, constraint and comparison 
 | Review, decide and publish exact asset versions | [Native lifecycle](native-service.md), [decision evidence](native-decisions.md) |
 | Describe service impact, causes and response evidence | [Operations profile](operations-profile.md) |
 | Review Runtime feedback and asset impact | [Execution feedback](feedback.md) |
-| Build or install | [Quickstart](../README.md#quickstart), [v0.7.0 package installation](../README.md#install-the-preview-package) |
+| Build or install | [Quickstart](../README.md#quickstart), [current package installation](../README.md#install-the-preview-package) |
 | Use Codex and the unified Expert | [Parent installation](https://github.com/yeliang-wang/evopilot/blob/main/docs/installation.md), [Expert scenarios](https://github.com/yeliang-wang/evopilot/blob/main/docs/expert-scenarios.md) |
 | Embed the service or inspect retained receipts | [Native service API](native-service.md), [service reference](service.md), [CLI](cli.md) |
 | Contribute or inspect future scope | [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [changelog](../CHANGELOG.md), [roadmap](roadmap.md) |
