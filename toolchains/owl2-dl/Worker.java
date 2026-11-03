@@ -21,7 +21,11 @@ import org.semanticweb.owlapi.util.OWLObjectTransformer;
 import org.semanticweb.owlapi.reasoner.*;
 import org.semanticweb.owlapi.functional.parser.OWLFunctionalSyntaxOWLParserFactory;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFXMLParserFactory;
+import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFParser;
+import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFParserException;
 import org.semanticweb.owlapi.rdf.turtle.parser.TurtleOntologyParserFactory;
+import org.semanticweb.owlapi.rdf.turtle.parser.OWLRDFConsumerAdapter;
+import org.semanticweb.owlapi.rdf.turtle.parser.TurtleParser;
 import org.semanticweb.HermiT.Configuration;
 import org.semanticweb.HermiT.ReasonerFactory;
 
@@ -81,6 +85,27 @@ public final class Worker {
       .setFollowRedirects(false).setEntityExpansionLimit("1000");
     for(String iri:ignored)c=c.addIgnoredImport(IRI.create(iri));return c;
   }
+  static final class MappingConsumer extends OWLRDFConsumerAdapter {
+    final Set<IRI> expressions=new LinkedHashSet<>();
+    final Set<OWLClassExpression> mapped=new HashSet<>();
+    MappingConsumer(OWLOntology o,OWLOntologyLoaderConfiguration c){super(o,c);}
+    void useParser(RDFParser parser){setIRIProvider(parser);}
+    void retainExpression(IRI iri,boolean explicit){if(explicit&&isAnonymousNode(iri)){expressions.add(iri);require(expressions.size()<=AXIOMS,"EXPRESSION_LIMIT","RDF class-expression budget exceeded");}}
+    public void addClassExpression(IRI iri,boolean explicit){super.addClassExpression(iri,explicit);retainExpression(iri,explicit);}
+    protected void addOWLRestriction(IRI iri,boolean explicit){super.addOWLRestriction(iri,explicit);retainExpression(iri,explicit);}
+    public <E extends OWLEntity> E generateAndLogParseError(EntityType<E> type,IRI iri){
+      // OWLAPI's default creates a fresh error entity, which must never become
+      // a valid business class/datatype in our separate parsed projection.
+      throw invalid("RDF_EXPRESSION","RDF expression could not be mapped to OWL");
+    }
+    public void endModel(){
+      // W3C RDF Mapping 3.2.4 precedes axiom parsing and also consumes expressions
+      // without an axiom reference. OWLAPI normally translates them only on demand.
+      // Retain them separately for the complete closure profile check, not as facts.
+      for(IRI iri:new ArrayList<>(expressions))mapped.add(translateClassExpression(iri));
+      super.endModel();
+    }
+  }
   static boolean annotationResidualsMapped(OWLOntology o,List<RDFTriple> triples){
     if(triples.isEmpty())return true;
     // OWLAPI 5.5.1 mapAnnotation retains these three reification triples even
@@ -126,22 +151,47 @@ public final class Worker {
       // replacement operations even when they are unchanged, preventing a fixed point.
       var changes=new ArrayList<OWLOntologyChange>();
       for(var ax:o.axioms().toList())for(var change:transformer.change(ax))changes.add(change.createOntologyChange(o));
-      if(changes.isEmpty())return;m.applyChanges(changes);
+      if(changes.isEmpty())break;m.applyChanges(changes);
+      if(iteration==255)throw invalid("NORMALIZATION_DEPTH","RDF expression projection exceeds its depth budget");
     }
-    throw invalid("NORMALIZATION_DEPTH","RDF expression projection exceeds its depth budget");
+    // A reflexive RDF equivalentClass triple has two positions even when the
+    // OWLAPI set representation collapses them to one operand. Preserve the
+    // expression and annotations in an equivalent, well-formed tautology.
+    for(var ax:o.axioms(AxiomType.EQUIVALENT_CLASSES).toList()){
+      var args=ax.classExpressions().toList();if(args.size()!=1)continue;
+      m.removeAxiom(o,ax);m.addAxiom(o,d.getOWLSubClassOfAxiom(args.get(0),args.get(0),ax.getAnnotations()));
+    }
   }
-  static OWLOntology parse(OWLOntologyManager m,JsonNode doc,String base,Collection<String> imports)throws Exception {
+  record Parsed(OWLOntology ontology,Set<OWLAxiom> syntaxAxioms){}
+  static Parsed parse(OWLOntologyManager m,JsonNode doc,String base,Collection<String> imports)throws Exception {
     String content=str(doc,"content"),f=str(doc,"format");require(content.getBytes(StandardCharsets.UTF_8).length<=8*1024*1024,"INPUT_LIMIT","Document byte budget");
     require(sha(content).equals(str(doc,"digest")),"DIGEST_MISMATCH","Document bytes differ from binding");
     if(f.equals("rdfxml"))try{safeXML(content);}catch(Exception e){throw invalid("UNSAFE_XML","Malformed, external-entity or over-budget XML");}
-    var result=m.loadOntologyFromOntologyDocument(new StringDocumentSource(content,IRI.create(base),format(f),null),loader(imports));
+    OWLOntology result;var syntaxAxioms=new HashSet<OWLAxiom>();
+    if(f.equals("functional"))result=m.loadOntologyFromOntologyDocument(new StringDocumentSource(content,IRI.create(base),format(f),null),loader(imports));
+    else{
+      result=m.createOntology(new OWLOntologyID());m.setOntologyDocumentIRI(result,IRI.create(base));
+      var rdfFormat=format(f);var consumer=new MappingConsumer(result,loader(imports));consumer.setOntologyFormat((RDFDocumentFormat)rdfFormat);
+      if(f.equals("rdfxml")){
+        var parser=new RDFParser();consumer.useParser(parser);
+        var input=new InputSource(new StringReader(content));input.setSystemId(base);parser.parse(input,consumer);
+      }else{
+        consumer.startModel(IRI.create(base));new TurtleParser(new StringReader(content),consumer,IRI.create(base)).parseDocument();
+      }
+      m.setOntologyFormat(result,rdfFormat);
+      var d=m.getOWLDataFactory();for(var ce:consumer.mapped)syntaxAxioms.add(d.getOWLSubClassOfAxiom(ce,ce));
+    }
     require(m.getOntologyFormat(result).getKey().equals(format(f).getKey()),"FORMAT_MISMATCH","Parsed format differs from declared format");
     var metadata=m.getOntologyFormat(result).getOntologyLoaderMetaData();
     if(metadata.isPresent()&&metadata.get() instanceof RDFParserMetaData rdf)require(annotationResidualsMapped(result,rdf.getUnparsedTriples().toList()),"UNPARSED_RDF","RDF triples were not mapped to OWL axioms");
-    if(!f.equals("functional"))normalizeRDFClassExpressions(result);
-    return result;
+    if(!f.equals("functional")){
+      normalizeRDFClassExpressions(result);
+      var syntax=anonymous(m,syntaxAxioms);normalizeRDFClassExpressions(syntax);
+      syntaxAxioms=new HashSet<>(syntax.getAxioms());m.removeOntology(syntax);
+    }
+    return new Parsed(result,syntaxAxioms);
   }
-  record Loaded(OWLOntologyManager manager,OWLOntology ontology,Map<OWLAxiom,List<JsonNode>> origins){}
+  record Loaded(OWLOntologyManager manager,OWLOntology ontology,OWLOntology validationOntology,Map<OWLAxiom,List<JsonNode>> origins){}
   static OWLOntology anonymous(OWLOntologyManager manager,Collection<OWLAxiom> axioms)throws Exception {
     var ontology=manager.createOntology(new OWLOntologyID());manager.addAxioms(ontology,new HashSet<>(axioms));return ontology;
   }
@@ -149,7 +199,7 @@ public final class Worker {
     require(closure!=null&&closure.isObject(),"INVALID_ENVELOPE","Closure required");
     JsonNode docs=closure.get("documents"),edges=closure.get("imports");
     require(docs!=null&&docs.isArray()&&docs.size()>0&&docs.size()<=64&&edges!=null&&edges.isArray()&&edges.size()<=512,"INPUT_LIMIT","Bounded closure required");
-    var m=manager();var origins=new HashMap<OWLAxiom,List<JsonNode>>();var byId=new HashMap<String,JsonNode>();
+    var m=manager();var origins=new HashMap<OWLAxiom,List<JsonNode>>();var byId=new HashMap<String,JsonNode>();var syntaxAxioms=new HashSet<OWLAxiom>();
     var expected=new HashMap<String,Map<String,String>>();var alias=new HashMap<String,String>();int bytes=0;
     for(JsonNode d:docs){String id=str(d,"id");require(byId.put(id,d)==null,"IMPORT_CONFLICT","Duplicate document identity");bytes+=str(d,"content").getBytes(StandardCharsets.UTF_8).length;
       for(String key:List.of("documentIri","ontologyIri","versionIri")){JsonNode a=d.get(key);require(a!=null,"INVALID_ENVELOPE","Missing document identity");if(a.isNull())continue;String old=alias.put(a.asText(),id);require(old==null||old.equals(id),"IMPORT_CONFLICT","Conflicting ontology identity");}
@@ -160,7 +210,8 @@ public final class Worker {
     require(reachable.size()==byId.size(),"UNREACHABLE_DOCUMENT","Closure contains unused documents");
     for(String id:byId.keySet().stream().sorted().toList()){
       deadline(end);JsonNode d=byId.get(id);var imports=expected.getOrDefault(id,Map.of());
-      var o=parse(m,d,str(d,"documentIri"),imports.keySet());
+      var parsed=parse(m,d,str(d,"documentIri"),imports.keySet());var o=parsed.ontology();syntaxAxioms.addAll(parsed.syntaxAxioms());
+      require(syntaxAxioms.size()<=AXIOMS,"EXPRESSION_LIMIT","Closure class-expression budget exceeded");
       String ontology=o.getOntologyID().getOntologyIRI().map(Object::toString).orElse(null),version=o.getOntologyID().getVersionIRI().map(Object::toString).orElse(null);
       require(Objects.equals(ontology,d.get("ontologyIri").isNull()?null:d.get("ontologyIri").asText())&&Objects.equals(version,d.get("versionIri").isNull()?null:d.get("versionIri").asText()),"ONTOLOGY_IDENTITY_MISMATCH","Parsed ontology identity differs from admitted identity");
       var actual=o.importsDeclarations().map(x->x.getIRI().toString()).collect(Collectors.toSet());
@@ -169,7 +220,7 @@ public final class Worker {
     }
     // OWL Direct Semantics applies to the union of the complete imports closure. Inputs
     // remain distinct in origins; this derived union never overwrites their original bytes.
-    return new Loaded(m,anonymous(m,origins.keySet()),origins);
+    syntaxAxioms.addAll(origins.keySet());return new Loaded(m,anonymous(m,origins.keySet()),anonymous(m,syntaxAxioms),origins);
   }
   static void walk(String id,Map<String,Map<String,String>> edges,Map<String,JsonNode> docs,Set<String> path,Set<String> reached){
     require(++importTraversals<=8192,"IMPORT_TRAVERSAL_LIMIT","Import traversal budget");require(docs.containsKey(id),"MISSING_IMPORT","Root document absent");if(path.contains(id))return;require(path.size()<16,"IMPORT_DEPTH","Import depth budget");
@@ -177,12 +228,13 @@ public final class Worker {
   }
   static List<OWLAxiom> queries(JsonNode task)throws Exception {
     JsonNode q=task.get("query");require(q!=null&&q.isObject(),"INVALID_QUERY","Query ontology required");
-    OWLOntology o=parse(manager(),q,"urn:evopilot:ontology:query",List.of());
+    var parsed=parse(manager(),q,"urn:evopilot:ontology:query",List.of());OWLOntology o=parsed.ontology();
     require(o.importsDeclarations().findAny().isEmpty(),"INVALID_QUERY","Query cannot import documents");
     // Query fragments may omit declarations, which have no Direct Semantics meaning.
     // Supply declarations only in this separate profile-check projection, never as premises.
-    var qm=o.getOWLOntologyManager();o.signature().toList().forEach(e->qm.addAxiom(o,qm.getOWLDataFactory().getOWLDeclarationAxiom(e)));
-    require(new OWL2DLProfile().checkOntology(o).isInProfile(),"INVALID_QUERY","Query violates OWL 2 DL restrictions");
+    var qm=o.getOWLOntologyManager();var syntaxAxioms=new HashSet<>(parsed.syntaxAxioms());syntaxAxioms.addAll(o.getAxioms());
+    var validation=anonymous(qm,syntaxAxioms);validation.signature().toList().forEach(e->qm.addAxiom(validation,qm.getOWLDataFactory().getOWLDeclarationAxiom(e)));
+    require(new OWL2DLProfile().checkOntology(validation).isInProfile(),"INVALID_QUERY","Query violates OWL 2 DL restrictions");
     List<OWLAxiom> axioms=o.logicalAxioms().map(a->(OWLAxiom)a).sorted(Comparator.comparing(Object::toString)).toList();
     require(axioms.size()<=1000,"INVALID_QUERY","Query axiom budget exceeded");return axioms;
   }
@@ -201,7 +253,7 @@ public final class Worker {
     Loaded loaded=load(request.get("closure"),end);OWLOntology o=loaded.ontology();JsonNode task=request.get("task");String kind=str(task,"kind");
     ObjectNode out=JSON.createObjectNode();ObjectNode result=out.putObject("result");out.put("status","COMPLETED");out.put("complete",true);
     result.put("semantics","OWL_2_DL_DIRECT");result.put("axiomCount",o.getAxiomCount());
-    var profile=new OWL2DLProfile().checkOntology(o);
+    var profile=new OWL2DLProfile().checkOntology(loaded.validationOntology());
     if(!profile.isInProfile()){
       out.put("status","INVALID_INPUT");out.put("complete",false);result.put("legal",false);ArrayNode violations=result.putArray("violations");
       for(var v:profile.getViolations().stream().limit(1000).toList()){ObjectNode entry=violations.addObject();entry.put("type",v.getClass().getSimpleName());entry.put("detail",v.toString());}
@@ -270,6 +322,9 @@ public final class Worker {
     for(Throwable e=error;e!=null;e=e.getCause()){
       if(e instanceof UnloadableImportException||e instanceof OWLOntologyFactoryNotFoundException)return new Refusal("MISSING_IMPORT","MISSING_IMPORT","An import has no admitted offline document");
       if(e instanceof TimeOutException)return new Refusal("TIMEOUT","ENGINE_TIMEOUT","Formal engine deadline reached");
+      // The pinned Turtle parser's generated syntax exception/token error are
+      // package-private. Match their exact classes, never human-readable messages.
+      if(e instanceof RDFParserException||e instanceof SAXException||Set.of("org.semanticweb.owlapi.rdf.turtle.parser.ParseException","org.semanticweb.owlapi.rdf.turtle.parser.TokenMgrError").contains(e.getClass().getName()))return invalid("ONTOLOGY_PARSE","Malformed RDF ontology document");
       if(e instanceof OWLOntologyCreationException)return invalid("ONTOLOGY_PARSE","Ontology could not be parsed without external resolution");
     }
     return new Refusal("FAILED","ENGINE_FAILURE","Formal engine failed; no logical conclusion established");

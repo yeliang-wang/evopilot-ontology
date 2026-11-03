@@ -83,6 +83,57 @@ test('already mapped nested ontology annotations pass while dangling reification
   assert.equal((await runner.run(input)).status,'INVALID_INPUT');
 });
 
+test('unreferenced RDF expressions are mapped and checked without inventing premise or query axioms',async()=>{
+  const prefix=`@prefix : <${ns}> . @prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n`;
+  const content=prefix+`:A a owl:Class . :B a owl:Class . :p a owl:ObjectProperty .
+_:only a owl:Class; owl:intersectionOf (:A [a owl:Class; owl:unionOf (:B)]) .
+[] a owl:Restriction; owl:onProperty :p; owl:minCardinality "1"^^xsd:int .`;
+  const input=request('',{kind:'consistency'});input.closure.documents=[document(content,{format:'turtle'})];
+  const accepted=await runner.run(input);assert.equal(accepted.status,'COMPLETED',JSON.stringify(accepted));
+  assert.equal(accepted.result.axiomCount,3,'Only source declarations belong in the premise projection');
+  input.task={kind:'entailment',query:{format:'turtle',content,digest:sha(content)}};
+  const empty=await runner.run(input);assert.equal(empty.status,'ENTAILED',JSON.stringify(empty));
+  assert.equal(empty.result.vacuous,true);assert.deepEqual(empty.result.queryAxioms,[]);
+  // An otherwise unused expression still has to respect global DL restrictions.
+  const nonsimple=content+':p a owl:TransitiveProperty .';
+  input.closure.documents=[document(nonsimple,{format:'turtle'})];input.task={kind:'legality'};
+  const invalid=await runner.run(input);assert.equal(invalid.status,'INVALID_INPUT',JSON.stringify(invalid));
+  assert.equal(invalid.error.code,'OWL2_DL_PROFILE');
+  // Unmapped anonymous nodes may not be replaced with OWLAPI's fresh error classes.
+  for(const broken of ['[] a owl:Class .','[] a owl:Restriction; owl:minCardinality "1"^^xsd:int .']){
+    input.closure.documents=[document(prefix+broken,{format:'turtle'})];
+    const result=await runner.run(input);assert.equal(result.status,'INVALID_INPUT',JSON.stringify(result));
+    assert.equal(result.error.code,'RDF_EXPRESSION');
+  }
+});
+
+test('RDF reflexive class equivalence retains a nonvacuous expression and source annotations',async()=>{
+  const content=`@prefix : <${ns}> . @prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+:p a owl:ObjectProperty .
+_:c a owl:Restriction; owl:onProperty :p; owl:minCardinality "1"^^xsd:int; owl:equivalentClass _:c .
+[] a owl:Axiom; owl:annotatedSource _:c; owl:annotatedProperty owl:equivalentClass; owl:annotatedTarget _:c; rdfs:label "source reflexivity" .`;
+  const input=request(declaration({objects:['p']}),{kind:'entailment',query:{format:'turtle',content,digest:sha(content)}});
+  const result=await runner.run(input);assert.equal(result.status,'ENTAILED',JSON.stringify(result));
+  assert.equal(result.result.vacuous,false);assert.equal(result.result.queryAxioms.length,1);
+  assert.match(result.result.queryAxioms[0].axiom,/source reflexivity/);
+  assert.match(result.result.queryAxioms[0].axiom,/ObjectMinCardinality/);
+  input.task.query=query('EquivalentClasses(:A)');
+  assert.equal((await runner.run(input)).status,'INVALID_INPUT','RDF projection does not legalize malformed Functional Syntax');
+});
+
+test('RDF reader syntax errors remain invalid inputs rather than engine failures',async()=>{
+  for(const [format,content] of [
+    ['turtle','@prefix : <urn:test:> . :a a .'],
+    ['rdfxml','<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="urn:a" rdf:nodeID="b"/></rdf:RDF>'],
+  ]){
+    const input=request('',{kind:'legality'});input.closure.documents=[document(content,{format})];
+    const result=await runner.run(input);assert.equal(result.status,'INVALID_INPUT',JSON.stringify(result));
+    assert.equal(result.error.code,'ONTOLOGY_PARSE');assert.equal(result.complete,false);
+  }
+});
+
 test('property chains, inverse properties and transitivity entail actual dependency paths',async()=>{
   const body=declaration({objects:['uses','from','depends','usedBy','metricDepends'],individuals:['service','dataset','database','a','b','c']})+`
 SubObjectPropertyOf(ObjectPropertyChain(:uses :from) :depends)
