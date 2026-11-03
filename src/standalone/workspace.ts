@@ -5,7 +5,7 @@ import { fail, LIMITS } from './types.js';
 import type { WorkspaceIdentity, Credentials } from './types.js';
 import { validateIdentity, validateCredentials, hashBytes } from './validation.js';
 
-export const STATE_VERSION = 13;
+export const STATE_VERSION = 14;
 export const FILES = Object.freeze({identity:'identity.json', credentials:'credentials.json', db:'ontology.sqlite', lease:'writer.sqlite'});
 export function privatePath(path: string, directory = false): void {
   const s = lstatSync(path);

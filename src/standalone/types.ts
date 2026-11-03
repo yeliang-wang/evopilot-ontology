@@ -1,11 +1,11 @@
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export interface WorkspaceIdentity {
   schema: 'ontology-workspace/v1'; workspaceId: string; serviceId: string;
-  stateVersion: 13; createdAt: string;
+  stateVersion: 14; createdAt: string;
 }
 export interface Grant {
   id: string; principalId: string; tokenHash: string; projectIds: string[];
-  permissions: ('read' | 'write')[]; expiresAt: string; revoked: boolean;
+  permissions: ('read' | 'write' | 'review')[]; expiresAt: string; revoked: boolean;
 }
 export interface Credentials {
   schema: 'ontology-credentials/v1'; workspaceId: string; serviceId: string; grants: Grant[];

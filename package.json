@@ -59,6 +59,10 @@
     "./standalone-client": {
       "types": "./dist/standalone/client.d.ts",
       "import": "./dist/standalone/client.js"
+    },
+    "./native-v2": {
+      "types": "./dist/native-v2/consumer.d.ts",
+      "import": "./dist/native-v2/consumer.js"
     }
   },
   "scripts": {

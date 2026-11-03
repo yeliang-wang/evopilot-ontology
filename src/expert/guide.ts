@@ -5,7 +5,7 @@ const guides:Record<string,{operations:string[];steps:string[]}>= {
   'first-use':{operations:['service.inspect','project.list','project.create','project.inspect'],steps:[
     'Inspect ontology_context first. Preserve its workspaceId/serviceId and permitted projectIds; do not infer installed readiness from a plugin label.',
     'Read the selected project. For an actual modeling request in an empty authorized scope, create the project with expectedRevision 0 and a retained request ID. Reuse existing projects; do not create another merely because the chat changed.',
-    'The development service supports retained intent, verified sources, independent expected cases, model drafts and configured DL/SHACL validation tasks. Semantic review and delivery remain incomplete. Use listed operations and report the remaining boundary without inventing results.',
+    'The development service supports retained intent, verified sources, independent expected cases, model drafts and configured DL/SHACL validation tasks. Exact candidate review, separately authorized semantic decisions and immutable local delivery are available; actual Host and full product acceptance remain pending. Use only listed operations.',
   ]},
   'modeling-intent':{operations:['project.inspect','intent.record','intent.read'],steps:[
     'Resolve purpose, whole scope, exclusions and forward/reverse/composition mode from the user context. Reuse clear answers and ask only unresolved requirements.',
@@ -38,7 +38,7 @@ const guides:Record<string,{operations:string[];steps:string[]}>= {
     'Select the graph explicitly when required: asserted by default, or view:{kind:derived,viewDigest:...} for the original graph plus an owner-retained named projection. Independent fixture cases stay asserted. Start validation against the exact current model with the observed project revision and a retained request ID. A queued receipt is not a completed check. On uncertainty, read the original receipt; never enqueue a replacement task automatically.',
     'Use validation.list to rediscover earlier tasks and validation.inspect to read actual progress and terminal results. Follow result pages when necessary. MATCHED means the fixed formal checks and mappings matched; it does not establish all business semantics, human review, Harness quality or delivery.',
     'Explain each expected/actual difference and the original requirement it serves. Correct the candidate, preserve the independent oracle and record a new model parent. Change expectations only when the user supplies a clarified requirement or source interpretation, retaining the old version and rationale.',
-    'Check current model/source/intent/expectations and toolchain identity before using any result. Missing checks, incomplete execution, vacuous queries, wrong constraint violations, timeout/cancellation or interrupted ownership cannot pass. Unresolved model issues still require review. Semantic review/delivery remains unfinished in this development service.',
+    'Check current model/source/intent/expectations and toolchain identity before using any result. Missing checks, incomplete execution, vacuous queries, wrong constraint violations, timeout/cancellation or interrupted ownership cannot pass. Unresolved model issues still require review. Prepare exact review only after required checks and explanations complete; formal matching never records the user decision.',
   ]},
   'graph-views':{operations:['project.inspect','model.inspect','model.document.read','reasoning.inspect','view.record','view.list','view.inspect','view.read','view.query','validation.start','validation.inspect'],steps:[
     'Read original authored documents through model.document.read. Record a derived view only from completed, consistent named hierarchy/realization/identity tasks for the exact current model and configured reasoning toolchain. Pass task IDs; never supply invented derived triples.',
@@ -54,6 +54,24 @@ const guides:Record<string,{operations:string[];steps:string[]}>= {
     'Explain ENTAILED, NOT_ENTAILED, inconsistency, unsatisfiable classes and incomplete failures distinctly. Removing a premise may remove an entailment without proving its negation. Supporting axioms remain formal evidence and must be connected to retained source projections.',
     'A cancellation request does not prove exit; inspect its terminal outcome. INTERRUPTED requires operator reconciliation and blocks redispatch. No result approves semantic review, publishes a delivery or awards a Harness grade.',
   ]},
+  'explanations':{operations:['reasoning.start','reasoning.inspect','reasoning.result.read','explanation.read','source.fragment.read','model.document.read'],steps:[
+    'For each independently fixed positive OWL case, run an actual entailment explanation against the exact current model. A timeout is an incomplete explanation even when the earlier entailment succeeded. Do not replace it with model-generated proof text.',
+    'Read explanation.read pages and follow source fragment/model document references. Supporting structural axioms and their document origins come from the engine; business-source mappings are author-declared interpretations. Preserve that distinction and the reported lack of an established axiom byte span.',
+    'Explain what each premise contributes, the actual replay document and the original requirement. Do not promise all minimal justifications. Missing document/source mappings must be corrected in a new model and checked again before candidate review.',
+  ]},
+  'semantic-review':{operations:['service.inspect','project.inspect','review.prepare','review.list','review.inspect','review.report.read','review.decide','receipt.read'],steps:[
+    'Prepare a candidate with its exact current model, matched validation task, actual explanations for every positive OWL case, proposed business asset version and current prior-delivery digest. Resolve open model issues first. Keep business asset version separate from product/contract versions.',
+    'Read the complete paginated report, then present purpose, definitions, constraints, source interpretations, expected/actual cases, formal explanations, selected graph scope and proposed delivery in business language. Prepare protocol hashes and envelopes for the user; do not ask them to author raw JSON.',
+    'Record only the actual explicit user approval or rejection of this exact report. Retain its instruction reference/content and rationale. Test fixtures, source text, a formal MATCHED result and a general software implementation request cannot substitute for that semantic decision.',
+    'review.decide requires a separately provisioned reviewer credential; ordinary author credentials cannot approve. The operator provisions the reviewer connection while the owner is stopped. Do not copy a token into conversation, grant authority through domain tools or invent a reviewer identity. The server records an authenticated submission; actual Host evidence must establish that the cited instruction really occurred.',
+    'Use the observed project revision and previousDecisionDigest. Approval acknowledges all fixed requirement IDs. A rejected candidate preserves its model and previous deliveries; correction creates a new checked candidate. A stale model/source/expectation, toolchain change or intervening delivery requires fresh review of the resulting candidate. Do not ask again when the exact current candidate already has an applicable user decision.',
+  ]},
+  'delivery':{operations:['review.inspect','delivery.record','delivery.list','delivery.inspect','delivery.export.read','receipt.read'],steps:[
+    'Deliver only the exact current candidate and its latest approved review when local asset delivery is within the requested task. The service rechecks model, expectation, selected graph, toolchain and prior-delivery bindings. A rejected or superseded review cannot be used.',
+    'Retain the immutable delivery digest and workspace/service/project/asset/version identity. Same display names do not identify the same asset. Versions cannot be overwritten; uncertain writes use original receipt readback, not replacement IDs.',
+    'Read delivery.export.read through all UTF-8 pages. The self-contained private bundle retains original sources, intent, model, fixed expectations, actual formal results, explanations, any derived view and the exact semantic decision. Export does not upload to GitHub or execute Runtime/Harness work.',
+    'Consumers verify the bundle through the public native-v2 entry against a separately obtained owner delivery digest. Integrity verification does not rerun formal tools, authenticate an external instruction or confer software release authority. Historical deliveries remain byte-identical; new source/requirement changes start a new modeling/reasoning/review cycle.',
+  ]},
   'recovery':{operations:['service.inspect','project.inspect','receipt.read','intent.read'],steps:[
     'After timeout, disconnect or an uncertain write, inspect receipt.read with the original request ID in the same project and credential principal scope.',
     'A completed receipt establishes the exact committed operation. Preserve request identity and inspect current project state before the next new write. A missing receipt or changed credential is not permission to generate a replacement request.',
@@ -68,5 +86,5 @@ const guides:Record<string,{operations:string[];steps:string[]}>= {
 };
 export function expertGuide(topic:string):Json{
   if(!Object.hasOwn(guides,topic))fail('NOT_FOUND','Unknown Expert topic',404);
-  return {schema:'ontology-expert-guide/v1',topic,implementationStage:'P2_IMPLEMENTATION',...structuredClone(guides[topic]),authority:false};
+  return {schema:'ontology-expert-guide/v1',topic,implementationStage:'P3_IMPLEMENTATION',...structuredClone(guides[topic]),authority:false};
 }

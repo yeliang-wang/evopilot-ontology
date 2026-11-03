@@ -6,6 +6,10 @@ import { expertGuide } from '../expert/guide.js';
 import { sourceStore } from '../native-v2/store.js';
 import { expectationStore } from '../native-v2/expectations-store.js';
 import { viewStore } from '../native-v2/view-store.js';
+import { lifecycleStore } from '../native-v2/lifecycle-store.js';
+import { explanationRead } from '../native-v2/explanations.js';
+import { readDLToolchain,verifyDLToolchain } from '../reasoning/toolchain.js';
+import { readSHACLToolchain,verifySHACLToolchain } from '../native-v2/shacl-toolchain.js';
 import { modelStore } from '../native-v2/model-store.js';
 import { reasoningTasks } from '../native-v2/tasks.js';
 import type { ReasoningConfiguration } from '../native-v2/tasks.js';
@@ -13,8 +17,8 @@ import { LIMITS, fail } from './types.js';
 import type { Json, Receipt, Project, Grant } from './types.js';
 import { canonical, exact, hash, hashBytes, id, json, text, digest, validateIntent, validateRequest } from './validation.js';
 
-export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','project.list','project.inspect','intent.read','receipt.read','source.inspect','source.read','source.fragment.read','model.list','model.inspect','model.document.read','reasoning.list','reasoning.inspect','reasoning.result.read','expectations.list','expectations.inspect','expectations.read','validation.list','validation.inspect','validation.result.read','view.list','view.inspect','view.read','view.query']);
-export const WRITE_OPERATIONS = Object.freeze(['project.create','intent.record','source.admit','model.record','reasoning.start','reasoning.cancel','expectations.record','validation.start','validation.cancel','view.record']);
+export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','project.list','project.inspect','intent.read','receipt.read','source.inspect','source.read','source.fragment.read','model.list','model.inspect','model.document.read','reasoning.list','reasoning.inspect','reasoning.result.read','expectations.list','expectations.inspect','expectations.read','validation.list','validation.inspect','validation.result.read','view.list','view.inspect','view.read','view.query','explanation.read','review.list','review.inspect','review.report.read','delivery.list','delivery.inspect','delivery.export.read']);
+export const WRITE_OPERATIONS = Object.freeze(['project.create','intent.record','source.admit','model.record','reasoning.start','reasoning.cancel','expectations.record','validation.start','validation.cancel','view.record','review.prepare','review.decide','delivery.record']);
 export function createStandaloneService(options: {root: string; workspaceId: string; serviceId: string;reasoning?:ReasoningConfiguration;validation?:ReasoningConfiguration}) {
   const store=openWorkspace(options.root,options), {db,identity}=store;
   const sources=sourceStore(db);
@@ -25,6 +29,13 @@ export function createStandaloneService(options: {root: string; workspaceId: str
     if(options.validation)assertSeparate(store.root,realpathSync(options.validation.workRoot));
     tasks=reasoningTasks(db,store.guard,options.reasoning,options.validation);
   }catch(e){store.close();throw e;}
+  const lifecycle=lifecycleStore(db,identity,{dl:tasks.toolchainDigest,validation:tasks.validationToolchainDigest,verify:()=>{
+    if(!options.reasoning||!options.validation)fail('TOOLCHAIN_NOT_READY','Review and delivery require configured formal toolchains',409);
+    const dl=readDLToolchain(options.reasoning.toolchainFile),shacl=readSHACLToolchain(options.validation.toolchainFile);
+    if(dl.digest!==tasks.toolchainDigest||hash({dl:dl.digest,shacl:shacl.digest})!==tasks.validationToolchainDigest)fail('STALE_TOOLCHAIN','Configured toolchain binding changed',409);
+    verifyDLToolchain(dl);verifySHACLToolchain(shacl);
+  }});
+  const allowedWrites=(grant:Grant)=>WRITE_OPERATIONS.filter(operation=>grant.permissions.includes(operation==='review.decide'?'review':'write'));
   let closing=false,closed:Promise<void>|undefined;
   const project = (projectId: string): Project | null => {
     const row=db.prepare('SELECT id,label,revision,created_at FROM projects WHERE id=?').get(projectId);
@@ -38,18 +49,18 @@ export function createStandaloneService(options: {root: string; workspaceId: str
     if (!grant || grant.revoked || Date.parse(grant.expiresAt)<=Date.now()) fail('UNAUTHENTICATED','Invalid, expired or revoked credential',401);
     return grant;
   };
-  const authenticate = (token: string, projectId: string, write: boolean): Grant => {
+  const authenticate = (token: string, projectId: string, permission: Grant['permissions'][number]): Grant => {
     const grant=credential(token);
-    if (!grant.projectIds.includes(projectId) || !grant.permissions.includes(write?'write':'read')) fail('FORBIDDEN','Credential does not permit this project/operation',403);
+    if (!grant.projectIds.includes(projectId) || !grant.permissions.includes(permission)) fail('FORBIDDEN','Credential does not permit this project/operation',403);
     return grant;
   };
   const context = (token: string): Json => {
     const grant=credential(token);
     if (!grant.permissions.includes('read')) fail('FORBIDDEN','Read permission required for service discovery',403);
-    return {product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P2_IMPLEMENTATION',
+    return {product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P3_IMPLEMENTATION',
       workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,
       principalId:grant.principalId,projectIds:[...grant.projectIds],permissions:[...grant.permissions],
-      readOperations:[...READ_OPERATIONS],writeOperations:grant.permissions.includes('write')?[...WRITE_OPERATIONS]:[],
+      readOperations:[...READ_OPERATIONS],writeOperations:allowedWrites(grant),
       reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
   };
   function request(value: unknown, token: string): Json {
@@ -59,7 +70,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
     const write=WRITE_OPERATIONS.includes(value.operation);
     validateRequest(value,write);
     store.guard();
-    const grant=authenticate(token,value.projectId,write);
+    const grant=authenticate(token,value.projectId,value.operation==='review.decide'?'review':write?'write':'read');
     if (value.workspaceId!==identity.workspaceId || value.serviceId!==identity.serviceId) fail('IDENTITY_MISMATCH','Selected service/workspace differs from request',403);
     if (!write && !READ_OPERATIONS.includes(value.operation)) fail('UNSUPPORTED_OPERATION','Operation is not implemented',404);
     const {projectId,operation,input}=value;
@@ -78,7 +89,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
       let result: Json;let afterCommit:(()=>void)|undefined;
       if (operation==='service.inspect') {
         exact(input,[]);
-        result={product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P2_IMPLEMENTATION',workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,project:current as unknown as Json,readOperations:[...READ_OPERATIONS],writeOperations:[...WRITE_OPERATIONS],reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
+        result={product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P3_IMPLEMENTATION',workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,project:current as unknown as Json,readOperations:[...READ_OPERATIONS],writeOperations:allowedWrites(grant),reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
       } else if (operation==='guide.read') {
         exact(input,['topic']);text(input.topic,96);result=expertGuide(input.topic);
       } else if (operation==='project.list') {
@@ -125,6 +136,21 @@ export function createStandaloneService(options: {root: string; workspaceId: str
         }else if(action==='inspect')result=tasks.read(projectId,input,kind);
         else if(action==='list')result=tasks.list(projectId,input,kind);
         else result=tasks.resultRead(projectId,input,kind);
+      } else if(operation==='explanation.read') {
+        if(!current)fail('NOT_FOUND','Project not initialized',404);result=explanationRead(db,projectId,input,tasks.toolchainDigest);
+      } else if(operation.startsWith('review.')) {
+        if(!current)fail('NOT_FOUND','Project not initialized',404);
+        if(operation==='review.prepare')result=lifecycle.prepare(projectId,input,current.revision+1,new Date().toISOString());
+        else if(operation==='review.decide')result=lifecycle.decide(projectId,grant,input,current.revision+1,new Date().toISOString());
+        else if(operation==='review.inspect')result=lifecycle.inspect(projectId,input);
+        else if(operation==='review.list')result=lifecycle.list(projectId,input,'review');
+        else result=lifecycle.reportRead(projectId,input);
+      } else if(operation.startsWith('delivery.')) {
+        if(!current)fail('NOT_FOUND','Project not initialized',404);
+        if(operation==='delivery.record')result=lifecycle.deliver(projectId,grant.principalId,input,current.revision+1,new Date().toISOString());
+        else if(operation==='delivery.inspect')result=lifecycle.deliveryInspect(projectId,input);
+        else if(operation==='delivery.list')result=lifecycle.list(projectId,input,'delivery');
+        else result=lifecycle.exportRead(projectId,input);
       } else if(operation.startsWith('view.')) {
         if(!current)fail('NOT_FOUND','Project not initialized',404);
         if(operation==='view.record')result=views.record(projectId,input,current.revision+1,new Date().toISOString(),tasks.toolchainDigest);

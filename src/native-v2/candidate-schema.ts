@@ -1,0 +1,159 @@
+// Generated from schemas/v2/candidate.schema.json; edit the schema, then regenerate.
+export const CANDIDATE_SCHEMA_DIGEST = "sha256:7c833560b99554ba0520ff3074c4f1460ba3a9824e9b56b2ae268fed22eab038";
+export const CANDIDATE_SCHEMA = {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:evopilot:ontology:candidate:v2",
+  "title": "ReviewCandidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "identity",
+    "previousDeliveryDigest",
+    "intentDigest",
+    "sourceSetDigest",
+    "modelDigest",
+    "expectationsDigest",
+    "closureDigest",
+    "validation",
+    "explanations",
+    "viewKind",
+    "viewDigest",
+    "projectionDigest",
+    "requirementIds"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ontology-review-candidate/v2"
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspaceId",
+        "serviceId",
+        "projectId",
+        "assetId",
+        "version"
+      ],
+      "properties": {
+        "workspaceId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "serviceId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "projectId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "assetId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "#/$defs/Identifier"
+        }
+      }
+    },
+    "previousDeliveryDigest": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SHA256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "intentDigest": {
+      "$ref": "#/$defs/SHA256"
+    },
+    "sourceSetDigest": {
+      "$ref": "#/$defs/SHA256"
+    },
+    "modelDigest": {
+      "$ref": "#/$defs/SHA256"
+    },
+    "expectationsDigest": {
+      "$ref": "#/$defs/SHA256"
+    },
+    "closureDigest": {
+      "$ref": "#/$defs/SHA256"
+    },
+    "validation": {
+      "$ref": "#/$defs/TaskBinding"
+    },
+    "explanations": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/$defs/TaskBinding"
+      }
+    },
+    "viewKind": {
+      "type": "string",
+      "enum": [
+        "asserted",
+        "derived"
+      ]
+    },
+    "viewDigest": {
+      "$ref": "#/$defs/SHA256"
+    },
+    "projectionDigest": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SHA256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "requirementIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": {
+        "$ref": "#/$defs/Identifier"
+      }
+    }
+  },
+  "$defs": {
+    "Identifier": {
+      "$ref": "urn:evopilot:ontology:model-draft:v2#/$defs/Identifier"
+    },
+    "SHA256": {
+      "$ref": "urn:evopilot:ontology:model-draft:v2#/$defs/SHA256"
+    },
+    "TaskBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskId",
+        "requestDigest",
+        "resultDigest",
+        "configurationDigest",
+        "toolchainDigest"
+      ],
+      "properties": {
+        "taskId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "requestDigest": {
+          "$ref": "#/$defs/SHA256"
+        },
+        "resultDigest": {
+          "$ref": "#/$defs/SHA256"
+        },
+        "configurationDigest": {
+          "$ref": "#/$defs/SHA256"
+        },
+        "toolchainDigest": {
+          "$ref": "#/$defs/SHA256"
+        }
+      }
+    }
+  }
+} as const;

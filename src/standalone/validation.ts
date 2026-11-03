@@ -46,7 +46,7 @@ export function hashBytes(value: string | Buffer): string { return 'sha256:' + c
 export function hash(value: Json): string { return hashBytes(canonical(value)); }
 export function validateIdentity(value: unknown): asserts value is WorkspaceIdentity {
   exact(value, ['schema','workspaceId','serviceId','stateVersion','createdAt']);
-  if (value.schema !== 'ontology-workspace/v1' || value.stateVersion !== 13) fail('UNSUPPORTED_STATE', 'Independent Ontology state v13 required');
+  if (value.schema !== 'ontology-workspace/v1' || value.stateVersion !== 14) fail('UNSUPPORTED_STATE', 'Independent Ontology state v14 required');
   id(value.workspaceId); id(value.serviceId); timestamp(value.createdAt);
 }
 export function timestamp(value: unknown): asserts value is string {
@@ -65,7 +65,7 @@ export function validateCredentials(value: unknown, identity: WorkspaceIdentity)
     ids.add(grant.id); tokens.add(grant.tokenHash);
     if (typeof grant.revoked !== 'boolean' || !Array.isArray(grant.projectIds) || !grant.projectIds.length || grant.projectIds.length > LIMITS.projects) fail('INVALID_INPUT', 'Explicit bounded project scope required');
     grant.projectIds.forEach(id);
-    if (new Set(grant.projectIds).size !== grant.projectIds.length || !Array.isArray(grant.permissions) || !grant.permissions.length || grant.permissions.some(p => !['read','write'].includes(p)) || new Set(grant.permissions).size !== grant.permissions.length) fail('INVALID_INPUT', 'Invalid grant scope');
+    if (new Set(grant.projectIds).size !== grant.projectIds.length || !Array.isArray(grant.permissions) || !grant.permissions.length || grant.permissions.some(p => !['read','write','review'].includes(p)) || new Set(grant.permissions).size !== grant.permissions.length) fail('INVALID_INPUT', 'Invalid grant scope');
   }
 }
 export function validateRequest(value: unknown, write: boolean): asserts value is ServiceRequest {

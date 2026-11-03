@@ -81,6 +81,7 @@ const expected = {
 expected.exports['./workspace-migration'] = { types: './dist/workspace-migration.d.ts', import: './dist/workspace-migration.js' };
 expected.exports['./standalone'] = {types:'./dist/standalone/http.d.ts',import:'./dist/standalone/http.js'};
 expected.exports['./standalone-client'] = {types:'./dist/standalone/client.d.ts',import:'./dist/standalone/client.js'};
+expected.exports['./native-v2']={types:'./dist/native-v2/consumer.d.ts',import:'./dist/native-v2/consumer.js'};
 const specifiers = source => [...source.matchAll(/^[\t ]*(?:import\s+(?:(?:[\w$]+(?:\s*,\s*)?)?(?:\{[^}]*\}|\*\s+as\s+[\w$]+)?\s*from\s*)?|export\s+(?:\{[^}]*\}|\*(?:\s+as\s+[\w$]+)?)\s+from\s*)['"]([^'"]+)['"]/gm)].map(match => match[1]);
 
 async function files(directory) {
@@ -219,7 +220,7 @@ export async function checkSource() {
       if (specifier === 'yaml' && (path.endsWith('/src/asset-sources.ts') || path === resolve(ROOT, 'src/import-operations.ts') || PRODUCT === 'ontology' && path.includes('/src/compat/'))) continue;
       if (PRODUCT === 'ontology' && path.includes('/src/compat/') && specifier === 'ajv/dist/2020.js') continue;
       if (path === resolve(ROOT,'src/native-v2/sources.ts') && ['ajv/dist/2020.js','yaml'].includes(specifier)) continue;
-      if (['src/native-v2/models.ts','src/native-v2/shacl-request.ts','src/native-v2/expectations.ts','src/native-v2/projection.ts'].some(p=>path===resolve(ROOT,p)) && specifier==='ajv/dist/2020.js') continue;
+      if (['src/native-v2/models.ts','src/native-v2/shacl-request.ts','src/native-v2/expectations.ts','src/native-v2/projection.ts','src/native-v2/lifecycle-contract.ts'].some(p=>path===resolve(ROOT,p)) && specifier==='ajv/dist/2020.js') continue;
       assert(specifier.startsWith('.'), 'Undeclared import: ' + specifier);
       const target = resolve(dirname(path), path.endsWith('.ts') && specifier.endsWith('.js') ? specifier.slice(0, -3) + '.ts' : specifier);
       assert(target.startsWith(resolve(ROOT, 'src') + sep) || feedbackImports.includes(target) || onlineImports.includes(target) || responseImports.includes(target) || readabilityImports.includes(target) || readinessImports.includes(target) || usabilityImports.includes(target) || path.startsWith(generatedRoot + sep) && target.startsWith(generatedRoot + sep) || [resolve(vendor, 'reference.mjs'),resolve(vendor,'native.mjs'),resolve(vendor,'decision-evidence.mjs')].includes(target), 'Foreign source import');

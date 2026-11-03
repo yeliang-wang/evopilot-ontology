@@ -1,0 +1,117 @@
+// Generated from schemas/v2/review.schema.json; edit the schema, then regenerate.
+export const REVIEW_SCHEMA_DIGEST = "sha256:e0f26d926f187c9ae2a6ba9500a8c531fac9accdd9a59b729bce6581c1fc32b9";
+export const REVIEW_SCHEMA = {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:evopilot:ontology:review:v2",
+  "title": "ReviewDecision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "candidateDigest",
+    "reportDigest",
+    "previousDigest",
+    "decision",
+    "principalId",
+    "grantId",
+    "requirementIds",
+    "rationale",
+    "instruction",
+    "instructionDigest",
+    "instructionVerification",
+    "authorityScope",
+    "recordedAt"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ontology-review-decision/v2"
+    },
+    "candidateDigest": {
+      "$ref": "#/$defs/SHA256"
+    },
+    "reportDigest": {
+      "$ref": "#/$defs/SHA256"
+    },
+    "previousDigest": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SHA256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "APPROVE",
+        "REJECT"
+      ]
+    },
+    "principalId": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "grantId": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "requirementIds": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 1000,
+      "items": {
+        "$ref": "#/$defs/Identifier"
+      }
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "instruction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference",
+        "content"
+      ],
+      "properties": {
+        "reference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000
+        }
+      }
+    },
+    "instructionDigest": {
+      "$ref": "#/$defs/SHA256"
+    },
+    "instructionVerification": {
+      "type": "string",
+      "const": "AUTHENTICATED_REVIEWER_SUBMISSION"
+    },
+    "authorityScope": {
+      "type": "string",
+      "const": "MODEL_SEMANTICS_ONLY"
+    },
+    "recordedAt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    }
+  },
+  "$defs": {
+    "Identifier": {
+      "$ref": "urn:evopilot:ontology:model-draft:v2#/$defs/Identifier"
+    },
+    "SHA256": {
+      "$ref": "urn:evopilot:ontology:model-draft:v2#/$defs/SHA256"
+    }
+  }
+} as const;

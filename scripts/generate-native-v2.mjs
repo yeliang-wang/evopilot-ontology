@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 
 // Deliberately bounded projection of this owned schema, not a general codegen
 // platform. Unknown keywords/forms fail instead of silently weakening types.
-for(const [file,title,prefix,constant] of [['sources','SourceSet','','SOURCE'],['model','ModelDraft','model-','MODEL'],['shacl','SHACLRequest','shacl-','SHACL'],['expectations','ExpectationSet','expectations-','EXPECTATIONS'],['projection','DerivedView','projection-','PROJECTION']]){
+for(const [file,title,prefix,constant] of [['sources','SourceSet','','SOURCE'],['model','ModelDraft','model-','MODEL'],['shacl','SHACLRequest','shacl-','SHACL'],['expectations','ExpectationSet','expectations-','EXPECTATIONS'],['projection','DerivedView','projection-','PROJECTION'],['candidate','ReviewCandidate','candidate-','CANDIDATE'],['review','ReviewDecision','review-','REVIEW'],['delivery','DeliveryBundle','delivery-','DELIVERY']]){
 const source=new URL('../schemas/v2/'+file+'.schema.json',import.meta.url);
 const bytes=readFileSync(source),schema=JSON.parse(bytes);
 const externalTypes=new Map();
@@ -15,7 +15,7 @@ function type(node){
   if(node.$ref){
     assert.deepEqual(Object.keys(node),['$ref']);const name=node.$ref.split('/').at(-1);
     const dependency=dependencies.find(d=>node.$ref===d.schema.$id+'#/$defs/'+name);
-    if(dependency){assert(['shacl','expectations','projection'].includes(file));assert(Object.hasOwn(dependency.schema.$defs,name));const alias=dependency.name+'_'+name;externalTypes.set(alias,{name,module:dependency.name+'-contracts.js'});return alias;}
+    if(dependency){assert(['shacl','expectations','projection','candidate','review','delivery'].includes(file));assert(Object.hasOwn(dependency.schema.$defs,name));const alias=dependency.name+'_'+name;externalTypes.set(alias,{name,module:dependency.name+'-contracts.js'});return alias;}
     assert(/^#\/\$defs\/[A-Za-z][A-Za-z0-9]*$/.test(node.$ref));assert(Object.hasOwn(schema.$defs,name));return name;
   }
   if(node.oneOf){assert.deepEqual(Object.keys(node),['oneOf']);assert(node.oneOf.length);return '('+node.oneOf.map(type).join(' | ')+')';}
