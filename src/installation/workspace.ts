@@ -9,6 +9,7 @@ import type { Credentials, WorkspaceIdentity } from '../standalone/types.js';
 import { SOURCE_TABLES } from '../native-v2/store.js';
 import { MODEL_TABLES } from '../native-v2/model-store.js';
 import { EXPECTATION_TABLES } from '../native-v2/expectations-store.js';
+import { VIEW_TABLES } from '../native-v2/view-store.js';
 import { TASK_TABLES } from '../native-v2/tasks.js';
 
 /** Local operator only: never imported by the domain service or HTTP dispatcher. */
@@ -39,6 +40,7 @@ export function initializeWorkspace(input: {root: string; workspaceId: string; p
       ${EXPECTATION_TABLES}
       ${MODEL_TABLES}
       ${TASK_TABLES}
+      ${VIEW_TABLES}
       PRAGMA user_version=${STATE_VERSION};`);
     db.prepare('INSERT INTO workspace VALUES(1,?)').run(raw); db.exec('COMMIT');
   } finally {db.close();}

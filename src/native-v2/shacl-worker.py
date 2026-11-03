@@ -11,7 +11,7 @@ import socket
 import sys
 import warnings
 
-from rdflib import BNode, Graph, Literal, Namespace, RDF, URIRef
+from rdflib import BNode, Graph, Literal, Namespace, RDF, RDFS, URIRef
 from rdflib.plugins.sparql.parser import parseQuery
 from rdflib.plugins.sparql.parserutils import CompValue
 from pyparsing import ParseResults
@@ -55,7 +55,7 @@ def blocked(*_args, **_kwargs):
     reject('UNSUPPORTED', 'NETWORK_FORBIDDEN', 'Only already admitted local graph text is allowed')
 
 
-def parse(document, limits):
+def parse(document, limits, check_identity=True):
     content = document['content']
     if 'sha256:' + hashlib.sha256(content.encode('utf-8')).hexdigest() != document['digest']:
         reject('INVALID_INPUT', 'DOCUMENT_DIGEST', 'Document bytes differ from the request identity')
@@ -68,6 +68,8 @@ def parse(document, limits):
         reject('INVALID_INPUT', 'RDF_PARSE', 'Invalid admitted RDF document: ' + type(error).__name__)
     if len(graph) > limits['triples']:
         reject('FAILED', 'GRAPH_LIMIT', 'Parsed graph exceeds the fixed triple budget')
+    if not check_identity:
+        return graph
     ontologies = set(graph.subjects(RDF.type, OWL.Ontology))
     expected = set() if document['ontologyIri'] is None else {URIRef(document['ontologyIri'])}
     if {x for x in ontologies if isinstance(x, URIRef)} != expected or len(ontologies) > 1:
@@ -212,6 +214,15 @@ def main(payload):
         data, parts = union_documents(request['view']['closure']['documents'], limits)
         shapes, _ = union_documents(request['shapes'], limits)
         import_guard(request['view']['closure'], parts, shapes)
+        if request['view']['kind'] == 'derived':
+            derived = parse(request['view']['document'], limits, check_identity=False)
+            allowed = {RDF.type, RDFS.subClassOf, RDFS.subPropertyOf,
+                       OWL.equivalentClass, OWL.equivalentProperty, OWL.sameAs, OWL.differentFrom}
+            if any(not all(isinstance(term, URIRef) for term in triple) or triple[1] not in allowed for triple in derived):
+                reject('INVALID_INPUT', 'DERIVED_SCOPE', 'Only named finite projection triples are admitted')
+            data += derived
+            if len(data) > limits['triples']:
+                reject('FAILED', 'GRAPH_LIMIT', 'Asserted plus derived union exceeds fixed triple budget')
         shape_guard(shapes, limits)
         observed = coverage(data, shapes, request['expectations'], limits)
         result = {'viewKind': request['view']['kind'], 'dataTriples': len(data), 'shapeTriples': len(shapes), 'coverage': observed}

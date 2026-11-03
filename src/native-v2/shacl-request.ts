@@ -18,6 +18,11 @@ export function validateSHACLRequest(value:unknown):asserts value is SHACLReques
     if(ids.has(d.id)||iris.has(d.documentIri))fail('SHACL_SCHEMA','Shape and ontology documents require distinct identities');ids.add(d.id);iris.add(d.documentIri);
     validateDLRequest({schema:'ontology-dl-request/v1',requestId:value.requestId,closure:{rootDocumentId:d.id,documents:[d],imports:[]},task:{kind:'legality'}});bytes+=Buffer.byteLength(d.content);
   }
+  if(value.view.kind==='derived'){
+    const d=value.view.document;
+    if(d.format!=='turtle'||d.ontologyIri!==null||d.versionIri!==null||ids.has(d.id)||iris.has(d.documentIri))fail('SHACL_SCHEMA','Derived component requires its own Turtle document identity');
+    validateDLRequest({schema:'ontology-dl-request/v1',requestId:value.requestId,closure:{rootDocumentId:d.id,documents:[d],imports:[]},task:{kind:'legality'}});
+  }
   if(bytes>SHACL_LIMITS.shapeBytes)fail('INPUT_LIMIT','Shape document byte budget exceeded');
   const required=value.expectations.requiredShapes;
   if(hash(required as unknown as Json)!==value.expectations.digest)fail('DIGEST_MISMATCH','Independent expected shape/target ledger differs from digest',409);
@@ -27,7 +32,7 @@ export function validateSHACLRequest(value:unknown):asserts value is SHACLReques
 export function shaclIdentities(request:SHACLRequest){
   const closure=closureDigest(request.view.closure as DLClosure);
   return {requestDigest:hash(request as unknown as Json),closureDigest:closure,
-    viewDigest:hash({kind:request.view.kind,modelDigest:request.modelDigest,closureDigest:closure}),
+    viewDigest:hash({kind:request.view.kind,modelDigest:request.modelDigest,closureDigest:closure,...(request.view.kind==='derived'?{projectionDigest:request.view.projectionDigest,documentDigest:request.view.document.digest}:{})}),
     shapesDigest:hash(request.shapes.map(({content:_,...identity})=>identity).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)),expectationsDigest:request.expectations.digest};
 }
 export type SHACLStatus='CONFORMS'|'NONCONFORMING'|'INVALID_INPUT'|'MISSING_IMPORT'|'INCOMPLETE_COVERAGE'|'UNSUPPORTED'|'TIMEOUT'|'CANCELLED'|'FAILED';

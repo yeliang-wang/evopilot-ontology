@@ -1,5 +1,5 @@
 // Generated from schemas/v2/shacl.schema.json; edit the schema, then regenerate.
-export const SHACL_SCHEMA_DIGEST = "sha256:f29212a944740130debbf649e5582eca99f08d5e49450eb6571df7069add9d46";
+export const SHACL_SCHEMA_DIGEST = "sha256:505ee7bfe10b1964cf56cceceddb5fcdcf843ec0e209bb7921921a969f4c63df";
 export const SHACL_SCHEMA = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:evopilot:ontology:shacl-request:v2",
@@ -26,21 +26,14 @@ export const SHACL_SCHEMA = {
       "$ref": "#/$defs/SHA256"
     },
     "view": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "kind",
-        "closure"
-      ],
-      "properties": {
-        "kind": {
-          "type": "string",
-          "const": "asserted"
+      "oneOf": [
+        {
+          "$ref": "#/$defs/AssertedView"
         },
-        "closure": {
-          "$ref": "#/$defs/ModelClosure"
+        {
+          "$ref": "#/$defs/DerivedView"
         }
-      }
+      ]
     },
     "shapes": {
       "type": "array",
@@ -118,6 +111,48 @@ export const SHACL_SCHEMA = {
           "type": "integer",
           "minimum": 1,
           "maximum": 20000
+        }
+      }
+    },
+    "AssertedView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "closure"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "asserted"
+        },
+        "closure": {
+          "$ref": "#/$defs/ModelClosure"
+        }
+      }
+    },
+    "DerivedView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "closure",
+        "projectionDigest",
+        "document"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "derived"
+        },
+        "closure": {
+          "$ref": "#/$defs/ModelClosure"
+        },
+        "projectionDigest": {
+          "$ref": "#/$defs/SHA256"
+        },
+        "document": {
+          "$ref": "#/$defs/ModelDocument"
         }
       }
     }

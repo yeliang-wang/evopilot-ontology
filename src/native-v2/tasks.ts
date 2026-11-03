@@ -7,6 +7,9 @@ import {createSHACLRunner} from './shacl-runner.js';
 import {expectationStore} from './expectations-store.js';
 import {createValidationRunner,validationPlan,validationConfiguration,VALIDATION_LIMITS} from './validation-runner.js';
 import type {ValidationResponse} from './validation-runner.js';
+import {viewStore} from './view-store.js';
+import {shaclIdentities} from './shacl-request.js';
+import type {ValidationPlan} from './validation-runner.js';
 import {modelStore} from './model-store.js';
 import {exact,id,digest,hash,canonical} from '../standalone/validation.js';
 import {fail,ServiceError} from '../standalone/types.js';
@@ -19,7 +22,7 @@ export const TASK_TABLES=`
 `;
 type Row=Record<string,unknown>;
 export function reasoningTasks(db:DatabaseSync,guard:()=>void,configuration?:ReasoningConfiguration,validationConfigurationInput?:ReasoningConfiguration){
-  const models=modelStore(db),expectations=expectationStore(db),runner=configuration?createDLRunner(configuration):null;
+  const models=modelStore(db),views=viewStore(db),expectations=expectationStore(db),runner=configuration?createDLRunner(configuration):null;
   const shacl=validationConfigurationInput?createSHACLRunner(validationConfigurationInput):null,suite=runner&&shacl?createValidationRunner(runner,shacl):null;
   const toolchain=(kind:string)=>kind==='validation'?suite?.toolchainDigest:runner?.toolchainDigest;
   let active:{id:string;controller:AbortController;done:Promise<void>}|null=null,closing=false,fault:string|null=null;
@@ -37,12 +40,18 @@ export function reasoningTasks(db:DatabaseSync,guard:()=>void,configuration?:Rea
   }
   function failure(r:Row,status:'FAILED'|'CANCELLED',code:string,message:string):DLResponse|ValidationResponse {
     const base={requestId:String(r.id),requestDigest:String(r.request_digest),closureDigest:String(r.closure_digest),configurationDigest:String(r.configuration_digest),toolchainDigest:String(r.toolchain_digest),status,complete:false,elapsedMs:0,result:{},error:{code,message}};
-    return r.task_kind==='validation'?{schema:'ontology-validation-result/v2',...base,modelDigest:String(r.model_digest),expectationsDigest:String(r.expectations_digest)}:{schema:'ontology-dl-result/v1',...base};
+    const plan=r.task_kind==='validation'?JSON.parse(String(r.request)) as ValidationPlan:null;
+    const selected=plan?{viewKind:plan.view.kind,viewDigest:shaclIdentities({schema:'ontology-shacl-request/v2',requestId:plan.requestId,modelDigest:plan.modelDigest,view:plan.view,shapes:plan.model.shapes,expectations:{digest:hash(plan.expectations.requiredShapes as unknown as Json),requiredShapes:plan.expectations.requiredShapes}}).viewDigest}:null;
+    return r.task_kind==='validation'?{schema:'ontology-validation-result/v2',...base,viewKind:selected!.viewKind,viewDigest:selected!.viewDigest,modelDigest:String(r.model_digest),expectationsDigest:String(r.expectations_digest)}:{schema:'ontology-dl-result/v1',...base};
   }
   function finish(r:Row,result:DLResponse|ValidationResponse):void {
     requireTransaction();
     if(result.requestId!==r.id||result.requestDigest!==r.request_digest||result.closureDigest!==r.closure_digest||result.configurationDigest!==r.configuration_digest||result.toolchainDigest!==r.toolchain_digest)fail('TASK_RESULT_MISMATCH','Formal result differs from its authorized task');
     if(r.task_kind==='validation'&&(result.schema!=='ontology-validation-result/v2'||result.modelDigest!==r.model_digest||result.expectationsDigest!==r.expectations_digest)||r.task_kind==='dl'&&result.schema!=='ontology-dl-result/v1')fail('TASK_RESULT_MISMATCH','Result kind or model/expectation identity differs');
+    if(result.schema==='ontology-validation-result/v2'){
+      const expected=failure(r,'FAILED','IDENTITY_ONLY','Identity projection only');
+      if(expected.schema!=='ontology-validation-result/v2'||result.viewKind!==expected.viewKind||result.viewDigest!==expected.viewDigest)fail('TASK_RESULT_MISMATCH','Validation selected view differs from its authorized task');
+    }
     const encoded=canonical(result as unknown as Json),resultDigest=hash(result as unknown as Json);
     db.prepare("UPDATE native_reasoning_tasks SET state='FINISHED',result=?,result_digest=?,updated_at=? WHERE id=?").run(encoded,resultDigest,now(),String(r.id));
     event(String(r.id),'FINISHED',{status:result.status,complete:result.complete,resultDigest});
@@ -56,7 +65,7 @@ export function reasoningTasks(db:DatabaseSync,guard:()=>void,configuration?:Rea
   function start(projectId:string,principalId:string,requestId:string,input:unknown,kind:'dl'|'validation'='dl'):Json {
     requireTransaction();if(closing||fault)fail('TASK_SERVICE_UNAVAILABLE','Inspect task persistence or service shutdown',503);
     if(!runner||kind==='validation'&&!suite)fail('TOOLCHAIN_NOT_READY',kind==='validation'?'Operator must configure installed DL and SHACL executors':'Operator must configure an installed DL executor',409);
-    exact(input,kind==='dl'?['assetId','modelDigest','task']:['assetId','modelDigest'],['timeoutMs']);id(input.assetId);digest(input.modelDigest);
+    exact(input,kind==='dl'?['assetId','modelDigest','task']:['assetId','modelDigest'],kind==='dl'?['timeoutMs']:['timeoutMs','view']);id(input.assetId);digest(input.modelDigest);
     const model=models.load(projectId,input.assetId,input.modelDigest);if(!models.current(projectId,model))fail('STALE_MODEL','Formal task requires the current model/source/intent/expectations binding',409);
     if(db.prepare("SELECT id FROM native_reasoning_tasks WHERE state IN ('QUEUED','RUNNING','CANCEL_REQUESTED','INTERRUPTED') LIMIT 1").get())fail('REASONER_BUSY','An active or interrupted formal task must be reconciled first',409);
     const taskId=(kind==='dl'?'dl-':'validation-')+hash({projectId,principalId,requestId}).slice(7);
@@ -67,7 +76,7 @@ export function reasoningTasks(db:DatabaseSync,guard:()=>void,configuration?:Rea
     }else{
       if(!model.draft.expectationsDigest)fail('EXPECTATIONS_REQUIRED','Validation requires independently retained expected outcomes',409);
       const expected=expectations.load(projectId,input.assetId,model.draft.expectationsDigest);if(!expectations.current(projectId,expected))fail('STALE_EXPECTATIONS','Validation expectations have changed',409);
-      expectationsDigest=expected.digest;request=validationPlan(taskId,model,expected) as unknown as Json;maximum=VALIDATION_LIMITS.taskMs;
+      expectationsDigest=expected.digest;request=validationPlan(taskId,model,expected,views.bind(projectId,model,input.view,runner.toolchainDigest)) as unknown as Json;maximum=VALIDATION_LIMITS.taskMs;
     }
     const timeoutMs=input.timeoutMs??maximum;
     if(!Number.isSafeInteger(timeoutMs)||(timeoutMs as number)<1||(timeoutMs as number)>maximum)fail('INVALID_INPUT','Task deadline exceeds its fixed envelope');
@@ -116,9 +125,10 @@ export function reasoningTasks(db:DatabaseSync,guard:()=>void,configuration?:Rea
     exact(input,['taskId']);id(input.taskId);const r=row(projectId,input.taskId,kind),model=models.load(projectId,String(r.asset_id),String(r.model_digest));
     const result=r.result===null?null:JSON.parse(String(r.result));
     if(result&&hash(result)!==r.result_digest)fail('CORRUPT_STATE','Task result differs from its digest',409);
+    const plan=r.task_kind==='validation'?JSON.parse(String(r.request)) as ValidationPlan:null;
     const events=db.prepare('SELECT sequence,event,digest,recorded_at FROM native_reasoning_events WHERE task_id=? ORDER BY sequence DESC LIMIT 100').all(String(r.id)).reverse();
     const eventCount=Number(db.prepare('SELECT count(*) AS n FROM native_reasoning_events WHERE task_id=?').get(String(r.id))!.n);
-    return {taskId:String(r.id),kind:String(r.task_kind),expectationsDigest:r.expectations_digest===null?null:String(r.expectations_digest),assetId:String(r.asset_id),modelDigest:String(r.model_digest),state:String(r.state),requestDigest:String(r.request_digest),closureDigest:String(r.closure_digest),configurationDigest:String(r.configuration_digest),toolchainDigest:String(r.toolchain_digest),
+    return {taskId:String(r.id),kind:String(r.task_kind),viewKind:plan?.view.kind??null,projectionDigest:plan?.view.kind==='derived'?plan.view.projectionDigest:null,expectationsDigest:r.expectations_digest===null?null:String(r.expectations_digest),assetId:String(r.asset_id),modelDigest:String(r.model_digest),state:String(r.state),requestDigest:String(r.request_digest),closureDigest:String(r.closure_digest),configurationDigest:String(r.configuration_digest),toolchainDigest:String(r.toolchain_digest),
       current:models.current(projectId,model),configuredToolchainMatches:toolchain(String(r.task_kind))===r.toolchain_digest,resultDigest:r.result_digest===null?null:String(r.result_digest),
       formalStatus:result?.status??null,complete:r.state==='FINISHED'&&(result?.complete??false),result:result&&Buffer.byteLength(String(r.result))<=256*1024?result:null,resultBytes:r.result===null?0:Buffer.byteLength(String(r.result)),events:events.map(e=>({sequence:Number(e.sequence),event:String(e.event),digest:String(e.digest),recordedAt:String(e.recorded_at)})),eventsComplete:eventCount===events.length,eventCount,serviceFault:fault,authority:false};
   }

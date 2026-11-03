@@ -24,21 +24,14 @@
       "$ref": "#/$defs/SHA256"
     },
     "view": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "kind",
-        "closure"
-      ],
-      "properties": {
-        "kind": {
-          "type": "string",
-          "const": "asserted"
+      "oneOf": [
+        {
+          "$ref": "#/$defs/AssertedView"
         },
-        "closure": {
-          "$ref": "#/$defs/ModelClosure"
+        {
+          "$ref": "#/$defs/DerivedView"
         }
-      }
+      ]
     },
     "shapes": {
       "type": "array",
@@ -116,6 +109,48 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 20000
+        }
+      }
+    },
+    "AssertedView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "closure"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "asserted"
+        },
+        "closure": {
+          "$ref": "#/$defs/ModelClosure"
+        }
+      }
+    },
+    "DerivedView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "closure",
+        "projectionDigest",
+        "document"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "derived"
+        },
+        "closure": {
+          "$ref": "#/$defs/ModelClosure"
+        },
+        "projectionDigest": {
+          "$ref": "#/$defs/SHA256"
+        },
+        "document": {
+          "$ref": "#/$defs/ModelDocument"
         }
       }
     }

@@ -46,7 +46,7 @@ export function hashBytes(value: string | Buffer): string { return 'sha256:' + c
 export function hash(value: Json): string { return hashBytes(canonical(value)); }
 export function validateIdentity(value: unknown): asserts value is WorkspaceIdentity {
   exact(value, ['schema','workspaceId','serviceId','stateVersion','createdAt']);
-  if (value.schema !== 'ontology-workspace/v1' || value.stateVersion !== 12) fail('UNSUPPORTED_STATE', 'Independent Ontology state v12 required');
+  if (value.schema !== 'ontology-workspace/v1' || value.stateVersion !== 13) fail('UNSUPPORTED_STATE', 'Independent Ontology state v13 required');
   id(value.workspaceId); id(value.serviceId); timestamp(value.createdAt);
 }
 export function timestamp(value: unknown): asserts value is string {

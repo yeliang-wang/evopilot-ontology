@@ -1,10 +1,11 @@
 import type {createDLRunner} from '../reasoning/runner.js';
 import {DL_JVM_ARGUMENTS} from '../reasoning/runner.js';
+import {closureDigest} from '../reasoning/request.js';
 import {DL_LIMITS} from '../reasoning/types.js';
 import type {DLRequest,DLResponse} from '../reasoning/types.js';
 import type {createSHACLRunner} from './shacl-runner.js';
 import {SHACL_PYTHON_ARGUMENTS} from './shacl-runner.js';
-import {SHACL_LIMITS} from './shacl-request.js';
+import {shaclIdentities,SHACL_LIMITS} from './shacl-request.js';
 import type {SHACLResponse} from './shacl-request.js';
 import type {SHACLRequest} from './shacl-contracts.js';
 import type {ExpectationSet} from './expectations-contracts.js';
@@ -16,16 +17,16 @@ import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
 
 export const VALIDATION_LIMITS=Object.freeze({taskMs:120000,outputBytes:16*1024*1024,cases:32});
-export interface ValidationPlan {schema:'ontology-validation-plan/v2';requestId:string;modelDigest:string;expectationsDigest:string;closureDigest:string;model:ModelDraft;expectations:ExpectationSet;mappingComplete:boolean;}
+export interface ValidationPlan {schema:'ontology-validation-plan/v2';requestId:string;modelDigest:string;expectationsDigest:string;closureDigest:string;model:ModelDraft;expectations:ExpectationSet;mappingComplete:boolean;view:SHACLRequest['view'];}
 export interface ValidationResponse {
-  schema:'ontology-validation-result/v2';requestId:string;requestDigest:string;modelDigest:string;expectationsDigest:string;closureDigest:string;configurationDigest:string;toolchainDigest:string;
+  schema:'ontology-validation-result/v2';requestId:string;viewKind:'asserted'|'derived';viewDigest:string;requestDigest:string;modelDigest:string;expectationsDigest:string;closureDigest:string;configurationDigest:string;toolchainDigest:string;
   status:'MATCHED'|'MISMATCH'|'INCOMPLETE'|'TIMEOUT'|'CANCELLED'|'FAILED';complete:boolean;elapsedMs:number;result:Json;error:{code:string;message:string}|null;
 }
 interface Check {id:string;kind:string;expected:string;actual:string;matched:boolean;formalComplete:boolean;resultDigest:string;result:DLResponse|SHACLResponse;}
-export function validationPlan(requestId:string,model:ModelAdmission,expected:ExpectationAdmission):ValidationPlan {
+export function validationPlan(requestId:string,model:ModelAdmission,expected:ExpectationAdmission,view:SHACLRequest['view']={kind:'asserted',closure:model.draft.closure}):ValidationPlan {
   if(!expected.coverage.complete)fail('EXPECTATIONS_INCOMPLETE','Independent required positive/negative coverage is missing',409);
   if(model.draft.expectationsDigest!==expected.digest||model.draft.assetId!==expected.definition.assetId||model.draft.sourceSetDigest!==expected.definition.sourceSetDigest||model.draft.intentDigest!==expected.definition.intentDigest)fail('EXPECTATIONS_BINDING_CONFLICT','Model must bind these exact independent expectations',409);
-  return structuredClone({schema:'ontology-validation-plan/v2',requestId,modelDigest:model.digest,expectationsDigest:expected.digest,closureDigest:model.closureDigest,model:model.draft,expectations:expected.definition,mappingComplete:model.mapping.complete});
+  return structuredClone({schema:'ontology-validation-plan/v2',requestId,modelDigest:model.digest,expectationsDigest:expected.digest,closureDigest:model.closureDigest,model:model.draft,expectations:expected.definition,mappingComplete:model.mapping.complete,view});
 }
 export function validationConfiguration(timeoutMs:number):string {
   return hash({schema:'ontology-validation-configuration/v2',timeoutMs,limits:{...VALIDATION_LIMITS},dl:{limits:{...DL_LIMITS},jvm:[...DL_JVM_ARGUMENTS]},shacl:{limits:{...SHACL_LIMITS},python:[...SHACL_PYTHON_ARGUMENTS],inference:'none',metaSHACL:true,advanced:false,js:false,imports:false}});
@@ -34,8 +35,9 @@ export function createValidationRunner(dl:ReturnType<typeof createDLRunner>,shac
   const toolchainDigest=hash({dl:dl.toolchainDigest,shacl:shacl.toolchainDigest});
   return {toolchainDigest,async run(value:ValidationPlan,options:{timeoutMs:number;signal:AbortSignal;progress:(detail:Json)=>void}):Promise<ValidationResponse>{
     const plan=structuredClone(value),requestDigest=hash(plan as unknown as Json),configurationDigest=validationConfiguration(options.timeoutMs),started=performance.now(),deadline=started+options.timeoutMs;
-    if(plan.modelDigest!==hash(plan.model as unknown as Json)||plan.expectationsDigest!==hash(plan.expectations as unknown as Json))fail('CORRUPT_STATE','Validation snapshots differ from immutable identities',409);
-    const envelope={schema:'ontology-validation-result/v2' as const,requestId:plan.requestId,requestDigest,modelDigest:plan.modelDigest,expectationsDigest:plan.expectationsDigest,closureDigest:plan.closureDigest,configurationDigest,toolchainDigest};
+    if(plan.modelDigest!==hash(plan.model as unknown as Json)||plan.expectationsDigest!==hash(plan.expectations as unknown as Json)||plan.closureDigest!==closureDigest(plan.view.closure as DLRequest['closure'])||hash(plan.view.closure as unknown as Json)!==hash(plan.model.closure as unknown as Json))fail('CORRUPT_STATE','Validation snapshots differ from immutable identities',409);
+    const chosen:SHACLRequest={schema:'ontology-shacl-request/v2',requestId:plan.requestId,modelDigest:plan.modelDigest,view:plan.view,shapes:plan.model.shapes,expectations:{digest:hash(plan.expectations.requiredShapes as unknown as Json),requiredShapes:plan.expectations.requiredShapes}};
+    const envelope={schema:'ontology-validation-result/v2' as const,viewKind:plan.view.kind,viewDigest:shaclIdentities(chosen).viewDigest,requestId:plan.requestId,requestDigest,modelDigest:plan.modelDigest,expectationsDigest:plan.expectationsDigest,closureDigest:plan.closureDigest,configurationDigest,toolchainDigest};
     const requiredIds=['model-consistency','model-shacl',...plan.expectations.cases.map(c=>c.id)],checks:Check[]=[];let bytes=0;
     const summary=():Json=>({checks:checks as unknown as Json,requiredCheckIds:requiredIds,missingCheckIds:requiredIds.filter(id=>!checks.some(c=>c.id===id)),mappingComplete:plan.mappingComplete,openIssues:plan.model.openIssues.length,semanticCoverage:'CHECKED_EXPECTATIONS_ONLY',businessConfirmed:false,authority:false});
     const response=(status:ValidationResponse['status'],complete:boolean,error:ValidationResponse['error']=null):ValidationResponse=>({...envelope,status,complete,elapsedMs:Math.ceil(performance.now()-started),result:summary(),error});
@@ -56,7 +58,7 @@ export function createValidationRunner(dl:ReturnType<typeof createDLRunner>,shac
       return boundary();
     }
     let stopped=await check('model-consistency','owl','COMPLETED',()=>dl.run(owlRequest('base-dl',{kind:'consistency'}),{timeoutMs:remaining(DL_LIMITS.taskMs),signal:options.signal}),r=>!!r.result&&typeof r.result==='object'&&!Array.isArray(r.result)&&r.result.consistent===true&&r.result.legal===true);if(stopped)return stopped;
-    stopped=await check('model-shacl','shacl','CONFORMS',()=>shacl.run(shaclRequest('base-shacl',plan.model.closure),{timeoutMs:remaining(SHACL_LIMITS.taskMs),signal:options.signal}));if(stopped)return stopped;
+    stopped=await check('model-shacl','shacl','CONFORMS',()=>shacl.run({...chosen,requestId:plan.requestId+'-base-shacl'},{timeoutMs:remaining(SHACL_LIMITS.taskMs),signal:options.signal}));if(stopped)return stopped;
     for(const [index,c] of plan.expectations.cases.entries()){
       const sub='case-'+index;
       if(c.kind==='owl-entailment')stopped=await check(c.id,'owl',c.expectedStatus,()=>dl.run(owlRequest(sub,{kind:'entailment',query:{...c.query}}),{timeoutMs:remaining(DL_LIMITS.taskMs),signal:options.signal}),r=>!!r.result&&typeof r.result==='object'&&!Array.isArray(r.result)&&r.result.vacuous===false);
