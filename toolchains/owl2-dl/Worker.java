@@ -86,6 +86,8 @@ public final class Worker {
     for(String iri:ignored)c=c.addIgnoredImport(IRI.create(iri));return c;
   }
   static final class MappingConsumer extends OWLRDFConsumerAdapter {
+    boolean inputComplete=false;
+    public boolean isParsedAllTriples(){return inputComplete||super.isParsedAllTriples();}
     final Set<IRI> expressions=new LinkedHashSet<>();
     final Set<OWLClassExpression> mapped=new HashSet<>();
     MappingConsumer(OWLOntology o,OWLOntologyLoaderConfiguration c){super(o,c);}
@@ -99,6 +101,9 @@ public final class Worker {
       throw invalid("RDF_EXPRESSION","RDF expression could not be mapped to OWL");
     }
     public void endModel(){
+      // The reader has delivered all triples. Lax datatype-expression matching
+      // consults this state, which the upstream consumer otherwise sets later.
+      inputComplete=true;
       // W3C RDF Mapping 3.2.4 precedes axiom parsing and also consumes expressions
       // without an axiom reference. OWLAPI normally translates them only on demand.
       // Retain them separately for the complete closure profile check, not as facts.

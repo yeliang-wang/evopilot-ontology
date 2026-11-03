@@ -1,6 +1,6 @@
 {
   "schema": "ontology-dl-dependencies/v1",
-  "engine": "org.semanticweb.hermit:1.4.5.519",
+  "engine": "org.semanticweb.hermit:1.4.5.519+evopilot.1",
   "owlapi": "owlapi-distribution:5.5.1",
   "files": [
     {
@@ -484,5 +484,9 @@
       "url": "https://repo.maven.apache.org/maven2/org/tukaani/xz/1.9/xz-1.9.jar"
     }
   ],
-  "releaseReview": "NOT_EVALUATED"
+  "releaseReview": "NOT_EVALUATED",
+  "enginePatch": {
+    "file": "engine-compat.json",
+    "sha256": "40b9089c36810154db5a8eed283b8394174e5c63df1ee7d218daad94ddd4a5f9"
+  }
 }

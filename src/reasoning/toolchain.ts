@@ -15,7 +15,7 @@ export function inspectJavaRuntime(root:string):RuntimeFile[]{
   if(!isAbsolute(root)||realpathSync(root)!==root)fail('UNSAFE_PATH','Canonical Java runtime root required');
   return inventory(root,['bin/java','lib','conf','release']);
 }
-export function inventory(root:string,paths:string[]=['worker.jar','dependencies']):RuntimeFile[]{
+export function inventory(root:string,paths:string[]=['worker.jar','dependencies','engine-source']):RuntimeFile[]{
   const result:RuntimeFile[]=[];let bytes=0,count=0;
   const visit=(relativePath:string):void=>{
     if(++count>10000)fail('TOOLCHAIN_LIMIT','Toolchain file-count budget exceeded');
@@ -36,7 +36,7 @@ export function readDLToolchain(file:string):DLToolchain {
   exact(value,['schema','root','javaRoot','javaVersion','platform','arch','engine','owlapi','workerSourceDigest','dependencyLockDigest','runtimeFiles','javaFiles','digest']);
   if(value.schema!=='ontology-dl-toolchain/v1'||value.platform!==process.platform||value.arch!==process.arch||typeof value.root!=='string'||typeof value.javaRoot!=='string'||typeof value.javaVersion!=='string'||!value.javaVersion.startsWith('21.'))fail('TOOLCHAIN_NOT_READY','Bound Java 21 platform runtime required');
   privatePath(value.root,true);if(outsideSource(value.root)!==value.root||realpathSync(value.javaRoot)!==value.javaRoot)fail('UNSAFE_PATH','Canonical installed toolchain roots required');
-  if(value.engine!=='org.semanticweb.hermit:1.4.5.519'||value.owlapi!=='owlapi-distribution:5.5.1')fail('TOOLCHAIN_NOT_READY','Unknown formal engine binding');
+  if(value.engine!=='org.semanticweb.hermit:1.4.5.519+evopilot.1'||value.owlapi!=='owlapi-distribution:5.5.1')fail('TOOLCHAIN_NOT_READY','Unknown formal engine binding');
   for(const field of ['workerSourceDigest','dependencyLockDigest','digest'])digest(value[field]);
   if(!Array.isArray(value.runtimeFiles)||!Array.isArray(value.javaFiles)||!value.runtimeFiles.length||!value.javaFiles.length)fail('TOOLCHAIN_NOT_READY','Complete executable closure required');
   for(const f of [...value.runtimeFiles,...value.javaFiles]){exact(f,['path','kind','digest','mode']);digest(f.digest);if(typeof f.path!=='string'||isAbsolute(f.path)||f.path.split(/[\\/]/).some(p=>['','..','.'].includes(p))||!['file','link'].includes(f.kind as string)||!Number.isInteger(f.mode))fail('TOOLCHAIN_NOT_READY','Invalid toolchain file binding');}

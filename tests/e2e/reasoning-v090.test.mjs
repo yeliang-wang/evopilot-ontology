@@ -134,6 +134,37 @@ test('RDF reader syntax errors remain invalid inputs rather than engine failures
   }
 });
 
+test('completed RDF input admits qualified data cardinalities before axiom mapping',async()=>{
+  const prefix=`@prefix : <${ns}> . @prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n`;
+  const premise=declaration({data:['name'],individuals:['person']})+' DataPropertyAssertion(:name :person "first") DataPropertyAssertion(:name :person "second")';
+  const minimum=prefix+`:name a owl:DatatypeProperty . :person a [a owl:Restriction; owl:onProperty :name; owl:minQualifiedCardinality "2"^^xsd:nonNegativeInteger; owl:onDataRange xsd:string] .`;
+  const input=request(premise,{kind:'entailment',query:{format:'turtle',content:minimum,digest:sha(minimum)}});
+  const entailed=await runner.run(input);assert.equal(entailed.status,'ENTAILED',JSON.stringify(entailed));
+  assert.equal(entailed.result.vacuous,false);assert.match(entailed.result.queryAxioms[0].axiom,/DataMinCardinality\(2/);
+  for(const [predicate,count,expected] of [['maxQualifiedCardinality',1,'INCONSISTENT'],['qualifiedCardinality',1,'INCONSISTENT'],['qualifiedCardinality',2,'COMPLETED']]){
+    const content=minimum.replace('minQualifiedCardinality "2"',predicate+' "'+count+'"')+' :person :name "first", "second" .';
+    const req=request('',{kind:'consistency'});req.closure.documents=[document(content,{format:'turtle'})];
+    const result=await runner.run(req);assert.equal(result.status,expected,JSON.stringify(result));
+  }
+});
+
+test('engine union simplification proves contradictions and entailments without empty-union constructor failures',async()=>{
+  await run('EquivalentClasses(owl:Thing owl:Nothing)',{kind:'consistency'},'INCONSISTENT');
+  const declarations=declaration({classes:['A','B'],individuals:['a']});
+  await run(declarations+' SubClassOf(owl:Thing ObjectComplementOf(owl:Thing))',{kind:'consistency'},'INCONSISTENT');
+  const body=declarations+' EquivalentClasses(:A ObjectUnionOf(owl:Nothing :B)) ClassAssertion(:A :a)';
+  await run(body,{kind:'entailment',query:query('ClassAssertion(:B :a)')},'ENTAILED');
+  await run(body,{kind:'entailment',query:query('ClassAssertion(ObjectComplementOf(:B) :a)')},'NOT_ENTAILED');
+  // Equivalent empty class extensions do not make the ontology inconsistent.
+  const empty=declarations+' EquivalentClasses(:A owl:Nothing)';
+  await run(empty,{kind:'consistency'});
+  assert.equal((await run(empty,{kind:'satisfiability',query:query('SubClassOf(owl:Thing :A)')})).result.satisfiable,false);
+  const explanation=await run('EquivalentClasses(owl:Thing owl:Nothing)',{kind:'explanation',target:'inconsistency'});
+  const replay=request('',{kind:'consistency'});replay.closure.documents=[document(explanation.result.replay.content)];
+  assert.equal((await runner.run(replay)).status,'INCONSISTENT');
+});
+
 test('property chains, inverse properties and transitivity entail actual dependency paths',async()=>{
   const body=declaration({objects:['uses','from','depends','usedBy','metricDepends'],individuals:['service','dataset','database','a','b','c']})+`
 SubObjectPropertyOf(ObjectPropertyChain(:uses :from) :depends)
@@ -246,8 +277,14 @@ test('deadline, cancellation and concurrent calls retain explicit incomplete out
   assert.equal((await runner.run(input)).status,'COMPLETED');
 });
 
-test('installed executable drift is refused without running modified code',async()=>{
-  const path=join(binding.root,'worker.jar'),bytes=readFileSync(path);
-  try{writeFileSync(path,Buffer.concat([bytes,Buffer.from('changed')]));await assert.rejects(runner.run(request(sensitive,{kind:'consistency'})),{code:'TOOLCHAIN_DRIFT'});}
-  finally{writeFileSync(path,bytes);}
+test('installed executable and engine-source drift is refused before execution',async()=>{
+  const recipe=JSON.parse(readFileSync(new URL('../../toolchains/owl2-dl/engine-compat.json',import.meta.url)));
+  assert.equal(hashBytes(readFileSync(join(binding.root,'engine-source','upstream-sources.jar'))),'sha256:'+recipe.sourceArchive.sha256);
+  assert.equal(hashBytes(readFileSync(join(binding.root,'engine-source','ExpressionManager.java'))),'sha256:'+recipe.patchedSourceSHA256);
+  assert.deepEqual(JSON.parse(readFileSync(join(binding.root,'engine-source','engine-compat.json'))),recipe);
+  for(const relative of ['worker.jar','engine-source/ExpressionManager.java','engine-source/engine-compat.json']){
+    const path=join(binding.root,relative),bytes=readFileSync(path);
+    try{writeFileSync(path,Buffer.concat([bytes,Buffer.from('changed')]));await assert.rejects(runner.run(request(sensitive,{kind:'consistency'})),{code:'TOOLCHAIN_DRIFT'});}
+    finally{writeFileSync(path,bytes);}
+  }
 });

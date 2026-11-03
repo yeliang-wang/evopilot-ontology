@@ -1,0 +1,24 @@
+{
+  "schema": "ontology-dl-engine-compat/v1",
+  "id": "hermit-owlapi-union-1",
+  "engine": "org.semanticweb.hermit:1.4.5.519+evopilot.1",
+  "upstreamEngine": "org.semanticweb.hermit:1.4.5.519",
+  "license": "LGPL-3.0-or-later",
+  "sourceArchive": {
+    "url": "https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/org.semanticweb.hermit/1.4.5.519/org.semanticweb.hermit-1.4.5.519-sources.jar",
+    "sha256": "54daf34f755fb82d8dd674d97fae56916fd1fee37bd795342774ee07239acca7"
+  },
+  "sourceEntry": "org/semanticweb/HermiT/structural/ExpressionManager.java",
+  "sourceSHA256": "449f691736e955d43b17e9785a412ea30b0efa9bde9f914a237b031614e9a256",
+  "changes": [
+    {
+      "find": "return m_factory.getOWLObjectUnionOf(newDisjuncts);",
+      "replace": "if (newDisjuncts.isEmpty()) return m_factory.getOWLNothing();\n            if (newDisjuncts.size()==1) return newDisjuncts.get(0);\n            return m_factory.getOWLObjectUnionOf(newDisjuncts);",
+      "occurrences": 1
+    }
+  ],
+  "patchedSourceSHA256": "cd133173521cf8a2113f7023b95226375d6a25bea76714126e6971909d3582f3",
+  "notice": "EvoPilot compatibility modification: represent a simplified empty object union as owl:Nothing and a singleton as its sole operand before invoking OWLAPI 5.5.1. The original Oxford University copyright and LGPL notice remain in the generated source. This is a modified engine build, not an unmodified upstream release.",
+  "reason": "HermiT 1.4.5.519 targets OWLAPI 5.1.9. Its union simplifier can pass zero operands to OWLAPI 5.5.1, which rejects that constructor. This patch applies the union semantic identity; it does not catch engine errors or substitute expected test answers.",
+  "acceptance": "Complete standard, combination and release dependency/license acceptance remains required."
+}

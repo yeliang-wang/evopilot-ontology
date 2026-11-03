@@ -64,6 +64,9 @@ export async function collect(options){
   const binding=readDLToolchain(options.toolchain);
   assert.equal(binding.workerSourceDigest,hashBytes(readFileSync(join(root,'toolchains/owl2-dl/Worker.java'))),'Installed worker is stale');
   assert.equal(binding.dependencyLockDigest,hashBytes(readFileSync(join(root,'toolchains/owl2-dl/dependencies.json'))));
+  const dependencies=JSON.parse(readFileSync(join(root,'toolchains/owl2-dl/dependencies.json')));
+  assert.equal(dependencies.enginePatch.file,'engine-compat.json');
+  assert.equal(hashBytes(readFileSync(join(root,'toolchains/owl2-dl/engine-compat.json'))),'sha256:'+dependencies.enginePatch.sha256);
   // Preserve the selected venv entry path; resolving its executable symlink before
   // launch would silently lose the venv's pinned RDFLib installation.
   const python=options.python,extracted=spawnSync(python,[extractor,'--archive',options.archive,'--lock',join(root,'tests/acceptance/v090/w3c-source.json')],{encoding:'utf8',timeout:30000,maxBuffer:64*1024*1024,env:{PATH:process.env.PATH,LANG:'C.UTF-8',PYTHONDONTWRITEBYTECODE:'1'}});
