@@ -41,6 +41,48 @@ test('empty logical conclusion is explicitly vacuous and is not a business cover
   assert.equal(result.result.vacuous,true);assert.deepEqual(result.result.queryAxioms,[]);
 });
 
+test('RDF singleton class expressions follow OWL 2 compatibility mapping including nested datatype facets',async()=>{
+  const content=`@prefix : <urn:evopilot:formal-test:> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+:A a owl:Class; owl:equivalentClass [a owl:Class; owl:intersectionOf (:B)] .
+:B a owl:Class; owl:equivalentClass [a owl:Class; owl:unionOf (:C)] . :C a owl:Class .
+:number a owl:DatatypeProperty .
+:Mixed a owl:Class; rdfs:subClassOf [a owl:Class; owl:intersectionOf (
+  [a owl:Restriction; owl:onProperty :number; owl:someValuesFrom [a rdfs:Datatype; owl:onDatatype xsd:integer; owl:withRestrictions ([xsd:minInclusive "0"^^xsd:integer])]]
+)] .
+:a a owl:NamedIndividual, :A, :Mixed; :number "1"^^xsd:integer .`;
+  const input=request('',{kind:'entailment',query:query('ClassAssertion(:C :a)')});input.closure.documents=[document(content,{format:'turtle'})];
+  assert.equal((await runner.run(input)).status,'ENTAILED');
+  const q=`@prefix : <urn:evopilot:formal-test:> . @prefix owl: <http://www.w3.org/2002/07/owl#> .
+:C a owl:Class . :a a [a owl:Class; owl:intersectionOf (:C)] .`;
+  input.task.query={format:'turtle',content:q,digest:sha(q)};assert.equal((await runner.run(input)).status,'ENTAILED');
+  input.task.query=query('ClassAssertion(:Unrelated :a)');assert.equal((await runner.run(input)).status,'NOT_ENTAILED');
+  // The RDF compatibility mapping does not legalize malformed Functional Syntax.
+  const malformed=declaration({classes:['A','B']})+' EquivalentClasses(:A ObjectIntersectionOf(:B))';
+  assert.equal((await runner.run(request(malformed,{kind:'legality'}))).status,'INVALID_INPUT');
+});
+
+test('already mapped nested ontology annotations pass while dangling reification remains rejected',async()=>{
+  const content=`<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:owl="http://www.w3.org/2002/07/owl#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:ex="urn:evopilot:formal-test:">
+<owl:Ontology rdf:about="urn:evopilot:formal-test:model"><rdfs:label>Model label</rdfs:label></owl:Ontology>
+<owl:Annotation><owl:annotatedSource rdf:resource="urn:evopilot:formal-test:model"/><owl:annotatedProperty rdf:resource="http://www.w3.org/2000/01/rdf-schema#label"/><owl:annotatedTarget>Model label</owl:annotatedTarget><ex:author>Fixture author</ex:author></owl:Annotation>
+<owl:AnnotationProperty rdf:about="urn:evopilot:formal-test:author"/></rdf:RDF>`;
+  const input=request('',{kind:'consistency'});input.closure.documents=[document(content,{format:'rdfxml',ontologyIri:ns+'model'})];
+  const accepted=await runner.run(input);assert.equal(accepted.status,'COMPLETED',JSON.stringify(accepted));
+  for(const broken of [content.replace('<owl:annotatedTarget>Model label','<owl:annotatedTarget>Unmatched label'),content.replace('<owl:annotatedProperty rdf:resource="http://www.w3.org/2000/01/rdf-schema#label"/>','')]){
+    input.closure.documents[0].content=broken;input.closure.documents[0].digest=sha(broken);
+    const result=await runner.run(input);assert.equal(result.status,'INVALID_INPUT');assert.equal(result.error.code,'UNPARSED_RDF');
+  }
+  // A second, untyped reification group must not be accepted just because its
+  // values match a different, already parsed nested annotation.
+  const extra='<rdf:Description><owl:annotatedSource rdf:resource="urn:evopilot:formal-test:model"/><owl:annotatedProperty rdf:resource="http://www.w3.org/2000/01/rdf-schema#label"/><owl:annotatedTarget>Model label</owl:annotatedTarget></rdf:Description>';
+  const broken=content.replace('</rdf:RDF>',extra+'</rdf:RDF>');
+  input.closure.documents[0].content=broken;input.closure.documents[0].digest=sha(broken);
+  assert.equal((await runner.run(input)).status,'INVALID_INPUT');
+});
+
 test('property chains, inverse properties and transitivity entail actual dependency paths',async()=>{
   const body=declaration({objects:['uses','from','depends','usedBy','metricDepends'],individuals:['service','dataset','database','a','b','c']})+`
 SubObjectPropertyOf(ObjectPropertyChain(:uses :from) :depends)

@@ -17,6 +17,7 @@ import org.semanticweb.owlapi.model.*;
 import org.semanticweb.owlapi.formats.*;
 import org.semanticweb.owlapi.io.*;
 import org.semanticweb.owlapi.profiles.OWL2DLProfile;
+import org.semanticweb.owlapi.util.OWLObjectTransformer;
 import org.semanticweb.owlapi.reasoner.*;
 import org.semanticweb.owlapi.functional.parser.OWLFunctionalSyntaxOWLParserFactory;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFXMLParserFactory;
@@ -80,6 +81,55 @@ public final class Worker {
       .setFollowRedirects(false).setEntityExpansionLimit("1000");
     for(String iri:ignored)c=c.addIgnoredImport(IRI.create(iri));return c;
   }
+  static boolean annotationResidualsMapped(OWLOntology o,List<RDFTriple> triples){
+    if(triples.isEmpty())return true;
+    // OWLAPI 5.5.1 mapAnnotation retains these three reification triples even
+    // after creating a nested ontology annotation. Accept only a complete group
+    // whose source/property/value is independently present in that parsed result.
+    // Other residuals, dangling groups and mismatched annotation targets still fail.
+    var ontology=o.getOntologyID().getOntologyIRI();if(ontology.isEmpty())return false;
+    String ns="http://www.w3.org/2002/07/owl#";
+    var groups=triples.stream().collect(Collectors.groupingBy(RDFTriple::getSubject));
+    for(var entry:groups.entrySet()){
+      if(!entry.getKey().isAnonymous()||entry.getValue().size()!=3)return false;
+      var fields=new HashMap<String,RDFNode>();
+      for(var triple:entry.getValue())if(fields.put(triple.getPredicate().getIRI().toString(),triple.getObject())!=null)return false;
+      if(!fields.keySet().equals(Set.of(ns+"annotatedSource",ns+"annotatedProperty",ns+"annotatedTarget")))return false;
+      if(!new RDFResourceIRI(ontology.get()).equals(fields.get(ns+"annotatedSource")))return false;
+      RDFNode property=fields.get(ns+"annotatedProperty"),target=fields.get(ns+"annotatedTarget");
+      boolean mapped=o.annotations().anyMatch(a->{
+        if(!a.annotations().findAny().isPresent()||!new RDFResourceIRI(a.getProperty().getIRI()).equals(property))return false;
+        OWLAnnotationValue value=a.getValue();
+        return value instanceof OWLLiteral literal?new RDFLiteral(literal).equals(target):value instanceof IRI iri&&new RDFResourceIRI(iri).equals(target);
+      });
+      if(!mapped)return false;
+    }
+    return true;
+  }
+  @SuppressWarnings("unchecked")
+  static void normalizeRDFClassExpressions(OWLOntology o){
+    // OWL 2 RDF Mapping, Table 15: OWL 1 empty/singleton class intersections,
+    // unions and empty enumerations have defined OWL 2 structural projections.
+    // Preserve source bytes; normalize only the separate parsed RDF projection.
+    var m=o.getOWLOntologyManager();var d=m.getOWLDataFactory();
+    Class<Object> witness=(Class<Object>)(Class<?>)OWLClassExpression.class;
+    // The Object callback also returns OWLFacet unchanged: OWLAPI 5.5.1 invokes
+    // that callback outside the witness filter while traversing datatype facets.
+    var transformer=new OWLObjectTransformer<Object>(x->true,value->{
+      if(value instanceof OWLObjectIntersectionOf c){var args=c.operands().toList();if(args.isEmpty())return d.getOWLThing();if(args.size()==1)return args.get(0);}
+      if(value instanceof OWLObjectUnionOf c){var args=c.operands().toList();if(args.isEmpty())return d.getOWLNothing();if(args.size()==1)return args.get(0);}
+      if(value instanceof OWLObjectOneOf c&&c.individuals().findAny().isEmpty())return d.getOWLNothing();
+      return value;
+    },d,witness);
+    for(int iteration=0;iteration<256;iteration++){
+      // Transform axiom content only. change(ontology) also emits annotation/ID
+      // replacement operations even when they are unchanged, preventing a fixed point.
+      var changes=new ArrayList<OWLOntologyChange>();
+      for(var ax:o.axioms().toList())for(var change:transformer.change(ax))changes.add(change.createOntologyChange(o));
+      if(changes.isEmpty())return;m.applyChanges(changes);
+    }
+    throw invalid("NORMALIZATION_DEPTH","RDF expression projection exceeds its depth budget");
+  }
   static OWLOntology parse(OWLOntologyManager m,JsonNode doc,String base,Collection<String> imports)throws Exception {
     String content=str(doc,"content"),f=str(doc,"format");require(content.getBytes(StandardCharsets.UTF_8).length<=8*1024*1024,"INPUT_LIMIT","Document byte budget");
     require(sha(content).equals(str(doc,"digest")),"DIGEST_MISMATCH","Document bytes differ from binding");
@@ -87,7 +137,8 @@ public final class Worker {
     var result=m.loadOntologyFromOntologyDocument(new StringDocumentSource(content,IRI.create(base),format(f),null),loader(imports));
     require(m.getOntologyFormat(result).getKey().equals(format(f).getKey()),"FORMAT_MISMATCH","Parsed format differs from declared format");
     var metadata=m.getOntologyFormat(result).getOntologyLoaderMetaData();
-    if(metadata.isPresent()&&metadata.get() instanceof RDFParserMetaData rdf)require(rdf.getUnparsedTriples().findAny().isEmpty(),"UNPARSED_RDF","RDF triples were not mapped to OWL axioms");
+    if(metadata.isPresent()&&metadata.get() instanceof RDFParserMetaData rdf)require(annotationResidualsMapped(result,rdf.getUnparsedTriples().toList()),"UNPARSED_RDF","RDF triples were not mapped to OWL axioms");
+    if(!f.equals("functional"))normalizeRDFClassExpressions(result);
     return result;
   }
   record Loaded(OWLOntologyManager manager,OWLOntology ontology,Map<OWLAxiom,List<JsonNode>> origins){}
