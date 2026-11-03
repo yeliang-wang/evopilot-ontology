@@ -4,18 +4,18 @@ This supplements the [approved v0.9 plan](ontology-v090-plan.md) and [independen
 
 ## Verified OpenHands reference
 
-The user requested OpenHands as a reference on 2026-11-03. The inspected main-repository revision is `952e45c79854de0de489c4928504101aa3421c37`. At that revision the package is `@openhands/agent-canvas`; its source is React/TypeScript, with Node.js `.mjs` launch/build scripts and separate Agent Server/automation processes. The current repository must not be described from an older monolithic Python-backend layout.
+The user requested OpenHands as a reference on 2026-11-03. The inspected main-repository revision is `85dd5b5a0f2078822175f75cb73887bb0168e744`. At that revision the package is `@openhands/agent-canvas`; its source is React/TypeScript, with Node.js `.mjs` launch/build scripts and separate Agent Server/automation processes. The current repository must not be described from an older monolithic Python-backend layout.
 
-The repository ownership document places the Python SDK, Agent Server, canonical REST/WebSocket API and TypeScript client in `OpenHands/software-agent-sdk`. That SDK workspace includes `openhands-sdk`, `openhands-tools`, `openhands-workspace` and `openhands-agent-server`; its TypeScript client has an explicit API-generation/check workflow. Canvas consumes that client. This demonstrates component and contract ownership across languages, not a requirement that every backend use Python.
+The current README places the Python SDK, Agent Server and canonical server API in `OpenHands/software-agent-sdk`, and identifies `OpenHands/typescript-client` as the browser-compatible API client consumed by Canvas. The previously inspected SDK revision below also retained a TypeScript client with an API-generation/check workflow; that historical file location is not the current repository-ownership claim. This demonstrates component and contract ownership across languages, not a requirement that every backend use Python.
 
 Primary references:
 
-- [Canvas package and build configuration](https://github.com/OpenHands/OpenHands/blob/952e45c79854de0de489c4928504101aa3421c37/package.json)
-- [Canvas repository ownership](https://github.com/OpenHands/OpenHands/blob/952e45c79854de0de489c4928504101aa3421c37/AGENTS.md)
-- [Compiled frontend and service launcher](https://github.com/OpenHands/OpenHands/blob/952e45c79854de0de489c4928504101aa3421c37/bin/agent-canvas.mjs)
-- [Central runtime version/configuration bindings](https://github.com/OpenHands/OpenHands/blob/952e45c79854de0de489c4928504101aa3421c37/config/defaults.json)
+- [Canvas package and build configuration](https://github.com/OpenHands/OpenHands/blob/85dd5b5a0f2078822175f75cb73887bb0168e744/package.json)
+- [Current Canvas repository ownership](https://github.com/OpenHands/OpenHands/blob/85dd5b5a0f2078822175f75cb73887bb0168e744/README.md#repository-boundaries)
+- [Compiled frontend and service launcher](https://github.com/OpenHands/OpenHands/blob/85dd5b5a0f2078822175f75cb73887bb0168e744/bin/agent-canvas.mjs)
+- [Central runtime version/configuration bindings](https://github.com/OpenHands/OpenHands/blob/85dd5b5a0f2078822175f75cb73887bb0168e744/config/defaults.json)
 - [SDK Python workspace](https://github.com/OpenHands/software-agent-sdk/blob/77e7ce75c7c10d3604308cefd986575daa186ff0/pyproject.toml)
-- [SDK TypeScript client and API checks](https://github.com/OpenHands/software-agent-sdk/blob/77e7ce75c7c10d3604308cefd986575daa186ff0/clients/typescript/package.json)
+- [Previously inspected SDK TypeScript client and API checks](https://github.com/OpenHands/software-agent-sdk/blob/77e7ce75c7c10d3604308cefd986575daa186ff0/clients/typescript/package.json)
 
 ## Ontology classification and responsibility
 
@@ -36,7 +36,7 @@ Rego/OPA remains a Harness concern. Referencing the OpenHands UI/Agent stack doe
 
 ## Selection rationale and business path
 
-Keeping TypeScript as the product owner and using Python/Java executors preserves one lifecycle while reusing the formal tooling required by v0.9. Moving the entire owner service to Python would duplicate or replace current scope/auth/receipt logic and still need the Java DL engine; the OpenHands reference supplies no Ontology-specific reason for that rewrite. Reimplementing RDF/SHACL and complete DL entirely in TypeScript would create a much larger standards-conformance burden. The selected division follows the already approved plan.
+Keeping TypeScript as the product owner and using Python/Java executors preserves one lifecycle while reusing the formal tooling required by v0.9. These language boundaries do not require three network microservices. Moving the entire owner service to Python would duplicate or replace current scope/auth/receipt logic and still need the Java DL engine; the OpenHands reference supplies no Ontology-specific reason for that rewrite. Reimplementing RDF/SHACL and complete DL entirely in TypeScript would create a much larger standards-conformance burden. The selected division follows the already approved plan.
 
 For the sensitive-service example, the TypeScript service admits a versioned model and fixed sources, the Python adapter validates the selected graph view against SHACL, and the Java adapter establishes whether the OWL axioms entail `SensitiveService`. TypeScript retains the exact reports, identities and actual review, then performs immutable delivery. The Expert explains the result and its supporting sources. A SHACL pass does not create an OWL entailment; an entailment does not record human approval.
 
