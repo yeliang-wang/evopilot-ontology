@@ -1,0 +1,5 @@
+interface:
+  display_name: "EvoPilot-ontology Expert"
+  short_description: "Independent Ontology modeling and retained draft recovery"
+policy:
+  allow_implicit_invocation: false

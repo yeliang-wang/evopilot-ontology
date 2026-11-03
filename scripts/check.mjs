@@ -20,6 +20,8 @@ const expected = {
   },
   "files": [
     "dist",
+    "plugins",
+    "governance",
     "src",
     "vendor",
     "README.md",
@@ -64,15 +66,20 @@ const expected = {
     "test": "node --test tests/e2e/*.test.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/node": "2.1.2",
+    "@modelcontextprotocol/server": "2.4.0",
     "ajv": "8.20.0",
     "yaml": "2.9.0"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
     "typescript": "5.9.3",
     "@types/node": "24.19.2"
   }
 };
 expected.exports['./workspace-migration'] = { types: './dist/workspace-migration.d.ts', import: './dist/workspace-migration.js' };
+expected.exports['./standalone'] = {types:'./dist/standalone/http.d.ts',import:'./dist/standalone/http.js'};
+expected.exports['./standalone-client'] = {types:'./dist/standalone/client.d.ts',import:'./dist/standalone/client.js'};
 const specifiers = source => [...source.matchAll(/^[\t ]*(?:import\s+(?:(?:[\w$]+(?:\s*,\s*)?)?(?:\{[^}]*\}|\*\s+as\s+[\w$]+)?\s*from\s*)?|export\s+(?:\{[^}]*\}|\*(?:\s+as\s+[\w$]+)?)\s+from\s*)['"]([^'"]+)['"]/gm)].map(match => match[1]);
 
 async function files(directory) {
@@ -92,7 +99,9 @@ export async function checkSource() {
   const pkg = JSON.parse(await readFile(resolve(ROOT, 'package.json'), 'utf8'));
   for (const [key, value] of Object.entries(expected)) assert.deepEqual(pkg[key], value, key);
   for (const key of ['peerDependencies', 'optionalDependencies']) assert.deepEqual(pkg[key] ?? {}, {});
-  assert.deepEqual(pkg.bin, { 'evopilot-next-ontology': 'dist/cli.js' });
+  assert.deepEqual(pkg.bin, { 'evopilot-next-ontology': 'dist/cli.js', 'evopilot-ontology':'dist/standalone/cli.js' });
+  assert.equal(await readFile(resolve(ROOT,'plugins/codex/skills/evopilot-ontology-expert/SKILL.md'),'utf8'),await readFile(resolve(ROOT,'src/expert/SKILL.md'),'utf8'),'Packaged Expert must be generated from its sole owner source');
+  assert((await lstat(resolve(ROOT,'dist/standalone/cli.js'))).mode&0o111);
   // Public type consumers must resolve emitted package exports, never source aliases.
   for (const entry of Object.values(pkg.exports)) {
     for (const target of [entry.types, entry.import]) {
@@ -175,6 +184,7 @@ export async function checkSource() {
     assert.doesNotMatch(source, /\bimport\s*\(|\brequire\s*\(|\beval\s*\(|\/Users\/|\/home\/|EVOPILOT_HARNESS_HOME|defaultHarnessHome|\.evopilot-harness|\bprocess\s*(?:\.\s*(?:env|cwd|chdir)|\[)|\bglobalThis\s*(?:\.|\[)|\bm0\//);
     for (const specifier of specifiers(source)) {
       if (isBuiltin(specifier)) continue;
+      if (path===resolve(ROOT,'src/standalone/mcp.ts') && ['@modelcontextprotocol/server','@modelcontextprotocol/node'].includes(specifier)) continue;
       if (specifier === 'yaml' && (path.endsWith('/src/asset-sources.ts') || path === resolve(ROOT, 'src/import-operations.ts') || PRODUCT === 'ontology' && path.includes('/src/compat/'))) continue;
       if (PRODUCT === 'ontology' && path.includes('/src/compat/') && specifier === 'ajv/dist/2020.js') continue;
       assert(specifier.startsWith('.'), 'Undeclared import: ' + specifier);

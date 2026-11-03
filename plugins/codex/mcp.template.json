@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "evopilot-ontology": {
+      "type": "http",
+      "url": "${ontologyMcpUrl}",
+      "bearer_token_env_var": "EVOPILOT_ONTOLOGY_TOKEN"
+    }
+  }
+}

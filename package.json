@@ -8,6 +8,8 @@
   },
   "files": [
     "dist",
+    "plugins",
+    "governance",
     "src",
     "vendor",
     "README.md",
@@ -48,6 +50,14 @@
     "./workspace-migration": {
       "types": "./dist/workspace-migration.d.ts",
       "import": "./dist/workspace-migration.js"
+    },
+    "./standalone": {
+      "types": "./dist/standalone/http.d.ts",
+      "import": "./dist/standalone/http.js"
+    },
+    "./standalone-client": {
+      "types": "./dist/standalone/client.d.ts",
+      "import": "./dist/standalone/client.js"
     }
   },
   "scripts": {
@@ -56,15 +66,19 @@
     "test": "node --test tests/e2e/*.test.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/node": "2.1.2",
+    "@modelcontextprotocol/server": "2.4.0",
     "ajv": "8.20.0",
     "yaml": "2.9.0"
   },
   "license": "Apache-2.0",
   "bin": {
-    "evopilot-next-ontology": "dist/cli.js"
+    "evopilot-next-ontology": "dist/cli.js",
+    "evopilot-ontology": "dist/standalone/cli.js"
   },
   "devDependencies": {
-    "typescript": "5.9.3",
-    "@types/node": "24.19.2"
+    "@modelcontextprotocol/client": "2.4.0",
+    "@types/node": "24.19.2",
+    "typescript": "5.9.3"
   }
 }

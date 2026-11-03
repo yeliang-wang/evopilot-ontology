@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { chmod, cp, rm } from 'node:fs/promises';
+import { chmod, cp, mkdir, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -11,4 +11,7 @@ if (result.status !== 0) process.exitCode = result.status ?? 1;
 else {
   await cp(new URL('../src/compat/', import.meta.url), new URL('../dist/compat/', import.meta.url), { recursive: true });
   await chmod(new URL('../dist/cli.js', import.meta.url), 0o755);
+  await chmod(new URL('../dist/standalone/cli.js', import.meta.url), 0o755);
+  await mkdir(new URL('../plugins/codex/skills/evopilot-ontology-expert/',import.meta.url),{recursive:true});
+  await cp(new URL('../src/expert/SKILL.md',import.meta.url),new URL('../plugins/codex/skills/evopilot-ontology-expert/SKILL.md',import.meta.url));
 }
