@@ -53,4 +53,18 @@ The JVM has a 1 GiB heap limit, separately bounded direct memory/metadata/code c
 
 Business/regression fixtures exercise actual installed Java processes, not mocked logical results. Their fixed expectations come from the approved scenarios: sensitive classification/open-world absence, dependency chains, read-only conflicts, unsatisfiable templates, key identity, datatype values and finite projections. Import tests use an actual HTTP listener to observe zero dependency/XXE fetches. Explanation tests rerun the returned supporting ontology in a separate actual worker.
 
+The source-checkout collector `tests/acceptance/v090/dl.mjs` executes a hash-pinned copy of the [official 2009 test archive](https://www.w3.org/2009/11/owl-test/all.rdf). Its adjacent `w3c-source.json` lock selects all 266 Approved / DIRECT / DL cases: 246 RDF/XML and 60 Functional Syntax premises, expanded into 713 legality, consistency, inconsistency, positive-entailment and negative-entailment checks. The same case can have both serializations and several checks. Expected answers come from W3C metadata. No input ontology is rewritten by the collector, and fixture imports resolve only from the archive's supplied documents.
+
+Use the prepared native Python environment containing RDFLib for metadata extraction, the installed DL worker binding, and a new private output directory outside Git:
+
+```sh
+node tests/acceptance/v090/dl.mjs \
+  --archive /absolute/private/w3c/all.rdf \
+  --python /absolute/native/venv/bin/python3.12 \
+  --toolchain /absolute/private/dl-runtime/toolchain.json \
+  --output /absolute/private/w3c-run
+```
+
+The collector records source/artifact, archive, request, interpreter and DL toolchain identities. Each completed check has a separate immutable receipt; resuming the same output requires identical bindings and selection. `--case` and `--limit` support diagnostic subsets, which always report `INCOMPLETE`. Missing fixtures, extraction failures, invalid inputs, engine errors and timeouts count as failures, never skipped successes. A full-corpus `PASS` would cover only this W3C portion: other construct, datatype, combination, task, resource and Host requirements remain uncollected. Reports explicitly retain `productAcceptance: NOT_EVALUATED` and `fullConformanceProven: false`.
+
 Complete W3C Direct Semantics corpus coverage, all standard constructs/datatypes and combination cases are still required, together with independent expected answers. An engine capability gap or valid-DL failure blocks release; it does not narrow the promised reasoning scope. W3C also states that passing its finite test suite alone does not prove complete conformance. See [OWL 2 conformance](https://www.w3.org/TR/owl2-conformance/) and [Direct Semantics](https://www.w3.org/TR/owl2-direct-semantics/).

@@ -1,0 +1,13 @@
+{
+  "schema": "ontology-w3c-source/v1",
+  "url": "https://www.w3.org/2009/11/owl-test/all.rdf",
+  "sha256": "5383f1ddf4cf2f03703a2f886f41d4e5bc375633a1cfa94a03254fd89330f8bb",
+  "bytes": 3093215,
+  "selection": {"status": "Approved", "semantics": "DIRECT", "species": "DL"},
+  "caseCount": 266,
+  "serializationCounts": {"rdfxml": 246, "functional": 60},
+  "jobCount": 713,
+  "expectedCounts": {"legality": 306, "consistent": 196, "inconsistent": 110, "entailed": 90, "not-entailed": 11},
+  "authority": "W3C test metadata supplies expected results, not product acceptance or release authority.",
+  "conformance": "This finite corpus does not prove complete OWL 2 DL conformance. All other fixed standard, task, combination and business acceptance obligations remain."
+}
