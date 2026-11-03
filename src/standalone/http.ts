@@ -4,6 +4,7 @@ import { createStandaloneService } from './service.js';
 import { createOntologyMcp } from './mcp.js';
 import { LIMITS, ServiceError, fail } from './types.js';
 import { json } from './validation.js';
+import type { ReasoningConfiguration } from '../native-v2/tasks.js';
 
 const token = (request: IncomingMessage): string => {
   const header=request.headers.authorization;
@@ -22,7 +23,7 @@ async function discardRejectedBody(req: IncomingMessage):Promise<void>{
   });
 }
 /** Bounded local JSON and standard MCP adapters share one scoped service and writer. */
-export async function listenStandalone(options: {root: string; workspaceId: string; serviceId: string; port?: number}) {
+export async function listenStandalone(options: {root: string; workspaceId: string; serviceId: string; port?: number;reasoning?:ReasoningConfiguration}) {
   if (options.port!==undefined && (!Number.isInteger(options.port) || options.port<0 || options.port>65535)) fail('INVALID_INPUT','Invalid loopback port');
   const service=createStandaloneService(options);
   const mcp=createOntologyMcp(service);
@@ -79,5 +80,5 @@ export async function listenStandalone(options: {root: string; workspaceId: stri
     await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(options.port??0,'127.0.0.1',()=>{server.removeListener('error',reject);resolve();});});
   }catch(e){await mcp.close();service.close();throw e;}
   const address=server.address();if(!address || typeof address==='string') {service.close();fail('INTERNAL_ERROR','Server did not bind');}
-  return {origin:`http://127.0.0.1:${address.port}`,identity:service.identity(),async close(){await mcp.close();await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));service.close();}};
+  return {origin:`http://127.0.0.1:${address.port}`,identity:service.identity(),async close(){await mcp.close();await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));await service.close();}};
 }

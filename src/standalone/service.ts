@@ -1,16 +1,28 @@
 import { timingSafeEqual } from 'node:crypto';
+import { realpathSync } from 'node:fs';
+import { assertSeparate } from '../installation/files.js';
 import { openWorkspace } from './workspace.js';
 import { expertGuide } from '../expert/guide.js';
 import { sourceStore } from '../native-v2/store.js';
+import { modelStore } from '../native-v2/model-store.js';
+import { reasoningTasks } from '../native-v2/tasks.js';
+import type { ReasoningConfiguration } from '../native-v2/tasks.js';
 import { LIMITS, fail } from './types.js';
 import type { Json, Receipt, Project, Grant } from './types.js';
 import { canonical, exact, hash, hashBytes, id, json, text, digest, validateIntent, validateRequest } from './validation.js';
 
-export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','project.list','project.inspect','intent.read','receipt.read','source.inspect','source.read','source.fragment.read']);
-export const WRITE_OPERATIONS = Object.freeze(['project.create','intent.record','source.admit']);
-export function createStandaloneService(options: {root: string; workspaceId: string; serviceId: string}) {
+export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','project.list','project.inspect','intent.read','receipt.read','source.inspect','source.read','source.fragment.read','model.list','model.inspect','model.document.read','reasoning.inspect','reasoning.result.read']);
+export const WRITE_OPERATIONS = Object.freeze(['project.create','intent.record','source.admit','model.record','reasoning.start','reasoning.cancel']);
+export function createStandaloneService(options: {root: string; workspaceId: string; serviceId: string;reasoning?:ReasoningConfiguration}) {
   const store=openWorkspace(options.root,options), {db,identity}=store;
   const sources=sourceStore(db);
+  const models=modelStore(db);
+  let tasks:ReturnType<typeof reasoningTasks>;
+  try{
+    if(options.reasoning)assertSeparate(store.root,realpathSync(options.reasoning.workRoot));
+    tasks=reasoningTasks(db,store.guard,options.reasoning);
+  }catch(e){store.close();throw e;}
+  let closing=false,closed:Promise<void>|undefined;
   const project = (projectId: string): Project | null => {
     const row=db.prepare('SELECT id,label,revision,created_at FROM projects WHERE id=?').get(projectId);
     return row ? {projectId:String(row.id),label:String(row.label),revision:Number(row.revision),createdAt:String(row.created_at)} : null;
@@ -31,13 +43,14 @@ export function createStandaloneService(options: {root: string; workspaceId: str
   const context = (token: string): Json => {
     const grant=credential(token);
     if (!grant.permissions.includes('read')) fail('FORBIDDEN','Read permission required for service discovery',403);
-    return {product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P1_FOUNDATION',
+    return {product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P2_IMPLEMENTATION',
       workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,
       principalId:grant.principalId,projectIds:[...grant.projectIds],permissions:[...grant.permissions],
       readOperations:[...READ_OPERATIONS],writeOperations:grant.permissions.includes('write')?[...WRITE_OPERATIONS]:[],
-      reasoningReady:false,nativeV2Ready:false,authority:false};
+      reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,authority:false};
   };
   function request(value: unknown, token: string): Json {
+    if(closing)fail('CLOSED','Service is closing',503);
     json(value); exact(value,['workspaceId','serviceId','projectId','operation','input'],['requestId','expectedRevision']);
     text(value.operation,96);
     const write=WRITE_OPERATIONS.includes(value.operation);
@@ -59,10 +72,10 @@ export function createStandaloneService(options: {root: string; workspaceId: str
       }
       const current=project(projectId);
       if (write && (current?.revision??0)!==value.expectedRevision) fail('REVISION_CONFLICT','Project revision changed',409);
-      let result: Json;
+      let result: Json;let afterCommit:(()=>void)|undefined;
       if (operation==='service.inspect') {
         exact(input,[]);
-        result={product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P1_FOUNDATION',workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,project:current as unknown as Json,readOperations:[...READ_OPERATIONS],writeOperations:[...WRITE_OPERATIONS],reasoningReady:false,nativeV2Ready:false,authority:false};
+        result={product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P2_IMPLEMENTATION',workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,project:current as unknown as Json,readOperations:[...READ_OPERATIONS],writeOperations:[...WRITE_OPERATIONS],reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,authority:false};
       } else if (operation==='guide.read') {
         exact(input,['topic']);text(input.topic,96);result=expertGuide(input.topic);
       } else if (operation==='project.list') {
@@ -72,7 +85,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
         exact(input,[]);
         if (!current) fail('NOT_FOUND','Project not initialized',404);
         const head=db.prepare('SELECT intent_digest FROM project_heads WHERE project_id=?').get(projectId);
-        result={...current,intentDigest:head?.intent_digest===null?null:String(head?.intent_digest??''),sourceAdmission:sources.head(projectId),assetState:'NOT_IMPLEMENTED',authority:false};
+        result={...current,intentDigest:head?.intent_digest===null?null:String(head?.intent_digest??''),sourceAdmission:sources.head(projectId),assetState:'DRAFT_AUTHORING',authority:false};
       } else if (operation==='project.create') {
         exact(input,['label']); text(input.label,200);
         if (current) fail('ALREADY_EXISTS','Project already exists; inspect retained state',409);
@@ -98,6 +111,21 @@ export function createStandaloneService(options: {root: string; workspaceId: str
         const row=db.prepare('SELECT document,revision,created_at FROM intents WHERE project_id=? AND digest=?').get(projectId,input.digest);
         if (!row) fail('NOT_FOUND','Intent not found in selected project',404);
         result={digest:input.digest,...JSON.parse(String(row.document)),revision:Number(row.revision),createdAt:String(row.created_at),sourceVerification:'NOT_EVALUATED',businessConfirmed:false};
+      } else if(operation.startsWith('reasoning.')) {
+        if(!current)fail('NOT_FOUND','Project not initialized',404);
+        if(operation==='reasoning.start'){
+          result=tasks.start(projectId,grant.principalId,value.requestId!,input);
+          const taskId=(result as {taskId:string}).taskId;afterCommit=()=>tasks.kick(taskId);
+        }else if(operation==='reasoning.cancel'){
+          result=tasks.cancel(projectId,input);const taskId=(result as {taskId:string}).taskId;afterCommit=()=>tasks.abort(taskId);
+        }else if(operation==='reasoning.inspect')result=tasks.read(projectId,input);
+        else result=tasks.resultRead(projectId,input);
+      } else if(operation.startsWith('model.')) {
+        if(!current)fail('NOT_FOUND','Project not initialized',404);
+        if(operation==='model.record')result=models.record(projectId,input,current.revision+1,new Date().toISOString());
+        else if(operation==='model.list')result=models.list(projectId,input);
+        else if(operation==='model.inspect')result=models.inspect(projectId,input);
+        else result=models.read(projectId,input);
       } else if(operation.startsWith('source.')) {
         if(!current)fail('NOT_FOUND','Project not initialized',404);
         if(operation==='source.admit')result=sources.admit(projectId,input,current.revision+1,new Date().toISOString());
@@ -122,7 +150,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
         result=receipt as unknown as Json;
       }
       if (Buffer.byteLength(JSON.stringify(result))>LIMITS.responseBytes) fail('OUTPUT_LIMIT','Response exceeds output budget',413);
-      db.exec('COMMIT'); return result;
+      db.exec('COMMIT');afterCommit?.();return result;
     } catch (e) {
       // SQLITE_FULL and some I/O failures already roll back the transaction.
       if(db.isTransaction)db.exec('ROLLBACK');
@@ -130,5 +158,9 @@ export function createStandaloneService(options: {root: string; workspaceId: str
       throw e;
     }
   }
-  return {request,context,close:()=>store.close(),identity:()=>({...identity})};
+  return {request,context,close(){
+    if(closing)return closed;closing=true;
+    try{const wait=tasks.shutdown();if(wait){closed=wait.finally(()=>store.close());return closed;}}
+    catch(e){store.close();throw e;}store.close();return undefined;
+  },identity:()=>({...identity})};
 }

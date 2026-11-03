@@ -5,7 +5,7 @@ const guides:Record<string,{operations:string[];steps:string[]}>= {
   'first-use':{operations:['service.inspect','project.list','project.create','project.inspect'],steps:[
     'Inspect ontology_context first. Preserve its workspaceId/serviceId and permitted projectIds; do not infer installed readiness from a plugin label.',
     'Read the selected project. For an actual modeling request in an empty authorized scope, create the project with expectedRevision 0 and a retained request ID. Reuse existing projects; do not create another merely because the chat changed.',
-    'The development service supports retained intent and verified source snapshots. Native model lifecycle, DL reasoning and delivery are not connected to domain operations yet. Report that boundary and retain the draft; do not switch to another owner or fabricate results.',
+    'The development service supports retained intent, verified sources, model drafts and explicitly configured DL tasks. SHACL, semantic review and delivery remain incomplete. Use listed operations and report the remaining boundary without inventing results.',
   ]},
   'modeling-intent':{operations:['project.inspect','intent.record','intent.read'],steps:[
     'Resolve purpose, whole scope, exclusions and forward/reverse/composition mode from the user context. Reuse clear answers and ask only unresolved requirements.',
@@ -21,6 +21,18 @@ const guides:Record<string,{operations:string[];steps:string[]}>= {
     'Read source.inspect for current/stale binding and source metadata. Use source.read or source.fragment.read with exact sourceSetDigest and bounded pages, following nextOffset until complete. A partial page is not the entire document; stale source snapshots remain historical evidence.',
     'An ADMITTED receipt establishes byte and selector identity only. It does not validate the ontology, prove a requirement covered, approve semantics or create a delivery. Later intent changes invalidate current source binding until explicitly re-admitted.',
   ]},
+  'model-draft':{operations:['project.inspect','intent.read','source.inspect','model.list','model.record','model.inspect','model.document.read'],steps:[
+    'Resume the selected project and list its existing assets before creating a model. Bind the current intent and current admitted source snapshot. Keep original sources, authored OWL premises, SHACL shapes and future derived results separate.',
+    'Prepare native Turtle/RDF/XML documents and their exact offline import closure. Bind each proposed requirement mapping to an independently retained requirement, original source fragments and exact model text. Missing mappings and open issues remain explicit; mapping completeness is not semantic coverage.',
+    'Read the current project revision and asset parent before model.record. Failed or rejected edits preserve the preceding draft. After writing, inspect the exact model digest and read back document pages as needed. A draft receipt is not a formal validation or human review.',
+  ]},
+  'reasoning':{operations:['service.inspect','project.inspect','model.inspect','reasoning.start','reasoning.inspect','reasoning.result.read','reasoning.cancel','receipt.read'],steps:[
+    'Inspect reasoningExecutionConfigured and the exact installed toolchain identity. Product readiness remains false while full acceptance is pending; a configured development executor is not a full-conformance claim. Do not use the Host model as a substitute for formal results.',
+    'Start an explicitly requested formal task against the current model digest, using the observed project revision and retained request ID. The initial receipt only accepts a queued task. Reconcile uncertain writes with the original receipt; never create a replacement ID automatically.',
+    'Inspect the task until terminal. Read large retained results through bounded reasoning.result.read pages, preserving the result digest and completeness. Confirm current model/source/intent and toolchain bindings before using a result for current work.',
+    'Explain ENTAILED, NOT_ENTAILED, inconsistency, unsatisfiable classes and incomplete failures distinctly. Removing a premise may remove an entailment without proving its negation. Supporting axioms remain formal evidence and must be connected to retained source projections.',
+    'A cancellation request does not prove exit; inspect its terminal outcome. INTERRUPTED requires operator reconciliation and blocks redispatch. No result approves semantic review, publishes a delivery or awards a Harness grade.',
+  ]},
   'recovery':{operations:['service.inspect','project.inspect','receipt.read','intent.read'],steps:[
     'After timeout, disconnect or an uncertain write, inspect receipt.read with the original request ID in the same project and credential principal scope.',
     'A completed receipt establishes the exact committed operation. Preserve request identity and inspect current project state before the next new write. A missing receipt or changed credential is not permission to generate a replacement request.',
@@ -35,5 +47,5 @@ const guides:Record<string,{operations:string[];steps:string[]}>= {
 };
 export function expertGuide(topic:string):Json{
   if(!Object.hasOwn(guides,topic))fail('NOT_FOUND','Unknown Expert topic',404);
-  return {schema:'ontology-expert-guide/v1',topic,implementationStage:'P1_FOUNDATION',...structuredClone(guides[topic]),authority:false};
+  return {schema:'ontology-expert-guide/v1',topic,implementationStage:'P2_IMPLEMENTATION',...structuredClone(guides[topic]),authority:false};
 }

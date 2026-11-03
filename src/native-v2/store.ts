@@ -85,5 +85,5 @@ export function sourceStore(db:DatabaseSync) {
       format:source.format,startByte:start,endByte:end,content:bytes.subarray(start,end).toString('utf8'),
       nextOffset:end===limit?null:end-(f?.startByte??0),complete:end===limit,current,authority:false};
   }
-  return {head,admit,inspect,read};
+  return {head,load,admit,inspect,read};
 }
