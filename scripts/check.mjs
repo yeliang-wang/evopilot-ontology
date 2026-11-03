@@ -23,6 +23,7 @@ const expected = {
     "plugins",
     "governance",
     "src",
+    "toolchains",
     "vendor",
     "README.md",
     "README_CN.md",
@@ -102,6 +103,11 @@ export async function checkSource() {
   assert.deepEqual(pkg.bin, { 'evopilot-next-ontology': 'dist/cli.js', 'evopilot-ontology':'dist/standalone/cli.js' });
   assert.equal(await readFile(resolve(ROOT,'plugins/codex/skills/evopilot-ontology-expert/SKILL.md'),'utf8'),await readFile(resolve(ROOT,'src/expert/SKILL.md'),'utf8'),'Packaged Expert must be generated from its sole owner source');
   assert((await lstat(resolve(ROOT,'dist/standalone/cli.js'))).mode&0o111);
+  const dl=JSON.parse(await readFile(resolve(ROOT,'toolchains/owl2-dl/dependencies.json'),'utf8'));
+  assert.equal(dl.schema,'ontology-dl-dependencies/v1');assert.equal(dl.engine,'org.semanticweb.hermit:1.4.5.519');assert.equal(dl.owlapi,'owlapi-distribution:5.5.1');
+  assert(dl.files.length>0&&new Set(dl.files.map(f=>f.file)).size===dl.files.length);
+  for(const f of dl.files){assert.match(f.file,/^[A-Za-z0-9._-]+\.jar$/);assert.match(f.sha256,/^[a-f0-9]{64}$/);assert(!f.repositoryPath.split('/').some(x=>['','..','.'].includes(x)));assert.equal(f.url,'https://repo.maven.apache.org/maven2/'+f.repositoryPath);assert(f.repositoryPath.endsWith('/'+f.file));}
+  assert((await lstat(resolve(ROOT,'toolchains/owl2-dl/Worker.java'))).isFile());
   // Public type consumers must resolve emitted package exports, never source aliases.
   for (const entry of Object.values(pkg.exports)) {
     for (const target of [entry.types, entry.import]) {

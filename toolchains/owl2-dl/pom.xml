@@ -1,0 +1,16 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>io.evopilot.ontology</groupId>
+  <artifactId>dl-worker-dependencies</artifactId>
+  <version>0.9.0-dev.P2</version>
+  <description>Dependency resolution only; installed worker execution never runs Maven.</description>
+  <dependencies>
+    <dependency>
+      <groupId>net.sourceforge.owlapi</groupId><artifactId>org.semanticweb.hermit</artifactId><version>1.4.5.519</version>
+      <exclusions><exclusion><groupId>net.sourceforge.owlapi</groupId><artifactId>owlapi-distribution</artifactId></exclusion></exclusions>
+    </dependency>
+    <dependency>
+      <groupId>net.sourceforge.owlapi</groupId><artifactId>owlapi-distribution</artifactId><version>5.5.1</version>
+    </dependency>
+  </dependencies>
+</project>

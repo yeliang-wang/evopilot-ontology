@@ -4,6 +4,8 @@ This is P1 implementation documentation, not a v0.9 release or installed Host ac
 
 The [language responsibility supplement](language-policy-v090.md) records the OpenHands reference and the existing TypeScript product-owner, Python RDF/SHACL and Java DL-executor division. Standards, file formats, guidance and packaging scripts are classified separately.
 
+The internal [P2 reasoning executor](reasoning-v090.md) now has a separately installed Java worker and fixed toolchain/input identities. It is not yet connected to domain service operations or complete native-v2 acceptance, so the service's readiness remains false.
+
 The compiled `evopilot-ontology` entry is independent of the historical `evopilot-next-ontology` CLI. `init` creates a new private workspace outside Git; it refuses occupied paths. `serve` runs a foreground loopback service with a single writer lease. `context`, `read` and `write` use that service over HTTP and never fall back to direct database mutation. Every command requires `--json`. Run the command without arguments for its exact syntax.
 
 Operator initialization takes explicit absolute `--root` plus `--workspace`, `--project` and `--principal`. It returns identity and a private credential file location, never the token itself. The token has a 30-day expiry and one explicit project scope. The returned project scope is permitted but initially empty; actual project creation is a separate authorized owner mutation. A foreground server starts with `--root`, `--workspace`, `--service` and optional `--port`, returns its bound origin and `/mcp` URL, and stops on SIGTERM/SIGINT.

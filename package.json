@@ -11,6 +11,7 @@
     "plugins",
     "governance",
     "src",
+    "toolchains",
     "vendor",
     "README.md",
     "README_CN.md",
