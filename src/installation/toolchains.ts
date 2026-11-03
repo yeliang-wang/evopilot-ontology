@@ -12,6 +12,7 @@ import {readSHACLToolchain,verifySHACLToolchain} from '../native-v2/shacl-toolch
 import type {ReasoningConfiguration} from '../native-v2/tasks.js';
 import {validateSystemdBinding,verifySystemdBinding} from './systemd-binding.js';
 import type {SystemdBinding} from './systemd-binding.js';
+import {requireWorkerMaintenanceComplete} from './worker-journal.js';
 
 export interface ToolSelection {toolchainFile:string;toolchainDigest:string;}
 export interface BindToolchainsInput {requestId:string;previousBindingDigest:string|null;dl:ToolSelection;shacl:ToolSelection;systemd?:SystemdBinding;}
@@ -68,6 +69,7 @@ function workDirectory(i:Installation,create:boolean):string {
     writePrivate(marker,expected);
   }
   if(hash(readPrivate(marker) as Json)!==hash(expected))fail('WORK_ROOT_CONFLICT','Worker directory belongs to a different installation',409);
+  requireWorkerMaintenanceComplete(root);
   return root;
 }
 /** Verification never downloads, rebuilds, edits or substitutes an executor. */

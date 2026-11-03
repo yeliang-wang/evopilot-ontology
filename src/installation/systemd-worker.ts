@@ -7,7 +7,7 @@ import {privatePath,privateRead} from '../standalone/workspace.js';
 import {hash,hashBytes} from '../standalone/validation.js';
 import type {Json} from '../standalone/types.js';
 import {fail,ServiceError} from '../standalone/types.js';
-import {systemdCall,systemdEnvironment,bootIdentity} from './systemd-binding.js';
+import {systemdCall,systemdEnvironment,bootIdentity,verifySystemdBinding} from './systemd-binding.js';
 import {readWorkerAttempt,workerUnitName,fenceSystemdWorker,sealWorkerNotStarted,recordUnitTerminal,recordWorkerEvidence} from './worker-journal.js';
 import type {WorkerReference,WorkerPlan,WorkerOutcome,UnitRecord,UnitTerminal} from './worker-journal.js';
 
@@ -98,6 +98,40 @@ function terminal(reference:WorkerReference):UnitTerminal|null {
 export function inspectSystemdTermination(reference:WorkerReference):UnitTerminal|null {
   const a=readWorkerAttempt(reference);if(!a.intent.systemd)fail('WORKER_PROTOCOL','Bound unit required');
   return a.terminal??(a.unit?terminal(reference):null);
+}
+/** A typed, exact-name listing distinguishes absence from manager failure. */
+export function systemdUnitPresent(reference:WorkerReference):boolean {
+  const a=readWorkerAttempt(reference);if(!a.intent.systemd)fail('WORKER_PROTOCOL','Bound unit required');
+  const name=workerUnitName(reference),reply=systemdCall(a.intent.systemd.binding,manager,managerInterface,'ListUnitsByPatterns','asas',['0','1',name]) as unknown[];
+  if(!Array.isArray(reply[0])||reply[0].length>1||reply[0].some(r=>!Array.isArray(r)||r.length!==10||r[0]!==name))fail('WORKER_MANAGER_UNAVAILABLE','Exact unit listing is unavailable',409);
+  return reply[0].length===1;
+}
+/** Retire only a proven closed invocation. Never terminate a live unit or
+ * reinterpret a control acknowledgment as absence. Caller journals its plan. */
+export async function retireSystemdUnit(reference:WorkerReference):Promise<void> {
+  const a=readWorkerAttempt(reference);
+  if(!a.intent.systemd||!a.outcome||a.unit&&!a.terminal||!a.unit&&(!a.fence||a.outcome.state!=='NOT_STARTED'))fail('WORKER_EXIT_UNPROVEN','Retained closure or no-launch fence required before maintenance',409);
+  verifySystemdBinding(a.intent.systemd.binding);
+  // A future restart of an already completed unit must not admit an engine.
+  fenceSystemdWorker(reference,'DISPATCH_REJECTED');
+  const empty=()=>{
+    const current=unitState(reference),main=value(current.s,'MainPID','u'),group=value(current.s,'ControlGroup','s');
+    if(main!==0||group!==''&&!terminal(reference))fail('WORKER_EXIT_UNPROVEN','Current unit is not proven empty; no maintenance signal was sent',409);
+    return current;
+  };
+  if(!systemdUnitPresent(reference))return;
+  const current=empty();
+  if(value(current.u,'ActiveState','s')!=='inactive')systemdCall(a.intent.systemd.binding,manager,managerInterface,'StopUnit','ss',[workerUnitName(reference),'replace']);
+  let reset=false;const end=performance.now()+3000;
+  for(;;){
+    if(!systemdUnitPresent(reference))return;
+    const observed=empty();
+    if(!reset&&value(observed.u,'ActiveState','s')==='failed'){
+      systemdCall(a.intent.systemd.binding,manager,managerInterface,'ResetFailedUnit','s',[workerUnitName(reference)]);reset=true;
+    }
+    if(performance.now()>=end)fail('WORKER_MAINTENANCE_PENDING','Exact unit removal remains unconfirmed; resume the original maintenance request',409);
+    await delay(25);
+  }
 }
 function output(reference:WorkerReference):{stdout:Buffer;stderr:Buffer} {
   const a=readWorkerAttempt(reference),root=jobRoot(reference);privatePath(root,true);

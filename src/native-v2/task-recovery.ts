@@ -77,6 +77,15 @@ function reportFor(store:WorkspaceStore,r:Row,roots:string[]){
 export function inspectTaskRecovery(store:WorkspaceStore,projectId:string,taskId:string,roots:string[]):Json {
   const report=reportFor(store,row(store,projectId,taskId),roots);store.guard();return {report,reportDigest:sha(report)};
 }
+/** Completed business evidence is read-only; cleanup never changes the result. */
+export function completedTaskWorkerEvidence(store:WorkspaceStore,projectId:string,taskId:string,roots:string[]) {
+  const r=row(store,projectId,taskId),report=reportFor(store,r,roots),history=events(store,taskId),last=history.at(-1)!;
+  if(r.state!=='FINISHED')fail('TASK_RECOVERY_REQUIRED','Resolve the original task before worker maintenance',409);
+  if(last.kind!=='FINISHED'||(last.detail as Row)?.resultDigest!==r.result_digest||report.blockers.some(b=>b!=='TASK_ALREADY_FINISHED'))fail('RECOVERY_EVIDENCE_INVALID','Completed task and worker evidence do not establish cleanup eligibility',409);
+  const references=report.attempts.map(item=>(item as unknown as {reference:WorkerReference}).reference);
+  if(references.length>128)fail('WORKER_MAINTENANCE_LIMIT','Task attempt count exceeds maintenance budget',409);
+  store.guard();return {workspaceId:store.identity.workspaceId,serviceId:store.identity.serviceId,projectId,taskId,resultDigest:String(r.result_digest),lastEventDigest:last.digest,references};
+}
 function append(store:WorkspaceStore,taskId:string,kind:string,detail:Json){
   const previous=store.db.prepare('SELECT digest FROM native_reasoning_events WHERE task_id=? ORDER BY sequence DESC LIMIT 1').get(taskId);
   const document={taskId,kind,detail,previousDigest:previous?String(previous.digest):null,recordedAt:new Date().toISOString()};

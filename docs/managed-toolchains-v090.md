@@ -53,3 +53,20 @@ New launches use `ontology-managed-run/v2` and retain the selected toolchain bin
 Managed run v1 is not silently rewritten or inferred to have a toolchain binding. Use its original operator reader to stop/reconcile a historical development run; installation upgrade/cutover requires its own verified procedure. Business workspace state remains version 14. Daily installations and historical assets are not changed by this source implementation or its isolated tests.
 
 After startup, inspect `reasoningExecutionConfigured`, `validationExecutionConfigured` and exact toolchain digests. These configuration fields do not turn `reasoningReady`/`nativeV2Ready` into accepted v0.9 claims. The packaged private MCP bridge can execute and read actual formal tasks through this managed service. Restart preserves completed task results and original write receipts; it does not rerun them.
+
+## Completed worker maintenance
+
+After all formal tasks have finished or been reconciled, stop the selected owner. The operator can inspect and release one completed task's selected-systemd job files and retained manager units:
+
+```text
+evopilot-ontology worker-maintenance-inspect --installation ABS --project ID --task ID --json
+evopilot-ontology worker-maintenance-apply --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json
+```
+
+Inspection returns `READY`, `PENDING` or `COMPLETED` with the exact report identity and any original maintenance request/receipt; `NOT_NEEDED` means the completed task dispatched no worker. A new request binds the completed business result and task event chain, worker outcome/terminal digests, directory identities and the selected `input`, `stdout` and `stderr` files. It checks actual bytes against retained worker evidence. Unexpected files, links, replacement directories, changed contents, unfinished tasks or a live owner are refused. An unlaunched fenced attempt may have only partially created job files; those exact files are inventoried separately.
+
+Apply first commits a private journal plan and reserves bounded receipt space. A pending plan blocks new worker dispatch, managed startup and toolchain replacement. It verifies and retires each already closed manager invocation, observes actual unit absence, then removes only the inventoried files using anchored directory descriptors. It never kills a live worker, deletes a business model/result, clears a recovery barrier or rewrites original business receipts. Manager failure is not treated as unit absence. The [systemd D-Bus interface](https://www.freedesktop.org/software/systemd/man/255/org.freedesktop.systemd1.html) supplies the exact-unit listing and retirement operations.
+
+If interrupted, resume the original request ID and expected report digest. Files already removed under its committed plan are recognized; unexpected replacement material is preserved and blocks continuation. A repeated completed request returns its original receipt; changed parameters conflict. Completion rechecks selected directory/unit absence and the unchanged business evidence. The receipt describes the original cleanup observation, not future manager health.
+
+Plans contain at most 128 attempts and 512 KiB, with only the three fixed job filenames admitted. They and their receipts stay in the existing 64 MiB worker journal; maintenance history is capped at 4,096 requests. Worker attempts, exit/terminal records and file digests remain retained. This frees the 64-job/512-MiB cache budget; it does not reset the 4,096-attempt journal limit. Journal rollover, installation backup/restore/upgrade and the separately scoped historical asset reset remain additional obligations. Cleanup is an explicit operator action and is unavailable through ordinary domain/MCP mutation APIs.

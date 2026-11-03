@@ -5,6 +5,7 @@ import { constants, openSync, closeSync, readSync, fstatSync, realpathSync } fro
 import { grantReviewer,revokeReviewer } from '../installation/reviewer.js';
 import {inspectSystemdBinding} from '../installation/systemd-binding.js';
 import {inspectInstallationTaskRecovery,reconcileInstallationTask} from '../installation/task-recovery.js';
+import {inspectInstallationWorkerMaintenance,maintainInstallationWorkers} from '../installation/worker-maintenance.js';
 import { initializeWorkspace } from '../installation/workspace.js';
 import { inspectRuntime } from '../installation/runtime.js';
 import { prepareInstallation,inspectInstallation,startInstallation,stopInstallation,bindInstallationToolchains,inspectInstallationToolchains } from '../installation/manager.js';
@@ -15,7 +16,7 @@ import { json, object } from './validation.js';
 import { LIMITS, ServiceError, fail } from './types.js';
 import type { Json, ServiceRequest } from './types.js';
 
-const usage='evopilot-ontology worker-isolation-inspect --json | task-recovery-inspect --installation ABS --project ID --task ID --json | task-reconcile --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | toolchains-bind --installation ABS --request-id ID --previous-binding none|SHA256 --dl-toolchain ABS --dl-digest SHA256 --shacl-toolchain ABS --shacl-digest SHA256 [--systemd-digest SHA256] --json | toolchains-inspect --installation ABS --json | reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] [--systemd-digest SHA256] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
+const usage='evopilot-ontology worker-maintenance-inspect --installation ABS --project ID --task ID --json | worker-maintenance-apply --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | worker-isolation-inspect --json | task-recovery-inspect --installation ABS --project ID --task ID --json | task-reconcile --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | toolchains-bind --installation ABS --request-id ID --previous-binding none|SHA256 --dl-toolchain ABS --dl-digest SHA256 --shacl-toolchain ABS --shacl-digest SHA256 [--systemd-digest SHA256] --json | toolchains-inspect --installation ABS --json | reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] [--systemd-digest SHA256] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
 function flags(args: string[],required: string[],optional: string[]=[]): Map<string,string>{
   const found=new Map<string,string>();
   for(let i=0;i<args.length;i++){
@@ -48,6 +49,10 @@ function selectedSystemd(flags:Map<string,string>){
 }
 export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>{
   const [command,...args]=argv;
+  if(command==='worker-maintenance-inspect'||command==='worker-maintenance-apply'){
+    const f=flags(args,['--installation','--project','--task',...(command==='worker-maintenance-apply'?['--request-id','--expected-report']:[])]);
+    emit(await (command==='worker-maintenance-inspect'?inspectInstallationWorkerMaintenance(f.get('--installation')!,f.get('--project')!,f.get('--task')!):maintainInstallationWorkers(f.get('--installation')!,{projectId:f.get('--project')!,taskId:f.get('--task')!,requestId:f.get('--request-id')!,expectedReportDigest:f.get('--expected-report')!})));return;
+  }
   if(command==='worker-isolation-inspect'){flags(args,[]);emit(inspectSystemdBinding() as unknown as Json);return;}
   if(command==='task-recovery-inspect'||command==='task-reconcile'){
     const f=flags(args,['--installation','--project','--task',...(command==='task-reconcile'?['--request-id','--expected-report']:[])]);

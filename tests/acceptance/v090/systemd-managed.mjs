@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import {readFileSync,writeFileSync,mkdirSync,existsSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,existsSync,unlinkSync,rmdirSync,renameSync,symlinkSync,watch} from 'node:fs';
 import {join,isAbsolute,dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {execFile} from 'node:child_process';
+import {execFile,spawn} from 'node:child_process';
 import {setTimeout as delay} from 'node:timers/promises';
 import {Client} from '@modelcontextprotocol/client';
 import {StdioClientTransport} from '@modelcontextprotocol/client/stdio';
@@ -27,8 +27,9 @@ const {processPresent}=await installed('installation/control.js');
 const {prepareInstallation,startInstallation,stopInstallation,bindInstallationToolchains}=await installed('installation/manager.js');
 const {inspectInstallationTaskRecovery,reconcileInstallationTask}=await installed('installation/task-recovery.js');
 const {inspectSystemdBinding,ownerProcess,ownerPresent,systemdCall}=await installed('installation/systemd-binding.js');
-const {taskWorkerReferences,readWorkerAttempt,workerUnitName}=await installed('installation/worker-journal.js');
+const {taskWorkerReferences,readWorkerAttempt,workerUnitName,createWorkerAttempt}=await installed('installation/worker-journal.js');
 const {reconcileSystemdWorker}=await installed('installation/systemd-worker.js');
+const {inspectInstallationWorkerMaintenance,maintainInstallationWorkers}=await installed('installation/worker-maintenance.js');
 const binding=inspectSystemdBinding();
 const tools={dl:{toolchainFile:options.dl,toolchainDigest:JSON.parse(readFileSync(options.dl)).digest},shacl:{toolchainFile:options.shacl,toolchainDigest:JSON.parse(readFileSync(options.shacl)).digest}};
 const results=[],fixtures=[],references=new Map();let failure=null;
@@ -63,6 +64,21 @@ async function seed(f,client){
   return {write,modelDigest};
 }
 function signalFixtureOwner(birth,signal){assert.equal(ownerPresent(birth),true);process.kill(birth.pid,signal);}
+async function interruptedMaintenance(f,args,entries){
+  const root=join(f.workRoot,'unit-jobs');let child,killed=false,output='',diagnostic='';
+  const observer=watch(root,(_event,name)=>{
+    if(killed||!child?.pid||!entries.some(e=>e.reference.attemptId===String(name))||existsSync(join(root,String(name))))return;
+    killed=child.kill('SIGKILL');
+  });
+  try{
+    child=spawn(process.execPath,[cli,...args],{env:{...process.env,NODE_NO_WARNINGS:'1'},stdio:['ignore','pipe','pipe']});
+    child.stdout.on('data',b=>{output+=b;if(output.length>65536)child.kill('SIGKILL');});child.stderr.on('data',b=>{diagnostic+=b;if(diagnostic.length>65536)child.kill('SIGKILL');});
+    const exited=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{child.kill('SIGKILL');reject(Error('Maintenance fault window was not reached'));},15000);child.once('error',e=>{clearTimeout(timer);reject(e);});child.once('close',(code,signal)=>{clearTimeout(timer);resolve({code,signal});});});
+    assert.equal(killed,true,output+diagnostic);assert.equal(exited.signal,'SIGKILL');
+    const remaining=entries.filter(e=>existsSync(join(root,e.reference.attemptId))).length;assert.ok(remaining>0&&remaining<entries.length,'Fault must interrupt actual partial cleanup');
+    return {exit:exited,remainingJobs:remaining};
+  }finally{observer.close();}
+}
 try{
   const inspected=await command(['worker-isolation-inspect','--json']);assert.equal(inspected.digest,binding.digest);
   {
@@ -73,10 +89,37 @@ try{
     for(const r of refs){const a=readWorkerAttempt(r);assert.equal(a.intent.schema,'ontology-owned-worker/v2');assert.equal(a.intent.systemd.binding.digest,binding.digest);assert.equal(a.outcome.state,'EXITED');assert.equal(a.outcome.exitCode,0);assert.equal(a.terminal.empty,true);}
     assert.deepEqual(bindInstallationToolchains(f.setup.root,f.input).receipt,f.bound.receipt);
     assert.throws(()=>bindInstallationToolchains(f.setup.root,{...f.input,systemd:undefined}),e=>['REQUEST_CONFLICT','INVALID_INPUT'].includes(e.code));
-    await stopInstallation(f.setup.root);const second=await f.start();assert.notEqual(first.runId,second.runId);
+    await assert.rejects(inspectInstallationWorkerMaintenance(f.setup.root,'demo',taskId),e=>e.code==='INSTALLATION_RUNNING');
+    await stopInstallation(f.setup.root);
+    // Cache corruption and redirected paths must not create a cleanup plan.
+    const firstInput=join(f.workRoot,'unit-jobs',refs[0].attemptId,'input'),originalInput=readFileSync(firstInput),foreign=join(options.root,'unrelated-private-file'),backup=join(options.root,'retained-input');
+    writeFileSync(foreign,'unrelated private data\n',{mode:0o600,flag:'wx'});
+    writeFileSync(firstInput,Buffer.concat([originalInput,Buffer.from('changed')]));await assert.rejects(inspectInstallationWorkerMaintenance(f.setup.root,'demo',taskId),e=>e.code==='WORKER_MAINTENANCE_EVIDENCE');writeFileSync(firstInput,originalInput);
+    renameSync(firstInput,backup);symlinkSync(foreign,firstInput);await assert.rejects(inspectInstallationWorkerMaintenance(f.setup.root,'demo',taskId),e=>e.code==='UNSAFE_PATH');unlinkSync(firstInput);renameSync(backup,firstInput);
+    const maintenance=await command(['worker-maintenance-inspect','--installation',f.setup.root,'--project','demo','--task',taskId,'--json']);assert.equal(maintenance.status,'READY');
+    const cleanupArgs=['worker-maintenance-apply','--installation',f.setup.root,'--project','demo','--task',taskId,'--request-id','clean','--expected-report',maintenance.reportDigest,'--json'];
+    const cleanupInput={projectId:'demo',taskId,requestId:'clean',expectedReportDigest:maintenance.reportDigest};
+    await assert.rejects(maintainInstallationWorkers(f.setup.root,{...cleanupInput,expectedReportDigest:hash('stale-cleanup')}),e=>e.code==='WORKER_MAINTENANCE_CONFLICT');
+    const interruption=await interruptedMaintenance(f,cleanupArgs,maintenance.report.entries);
+    const pending=await inspectInstallationWorkerMaintenance(f.setup.root,'demo',taskId);assert.equal(pending.status,'PENDING');assert.equal(pending.reportDigest,maintenance.reportDigest);
+    await assert.rejects(f.start(),e=>e.code==='WORKER_MAINTENANCE_PENDING');
+    assert.throws(()=>createWorkerAttempt(f.workRoot,{...readWorkerAttempt(refs[0]).intent,requestId:'blocked-new-dispatch'}),e=>e.code==='WORKER_MAINTENANCE_PENDING');
+    assert.throws(()=>bindInstallationToolchains(f.setup.root,{...f.input,requestId:'blocked-rebind',previousBindingDigest:f.bound.receipt.digest}),e=>e.code==='WORKER_MAINTENANCE_PENDING');
+    await assert.rejects(maintainInstallationWorkers(f.setup.root,{...cleanupInput,expectedReportDigest:hash('changed-request')}),e=>e.code==='REQUEST_CONFLICT');
+    const remaining=maintenance.report.entries.find(e=>existsSync(join(f.workRoot,'unit-jobs',e.reference.attemptId))),unexpected=join(f.workRoot,'unit-jobs',remaining.reference.attemptId,'unexpected');writeFileSync(unexpected,'preserve me',{mode:0o600,flag:'wx'});
+    await assert.rejects(maintainInstallationWorkers(f.setup.root,cleanupInput),e=>e.code==='WORKER_MAINTENANCE_EVIDENCE');assert.equal(readFileSync(unexpected,'utf8'),'preserve me');unlinkSync(unexpected);
+    const selectedDirectory=dirname(unexpected),savedDirectory=join(options.root,'original-job-directory');renameSync(selectedDirectory,savedDirectory);mkdirSync(selectedDirectory,{mode:0o700});writeFileSync(unexpected,'replacement must survive',{mode:0o600});
+    await assert.rejects(maintainInstallationWorkers(f.setup.root,cleanupInput),e=>e.code==='WORKER_MAINTENANCE_EVIDENCE');assert.equal(readFileSync(unexpected,'utf8'),'replacement must survive');unlinkSync(unexpected);rmdirSync(selectedDirectory);renameSync(savedDirectory,selectedDirectory);
+    const cleaned=await command(cleanupArgs);assert.equal(cleaned.replayed,false);assert.equal(cleaned.receipt.jobDirectoriesAbsent,6);assert.equal(cleaned.receipt.managerUnitsAbsent,6);assert.ok(cleaned.receipt.selectedFileBytes>0);
+    assert.deepEqual((await maintainInstallationWorkers(f.setup.root,cleanupInput)).receipt,cleaned.receipt);assert.equal((await inspectInstallationWorkerMaintenance(f.setup.root,'demo',taskId)).status,'COMPLETED');
+    for(const r of refs){assert.equal(existsSync(join(f.workRoot,'unit-jobs',r.attemptId)),false);assert.equal(readWorkerAttempt(r).outcome.state,'EXITED');}
+    assert.equal(readFileSync(foreign,'utf8'),'unrelated private data\n');
+    const second=await f.start();assert.notEqual(first.runId,second.runId);
     assert.deepEqual(await f.call(client,'ontology_write',v.request),v.receipt);assert.equal(retain(f,taskId).length,refs.length);
     assert.equal((await f.finished(client,'validation.inspect',taskId)).resultDigest,result.resultDigest);
     results.push({name:'installed-mcp-validation-and-restart',status:'PASS',bindingReceipt:f.bound.receipt,taskId,result,attempts:refs.map(readWorkerAttempt)});
+    const later=await p.write('reasoning.start',{assetId:'services',modelDigest:p.modelDigest,task:{kind:'consistency'}},'after-maintenance');assert.equal((await f.finished(client,'reasoning.inspect',later.receipt.result.taskId)).formalStatus,'COMPLETED');retain(f,later.receipt.result.taskId);
+    results.push({name:'installed-worker-maintenance-interruption-and-resume',status:'PASS',taskId,report:maintenance,interruption,receipt:cleaned.receipt,originalResultDigest:result.resultDigest});
   }
   for(const kind of ['dl','shacl']){
     const f=await fixture('lost-'+kind),run=await f.start(),birth=ownerProcess(run.pid),client=await f.connect(),p=await seed(f,client);
@@ -103,7 +146,13 @@ try{
     await f.start();const result=await f.finished(client,kind==='dl'?'reasoning.inspect':'validation.inspect',taskId);assert.equal(result.formalStatus,'FAILED');assert.equal(result.complete,false);assert.equal(result.result.error.code,'OWNER_INTERRUPTED');
     const count=retain(f,taskId).length;assert.deepEqual(await f.call(client,'ontology_write',original.request),original.receipt);assert.equal(retain(f,taskId).length,count);
     const next=await p.write('reasoning.start',{assetId:'services',modelDigest:p.modelDigest,task:{kind:'consistency'}},'explicit-new-task');assert.equal((await f.finished(client,'reasoning.inspect',next.receipt.result.taskId)).formalStatus,'COMPLETED');retain(f,next.receipt.result.taskId);
-    results.push({name:'installed-'+kind+'-supervisor-loss-recovery',status:'PASS',taskId,report:before,recovery:recovered,originalReceiptDigest:hash(original.receipt),originalAttempt:readWorkerAttempt(a.reference),result});
+    await stopInstallation(f.setup.root);const cleanup=await inspectInstallationWorkerMaintenance(f.setup.root,'demo',taskId);assert.equal(cleanup.status,'READY');
+    const cleaned=await command(['worker-maintenance-apply','--installation',f.setup.root,'--project','demo','--task',taskId,'--request-id','clean-failed-task','--expected-report',cleanup.reportDigest,'--json']);
+    assert.deepEqual(reconcileInstallationTask(f.setup.root,input).receipt,recovered.receipt);assert.equal(readWorkerAttempt(a.reference).outcome.state,'GROUP_TERMINATED');
+    for(const ref of retain(f,taskId))assert.equal(existsSync(join(f.workRoot,'unit-jobs',ref.attemptId)),false);
+    for(const ref of retain(f,next.receipt.result.taskId))assert.equal(existsSync(join(f.workRoot,'unit-jobs',ref.attemptId)),true);
+    await f.start();assert.equal((await f.finished(client,kind==='dl'?'reasoning.inspect':'validation.inspect',taskId)).resultDigest,result.resultDigest);assert.deepEqual(await f.call(client,'ontology_write',original.request),original.receipt);
+    results.push({name:'installed-'+kind+'-supervisor-loss-recovery',status:'PASS',taskId,report:before,recovery:recovered,cleanup:cleaned,originalReceiptDigest:hash(original.receipt),originalAttempt:readWorkerAttempt(a.reference),result});
   }
   assert.equal(inspectRuntime(options.runtime).digest,runtime.digest);
 }catch(e){failure={code:e.code??null,name:e.name,message:e.message,stack:e.stack,output:e.output??null,diagnostic:e.diagnostic??null};}
@@ -111,6 +160,6 @@ finally{
   for(const f of fixtures){for(const c of f.clients)try{await c.close();}catch{}try{await stopInstallation(f.setup.root);}catch(e){failure??={code:e.code??null,message:'Fixture owner cleanup failed'};}for(const id of f.tasks)try{retain(f,id);}catch{}}
   for(const r of references.values()){try{unitCall(r,'StopUnit','ss',['replace']);}catch{}try{unitCall(r,'ResetFailedUnit','s');}catch{}}
 }
-const artifacts=['../../../dist/installation/toolchains.js','../../../dist/installation/systemd-binding.js','../../../dist/installation/systemd-worker.js','../../../dist/reasoning/runner.js','../../../dist/native-v2/shacl-toolchain.js','../../../dist/native-v2/shacl-runner.js','../../../dist/native-v2/validation-runner.js','../../../dist/native-v2/tasks.js','../../../dist/native-v2/task-recovery.js','../../../dist/standalone/cli.js','./systemd-managed.mjs'].map(path=>({path,digest:hashBytes(readFileSync(new URL(path,import.meta.url)))}));
+const artifacts=['../../../dist/installation/worker-maintenance.js','../../../dist/installation/worker-journal.js','../../../dist/installation/toolchains.js','../../../dist/installation/systemd-binding.js','../../../dist/installation/systemd-worker.js','../../../dist/reasoning/runner.js','../../../dist/native-v2/shacl-toolchain.js','../../../dist/native-v2/shacl-runner.js','../../../dist/native-v2/validation-runner.js','../../../dist/native-v2/tasks.js','../../../dist/native-v2/task-recovery.js','../../../dist/standalone/cli.js','./systemd-managed.mjs'].map(path=>({path,digest:hashBytes(readFileSync(new URL(path,import.meta.url)))}));
 writeFileSync(options.out,JSON.stringify({schema:'ontology-systemd-managed-probe/v1',binding,runtime,tools,artifacts,results,failure,recoveryObservations:fixtures.filter(f=>f.lastRecoveryInspection).map(f=>({fixture:f.name,...f.lastRecoveryInspection})),acceptance:'NOT_EVALUATED',limitations:['Synthetic installed-package and MCP evidence; not an actual Codex Host session','No published distribution/provisioning, complete conformance or selected asset reset']},null,2)+'\n',{mode:0o600,flag:'wx'});
 console.log(JSON.stringify({cases:results.length,pass:results.length,fail:failure?1:0,skip:0,report:options.out,failure}));if(failure)process.exitCode=1;

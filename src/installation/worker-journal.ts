@@ -67,12 +67,22 @@ function open(root:string,create=false){
     guard();return {db,journalId:identity.journalId,guard};
   }catch(e){db.close();throw e;}
 }
+/** Internal synchronous journal access; callers must retain owner leases. */
+export function withWorkerJournal<T>(root:string,use:(journal:ReturnType<typeof open>)=>T):T {
+  const journal=open(root);try{return use(journal);}finally{journal.db.close();}
+}
+function requireNoMaintenance(db:DatabaseSync):void {
+  if(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='worker_maintenance'").get()&&db.prepare('SELECT request_id FROM worker_maintenance WHERE receipt IS NULL LIMIT 1').get())fail('WORKER_MAINTENANCE_PENDING','Resume the original worker maintenance request before new execution',409);
+}
+export function requireWorkerMaintenanceComplete(root:string):void {
+  if(existsSync(join(root,'worker-journal.sqlite')))withWorkerJournal(root,j=>requireNoMaintenance(j.db));
+}
 export function createWorkerAttempt(root:string,intent:WorkerPlan):WorkerReference {
   validateWorkerPlan(intent);const j=open(root,true);
   try{
     const last=j.db.prepare('SELECT id,intent_digest FROM attempts ORDER BY rowid DESC LIMIT 1').get();
     if(last)readWorkerAttempt({root,journalId:j.journalId,attemptId:String(last.id),intentDigest:String(last.intent_digest)});
-    j.db.exec('BEGIN IMMEDIATE');j.guard();
+    j.db.exec('BEGIN IMMEDIATE');j.guard();requireNoMaintenance(j.db);
     if(j.db.prepare('SELECT id FROM attempts WHERE outcome IS NULL LIMIT 1').get())fail('WORKER_RECOVERY_REQUIRED','Earlier worker exit is unproven; no replacement was dispatched',409);
     if(j.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='systemd_workers'").get()&&j.db.prepare("SELECT a.id FROM attempts a JOIN systemd_workers s ON s.attempt_id=a.id WHERE s.terminal IS NULL AND NOT(s.fence IS NOT NULL AND s.unit IS NULL AND json_extract(a.outcome,'$.state')='NOT_STARTED') LIMIT 1").get())fail('WORKER_RECOVERY_REQUIRED','Earlier unit termination is unproven; no replacement was dispatched',409);
     if(Number(j.db.prepare('SELECT count(*) AS n FROM attempts').get()!.n)>=4096)fail('WORKER_JOURNAL_LIMIT','Worker history reached its fixed attempt budget',409);

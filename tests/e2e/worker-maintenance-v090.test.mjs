@@ -1,0 +1,38 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,realpathSync,mkdirSync,readFileSync,existsSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {execFile} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {inspectRuntime} from '../../dist/installation/runtime.js';
+import {prepareInstallation,bindInstallationToolchains} from '../../dist/installation/manager.js';
+import {inspectInstallationWorkerMaintenance,maintainInstallationWorkers} from '../../dist/installation/worker-maintenance.js';
+import {createStandaloneService} from '../../dist/standalone/service.js';
+import {hash} from '../../dist/standalone/validation.js';
+import {prepare} from '../helpers/v090-native.mjs';
+
+const execute=(args,options)=>new Promise((resolve,reject)=>execFile('npm',args,{...options,timeout:30000,maxBuffer:2*1024*1024},(error,stdout,stderr)=>error?reject(Error(stderr)):resolve(stdout)));
+test('a task cancelled before dispatch needs no worker cleanup, preserves receipts and refuses a live owner',async t=>{
+  assert(process.env.EVOPILOT_TEST_DL_TOOLCHAIN&&process.env.EVOPILOT_TEST_SHACL_TOOLCHAIN,'Actual installed executor bindings required');
+  const root=realpathSync(mkdtempSync(join(tmpdir(),'ontology-maintenance-empty-')));t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const runtimeRoot=join(root,'runtime');mkdirSync(runtimeRoot,{mode:0o700});
+  const packed=JSON.parse(await execute(['pack','--ignore-scripts','--json','--pack-destination',root],{cwd:fileURLToPath(new URL('../..',import.meta.url))}));
+  await execute(['install','--offline','--ignore-scripts','--no-audit','--no-fund','--prefix',runtimeRoot,join(root,packed[0].filename)],{cwd:root});
+  const runtime=inspectRuntime(runtimeRoot),setup=prepareInstallation({root:join(root,'installation'),workspaceRoot:join(root,'workspace'),workspaceId:'empty',projectId:'demo',principalId:'operator',runtimeRoot,runtimeDigest:runtime.digest,mode:'create'});
+  const dl=process.env.EVOPILOT_TEST_DL_TOOLCHAIN,shacl=process.env.EVOPILOT_TEST_SHACL_TOOLCHAIN;
+  bindInstallationToolchains(setup.root,{requestId:'tools',previousBindingDigest:null,dl:{toolchainFile:dl,toolchainDigest:JSON.parse(readFileSync(dl)).digest},shacl:{toolchainFile:shacl,toolchainDigest:JSON.parse(readFileSync(shacl)).digest}});
+  const workRoot=join(setup.root,'formal-work'),options={root:setup.workspaceRoot,workspaceId:setup.workspaceId,serviceId:setup.serviceId,reasoning:{toolchainFile:dl,workRoot}},token=readFileSync(setup.credentialFile,'utf8');
+  const request=(operation,input={})=>({workspaceId:setup.workspaceId,serviceId:setup.serviceId,projectId:'demo',operation,input});
+  const f={token,read:request,write:(operation,input,requestId,expectedRevision)=>({...request(operation,input),requestId,expectedRevision})};
+  let service=createStandaloneService(options);t.after(()=>service.close());
+  const seeded=prepare(service,f),start=f.write('reasoning.start',{assetId:'services',modelDigest:seeded.modelDigest,task:{kind:'consistency'}},'cancel-before-dispatch',4),receipt=service.request(start,token),taskId=receipt.result.taskId;
+  const cancelled=service.request(f.write('reasoning.cancel',{taskId},'cancel',5),token);assert.equal(cancelled.result.state,'FINISHED');
+  await assert.rejects(inspectInstallationWorkerMaintenance(setup.root,'demo',taskId),e=>e.code==='WORKSPACE_BUSY');
+  const result=service.request(f.read('reasoning.inspect',{taskId}),token);assert.equal(result.formalStatus,'CANCELLED');await service.close();
+  assert.equal(existsSync(join(workRoot,'worker-journal.sqlite')),false);
+  assert.equal((await inspectInstallationWorkerMaintenance(setup.root,'demo',taskId)).status,'NOT_NEEDED');
+  await assert.rejects(maintainInstallationWorkers(setup.root,{projectId:'demo',taskId,requestId:'empty',expectedReportDigest:hash('no-worker')}),e=>e.code==='WORKER_MAINTENANCE_EMPTY');
+  assert.equal(existsSync(join(workRoot,'worker-journal.sqlite')),false);
+  service=createStandaloneService(options);assert.deepEqual(service.request(start,token),receipt);assert.equal(service.request(f.read('reasoning.inspect',{taskId}),token).resultDigest,result.resultDigest);await service.close();
+});
