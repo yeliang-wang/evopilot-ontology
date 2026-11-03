@@ -23,7 +23,7 @@ async function discardRejectedBody(req: IncomingMessage):Promise<void>{
   });
 }
 /** Bounded local JSON and standard MCP adapters share one scoped service and writer. */
-export async function listenStandalone(options: {root: string; workspaceId: string; serviceId: string; port?: number;reasoning?:ReasoningConfiguration}) {
+export async function listenStandalone(options: {root: string; workspaceId: string; serviceId: string; port?: number;reasoning?:ReasoningConfiguration;validation?:ReasoningConfiguration}) {
   if (options.port!==undefined && (!Number.isInteger(options.port) || options.port<0 || options.port>65535)) fail('INVALID_INPUT','Invalid loopback port');
   const service=createStandaloneService(options);
   const mcp=createOntologyMcp(service);

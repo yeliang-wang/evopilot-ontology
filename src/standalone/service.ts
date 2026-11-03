@@ -4,6 +4,7 @@ import { assertSeparate } from '../installation/files.js';
 import { openWorkspace } from './workspace.js';
 import { expertGuide } from '../expert/guide.js';
 import { sourceStore } from '../native-v2/store.js';
+import { expectationStore } from '../native-v2/expectations-store.js';
 import { modelStore } from '../native-v2/model-store.js';
 import { reasoningTasks } from '../native-v2/tasks.js';
 import type { ReasoningConfiguration } from '../native-v2/tasks.js';
@@ -11,16 +12,17 @@ import { LIMITS, fail } from './types.js';
 import type { Json, Receipt, Project, Grant } from './types.js';
 import { canonical, exact, hash, hashBytes, id, json, text, digest, validateIntent, validateRequest } from './validation.js';
 
-export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','project.list','project.inspect','intent.read','receipt.read','source.inspect','source.read','source.fragment.read','model.list','model.inspect','model.document.read','reasoning.inspect','reasoning.result.read']);
-export const WRITE_OPERATIONS = Object.freeze(['project.create','intent.record','source.admit','model.record','reasoning.start','reasoning.cancel']);
-export function createStandaloneService(options: {root: string; workspaceId: string; serviceId: string;reasoning?:ReasoningConfiguration}) {
+export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','project.list','project.inspect','intent.read','receipt.read','source.inspect','source.read','source.fragment.read','model.list','model.inspect','model.document.read','reasoning.list','reasoning.inspect','reasoning.result.read','expectations.list','expectations.inspect','expectations.read','validation.list','validation.inspect','validation.result.read']);
+export const WRITE_OPERATIONS = Object.freeze(['project.create','intent.record','source.admit','model.record','reasoning.start','reasoning.cancel','expectations.record','validation.start','validation.cancel']);
+export function createStandaloneService(options: {root: string; workspaceId: string; serviceId: string;reasoning?:ReasoningConfiguration;validation?:ReasoningConfiguration}) {
   const store=openWorkspace(options.root,options), {db,identity}=store;
   const sources=sourceStore(db);
-  const models=modelStore(db);
+  const models=modelStore(db),expectations=expectationStore(db);
   let tasks:ReturnType<typeof reasoningTasks>;
   try{
     if(options.reasoning)assertSeparate(store.root,realpathSync(options.reasoning.workRoot));
-    tasks=reasoningTasks(db,store.guard,options.reasoning);
+    if(options.validation)assertSeparate(store.root,realpathSync(options.validation.workRoot));
+    tasks=reasoningTasks(db,store.guard,options.reasoning,options.validation);
   }catch(e){store.close();throw e;}
   let closing=false,closed:Promise<void>|undefined;
   const project = (projectId: string): Project | null => {
@@ -47,7 +49,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
       workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,
       principalId:grant.principalId,projectIds:[...grant.projectIds],permissions:[...grant.permissions],
       readOperations:[...READ_OPERATIONS],writeOperations:grant.permissions.includes('write')?[...WRITE_OPERATIONS]:[],
-      reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,authority:false};
+      reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
   };
   function request(value: unknown, token: string): Json {
     if(closing)fail('CLOSED','Service is closing',503);
@@ -75,7 +77,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
       let result: Json;let afterCommit:(()=>void)|undefined;
       if (operation==='service.inspect') {
         exact(input,[]);
-        result={product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P2_IMPLEMENTATION',workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,project:current as unknown as Json,readOperations:[...READ_OPERATIONS],writeOperations:[...WRITE_OPERATIONS],reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,authority:false};
+        result={product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P2_IMPLEMENTATION',workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,project:current as unknown as Json,readOperations:[...READ_OPERATIONS],writeOperations:[...WRITE_OPERATIONS],reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
       } else if (operation==='guide.read') {
         exact(input,['topic']);text(input.topic,96);result=expertGuide(input.topic);
       } else if (operation==='project.list') {
@@ -111,15 +113,23 @@ export function createStandaloneService(options: {root: string; workspaceId: str
         const row=db.prepare('SELECT document,revision,created_at FROM intents WHERE project_id=? AND digest=?').get(projectId,input.digest);
         if (!row) fail('NOT_FOUND','Intent not found in selected project',404);
         result={digest:input.digest,...JSON.parse(String(row.document)),revision:Number(row.revision),createdAt:String(row.created_at),sourceVerification:'NOT_EVALUATED',businessConfirmed:false};
-      } else if(operation.startsWith('reasoning.')) {
+      } else if(operation.startsWith('reasoning.')||operation.startsWith('validation.')) {
         if(!current)fail('NOT_FOUND','Project not initialized',404);
-        if(operation==='reasoning.start'){
-          result=tasks.start(projectId,grant.principalId,value.requestId!,input);
+        const kind=operation.startsWith('validation.')?'validation':'dl',action=operation.slice(operation.indexOf('.')+1);
+        if(action==='start'){
+          result=tasks.start(projectId,grant.principalId,value.requestId!,input,kind);
           const taskId=(result as {taskId:string}).taskId;afterCommit=()=>tasks.kick(taskId);
-        }else if(operation==='reasoning.cancel'){
-          result=tasks.cancel(projectId,input);const taskId=(result as {taskId:string}).taskId;afterCommit=()=>tasks.abort(taskId);
-        }else if(operation==='reasoning.inspect')result=tasks.read(projectId,input);
-        else result=tasks.resultRead(projectId,input);
+        }else if(action==='cancel'){
+          result=tasks.cancel(projectId,input,kind);const taskId=(result as {taskId:string}).taskId;afterCommit=()=>tasks.abort(taskId);
+        }else if(action==='inspect')result=tasks.read(projectId,input,kind);
+        else if(action==='list')result=tasks.list(projectId,input,kind);
+        else result=tasks.resultRead(projectId,input,kind);
+      } else if(operation.startsWith('expectations.')) {
+        if(!current)fail('NOT_FOUND','Project not initialized',404);
+        if(operation==='expectations.record')result=expectations.record(projectId,input,current.revision+1,new Date().toISOString());
+        else if(operation==='expectations.list')result=expectations.list(projectId,input);
+        else if(operation==='expectations.inspect')result=expectations.inspect(projectId,input);
+        else result=expectations.read(projectId,input);
       } else if(operation.startsWith('model.')) {
         if(!current)fail('NOT_FOUND','Project not initialized',404);
         if(operation==='model.record')result=models.record(projectId,input,current.revision+1,new Date().toISOString());

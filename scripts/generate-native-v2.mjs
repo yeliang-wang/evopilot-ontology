@@ -4,16 +4,18 @@ import {createHash} from 'node:crypto';
 
 // Deliberately bounded projection of this owned schema, not a general codegen
 // platform. Unknown keywords/forms fail instead of silently weakening types.
-for(const [file,title,prefix,constant] of [['sources','SourceSet','','SOURCE'],['model','ModelDraft','model-','MODEL'],['shacl','SHACLRequest','shacl-','SHACL']]){
+for(const [file,title,prefix,constant] of [['sources','SourceSet','','SOURCE'],['model','ModelDraft','model-','MODEL'],['shacl','SHACLRequest','shacl-','SHACL'],['expectations','ExpectationSet','expectations-','EXPECTATIONS']]){
 const source=new URL('../schemas/v2/'+file+'.schema.json',import.meta.url);
 const bytes=readFileSync(source),schema=JSON.parse(bytes);
-const model=JSON.parse(readFileSync(new URL('../schemas/v2/model.schema.json',import.meta.url))),externalTypes=new Set();
+const externalTypes=new Map();
+const dependencies=['model','shacl'].filter(name=>name!==file).map(name=>({name,schema:JSON.parse(readFileSync(new URL('../schemas/v2/'+name+'.schema.json',import.meta.url)))}));
 const allowed=new Set(['$schema','$id','title','description','$defs','$ref','type','const','enum','oneOf','properties','required','additionalProperties','items','minItems','maxItems','minLength','maxLength','pattern','minimum','maximum']);
 function type(node){
   for(const key of Object.keys(node))assert(allowed.has(key),'Unsupported schema projection keyword: '+key);
   if(node.$ref){
     assert.deepEqual(Object.keys(node),['$ref']);const name=node.$ref.split('/').at(-1);
-    if(file==='shacl'&&node.$ref==='urn:evopilot:ontology:model-draft:v2#/$defs/'+name){assert(Object.hasOwn(model.$defs,name));externalTypes.add(name);return 'Model'+name;}
+    const dependency=dependencies.find(d=>node.$ref===d.schema.$id+'#/$defs/'+name);
+    if(dependency){assert(['shacl','expectations'].includes(file));assert(Object.hasOwn(dependency.schema.$defs,name));const alias=dependency.name+'_'+name;externalTypes.set(alias,{name,module:dependency.name+'-contracts.js'});return alias;}
     assert(/^#\/\$defs\/[A-Za-z][A-Za-z0-9]*$/.test(node.$ref));assert(Object.hasOwn(schema.$defs,name));return name;
   }
   if(node.oneOf){assert.deepEqual(Object.keys(node),['oneOf']);assert(node.oneOf.length);return '('+node.oneOf.map(type).join(' | ')+')';}
@@ -32,7 +34,7 @@ assert.equal(schema.$schema,'https://json-schema.org/draft/2020-12/schema');asse
 const sha='sha256:'+createHash('sha256').update(bytes).digest('hex');
 const header='// Generated from schemas/v2/'+file+'.schema.json; edit the schema, then regenerate.\n';
 const declarations=Object.entries(schema.$defs).map(([name,value])=>'export type '+name+' = '+type(value)+';\n').join('')+'export type '+title+' = '+type(schema)+';\n';
-const imports=externalTypes.size?'import type { '+[...externalTypes].sort().map(n=>n+' as Model'+n).join(', ')+' } from \'./model-contracts.js\';\n':'';
+const imports=[...externalTypes].sort(([a],[b])=>a<b?-1:a>b?1:0).map(([alias,d])=>'import type { '+d.name+' as '+alias+' } from '+JSON.stringify('./'+d.module)+';\n').join('');
 const contracts=header+imports+declarations;
 const runtime=header+'export const '+constant+'_SCHEMA_DIGEST = '+JSON.stringify(sha)+';\nexport const '+constant+'_SCHEMA = '+JSON.stringify(schema,null,2)+' as const;\n';
 assert(process.argv.length===2||process.argv.length===3&&process.argv[2]==='--check','Only --check is supported');

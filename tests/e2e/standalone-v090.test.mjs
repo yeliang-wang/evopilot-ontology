@@ -107,8 +107,10 @@ test('actual child death releases writer lease without replaying committed mutat
   const code=`import {readFileSync} from 'node:fs'; import {createStandaloneService} from ${JSON.stringify(url)};
   const setup=JSON.parse(process.argv[1]); const s=createStandaloneService(setup);
   const result=s.request({workspaceId:setup.workspaceId,serviceId:setup.serviceId,projectId:'demo',operation:'project.create',input:{label:'Child'},requestId:'child-create',expectedRevision:0},readFileSync(setup.credentialFile,'utf8'));
-  process.send({revision:result.revision});setInterval(()=>{},1000);`;
-  const child=spawn(process.execPath,['--input-type=module','-e',code,JSON.stringify(f.setup)],{stdio:['ignore','ignore','pipe','ipc']});
+  // Keep the service reachable for the simulated owner's lifetime. An empty
+  // timer retains only the process; GC can legitimately finalize unused SQLite handles.
+  setInterval(()=>s.identity(),1000);globalThis.gc();process.send({revision:result.revision});`;
+  const child=spawn(process.execPath,['--expose-gc','--input-type=module','-e',code,JSON.stringify(f.setup)],{stdio:['ignore','ignore','pipe','ipc']});
   let stderr='';child.stderr.on('data',x=>stderr+=x);t.after(()=>{if(child.exitCode===null)child.kill('SIGKILL');});
   const ready=await Promise.race([once(child,'message'),once(child,'exit').then(()=>{throw new Error('child exited '+stderr);}),new Promise((_,reject)=>{const timer=setTimeout(()=>reject(new Error('child timeout')),10000);timer.unref();})]);
   assert.equal(ready[0].revision,1);

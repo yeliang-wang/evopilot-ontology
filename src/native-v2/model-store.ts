@@ -1,25 +1,25 @@
 import type {DatabaseSync} from 'node:sqlite';
 import {sourceStore} from './store.js';
+import {boundIntent} from './intent-binding.js';
+import {expectationStore} from './expectations-store.js';
 import {admitModel} from './models.js';
 import type {ModelAdmission} from './models.js';
 import {MODEL_SCHEMA_DIGEST} from './model-schema.js';
-import {canonical,hash,exact,id,digest,validateIntent} from '../standalone/validation.js';
+import {canonical,exact,id,digest} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
-import type {Json,ModelingIntent} from '../standalone/types.js';
+import type {Json} from '../standalone/types.js';
 
 export const MODEL_TABLES=`
  CREATE TABLE native_models(project_id TEXT NOT NULL,asset_id TEXT NOT NULL,digest TEXT NOT NULL,schema_digest TEXT NOT NULL,document TEXT NOT NULL,revision INTEGER NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(project_id,asset_id,digest),FOREIGN KEY(project_id) REFERENCES projects(id));
  CREATE TABLE native_model_heads(project_id TEXT NOT NULL,asset_id TEXT NOT NULL,digest TEXT NOT NULL,PRIMARY KEY(project_id,asset_id),FOREIGN KEY(project_id,asset_id,digest) REFERENCES native_models(project_id,asset_id,digest));
 `;
 export function modelStore(db:DatabaseSync){
-  const sources=sourceStore(db);
+  const sources=sourceStore(db),expectations=expectationStore(db);
   const transaction=()=>{if(!db.isTransaction)fail('TRANSACTION_REQUIRED','Models require the owner transaction',409);};
-  function intent(projectId:string,intentDigest:string):ModelingIntent {
-    const row=db.prepare('SELECT document FROM intents WHERE project_id=? AND digest=?').get(projectId,intentDigest);
-    if(!row)fail('NOT_FOUND','Model intent is absent in project',404);
-    const value=JSON.parse(String(row.document));validateIntent(value.definition);
-    if(hash(value)!==intentDigest)fail('CORRUPT_STATE','Bound intent content differs from identity',409);
-    return value.definition;
+  function expectationBinding(projectId:string,draft:ModelAdmission['draft']):void {
+    if(draft.expectationsDigest===undefined)return;
+    const e=expectations.load(projectId,draft.assetId,draft.expectationsDigest);
+    if(e.definition.intentDigest!==draft.intentDigest||e.definition.sourceSetDigest!==draft.sourceSetDigest)fail('EXPECTATIONS_BINDING_CONFLICT','Model and expectations bind different source/intent snapshots',409);
   }
   function head(projectId:string,assetId:string):string|null {
     transaction();id(assetId);const row=db.prepare('SELECT digest FROM native_model_heads WHERE project_id=? AND asset_id=?').get(projectId,assetId);return row?String(row.digest):null;
@@ -30,21 +30,22 @@ export function modelStore(db:DatabaseSync){
     if(!row)fail('NOT_FOUND','Model draft is absent in selected project/asset',404);
     if(row.schema_digest!==MODEL_SCHEMA_DIGEST)fail('UNSUPPORTED_MODEL_SCHEMA','Original model schema reader is required',409);
     const draft=JSON.parse(String(row.document));
-    const admitted=admitModel(draft,sources.load(projectId,draft.sourceSetDigest),intent(projectId,draft.intentDigest));
+    const admitted=admitModel(draft,sources.load(projectId,draft.sourceSetDigest),boundIntent(db,projectId,draft.intentDigest));expectationBinding(projectId,admitted.draft);
     if(admitted.digest!==modelDigest||admitted.draft.assetId!==assetId)fail('CORRUPT_STATE','Stored model differs from immutable identity',409);
     return admitted;
   }
   function current(projectId:string,model:ModelAdmission):boolean {
     const source=sources.head(projectId);
-    return head(projectId,model.draft.assetId)===model.digest&&source.status==='CURRENT'&&source.intentDigest===model.draft.intentDigest&&source.sourceSetDigest===model.draft.sourceSetDigest;
+    return head(projectId,model.draft.assetId)===model.digest&&source.status==='CURRENT'&&source.intentDigest===model.draft.intentDigest&&source.sourceSetDigest===model.draft.sourceSetDigest&&expectations.head(projectId,model.draft.assetId)===(model.draft.expectationsDigest??null);
   }
   function record(projectId:string,input:unknown,revision:number,createdAt:string):Json {
-    transaction();exact(input,['draft']);exact(input.draft,['schema','assetId','label','intentDigest','sourceSetDigest','previousDigest','closure','shapes','mappings','openIssues']);
+    transaction();exact(input,['draft']);exact(input.draft,['schema','assetId','label','intentDigest','sourceSetDigest','previousDigest','closure','shapes','mappings','openIssues'],['expectationsDigest']);
     digest(input.draft.intentDigest);digest(input.draft.sourceSetDigest);id(input.draft.assetId);
     const selected=sources.head(projectId);
     if(selected.status!=='CURRENT'||selected.intentDigest!==input.draft.intentDigest||selected.sourceSetDigest!==input.draft.sourceSetDigest)fail('SOURCE_BINDING_CONFLICT','Model requires current intent and source admission',409);
     if(head(projectId,input.draft.assetId)!==input.draft.previousDigest)fail('MODEL_CONFLICT','Model parent differs from current draft',409);
-    const admitted=admitModel(input.draft,sources.load(projectId,input.draft.sourceSetDigest),intent(projectId,input.draft.intentDigest));
+    const admitted=admitModel(input.draft,sources.load(projectId,input.draft.sourceSetDigest),boundIntent(db,projectId,input.draft.intentDigest));expectationBinding(projectId,admitted.draft);
+    if(expectations.head(projectId,admitted.draft.assetId)!==(admitted.draft.expectationsDigest??null))fail('EXPECTATIONS_BINDING_CONFLICT','A model must bind the current independently recorded expectations',409);
     db.prepare('INSERT INTO native_models VALUES(?,?,?,?,?,?,?)').run(projectId,admitted.draft.assetId,admitted.digest,admitted.schemaDigest,canonical(admitted.draft as unknown as Json),revision,createdAt);
     db.prepare('INSERT INTO native_model_heads VALUES(?,?,?) ON CONFLICT(project_id,asset_id) DO UPDATE SET digest=excluded.digest').run(projectId,admitted.draft.assetId,admitted.digest);
     return {assetId:admitted.draft.assetId,modelDigest:admitted.digest,previousDigest:admitted.draft.previousDigest,closureDigest:admitted.closureDigest,status:'DRAFT',mapping:{...admitted.mapping},openIssues:admitted.draft.openIssues.length,formalValidation:'NOT_EVALUATED',businessConfirmed:false,authority:false};
@@ -72,7 +73,7 @@ export function modelStore(db:DatabaseSync){
     if(!Number.isSafeInteger(input.limit)||(input.limit as number)<1||(input.limit as number)>100)fail('INVALID_INPUT','List page size must be 1–100');
     const rows=db.prepare('SELECT h.asset_id,h.digest,m.document,m.revision FROM native_model_heads h JOIN native_models m ON m.project_id=h.project_id AND m.asset_id=h.asset_id AND m.digest=h.digest WHERE h.project_id=? AND h.asset_id>? ORDER BY h.asset_id LIMIT ?').all(projectId,input.afterAssetId??'',(input.limit as number)+1);
     const page=rows.slice(0,input.limit as number),selected=sources.head(projectId);
-    return {models:page.map(r=>{const d=JSON.parse(String(r.document));return {assetId:String(r.asset_id),modelDigest:String(r.digest),label:String(d.label),revision:Number(r.revision),current:selected.status==='CURRENT'&&d.intentDigest===selected.intentDigest&&d.sourceSetDigest===selected.sourceSetDigest};}),nextCursor:rows.length>page.length?String(page.at(-1)!.asset_id):null,projectRevision:Number(db.prepare('SELECT revision FROM projects WHERE id=?').get(projectId)!.revision),authority:false};
+    return {models:page.map(r=>{const d=JSON.parse(String(r.document));return {assetId:String(r.asset_id),modelDigest:String(r.digest),label:String(d.label),revision:Number(r.revision),current:selected.status==='CURRENT'&&d.intentDigest===selected.intentDigest&&d.sourceSetDigest===selected.sourceSetDigest&&expectations.head(projectId,String(r.asset_id))===(d.expectationsDigest??null)};}),nextCursor:rows.length>page.length?String(page.at(-1)!.asset_id):null,projectRevision:Number(db.prepare('SELECT revision FROM projects WHERE id=?').get(projectId)!.revision),authority:false};
   }
   return {head,load,current,record,inspect,read,list};
 }

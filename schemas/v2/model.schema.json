@@ -10,6 +10,7 @@
     "label":{"type":"string","minLength":1,"maxLength":200},
     "intentDigest":{"$ref":"#/$defs/SHA256"},
     "sourceSetDigest":{"$ref":"#/$defs/SHA256"},
+    "expectationsDigest":{"$ref":"#/$defs/SHA256"},
     "previousDigest":{"oneOf":[{"$ref":"#/$defs/SHA256"},{"type":"null"}]},
     "closure":{"$ref":"#/$defs/ModelClosure"},
     "shapes":{"type":"array","maxItems":64,"items":{"$ref":"#/$defs/ModelDocument"}},

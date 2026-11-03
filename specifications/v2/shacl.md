@@ -1,6 +1,6 @@
 # Native v2 SHACL execution
 
-This is an implemented internal executor contract, not product acceptance or an installed Expert capability. The standalone durable owner task API, independent requirement/case storage, explicit derived-view production and review/delivery integration remain pending. Frozen v1 validation is unchanged.
+This is an implemented internal executor contract, not product acceptance or an installed Expert capability. The [durable owner validation API and independent requirement/case storage](expectations.md) now use this executor. Explicit derived-view production and review/delivery integration remain pending. Frozen v1 validation is unchanged.
 
 ## Contract and graph identity
 
@@ -14,7 +14,7 @@ The current adapter merges exactly the admitted ontology documents as the data g
 
 Python 3.12.12, RDFLib 7.6.0 and pySHACL 0.40.1 perform actual SHACL Core and bounded local SHACL-SPARQL SELECT validation. `inference=none`, `advanced=false`, `js=false` and `do_owl_imports=false` are fixed. OWL axioms may occur in the data graph; SHACL does not run a second OWL reasoner or invent property values from an existential restriction. Standard SHACL target/class behavior, including subclass and implicit class targets, is resolved by the pinned pySHACL implementation.
 
-The required ledger is supplied independently of the generated shape/model content. This executor verifies its digest but cannot establish who authored or approved it. The owner integration must retain and bind that independent snapshot before treating its results as lifecycle evidence. Positive/negative independent business case execution is a separate unfinished obligation.
+The required ledger is supplied independently of the generated shape/model content. This executor verifies its digest but cannot establish who authored or approved it. The owner integration must retain and bind that independent snapshot before treating its results as lifecycle evidence. The owner validation suite now retains and executes independent positive/negative cases; the executor itself never chooses their expected outcomes.
 
 Each independently required shape must have a stable named identity, exist, meet its positive `minimumFocusCount` and include every required named focus in `requiredFocusIris`. Named expected focuses are checked against actual targets; they are never inserted to make a missing target pass. Literal/blank-node focuses participate in actual validation and the minimum count without inventing a stable business identity for a blank node. A count alone is not proof of semantic coverage; independent positive/negative case oracles remain necessary. Every shape with actual targets must have a ledger entry. Targetless nested shapes remain legal and are evaluated through their parent constraints. A disabled shape, missing required shape, empty target or narrowed required target set returns `INCOMPLETE_COVERAGE`. This is a product coverage gate, separate from SHACL's general graph conformance semantics. A `sh:targetNode` target may legally be absent as a subject in the data graph; presence must be expressed by the actual required constraints.
 

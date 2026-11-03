@@ -1,5 +1,5 @@
 // Generated from schemas/v2/model.schema.json; edit the schema, then regenerate.
-export const MODEL_SCHEMA_DIGEST = "sha256:f0e6bdf1993a2001431e0e6de8f05681e3236da9f0438385fdd25c0efe3d5993";
+export const MODEL_SCHEMA_DIGEST = "sha256:62c04811fd4cafd04d8bc6803f94ca73ab9c647d2563d08bc1f2800e71e01d4d";
 export const MODEL_SCHEMA = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:evopilot:ontology:model-draft:v2",
@@ -35,6 +35,9 @@ export const MODEL_SCHEMA = {
       "$ref": "#/$defs/SHA256"
     },
     "sourceSetDigest": {
+      "$ref": "#/$defs/SHA256"
+    },
+    "expectationsDigest": {
       "$ref": "#/$defs/SHA256"
     },
     "previousDigest": {

@@ -12,7 +12,7 @@ import { json, object } from './validation.js';
 import { LIMITS, ServiceError, fail } from './types.js';
 import type { Json, ServiceRequest } from './types.js';
 
-const usage='evopilot-ontology runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
+const usage='evopilot-ontology runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
 function flags(args: string[],required: string[],optional: string[]=[]): Map<string,string>{
   const found=new Map<string,string>();
   for(let i=0;i<args.length;i++){
@@ -58,10 +58,12 @@ export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>
     emit(initializeWorkspace({root:f.get('--root')!,workspaceId:f.get('--workspace')!,projectId:f.get('--project')!,principalId:f.get('--principal')!}));return;
   }
   if(command==='serve'){
-    const f=flags(args,['--root','--workspace','--service'],['--port','--dl-toolchain','--dl-work-root']);
+    const f=flags(args,['--root','--workspace','--service'],['--port','--dl-toolchain','--dl-work-root','--shacl-toolchain','--shacl-work-root']);
     if(f.has('--dl-toolchain')!==f.has('--dl-work-root'))fail('INVALID_ARGUMENTS','Select both installed DL toolchain and private worker directory');
+    if(f.has('--shacl-toolchain')!==f.has('--shacl-work-root'))fail('INVALID_ARGUMENTS','Select both installed SHACL toolchain and private worker directory');
+    const validation=f.has('--shacl-toolchain')?{toolchainFile:f.get('--shacl-toolchain')!,workRoot:f.get('--shacl-work-root')!}:undefined;
     const reasoning=f.has('--dl-toolchain')?{toolchainFile:f.get('--dl-toolchain')!,workRoot:f.get('--dl-work-root')!}:undefined;
-    const server=await listenStandalone({root:f.get('--root')!,workspaceId:f.get('--workspace')!,serviceId:f.get('--service')!,port:f.has('--port')?integer(f.get('--port')!):0,reasoning});
+    const server=await listenStandalone({root:f.get('--root')!,workspaceId:f.get('--workspace')!,serviceId:f.get('--service')!,port:f.has('--port')?integer(f.get('--port')!):0,reasoning,validation});
     emit({status:'LISTENING',origin:server.origin,mcpUrl:server.origin+'/mcp',identity:{...server.identity},implementationStage:'P2_IMPLEMENTATION'});
     await new Promise<void>(resolve=>{const stop=()=>{process.off('SIGTERM',stop);process.off('SIGINT',stop);resolve();};process.once('SIGTERM',stop);process.once('SIGINT',stop);});
     await server.close();return;
