@@ -29,7 +29,10 @@ function definition(reference:WorkerReference,plan:WorkerPlan){
     WorkingDirectory:escape(reference.root),StandardInput:'file:'+escape(join(dir,'input')),StandardOutput:'file:'+escape(join(dir,'stdout')),StandardError:'file:'+escape(join(dir,'stderr')),
     Environment:'NODE_OPTIONS= NODE_PATH= NODE_NO_WARNINGS=1 LANG=C.UTF-8 TZ=UTC',
     UnsetEnvironment:'LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT GLIBC_TUNABLES'};
-  const argv=[selection.binding.node.path,launcher,'--systemd',JSON.stringify(reference)];
+  // Business event canonicalization can reorder keys. Reconstruct the original
+  // createWorkerAttempt field order so recovery matches the actual argv bytes.
+  const argument=JSON.stringify({root:reference.root,journalId:reference.journalId,attemptId:reference.attemptId,intentDigest:reference.intentDigest});
+  const argv=[selection.binding.node.path,launcher,'--systemd',argument];
   return {properties,argv,digest:sha({binding:selection.binding.digest,properties,argv})};
 }
 function properties(reference:WorkerReference,iface:string,path:string):Properties {
@@ -90,6 +93,11 @@ function terminal(reference:WorkerReference):UnitTerminal|null {
   const pid=value(s,'ExecMainPID','u'),code=value(s,'ExecMainCode','i'),status=value(s,'ExecMainStatus','i'),peak=value(s,'MemoryPeak','t');
   if(pid!==a.unit.supervisorPid||!Number.isSafeInteger(code)||!Number.isSafeInteger(status))fail('WORKER_UNIT_CHANGED','Unit terminal process identity differs',409);
   return {unit:a.unit,activeState:String(activeState),subState:String(subState),result:String(value(s,'Result','s')),execMainPid:pid as number,execMainCode:code as number,execMainStatus:status as number,mainPid:0,empty:true,memoryPeak:Number.isSafeInteger(peak)&&Number(peak)>=0?Number(peak):null,recordedAt:new Date().toISOString()};
+}
+/** Read-only projection for a stopped owner's recovery inspection. */
+export function inspectSystemdTermination(reference:WorkerReference):UnitTerminal|null {
+  const a=readWorkerAttempt(reference);if(!a.intent.systemd)fail('WORKER_PROTOCOL','Bound unit required');
+  return a.terminal??(a.unit?terminal(reference):null);
 }
 function output(reference:WorkerReference):{stdout:Buffer;stderr:Buffer} {
   const a=readWorkerAttempt(reference),root=jobRoot(reference);privatePath(root,true);

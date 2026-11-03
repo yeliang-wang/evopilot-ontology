@@ -3,6 +3,7 @@ import { isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { constants, openSync, closeSync, readSync, fstatSync, realpathSync } from 'node:fs';
 import { grantReviewer,revokeReviewer } from '../installation/reviewer.js';
+import {inspectSystemdBinding} from '../installation/systemd-binding.js';
 import {inspectInstallationTaskRecovery,reconcileInstallationTask} from '../installation/task-recovery.js';
 import { initializeWorkspace } from '../installation/workspace.js';
 import { inspectRuntime } from '../installation/runtime.js';
@@ -14,7 +15,7 @@ import { json, object } from './validation.js';
 import { LIMITS, ServiceError, fail } from './types.js';
 import type { Json, ServiceRequest } from './types.js';
 
-const usage='evopilot-ontology task-recovery-inspect --installation ABS --project ID --task ID --json | task-reconcile --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | toolchains-bind --installation ABS --request-id ID --previous-binding none|SHA256 --dl-toolchain ABS --dl-digest SHA256 --shacl-toolchain ABS --shacl-digest SHA256 --json | toolchains-inspect --installation ABS --json | reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
+const usage='evopilot-ontology worker-isolation-inspect --json | task-recovery-inspect --installation ABS --project ID --task ID --json | task-reconcile --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | toolchains-bind --installation ABS --request-id ID --previous-binding none|SHA256 --dl-toolchain ABS --dl-digest SHA256 --shacl-toolchain ABS --shacl-digest SHA256 [--systemd-digest SHA256] --json | toolchains-inspect --installation ABS --json | reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] [--systemd-digest SHA256] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
 function flags(args: string[],required: string[],optional: string[]=[]): Map<string,string>{
   const found=new Map<string,string>();
   for(let i=0;i<args.length;i++){
@@ -40,15 +41,22 @@ function readInput(path:string):Buffer{
     return buffer.subarray(0,offset);
   }finally{closeSync(fd);}
 }
+function selectedSystemd(flags:Map<string,string>){
+  const expected=flags.get('--systemd-digest');if(expected===undefined)return undefined;
+  const binding=inspectSystemdBinding();if(binding.digest!==expected)fail('WORKER_ISOLATION_DRIFT','Selected systemd identity changed; inspect the operator binding again',409);
+  return binding;
+}
 export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>{
   const [command,...args]=argv;
+  if(command==='worker-isolation-inspect'){flags(args,[]);emit(inspectSystemdBinding() as unknown as Json);return;}
   if(command==='task-recovery-inspect'||command==='task-reconcile'){
     const f=flags(args,['--installation','--project','--task',...(command==='task-reconcile'?['--request-id','--expected-report']:[])]);
     emit(command==='task-recovery-inspect'?inspectInstallationTaskRecovery(f.get('--installation')!,f.get('--project')!,f.get('--task')!):reconcileInstallationTask(f.get('--installation')!,{projectId:f.get('--project')!,taskId:f.get('--task')!,requestId:f.get('--request-id')!,expectedReportDigest:f.get('--expected-report')!}));return;
   }
   if(command==='toolchains-bind'){
-    const f=flags(args,['--installation','--request-id','--previous-binding','--dl-toolchain','--dl-digest','--shacl-toolchain','--shacl-digest']);
-    emit(bindInstallationToolchains(f.get('--installation')!,{requestId:f.get('--request-id')!,previousBindingDigest:f.get('--previous-binding')==='none'?null:f.get('--previous-binding')!,dl:{toolchainFile:f.get('--dl-toolchain')!,toolchainDigest:f.get('--dl-digest')!},shacl:{toolchainFile:f.get('--shacl-toolchain')!,toolchainDigest:f.get('--shacl-digest')!}}));return;
+    const f=flags(args,['--installation','--request-id','--previous-binding','--dl-toolchain','--dl-digest','--shacl-toolchain','--shacl-digest'],['--systemd-digest']);
+    const systemd=selectedSystemd(f);
+    emit(bindInstallationToolchains(f.get('--installation')!,{requestId:f.get('--request-id')!,previousBindingDigest:f.get('--previous-binding')==='none'?null:f.get('--previous-binding')!,dl:{toolchainFile:f.get('--dl-toolchain')!,toolchainDigest:f.get('--dl-digest')!},shacl:{toolchainFile:f.get('--shacl-toolchain')!,toolchainDigest:f.get('--shacl-digest')!},...(systemd?{systemd}:{})}));return;
   }
   if(command==='toolchains-inspect'){
     const f=flags(args,['--installation']);emit(inspectInstallationToolchains(f.get('--installation')!));return;
@@ -76,11 +84,13 @@ export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>
     emit(initializeWorkspace({root:f.get('--root')!,workspaceId:f.get('--workspace')!,projectId:f.get('--project')!,principalId:f.get('--principal')!}));return;
   }
   if(command==='serve'){
-    const f=flags(args,['--root','--workspace','--service'],['--port','--dl-toolchain','--dl-work-root','--shacl-toolchain','--shacl-work-root']);
+    const f=flags(args,['--root','--workspace','--service'],['--port','--dl-toolchain','--dl-work-root','--shacl-toolchain','--shacl-work-root','--systemd-digest']);
     if(f.has('--dl-toolchain')!==f.has('--dl-work-root'))fail('INVALID_ARGUMENTS','Select both installed DL toolchain and private worker directory');
     if(f.has('--shacl-toolchain')!==f.has('--shacl-work-root'))fail('INVALID_ARGUMENTS','Select both installed SHACL toolchain and private worker directory');
-    const validation=f.has('--shacl-toolchain')?{toolchainFile:f.get('--shacl-toolchain')!,workRoot:f.get('--shacl-work-root')!}:undefined;
-    const reasoning=f.has('--dl-toolchain')?{toolchainFile:f.get('--dl-toolchain')!,workRoot:f.get('--dl-work-root')!}:undefined;
+    if(f.has('--systemd-digest')&&!f.has('--dl-toolchain')&&!f.has('--shacl-toolchain'))fail('INVALID_ARGUMENTS','Isolation selection requires a formal executor');
+    const systemd=selectedSystemd(f);
+    const validation=f.has('--shacl-toolchain')?{toolchainFile:f.get('--shacl-toolchain')!,workRoot:f.get('--shacl-work-root')!,...(systemd?{systemd}:{})}:undefined;
+    const reasoning=f.has('--dl-toolchain')?{toolchainFile:f.get('--dl-toolchain')!,workRoot:f.get('--dl-work-root')!,...(systemd?{systemd}:{})}:undefined;
     const server=await listenStandalone({root:f.get('--root')!,workspaceId:f.get('--workspace')!,serviceId:f.get('--service')!,port:f.has('--port')?integer(f.get('--port')!):0,reasoning,validation});
     emit({status:'LISTENING',origin:server.origin,mcpUrl:server.origin+'/mcp',identity:{...server.identity},implementationStage:'P3_IMPLEMENTATION'});
     await new Promise<void>(resolve=>{const stop=()=>{process.off('SIGTERM',stop);process.off('SIGINT',stop);resolve();};process.once('SIGTERM',stop);process.once('SIGINT',stop);});

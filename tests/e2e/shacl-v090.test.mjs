@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,realpathSync,rmSync,readFileSync,writeFileSync} from 'node:fs';
+import {mkdtempSync,realpathSync,rmSync,readFileSync,writeFileSync,mkdirSync,symlinkSync,copyFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createServer} from 'node:http';
 import {createSHACLRunner} from '../../dist/native-v2/shacl-runner.js';
-import {readSHACLToolchain} from '../../dist/native-v2/shacl-toolchain.js';
+import {readSHACLToolchain,verifySHACLToolchain} from '../../dist/native-v2/shacl-toolchain.js';
+import {inventory} from '../../dist/reasoning/toolchain.js';
 import {readWorkerAttempt} from '../../dist/installation/worker-journal.js';
 import {validateSHACLRequest,shaclIdentities} from '../../dist/native-v2/shacl-request.js';
 import {hash,hashBytes} from '../../dist/standalone/validation.js';
@@ -106,4 +107,17 @@ test('one worker lock, timeout and cancellation never return partial conformance
 });
 test('an installed adapter mismatch is rejected before any validation process',t=>{
  const r=runner(t),value=JSON.parse(readFileSync(binding,'utf8'));value.adapterDigest=hashBytes('different worker');const {digest:_,...identity}=value;value.digest=hash(identity);const path=join(r.root,'toolchain.json');writeFileSync(path,JSON.stringify(value),{mode:0o600});assert.throws(()=>readSHACLToolchain(path),{code:'TOOLCHAIN_DRIFT'});
+});
+test('Python directory aliases require a fully inventoried target and preserve byte drift checks',t=>{
+ // Synthetic filesystem boundary test, not a Python execution/conformance claim.
+ const root=realpathSync(mkdtempSync(join(tmpdir(),'ontology-python-links-')));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const selected=readSHACLToolchain(binding),runtimeRoot=join(root,'runtime'),workerRoot=join(root,'worker');
+ for(const path of ['python/lib','venv/lib','unselected'])mkdirSync(join(runtimeRoot,path),{recursive:true,mode:0o700});mkdirSync(workerRoot,{mode:0o700});
+ copyFileSync(join(selected.root,'worker.py'),join(workerRoot,'worker.py'));
+ writeFileSync(join(runtimeRoot,'python/lib/module.py'),'# fixture\n');writeFileSync(join(runtimeRoot,'venv/lib/module.py'),'# fixture\n');writeFileSync(join(runtimeRoot,'unselected/module.py'),'# outside selected inventory\n');
+ const alias=join(runtimeRoot,'venv/lib64');symlinkSync('lib',alias);
+ const bound={...selected,root:workerRoot,runtimeRoot,runtimeFiles:inventory(runtimeRoot,['python','venv'])};verifySHACLToolchain(bound);
+ writeFileSync(join(runtimeRoot,'venv/lib/module.py'),'# changed\n');assert.throws(()=>verifySHACLToolchain(bound),{code:'TOOLCHAIN_DRIFT'});
+ rmSync(alias);symlinkSync('../unselected',alias);bound.runtimeFiles=inventory(runtimeRoot,['python','venv']);assert.throws(()=>verifySHACLToolchain(bound),{code:'TOOLCHAIN_DRIFT'});
+ rmSync(alias);symlinkSync(workerRoot,alias);assert.throws(()=>verifySHACLToolchain(bound),{code:'UNSAFE_PATH'});
 });

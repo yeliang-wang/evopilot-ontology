@@ -1,5 +1,7 @@
 import {runOwnedWorker} from '../installation/worker-process.js';
 import type {WorkerObservation} from '../installation/worker-process.js';
+import {workerIsolationConfiguration,verifySystemdBinding} from '../installation/systemd-binding.js';
+import type {SystemdBinding} from '../installation/systemd-binding.js';
 import {join} from 'node:path';
 import {operatorLock,outsideSource,assertSeparate} from '../installation/files.js';
 import {privatePath} from '../standalone/workspace.js';
@@ -13,16 +15,18 @@ import {readSHACLToolchain,verifySHACLToolchain} from './shacl-toolchain.js';
 
 const statuses:SHACLStatus[]=['CONFORMS','NONCONFORMING','INVALID_INPUT','MISSING_IMPORT','INCOMPLETE_COVERAGE','UNSUPPORTED','TIMEOUT','CANCELLED','FAILED'];
 export const SHACL_PYTHON_ARGUMENTS=Object.freeze(['-I','-B']);
-export function createSHACLRunner(options:{toolchainFile:string;workRoot:string}){
+export function createSHACLRunner(options:{toolchainFile:string;workRoot:string;systemd?:SystemdBinding}){
+  const systemd=options.systemd?structuredClone(options.systemd):undefined;if(systemd)verifySystemdBinding(systemd);
   const binding=readSHACLToolchain(options.toolchainFile);
   privatePath(options.workRoot,true);const workRoot=outsideSource(options.workRoot);
   assertSeparate(workRoot,binding.root);assertSeparate(workRoot,binding.runtimeRoot);
   return {
     toolchainDigest:binding.digest,
+    workerIsolationDigest:systemd?.digest??null,
     async run(value:unknown,options:{timeoutMs?:number;signal?:AbortSignal}&WorkerObservation={}):Promise<SHACLResponse>{
       validateSHACLRequest(value);const request=structuredClone(value),identities=shaclIdentities(request),timeoutMs=options.timeoutMs??SHACL_LIMITS.taskMs;
       if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>SHACL_LIMITS.taskMs)fail('INVALID_INPUT','SHACL deadline exceeds the fixed envelope');
-      const configurationDigest=hash({timeoutMs,python:[...SHACL_PYTHON_ARGUMENTS],inference:'none',metaSHACL:true,advanced:false,js:false,imports:false,limits:{...SHACL_LIMITS}}),started=performance.now();
+      const configurationDigest=hash({timeoutMs,python:[...SHACL_PYTHON_ARGUMENTS],inference:'none',metaSHACL:true,advanced:false,js:false,imports:false,limits:{...SHACL_LIMITS},...workerIsolationConfiguration(systemd?.digest??null)}),started=performance.now();
       const envelope={schema:'ontology-shacl-result/v2' as const,requestId:request.requestId,...identities,configurationDigest,toolchainDigest:binding.digest};
       const failure=(status:SHACLStatus,code:string,message:string,result:Json={}):SHACLResponse=>({...envelope,status,complete:false,elapsedMs:Math.ceil(performance.now()-started),result,error:{code,message}});
       if(options.signal?.aborted)return failure('CANCELLED','CANCELLED_BEFORE_START','Cancelled before validation');
@@ -33,9 +37,9 @@ export function createSHACLRunner(options:{toolchainFile:string;workRoot:string}
         if(options.signal?.aborted)return failure('CANCELLED','CANCELLED_BEFORE_START','Cancelled before validation');
         const {outcome,stdout,stderr}=await runOwnedWorker({workRoot,requestId:request.requestId,requestDigest:identities.requestDigest,configurationDigest,toolchainDigest:binding.digest,
           executable:binding.python,args:[...SHACL_PYTHON_ARGUMENTS,join(binding.root,'worker.py')],env:{PATH:'',LANG:'C.UTF-8',TZ:'UTC',PYTHONDONTWRITEBYTECODE:'1',PYTHONNOUSERSITE:'1',TMPDIR:workRoot},
-          input:JSON.stringify({request,...identities,configurationDigest,limits:SHACL_LIMITS}),timeoutMs,outputBytes:SHACL_LIMITS.outputBytes,diagnosticBytes:SHACL_LIMITS.diagnosticBytes,signal:options.signal,beforeDispatch:options.beforeDispatch});
+          input:JSON.stringify({request,...identities,configurationDigest,limits:SHACL_LIMITS}),timeoutMs,outputBytes:SHACL_LIMITS.outputBytes,diagnosticBytes:SHACL_LIMITS.diagnosticBytes,signal:options.signal,beforeDispatch:options.beforeDispatch,systemd});
         const diagnostic={stderrDigest:hashBytes(stderr),stderrBytes:outcome.stderrBytes,exitCode:outcome.exitCode,signal:outcome.signal};
-        if(outcome.reason){const status:SHACLStatus=outcome.reason==='TASK_DEADLINE'?'TIMEOUT':['CANCELLED','OWNER_LOST'].includes(outcome.reason)?'CANCELLED':'FAILED';return failure(status,outcome.reason,'Owned validation worker did not complete; retained process exit is confirmed',diagnostic);}
+        if(outcome.reason){const status:SHACLStatus=outcome.reason==='TASK_DEADLINE'?'TIMEOUT':['CANCELLED','OWNER_LOST'].includes(outcome.reason)?'CANCELLED':'FAILED';return failure(status,outcome.reason,'Owned validation worker did not complete; retained execution termination or no-launch fence is confirmed',diagnostic);}
         if(outcome.state!=='EXITED'||outcome.exitCode!==0)return failure('FAILED','WORKER_EXIT','Validation worker did not complete',diagnostic);
         try{
           const actual:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(stdout));boundedJSON(actual,SHACL_LIMITS.outputBytes);

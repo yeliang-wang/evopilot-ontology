@@ -1,4 +1,5 @@
 import type {WorkerObservation} from '../installation/worker-process.js';
+import {workerIsolationConfiguration} from '../installation/systemd-binding.js';
 import type {createDLRunner} from '../reasoning/runner.js';
 import {DL_JVM_ARGUMENTS} from '../reasoning/runner.js';
 import {closureDigest} from '../reasoning/request.js';
@@ -29,13 +30,14 @@ export function validationPlan(requestId:string,model:ModelAdmission,expected:Ex
   if(model.draft.expectationsDigest!==expected.digest||model.draft.assetId!==expected.definition.assetId||model.draft.sourceSetDigest!==expected.definition.sourceSetDigest||model.draft.intentDigest!==expected.definition.intentDigest)fail('EXPECTATIONS_BINDING_CONFLICT','Model must bind these exact independent expectations',409);
   return structuredClone({schema:'ontology-validation-plan/v2',requestId,modelDigest:model.digest,expectationsDigest:expected.digest,closureDigest:model.closureDigest,model:model.draft,expectations:expected.definition,mappingComplete:model.mapping.complete,view});
 }
-export function validationConfiguration(timeoutMs:number):string {
-  return hash({schema:'ontology-validation-configuration/v2',timeoutMs,limits:{...VALIDATION_LIMITS},dl:{limits:{...DL_LIMITS},jvm:[...DL_JVM_ARGUMENTS]},shacl:{limits:{...SHACL_LIMITS},python:[...SHACL_PYTHON_ARGUMENTS],inference:'none',metaSHACL:true,advanced:false,js:false,imports:false}});
+export function validationConfiguration(timeoutMs:number,isolationDigest:string|null=null):string {
+  return hash({schema:'ontology-validation-configuration/v2',timeoutMs,limits:{...VALIDATION_LIMITS},dl:{limits:{...DL_LIMITS},jvm:[...DL_JVM_ARGUMENTS]},shacl:{limits:{...SHACL_LIMITS},python:[...SHACL_PYTHON_ARGUMENTS],inference:'none',metaSHACL:true,advanced:false,js:false,imports:false},...workerIsolationConfiguration(isolationDigest)});
 }
 export function createValidationRunner(dl:ReturnType<typeof createDLRunner>,shacl:ReturnType<typeof createSHACLRunner>){
+  if(dl.workerIsolationDigest!==shacl.workerIsolationDigest)fail('WORKER_ISOLATION_BINDING','DL and SHACL must use the same selected isolation boundary',409);
   const toolchainDigest=hash({dl:dl.toolchainDigest,shacl:shacl.toolchainDigest});
-  return {toolchainDigest,async run(value:ValidationPlan,options:{timeoutMs:number;signal:AbortSignal;progress:(detail:Json)=>void}&WorkerObservation):Promise<ValidationResponse>{
-    const plan=structuredClone(value),requestDigest=hash(plan as unknown as Json),configurationDigest=validationConfiguration(options.timeoutMs),started=performance.now(),deadline=started+options.timeoutMs;
+  return {toolchainDigest,configurationDigest:(timeoutMs:number)=>validationConfiguration(timeoutMs,dl.workerIsolationDigest),async run(value:ValidationPlan,options:{timeoutMs:number;signal:AbortSignal;progress:(detail:Json)=>void}&WorkerObservation):Promise<ValidationResponse>{
+    const plan=structuredClone(value),requestDigest=hash(plan as unknown as Json),configurationDigest=validationConfiguration(options.timeoutMs,dl.workerIsolationDigest),started=performance.now(),deadline=started+options.timeoutMs;
     if(plan.modelDigest!==hash(plan.model as unknown as Json)||plan.expectationsDigest!==hash(plan.expectations as unknown as Json)||plan.closureDigest!==closureDigest(plan.view.closure as DLRequest['closure'])||hash(plan.view.closure as unknown as Json)!==hash(plan.model.closure as unknown as Json))fail('CORRUPT_STATE','Validation snapshots differ from immutable identities',409);
     const chosen:SHACLRequest={schema:'ontology-shacl-request/v2',requestId:plan.requestId,modelDigest:plan.modelDigest,view:plan.view,shapes:plan.model.shapes,expectations:{digest:hash(plan.expectations.requiredShapes as unknown as Json),requiredShapes:plan.expectations.requiredShapes}};
     const envelope={schema:'ontology-validation-result/v2' as const,viewKind:plan.view.kind,viewDigest:shaclIdentities(chosen).viewDigest,requestId:plan.requestId,requestDigest,modelDigest:plan.modelDigest,expectationsDigest:plan.expectationsDigest,closureDigest:plan.closureDigest,configurationDigest,toolchainDigest};

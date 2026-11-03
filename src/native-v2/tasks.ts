@@ -1,11 +1,11 @@
 import type {DatabaseSync} from 'node:sqlite';
-import {createDLRunner,DL_JVM_ARGUMENTS} from '../reasoning/runner.js';
+import {createDLRunner} from '../reasoning/runner.js';
 import {validateDLRequest} from '../reasoning/request.js';
 import {DL_LIMITS} from '../reasoning/types.js';
 import type {DLRequest,DLResponse} from '../reasoning/types.js';
 import {createSHACLRunner} from './shacl-runner.js';
 import {expectationStore} from './expectations-store.js';
-import {createValidationRunner,validationPlan,validationConfiguration,VALIDATION_LIMITS} from './validation-runner.js';
+import {createValidationRunner,validationPlan,VALIDATION_LIMITS} from './validation-runner.js';
 import type {ValidationResponse} from './validation-runner.js';
 import {viewStore} from './view-store.js';
 import {shaclIdentities} from './shacl-request.js';
@@ -14,10 +14,11 @@ import {modelStore} from './model-store.js';
 import {exact,id,digest,hash,canonical} from '../standalone/validation.js';
 import {fail,ServiceError} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
-import {WORKER_PROTOCOL} from '../installation/worker-journal.js';
+import {WORKER_PROTOCOL,ISOLATED_WORKER_PROTOCOL} from '../installation/worker-journal.js';
 import type {WorkerReference} from '../installation/worker-journal.js';
+import type {SystemdBinding} from '../installation/systemd-binding.js';
 
-export interface ReasoningConfiguration {toolchainFile:string;workRoot:string;}
+export interface ReasoningConfiguration {toolchainFile:string;workRoot:string;systemd?:SystemdBinding;}
 export const TASK_TABLES=`
  CREATE TABLE native_reasoning_tasks(id TEXT PRIMARY KEY,task_kind TEXT NOT NULL,expectations_digest TEXT,project_id TEXT NOT NULL,asset_id TEXT NOT NULL,model_digest TEXT NOT NULL,principal_id TEXT NOT NULL,request_id TEXT NOT NULL,state TEXT NOT NULL,request TEXT NOT NULL,request_digest TEXT NOT NULL,closure_digest TEXT NOT NULL,configuration_digest TEXT NOT NULL,toolchain_digest TEXT NOT NULL,timeout_ms INTEGER NOT NULL,result TEXT,result_digest TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,FOREIGN KEY(project_id,asset_id,model_digest) REFERENCES native_models(project_id,asset_id,digest));
  CREATE TABLE native_reasoning_events(sequence INTEGER PRIMARY KEY,task_id TEXT NOT NULL,event TEXT NOT NULL,document TEXT NOT NULL,digest TEXT NOT NULL,recorded_at TEXT NOT NULL,FOREIGN KEY(task_id) REFERENCES native_reasoning_tasks(id));
@@ -82,9 +83,9 @@ export function reasoningTasks(db:DatabaseSync,guard:()=>void,configuration?:Rea
     }
     const timeoutMs=input.timeoutMs??maximum;
     if(!Number.isSafeInteger(timeoutMs)||(timeoutMs as number)<1||(timeoutMs as number)>maximum)fail('INVALID_INPUT','Task deadline exceeds its fixed envelope');
-    const configurationDigest=kind==='dl'?hash({timeoutMs:timeoutMs as number,jvm:[...DL_JVM_ARGUMENTS],limits:{...DL_LIMITS}}):validationConfiguration(timeoutMs as number),created=now(),requestDigest=hash(request),toolchainDigest=toolchain(kind)!;
+    const configurationDigest=(kind==='dl'?runner:suite!).configurationDigest(timeoutMs as number),created=now(),requestDigest=hash(request),toolchainDigest=toolchain(kind)!;
     db.prepare('INSERT INTO native_reasoning_tasks(id,task_kind,expectations_digest,project_id,asset_id,model_digest,principal_id,request_id,state,request,request_digest,closure_digest,configuration_digest,toolchain_digest,timeout_ms,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(taskId,kind,expectationsDigest,projectId,input.assetId,input.modelDigest,principalId,requestId,'QUEUED',canonical(request),requestDigest,model.closureDigest,configurationDigest,toolchainDigest,timeoutMs as number,created,created);
-    event(taskId,'QUEUED',{kind,projectId,assetId:input.assetId,modelDigest:input.modelDigest,expectationsDigest,requestDigest,closureDigest:model.closureDigest,configurationDigest,toolchainDigest,workerProtocol:WORKER_PROTOCOL});
+    event(taskId,'QUEUED',{kind,projectId,assetId:input.assetId,modelDigest:input.modelDigest,expectationsDigest,requestDigest,closureDigest:model.closureDigest,configurationDigest,toolchainDigest,workerProtocol:runner.workerIsolationDigest?ISOLATED_WORKER_PROTOCOL:WORKER_PROTOCOL,...(runner.workerIsolationDigest?{workerIsolationDigest:runner.workerIsolationDigest}:{})});
     return {taskId,kind,state:'QUEUED',modelDigest:input.modelDigest,expectationsDigest,closureDigest:model.closureDigest,configurationDigest,toolchainDigest,authority:false};
   }
   async function execute(r:Row,controller:AbortController):Promise<void>{

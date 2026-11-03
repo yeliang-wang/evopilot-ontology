@@ -21,24 +21,29 @@ export function bootIdentity():string {
   return value;
 }
 export function ownerProcess(pid=process.pid):OwnerProcess {
+  const bootId=bootIdentity();
   const stat=readFileSync('/proc/'+pid+'/stat','utf8'),fields=stat.slice(stat.lastIndexOf(') ')+2).trim().split(' '),startTicks=fields[19];
   if(!startTicks||!/^[1-9][0-9]*$/.test(startTicks)||['Z','X'].includes(fields[0]))fail('WORKER_ISOLATION_EVIDENCE','Invalid or terminated owner process birth identity',409);
-  return {bootId:bootIdentity(),pid,startTicks};
+  return {bootId,pid,startTicks};
 }
 export function ownerPresent(expected:OwnerProcess):boolean {
   try{return hash({...ownerProcess(expected.pid)})===hash({...expected});}catch{return false;}
 }
-export function validateSystemdSelection(value:unknown):asserts value is SystemdSelection {
-  exact(value,['binding','owner']);const b=value.binding,o=value.owner;
+export function validateSystemdBinding(b:unknown):asserts b is SystemdBinding {
   exact(b,['schema','uid','runtimeDirectory','machineId','managerVersion','run','bus','manager','node','digest']);
   if(b.schema!=='ontology-systemd-binding/v1'||!Number.isSafeInteger(b.uid)||(b.uid as number)<1||b.runtimeDirectory!=='/run/user/'+b.uid||
     typeof b.machineId!=='string'||!/^sha256:[a-f0-9]{64}$/.test(b.machineId)||typeof b.managerVersion!=='string'||!/^255\./.test(b.managerVersion))
     fail('WORKER_ISOLATION_BINDING','Unsupported systemd binding',409);
   for(const key of ['run','bus','manager','node']){const f=b[key];exact(f,['path','digest']);text(f.path,4096);digest(f.digest);if(typeof f.path!=='string'||!f.path.startsWith('/')||/[\0\r\n]/.test(f.path))fail('WORKER_ISOLATION_BINDING','Invalid systemd executable binding',409);}
   digest(b.digest);const {digest:bound,...identity}=b;if(hash(identity as Json)!==bound)fail('WORKER_ISOLATION_BINDING','Systemd binding digest differs',409);
+}
+export function validateSystemdSelection(value:unknown):asserts value is SystemdSelection {
+  exact(value,['binding','owner']);validateSystemdBinding(value.binding);const o=value.owner;
   exact(o,['bootId','pid','startTicks']);text(o.bootId,36);text(o.startTicks,32);
   if(typeof o.bootId!=='string'||!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(o.bootId)||!Number.isSafeInteger(o.pid)||(o.pid as number)<1||typeof o.startTicks!=='string'||!/^\d+$/.test(o.startTicks))fail('WORKER_ISOLATION_BINDING','Invalid initiating owner identity',409);
 }
+/** Additive identity leaves historical native configuration hashes unchanged. */
+export const workerIsolationConfiguration=(bindingDigest:string|null):Record<string,Json>=>bindingDigest===null?{}:{workerIsolation:{protocol:'ontology-owned-worker/v2',bindingDigest}};
 /** Typed D-Bus JSON, fixed local user socket, bounded output/deadline, no shell. */
 export function systemdCall(binding:SystemdBinding,path:string,iface:string,method:string,signature='',args:string[]=[]):unknown {
   try{

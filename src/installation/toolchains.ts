@@ -10,11 +10,13 @@ import type {Json} from '../standalone/types.js';
 import {readDLToolchain,verifyDLToolchain} from '../reasoning/toolchain.js';
 import {readSHACLToolchain,verifySHACLToolchain} from '../native-v2/shacl-toolchain.js';
 import type {ReasoningConfiguration} from '../native-v2/tasks.js';
+import {validateSystemdBinding,verifySystemdBinding} from './systemd-binding.js';
+import type {SystemdBinding} from './systemd-binding.js';
 
 export interface ToolSelection {toolchainFile:string;toolchainDigest:string;}
-export interface BindToolchainsInput {requestId:string;previousBindingDigest:string|null;dl:ToolSelection;shacl:ToolSelection;}
+export interface BindToolchainsInput {requestId:string;previousBindingDigest:string|null;dl:ToolSelection;shacl:ToolSelection;systemd?:SystemdBinding;}
 export interface ManagedToolchains {
-  schema:'ontology-managed-toolchain-binding/v1';installationId:string;workspaceId:string;serviceId:string;runtimeDigest:string;
+  schema:'ontology-managed-toolchain-binding/v1'|'ontology-managed-toolchain-binding/v2';systemd?:SystemdBinding;installationId:string;workspaceId:string;serviceId:string;runtimeDigest:string;
   requestId:string;requestDigest:string;previousDigest:string|null;dl:ToolSelection;shacl:ToolSelection;workRoot:string;recordedAt:string;
 }
 export interface ToolchainRecord {digest:string;binding:ManagedToolchains;}
@@ -25,11 +27,11 @@ function selection(value:unknown):asserts value is ToolSelection {
   if(!isAbsolute(value.toolchainFile))fail('UNSAFE_PATH','Absolute private toolchain file required');
 }
 export function validateToolchainInput(value:unknown):asserts value is BindToolchainsInput {
-  exact(value,['requestId','previousBindingDigest','dl','shacl']);id(value.requestId);if(value.previousBindingDigest!==null)digest(value.previousBindingDigest);selection(value.dl);selection(value.shacl);
+  exact(value,['requestId','previousBindingDigest','dl','shacl'],['systemd']);id(value.requestId);if(value.previousBindingDigest!==null)digest(value.previousBindingDigest);selection(value.dl);selection(value.shacl);if(value.systemd!==undefined)validateSystemdBinding(value.systemd);
 }
 export function toolchainRequestDigest(i:Installation,input:BindToolchainsInput):string {
   validateToolchainInput(input);
-  return hash({installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,runtimeDigest:i.runtime.digest,previousBindingDigest:input.previousBindingDigest,dl:{...input.dl},shacl:{...input.shacl}});
+  return hash({installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,runtimeDigest:i.runtime.digest,previousBindingDigest:input.previousBindingDigest,dl:{...input.dl},shacl:{...input.shacl},...(input.systemd?{systemd:input.systemd as unknown as Json}:{})});
 }
 export function readToolchainLedger(i:Installation):Ledger {
   const file=join(i.root,'toolchain-bindings.json');
@@ -43,10 +45,12 @@ export function readToolchainLedger(i:Installation):Ledger {
   let previous:string|null=null;const ids=new Set<string>();
   for(const entry of value.records){
     exact(entry,['digest','binding']);digest(entry.digest);const b=entry.binding;
-    exact(b,['schema','installationId','workspaceId','serviceId','runtimeDigest','requestId','requestDigest','previousDigest','dl','shacl','workRoot','recordedAt']);
+    exact(b,['schema','installationId','workspaceId','serviceId','runtimeDigest','requestId','requestDigest','previousDigest','dl','shacl','workRoot','recordedAt'],['systemd']);
+    if(b.schema==='ontology-managed-toolchain-binding/v2')validateSystemdBinding(b.systemd);
+    else if(b.schema!=='ontology-managed-toolchain-binding/v1'||b.systemd!==undefined)fail('TOOLCHAIN_BINDING_CORRUPT','Unknown toolchain isolation contract',409);
     selection(b.dl);selection(b.shacl);id(b.requestId);digest(b.requestDigest);text(b.recordedAt,40);
-    if(b.schema!=='ontology-managed-toolchain-binding/v1'||b.installationId!==i.installationId||b.workspaceId!==i.workspaceId||b.serviceId!==i.serviceId||b.runtimeDigest!==i.runtime.digest||b.previousDigest!==previous||b.workRoot!==join(i.root,'formal-work')||ids.has(b.requestId))fail('TOOLCHAIN_BINDING_CORRUPT','Toolchain history owner, parent or runtime differs',409);
-    const input={requestId:b.requestId,previousBindingDigest:previous,dl:b.dl,shacl:b.shacl};
+    if(b.installationId!==i.installationId||b.workspaceId!==i.workspaceId||b.serviceId!==i.serviceId||b.runtimeDigest!==i.runtime.digest||b.previousDigest!==previous||b.workRoot!==join(i.root,'formal-work')||ids.has(b.requestId))fail('TOOLCHAIN_BINDING_CORRUPT','Toolchain history owner, parent or runtime differs',409);
+    const input={requestId:b.requestId,previousBindingDigest:previous,dl:b.dl,shacl:b.shacl,...(b.systemd?{systemd:b.systemd as unknown as SystemdBinding}:{})};
     if(toolchainRequestDigest(i,input)!==b.requestDigest||hash(b as unknown as Json)!==entry.digest)fail('TOOLCHAIN_BINDING_CORRUPT','Toolchain receipt differs from its immutable identity',409);
     ids.add(b.requestId);previous=entry.digest;
   }
@@ -67,7 +71,8 @@ function workDirectory(i:Installation,create:boolean):string {
   return root;
 }
 /** Verification never downloads, rebuilds, edits or substitutes an executor. */
-function verifySelections(i:Installation,input:Pick<BindToolchainsInput,'dl'|'shacl'>):void {
+function verifySelections(i:Installation,input:Pick<BindToolchainsInput,'dl'|'shacl'|'systemd'>):void {
+  if(input.systemd)verifySystemdBinding(input.systemd);
   for(const selected of [input.dl,input.shacl]){
     selection(selected);if(realpathSync(selected.toolchainFile)!==selected.toolchainFile)fail('UNSAFE_PATH','Canonical toolchain file path required');
   }
@@ -83,7 +88,8 @@ function verifySelections(i:Installation,input:Pick<BindToolchainsInput,'dl'|'sh
 export function verifyManagedToolchains(i:Installation,record:ToolchainRecord|null,prepareWork=false):{reasoning?:ReasoningConfiguration;validation?:ReasoningConfiguration} {
   if(!record)return {};
   verifySelections(i,record.binding);const workRoot=workDirectory(i,prepareWork);
-  return {reasoning:{toolchainFile:record.binding.dl.toolchainFile,workRoot},validation:{toolchainFile:record.binding.shacl.toolchainFile,workRoot}};
+  const isolated=record.binding.systemd?{systemd:structuredClone(record.binding.systemd)}:{};
+  return {reasoning:{toolchainFile:record.binding.dl.toolchainFile,workRoot,...isolated},validation:{toolchainFile:record.binding.shacl.toolchainFile,workRoot,...isolated}};
 }
 /** Caller holds installation and workspace leases, and has excluded unresolved tasks. */
 export function recordToolchainBinding(i:Installation,input:BindToolchainsInput,ledger:Ledger):ToolchainRecord {
@@ -94,7 +100,7 @@ export function recordToolchainBinding(i:Installation,input:BindToolchainsInput,
   // Existing directories must be empty or prove their original owner before
   // committing. Creation after the receipt is resumable by an explicit start.
   if(existsSync(workRoot)){privatePath(workRoot,true);if(readdirSync(workRoot).length)workDirectory(i,false);}
-  const binding:ManagedToolchains={schema:'ontology-managed-toolchain-binding/v1',installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,runtimeDigest:i.runtime.digest,
+  const binding:ManagedToolchains={schema:input.systemd?'ontology-managed-toolchain-binding/v2':'ontology-managed-toolchain-binding/v1',...(input.systemd?{systemd:structuredClone(input.systemd)}:{}),installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,runtimeDigest:i.runtime.digest,
     requestId:input.requestId,requestDigest:toolchainRequestDigest(i,input),previousDigest:previous,dl:{...input.dl},shacl:{...input.shacl},workRoot,recordedAt:new Date().toISOString()};
   const record={digest:hash(binding as unknown as Json),binding},next:Ledger={...ledger,records:[...ledger.records,record]};
   if(Buffer.byteLength(JSON.stringify(next))>2*1024*1024)fail('TOOLCHAIN_BINDING_LIMIT','Toolchain history byte limit reached',409);
