@@ -8,6 +8,7 @@ import { expectationStore } from '../native-v2/expectations-store.js';
 import { viewStore } from '../native-v2/view-store.js';
 import { lifecycleStore } from '../native-v2/lifecycle-store.js';
 import { explanationRead } from '../native-v2/explanations.js';
+import { comparisonRead } from '../native-v2/comparison-store.js';
 import { readDLToolchain,verifyDLToolchain } from '../reasoning/toolchain.js';
 import { readSHACLToolchain,verifySHACLToolchain } from '../native-v2/shacl-toolchain.js';
 import { modelStore } from '../native-v2/model-store.js';
@@ -17,7 +18,7 @@ import { LIMITS, fail } from './types.js';
 import type { Json, Receipt, Project, Grant } from './types.js';
 import { canonical, exact, hash, hashBytes, id, json, text, digest, validateIntent, validateRequest } from './validation.js';
 
-export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','project.list','project.inspect','intent.read','receipt.read','source.inspect','source.read','source.fragment.read','model.list','model.inspect','model.document.read','reasoning.list','reasoning.inspect','reasoning.result.read','expectations.list','expectations.inspect','expectations.read','validation.list','validation.inspect','validation.result.read','view.list','view.inspect','view.read','view.query','explanation.read','review.list','review.inspect','review.report.read','delivery.list','delivery.inspect','delivery.export.read']);
+export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','project.list','project.inspect','intent.read','receipt.read','source.inspect','source.read','source.fragment.read','model.list','model.inspect','model.document.read','model.compare.read','reasoning.list','reasoning.inspect','reasoning.result.read','expectations.list','expectations.inspect','expectations.read','validation.list','validation.inspect','validation.result.read','view.list','view.inspect','view.read','view.query','explanation.read','review.list','review.inspect','review.report.read','delivery.list','delivery.inspect','delivery.export.read']);
 export const WRITE_OPERATIONS = Object.freeze(['project.create','intent.record','source.admit','model.record','reasoning.start','reasoning.cancel','expectations.record','validation.start','validation.cancel','view.record','review.prepare','review.decide','delivery.record']);
 export function createStandaloneService(options: {root: string; workspaceId: string; serviceId: string;reasoning?:ReasoningConfiguration;validation?:ReasoningConfiguration}) {
   const store=openWorkspace(options.root,options), {db,identity}=store;
@@ -167,6 +168,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
       } else if(operation.startsWith('model.')) {
         if(!current)fail('NOT_FOUND','Project not initialized',404);
         if(operation==='model.record')result=models.record(projectId,input,current.revision+1,new Date().toISOString());
+        else if(operation==='model.compare.read')result=comparisonRead(db,identity,projectId,input,{dl:tasks.toolchainDigest,validation:tasks.validationToolchainDigest});
         else if(operation==='model.list')result=models.list(projectId,input);
         else if(operation==='model.inspect')result=models.inspect(projectId,input);
         else result=models.read(projectId,input);
