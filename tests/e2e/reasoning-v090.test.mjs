@@ -41,7 +41,7 @@ test('engine selection covers the whole closure and query without dropping non-A
   assert.equal(optimized.result.reasoningEngine,'JFACT_5_0_3_ALC');
   assert.equal(optimized.result.engineSelectionPolicy,'STRUCTURAL_ALC_V1');
   const keys=await run(keyed,{kind:'entailment',query:query('SameIndividual(:a :b)')},'ENTAILED');
-  assert.equal(keys.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  assert.equal(keys.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
   const imported=request('',{kind:'entailment',query:query('SameIndividual(:a :b)')});
   imported.closure.documents=[
     document(ofn('Import(<'+ns+'key-model>)').replace('Ontology(','Ontology(<'+ns+'root-model> '),{ontologyIri:ns+'root-model'}),
@@ -49,15 +49,15 @@ test('engine selection covers the whole closure and query without dropping non-A
   ];
   imported.closure.imports=[{from:'root',iri:ns+'key-model',to:'keys'}];
   const importedResult=await runner.run(imported);assert.equal(importedResult.status,'ENTAILED',JSON.stringify(importedResult));
-  assert.equal(importedResult.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  assert.equal(importedResult.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
   const datatypes=declaration({data:['n'],individuals:['a']})+' Declaration(Datatype(:Small)) DatatypeDefinition(:Small DataOneOf("1"^^xsd:integer)) DataPropertyAssertion(:n :a "1"^^xsd:integer)';
   const range=await run(datatypes,{kind:'entailment',query:query('ClassAssertion(DataSomeValuesFrom(:n :Small) :a)')},'ENTAILED');
-  assert.equal(range.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  assert.equal(range.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
   // Unsupported query structure must select complete DL even with an ALC premise.
   const queryOnly=await run(sensitive,{kind:'entailment',query:query('ClassAssertion(ObjectMinCardinality(1 :accesses) :api)')},'ENTAILED');
-  assert.equal(queryOnly.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  assert.equal(queryOnly.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
   const projection=await run(sensitive,{kind:'classHierarchy',entities:[ns+'SensitiveService'],direct:false});
-  assert.equal(projection.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  assert.equal(projection.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
 });
 
 test('empty logical conclusion is explicitly vacuous and is not a business coverage claim',async()=>{
@@ -75,7 +75,7 @@ test('XML string datatype lexical checks admit ordinary names and empty tokens i
   const assertions=values.map(([type,value],i)=>`DataPropertyAssertion(:p${i} :a ${JSON.stringify(value)}^^xsd:${type})`).join('\n');
   const strings=values.map(([,value],i)=>`DataPropertyAssertion(:p${i} :a ${JSON.stringify(value)}^^xsd:string)`).join('\n');
   const proof=await run(decl+assertions,{kind:'entailment',query:query(strings)},'ENTAILED');
-  assert.equal(proof.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  assert.equal(proof.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
   await run(decl+strings,{kind:'entailment',query:query(assertions)},'ENTAILED');
 });
 
@@ -107,6 +107,43 @@ test('invalid XML names and tokens are rejected in premises, queries and nested 
   }
   const annotation='Declaration(AnnotationProperty(:note)) Declaration(Class(:A)) SubClassOf(Annotation(:note "a:b"^^xsd:NCName) :A owl:Thing)';
   await run(annotation,{kind:'legality'},'INVALID_INPUT');
+});
+
+const literal=value=>'"'+value.replaceAll('\\','\\\\').replaceAll('"','\\"')+'"';
+test('supplementary XML strings and character length facets retain actual Unicode values',async()=>{
+  const types=['Name','NCName','NMTOKEN','string','normalizedString','token'];
+  const props=types.map((_,i)=>'p'+i),decl=declaration({data:props,individuals:['a']});
+  const values=types.map((type,i)=>`DataPropertyAssertion(:p${i} :a "𐀀name"^^xsd:${type})`).join('\n');
+  await run(decl+values,{kind:'entailment',query:query(props.map(p=>`DataPropertyAssertion(:${p} :a "𐀀name")`).join('\n'))},'ENTAILED');
+  const one=declaration({data:['p'],individuals:['a']});
+  for(const [facet,count,expected] of [['length',1,'COMPLETED'],['minLength',2,'INCONSISTENT'],['maxLength',1,'COMPLETED']]){
+    await run(one+` DataPropertyRange(:p DatatypeRestriction(xsd:string xsd:${facet} "${count}"^^xsd:integer)) DataPropertyAssertion(:p :a "😀")`,{kind:'consistency'},expected);
+  }
+  // Both language-tag modes are a union when length intervals are converted
+  // to automata for a subsequent pattern restriction.
+  const plain='<http://www.w3.org/1999/02/22-rdf-syntax-ns#PlainLiteral>';
+  const range=` DataPropertyRange(:p DataIntersectionOf(DatatypeRestriction(${plain} xsd:length "1"^^xsd:integer) DatatypeRestriction(${plain} xsd:pattern ".")))`;
+  for(const value of ['"😀"','"😀"@en'])await run(one+range+` DataPropertyAssertion(:p :a ${value})`,{kind:'consistency'});
+});
+
+test('XSD regex grammar, categories and complements entail every independently fixed membership observation',async()=>{
+  const suite=JSON.parse(readFileSync(new URL('../fixtures/v090/datatype-regex.json',import.meta.url)));
+  const props=[],axioms=[],expected=[];
+  for(const c of suite.cases)for(const [member,values] of [[true,c.yes],[false,c.no]])for(const value of values){
+    const p='p'+props.length;props.push(p);axioms.push(`DataPropertyAssertion(:${p} :a ${literal(value)})`);
+    const restriction=`DatatypeRestriction(xsd:string xsd:pattern ${literal(c.pattern)})`;
+    expected.push(`ClassAssertion(DataSomeValuesFrom(:${p} ${member?restriction:`DataComplementOf(${restriction})`}) :a)`);
+  }
+  const proof=await run(declaration({data:props,individuals:['a']})+axioms.join('\n'),{kind:'entailment',query:query(expected.join('\n'))},'ENTAILED');
+  assert.deepEqual(proof.result.unknownUnicodeBlocks,['IsUnknownFutureBlock']);
+  assert.equal(proof.result.queryAxioms.length,expected.length);
+});
+
+test('invalid XSD regex syntax and valid over-budget expressions have distinct incomplete outcomes',async()=>{
+  const suite=JSON.parse(readFileSync(new URL('../fixtures/v090/datatype-regex.json',import.meta.url)));
+  const decl=declaration({data:['p']}),body=p=>decl+` DataPropertyRange(:p DatatypeRestriction(xsd:string xsd:pattern ${literal(p)}))`;
+  for(const pattern of suite.invalid){const invalid=await run(body(pattern),{kind:'legality'},'INVALID_INPUT');assert.equal(invalid.error.code,'XSD_REGEX');}
+  const limited=await run(body('a{10001}'),{kind:'legality'},'FAILED');assert.equal(limited.error.code,'REGEX_RESOURCE_LIMIT');assert.equal(limited.complete,false);
 });
 
 test('RDF singleton class expressions follow OWL 2 compatibility mapping including nested datatype facets',async()=>{
@@ -220,7 +257,7 @@ test('completed RDF input admits qualified data cardinalities before axiom mappi
 test('engine union simplification proves contradictions and entailments without empty-union constructor failures',async()=>{
   await run('EquivalentClasses(owl:Thing owl:Nothing)',{kind:'consistency'},'INCONSISTENT');
   const full=await run('Declaration(DataProperty(:marker)) DataPropertyRange(:marker xsd:string) EquivalentClasses(owl:Thing owl:Nothing)',{kind:'consistency'},'INCONSISTENT');
-  assert.equal(full.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  assert.equal(full.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
   const declarations=declaration({classes:['A','B'],individuals:['a']});
   await run(declarations+' SubClassOf(owl:Thing ObjectComplementOf(owl:Thing))',{kind:'consistency'},'INCONSISTENT');
   const body=declarations+' EquivalentClasses(:A ObjectUnionOf(owl:Nothing :B)) ClassAssertion(:A :a)';
@@ -294,9 +331,9 @@ test('joint anonymous-individual queries do not combine different witnesses into
   const body=declaration({classes:['B'],objects:['p'],individuals:['a','x','y']})+'\nObjectPropertyAssertion(:p :a :x) ClassAssertion(:B :y)';
   const task={kind:'entailment',query:query('ObjectPropertyAssertion(:p :a _:shared) ClassAssertion(:B _:shared)')};
   const negative=await run(body,task,'NOT_ENTAILED');
-  assert.equal(negative.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  assert.equal(negative.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
   const positive=await run(body+'\nClassAssertion(:B :x)',task,'ENTAILED');
-  assert.equal(positive.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  assert.equal(positive.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
 });
 
 test('pinned transitive imports combine Turtle and RDF/XML without fetching their addresses',async t=>{
@@ -352,9 +389,13 @@ test('deadline, cancellation and concurrent calls retain explicit incomplete out
 test('installed executable and engine-source drift is refused before execution',async()=>{
   const recipe=JSON.parse(readFileSync(new URL('../../toolchains/owl2-dl/engine-compat.json',import.meta.url)));
   assert.equal(hashBytes(readFileSync(join(binding.root,'engine-source','upstream-sources.jar'))),'sha256:'+recipe.sourceArchive.sha256);
-  assert.equal(hashBytes(readFileSync(join(binding.root,'engine-source','ExpressionManager.java'))),'sha256:'+recipe.patchedSourceSHA256);
+  for(const file of recipe.files)assert.equal(hashBytes(readFileSync(join(binding.root,'engine-source',file.sourceEntry.split('/').at(-1)))),'sha256:'+file.patchedSourceSHA256);
+  for(const file of recipe.ownedSources){
+    assert.equal(hashBytes(readFileSync(join(binding.root,'engine-source',file.file))),'sha256:'+file.sha256);
+    assert.equal(hashBytes(readFileSync(new URL('../../toolchains/owl2-dl/'+file.file,import.meta.url))),'sha256:'+file.sha256);
+  }
   assert.deepEqual(JSON.parse(readFileSync(join(binding.root,'engine-source','engine-compat.json'))),recipe);
-  for(const relative of ['worker.jar','engine-source/ExpressionManager.java','engine-source/engine-compat.json']){
+  for(const relative of ['worker.jar','engine-source/ExpressionManager.java','engine-source/XmlSchemaAutomata.java','engine-source/RDFPlainLiteralLengthInterval.java','engine-source/engine-compat.json']){
     const path=join(binding.root,relative),bytes=readFileSync(path);
     try{writeFileSync(path,Buffer.concat([bytes,Buffer.from('changed')]));await assert.rejects(runner.run(request(sensitive,{kind:'consistency'})),{code:'TOOLCHAIN_DRIFT'});}
     finally{writeFileSync(path,bytes);}

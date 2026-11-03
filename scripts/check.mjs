@@ -104,15 +104,29 @@ export async function checkSource() {
   assert.equal(await readFile(resolve(ROOT,'plugins/codex/skills/evopilot-ontology-expert/SKILL.md'),'utf8'),await readFile(resolve(ROOT,'src/expert/SKILL.md'),'utf8'),'Packaged Expert must be generated from its sole owner source');
   assert((await lstat(resolve(ROOT,'dist/standalone/cli.js'))).mode&0o111);
   const dl=JSON.parse(await readFile(resolve(ROOT,'toolchains/owl2-dl/dependencies.json'),'utf8'));
-  assert.equal(dl.schema,'ontology-dl-dependencies/v1');assert.equal(dl.engine,'hermit:1.4.5.519+evopilot.1;jfact:5.0.3;structural-alc:1');assert.equal(dl.owlapi,'owlapi-distribution:5.5.1');
+  assert.equal(dl.schema,'ontology-dl-dependencies/v1');assert.equal(dl.engine,'hermit:1.4.5.519+evopilot.2;jfact:5.0.3;structural-alc:1');assert.equal(dl.owlapi,'owlapi-distribution:5.5.1');
   assert.equal(dl.enginePatch.file,'engine-compat.json');
   const patchBytes=await readFile(resolve(ROOT,'toolchains/owl2-dl/engine-compat.json'));
   assert.equal(createHash('sha256').update(patchBytes).digest('hex'),dl.enginePatch.sha256);
-  const patch=JSON.parse(patchBytes);assert.equal(patch.schema,'ontology-dl-engine-compat/v1');assert.equal(patch.engine,'org.semanticweb.hermit:1.4.5.519+evopilot.1');
+  const patch=JSON.parse(patchBytes);assert.equal(patch.schema,'ontology-dl-engine-compat/v2');assert.equal(patch.engine,'org.semanticweb.hermit:1.4.5.519+evopilot.2');
   assert.equal(patch.upstreamEngine,'org.semanticweb.hermit:1.4.5.519');assert.equal(patch.license,'LGPL-3.0-or-later');
-  assert.equal(patch.sourceEntry,'org/semanticweb/HermiT/structural/ExpressionManager.java');
-  for(const value of [patch.sourceArchive.sha256,patch.sourceSHA256,patch.patchedSourceSHA256])assert.match(value,/^[a-f0-9]{64}$/);
-  assert(patch.changes.length>0&&patch.changes.every(c=>c.find&&typeof c.replace==='string'&&Number.isInteger(c.occurrences)&&c.occurrences>0));
+  assert.match(patch.sourceArchive.sha256,/^[a-f0-9]{64}$/);
+  assert.deepEqual(patch.files.map(f=>f.sourceEntry).sort(),[
+    'org/semanticweb/HermiT/structural/ExpressionManager.java',
+    'org/semanticweb/HermiT/datatypes/rdfplainliteral/RDFPlainLiteralPatternValueSpaceSubset.java',
+    'org/semanticweb/HermiT/datatypes/rdfplainliteral/RDFPlainLiteralLengthInterval.java',
+    'org/semanticweb/HermiT/datatypes/anyuri/AnyURIValueSpaceSubset.java',
+  ].sort());
+  for(const file of patch.files){
+    for(const value of [file.sourceSHA256,file.patchedSourceSHA256])assert.match(value,/^[a-f0-9]{64}$/);
+    assert(file.changes.length>0&&file.changes.every(c=>c.find&&typeof c.replace==='string'&&Number.isInteger(c.occurrences)&&c.occurrences>0));
+  }
+  assert.deepEqual(patch.ownedSources.map(f=>f.file),['XmlSchemaAutomata.java']);
+  for(const file of patch.ownedSources){
+    const source=resolve(ROOT,'toolchains/owl2-dl',file.file);
+    assert((await lstat(source)).isFile());
+    assert.equal(createHash('sha256').update(await readFile(source)).digest('hex'),file.sha256);
+  }
   assert(dl.files.length>0&&new Set(dl.files.map(f=>f.file)).size===dl.files.length);
   for(const f of dl.files){assert.match(f.file,/^[A-Za-z0-9._-]+\.jar$/);assert.match(f.sha256,/^[a-f0-9]{64}$/);assert(!f.repositoryPath.split('/').some(x=>['','..','.'].includes(x)));assert.equal(f.url,'https://repo.maven.apache.org/maven2/'+f.repositoryPath);assert(f.repositoryPath.endsWith('/'+f.file));}
   assert((await lstat(resolve(ROOT,'toolchains/owl2-dl/Worker.java'))).isFile());

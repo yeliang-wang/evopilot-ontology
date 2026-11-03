@@ -1,6 +1,6 @@
 {
   "schema": "ontology-dl-dependencies/v1",
-  "engine": "hermit:1.4.5.519+evopilot.1;jfact:5.0.3;structural-alc:1",
+  "engine": "hermit:1.4.5.519+evopilot.2;jfact:5.0.3;structural-alc:1",
   "owlapi": "owlapi-distribution:5.5.1",
   "files": [
     {
@@ -505,6 +505,6 @@
   "releaseReview": "NOT_EVALUATED",
   "enginePatch": {
     "file": "engine-compat.json",
-    "sha256": "40b9089c36810154db5a8eed283b8394174e5c63df1ee7d218daad94ddd4a5f9"
+    "sha256": "912dcba081458027431866b7cee07d5ddd76b2ca4ccb6e3e49fadb7c6e3420bd"
   }
 }

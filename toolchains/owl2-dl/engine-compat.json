@@ -1,24 +1,170 @@
 {
-  "schema": "ontology-dl-engine-compat/v1",
-  "id": "hermit-owlapi-union-1",
-  "engine": "org.semanticweb.hermit:1.4.5.519+evopilot.1",
+  "schema": "ontology-dl-engine-compat/v2",
+  "id": "hermit-owlapi-union-and-xsd-2",
+  "engine": "org.semanticweb.hermit:1.4.5.519+evopilot.2",
   "upstreamEngine": "org.semanticweb.hermit:1.4.5.519",
   "license": "LGPL-3.0-or-later",
   "sourceArchive": {
     "url": "https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/org.semanticweb.hermit/1.4.5.519/org.semanticweb.hermit-1.4.5.519-sources.jar",
     "sha256": "54daf34f755fb82d8dd674d97fae56916fd1fee37bd795342774ee07239acca7"
   },
-  "sourceEntry": "org/semanticweb/HermiT/structural/ExpressionManager.java",
-  "sourceSHA256": "449f691736e955d43b17e9785a412ea30b0efa9bde9f914a237b031614e9a256",
-  "changes": [
+  "files": [
     {
-      "find": "return m_factory.getOWLObjectUnionOf(newDisjuncts);",
-      "replace": "if (newDisjuncts.isEmpty()) return m_factory.getOWLNothing();\n            if (newDisjuncts.size()==1) return newDisjuncts.get(0);\n            return m_factory.getOWLObjectUnionOf(newDisjuncts);",
-      "occurrences": 1
+      "sourceEntry": "org/semanticweb/HermiT/structural/ExpressionManager.java",
+      "sourceSHA256": "449f691736e955d43b17e9785a412ea30b0efa9bde9f914a237b031614e9a256",
+      "changes": [
+        {
+          "find": "return m_factory.getOWLObjectUnionOf(newDisjuncts);",
+          "replace": "if (newDisjuncts.isEmpty()) return m_factory.getOWLNothing();\n            if (newDisjuncts.size()==1) return newDisjuncts.get(0);\n            return m_factory.getOWLObjectUnionOf(newDisjuncts);",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "cd133173521cf8a2113f7023b95226375d6a25bea76714126e6971909d3582f3"
+    },
+    {
+      "sourceEntry": "org/semanticweb/HermiT/datatypes/rdfplainliteral/RDFPlainLiteralPatternValueSpaceSubset.java",
+      "sourceSHA256": "be82a3275aa60e78fd5746aa5f92a8826b24bf9716f9213b3b4a7504ebb55f42",
+      "changes": [
+        {
+          "find": "Datatypes.get(\"string\")",
+          "replace": "io.evopilot.ontology.XmlSchemaAutomata.xmlChar().repeat()",
+          "occurrences": 1
+        },
+        {
+          "find": "Datatypes.get(\"Name2\")",
+          "replace": "io.evopilot.ontology.XmlSchemaAutomata.name(false)",
+          "occurrences": 1
+        },
+        {
+          "find": "Datatypes.get(\"NCName\")",
+          "replace": "io.evopilot.ontology.XmlSchemaAutomata.name(true)",
+          "occurrences": 1
+        },
+        {
+          "find": "Datatypes.get(\"Nmtoken2\")",
+          "replace": "io.evopilot.ontology.XmlSchemaAutomata.nmtoken()",
+          "occurrences": 1
+        },
+        {
+          "find": "result=result.intersection(intervalAutomaton);",
+          "replace": "result=result.union(intervalAutomaton);",
+          "occurrences": 1
+        },
+        {
+          "find": "new RegExp(pattern);",
+          "replace": "io.evopilot.ontology.XmlSchemaAutomata.pattern(pattern);",
+          "occurrences": 1
+        },
+        {
+          "find": "new RegExp(pattern).toAutomaton()",
+          "replace": "io.evopilot.ontology.XmlSchemaAutomata.pattern(pattern)",
+          "occurrences": 1
+        },
+        {
+          "find": "    protected static Automaton xmlChar() {\r\n        return new RegExp(\"[\\u0009\\n\\u0020-\\u007F\\u00A0-\\uD7FF\\uE000-\\uFFFD]\").toAutomaton();\r\n    }",
+          "replace": "    protected static Automaton xmlChar() {\n        return io.evopilot.ontology.XmlSchemaAutomata.xmlChar();\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "    protected static Automaton normalizedStringAutomaton() {\r\n        return new RegExp(\"([\\u0020-\\u007F\\u00A0-\\uD7FF\\uE000-\\uFFFD])*\").toAutomaton();\r\n    }",
+          "replace": "    protected static Automaton normalizedStringAutomaton() {\n        return io.evopilot.ontology.XmlSchemaAutomata.normalizedString();\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "    protected static Automaton tokenAutomaton() {\r\n        return new RegExp(\"([\\u0021-\\uD7FF\\uE000-\\uFFFD]+(\\u0020[\\u0021-\\uD7FF\\uE000-\\uFFFD]+)*)?\").toAutomaton();\r\n    }",
+          "replace": "    protected static Automaton tokenAutomaton() {\n        return io.evopilot.ontology.XmlSchemaAutomata.token();\n    }",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "304dacefc9b511f9ab8e0fb1253891364bb01b8dea165c35de66224ef72b550c"
+    },
+    {
+      "sourceEntry": "org/semanticweb/HermiT/datatypes/rdfplainliteral/RDFPlainLiteralLengthInterval.java",
+      "sourceSHA256": "be504998c85c03dd755fb89e9d7d8851f8d0f26f0f0289e452acbbe7daf9b848",
+      "changes": [
+        {
+          "find": "value.length()",
+          "replace": "value.codePointCount(0,value.length())",
+          "occurrences": 2
+        },
+        {
+          "find": "string.length()",
+          "replace": "string.codePointCount(0,string.length())",
+          "occurrences": 2
+        },
+        {
+          "find": "char[] temp=new char[m_maxLength];",
+          "replace": "int[] temp=new int[m_maxLength];",
+          "occurrences": 1
+        },
+        {
+          "find": "processPosition(char[] temp,",
+          "replace": "processPosition(int[] temp,",
+          "occurrences": 1
+        },
+        {
+          "find": "for (int c=0;c<=0xFFFF;c++)",
+          "replace": "for (int c=0;c<=0x10FFFF;c++)",
+          "occurrences": 1
+        },
+        {
+          "find": "isRDFPlainLiteralCharacter((char)c)",
+          "replace": "isRDFPlainLiteralCharacter(c)",
+          "occurrences": 1
+        },
+        {
+          "find": "temp[position]=(char)c;",
+          "replace": "temp[position]=c;",
+          "occurrences": 1
+        },
+        {
+          "find": "isRDFPlainLiteralCharacter(char c)",
+          "replace": "isRDFPlainLiteralCharacter(int c)",
+          "occurrences": 1
+        },
+        {
+          "find": "return c==0x9 || c==0xA || c==0xD || (0x20<=c && c<=0xD7FF) || (0xE000<=c && c<=0xFFFD);",
+          "replace": "return io.evopilot.ontology.XmlSchemaAutomata.xmlCharacter(c);",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "f36332d5d38c5e973ffcc4ed0fe9b0343395483b613309fe1217fc969314453c"
+    },
+    {
+      "sourceEntry": "org/semanticweb/HermiT/datatypes/anyuri/AnyURIValueSpaceSubset.java",
+      "sourceSHA256": "61f19e1adcadaf9c4e02a4df194013dd0f7c5658841912b3f8051828376ce576",
+      "changes": [
+        {
+          "find": "BasicAutomata.makeAnyChar()",
+          "replace": "io.evopilot.ontology.XmlSchemaAutomata.xmlChar()",
+          "occurrences": 1
+        },
+        {
+          "find": "BasicAutomata.makeAnyString()",
+          "replace": "s_anyChar.repeat()",
+          "occurrences": 1
+        },
+        {
+          "find": "new RegExp(pattern);",
+          "replace": "io.evopilot.ontology.XmlSchemaAutomata.pattern(pattern);",
+          "occurrences": 1
+        },
+        {
+          "find": "new RegExp(pattern).toAutomaton()",
+          "replace": "io.evopilot.ontology.XmlSchemaAutomata.pattern(pattern)",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "1ea24500f9824dbefb20ddfb04ef49b7836d4c4c485441d73fca6ea682a9b52b"
     }
   ],
-  "patchedSourceSHA256": "cd133173521cf8a2113f7023b95226375d6a25bea76714126e6971909d3582f3",
-  "notice": "EvoPilot compatibility modification: represent a simplified empty object union as owl:Nothing and a singleton as its sole operand before invoking OWLAPI 5.5.1. The original Oxford University copyright and LGPL notice remain in the generated source. This is a modified engine build, not an unmodified upstream release.",
-  "reason": "HermiT 1.4.5.519 targets OWLAPI 5.1.9. Its union simplifier can pass zero operands to OWLAPI 5.5.1, which rejects that constructor. This patch applies the union semantic identity; it does not catch engine errors or substitute expected test answers.",
-  "acceptance": "Complete standard, combination and release dependency/license acceptance remains required."
+  "ownedSources": [
+    {
+      "file": "XmlSchemaAutomata.java",
+      "sha256": "5c4bf997e303b01feee01832fd102a04404ddef9fae37c2d2b0b63079df4f56a"
+    }
+  ],
+  "notice": "EvoPilot modified HermiT build: OWLAPI object-union compatibility; XML 1.0 Fifth Edition Unicode string/name automata; code-point length and enumeration; union of disjoint length intervals; XSD 1.1 regular-language compilation for string and anyURI pattern facets. Original Oxford University copyright and LGPL notices remain in modified upstream sources. XmlSchemaAutomata is an identified EvoPilot formal adapter. This is not an unmodified upstream release.",
+  "reason": "Repair observed standard-conformance failures without substituting expected answers, changing source literals, dropping legal constructs or reclassifying engine errors as conclusions. Java 21 pins Unicode 15.0 category/block data. Resource exhaustion remains incomplete.",
+  "acceptance": "Complete standard, combination, datatype, task, resource and release dependency/license acceptance remains required."
 }

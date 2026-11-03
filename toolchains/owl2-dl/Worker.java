@@ -236,16 +236,6 @@ public final class Worker {
     require(++importTraversals<=8192,"IMPORT_TRAVERSAL_LIMIT","Import traversal budget");require(docs.containsKey(id),"MISSING_IMPORT","Root document absent");if(path.contains(id))return;require(path.size()<16,"IMPORT_DEPTH","Import depth budget");
     reached.add(id);var next=new HashSet<>(path);next.add(id);for(String to:edges.getOrDefault(id,Map.of()).values())walk(to,edges,docs,next,reached);
   }
-  static boolean between(int c,int low,int high){return c>=low&&c<=high;}
-  static boolean xmlNameStart(int c){
-    // XML 1.0 Fifth Edition productions [4] / [4a], used by XSD 1.1 Names.
-    // Iterate Unicode code points, not UTF-16 code units or Java \w classes.
-    return c==':'||c=='_'||between(c,'A','Z')||between(c,'a','z')||between(c,0xC0,0xD6)||between(c,0xD8,0xF6)
-      ||between(c,0xF8,0x2FF)||between(c,0x370,0x37D)||between(c,0x37F,0x1FFF)||between(c,0x200C,0x200D)
-      ||between(c,0x2070,0x218F)||between(c,0x2C00,0x2FEF)||between(c,0x3001,0xD7FF)||between(c,0xF900,0xFDCF)
-      ||between(c,0xFDF0,0xFFFD)||between(c,0x10000,0xEFFFF);
-  }
-  static boolean xmlNameChar(int c){return xmlNameStart(c)||c=='-'||c=='.'||between(c,'0','9')||c==0xB7||between(c,0x300,0x36F)||between(c,0x203F,0x2040);}
   static Boolean correctedStringLexical(OWLLiteral literal){
     String iri=literal.getDatatype().getIRI().toString(),xsd="http://www.w3.org/2001/XMLSchema#";
     if(!Set.of(xsd+"Name",xsd+"NCName",xsd+"NMTOKEN",xsd+"token").contains(iri))return null;
@@ -254,11 +244,11 @@ public final class Worker {
       // XSD token admits the empty string and forbids XML whitespace other
       // than single internal spaces. Do not trim/normalize original literals.
       if(s.startsWith(" ")||s.endsWith(" ")||s.contains("  "))return false;
-      return s.codePoints().allMatch(c->c!=9&&c!=10&&c!=13&&(between(c,0x20,0xD7FF)||between(c,0xE000,0xFFFD)||between(c,0x10000,0x10FFFF)));
+      return s.codePoints().allMatch(c->c!=9&&c!=10&&c!=13&&(XmlSchemaAutomata.xmlCharacter(c)));
     }
     if(s.isEmpty())return false;boolean token=iri.equals(xsd+"NMTOKEN"),nonColon=iri.equals(xsd+"NCName");
     for(int offset=0;offset<s.length();){int c=s.codePointAt(offset);
-      if(nonColon&&c==':'||!(offset==0&&!token?xmlNameStart(c):xmlNameChar(c)))return false;
+      if(nonColon&&c==':'||!(offset==0&&!token?XmlSchemaAutomata.nameStart(c):XmlSchemaAutomata.nameCharacter(c)))return false;
       offset+=Character.charCount(c);
     }
     return true;
@@ -271,7 +261,9 @@ public final class Worker {
     for(var v:new OWL2DLProfile().checkOntology(o).getViolations())
       if(!(v instanceof LexicalNotInLexicalSpace l)||correctedStringLexical(l.getExpression())==null)violations.add(v);
     var walker=new OWLObjectWalker<OWLOntology>(List.of(o),false,AnnotationWalkingControl.WALK_ANNOTATIONS);
-    walker.walkStructure(new OWLObjectVisitor(){public void visit(OWLLiteral literal){
+    walker.walkStructure(new OWLObjectVisitor(){
+      public void visit(OWLFacetRestriction facet){if(facet.getFacet()==org.semanticweb.owlapi.vocab.OWLFacet.PATTERN)XmlSchemaAutomata.pattern(facet.getFacetValue().getLiteral());}
+      public void visit(OWLLiteral literal){
       if(Boolean.FALSE.equals(correctedStringLexical(literal)))violations.add(new LexicalNotInLexicalSpace(o,walker.getAxiom(),literal));
     }});
     return violations;
@@ -312,11 +304,11 @@ public final class Worker {
     // All other legal DL inputs/tasks retain HermiT; selection never follows an
     // error/timeout and is independent of case names, expected answers or sizes.
     boolean alc=List.of("consistency","entailment").contains(kind)&&o.logicalAxioms().allMatch(Worker::alcAxiom)&&q.stream().allMatch(Worker::alcAxiom);
-    selectedEngine=alc?"JFACT_5_0_3_ALC":"HERMIT_1_4_5_519_EVOPILOT_1_DL";
+    selectedEngine=alc?"JFACT_5_0_3_ALC":"HERMIT_1_4_5_519_EVOPILOT_2_DL";
     deadline(end);
     return alc?new uk.ac.manchester.cs.jfact.JFactFactory().createReasoner(o,new SimpleConfiguration(Math.max(1,(end-System.nanoTime())/1000000))):reasoner(o,end);
   }
-  static void engineEvidence(ObjectNode result){if(selectedEngine!=null){result.put("reasoningEngine",selectedEngine);result.put("engineSelectionPolicy","STRUCTURAL_ALC_V1");}}
+  static void engineEvidence(ObjectNode result){if(!XmlSchemaAutomata.unknownBlocks().isEmpty())result.set("unknownUnicodeBlocks",JSON.valueToTree(XmlSchemaAutomata.unknownBlocks()));if(selectedEngine!=null){result.put("reasoningEngine",selectedEngine);result.put("engineSelectionPolicy","STRUCTURAL_ALC_V1");}}
   static boolean entailed(OWLReasoner r,List<OWLAxiom> axioms){
     for(OWLAxiom ax:axioms)if(!r.isEntailmentCheckingSupported(ax.getAxiomType()))throw new Refusal("FAILED","ENGINE_CAPABILITY_GAP","Engine does not support this entailment axiom type: "+ax.getAxiomType());
     // Shared anonymous individuals make a query a joint existential conjunction.
@@ -334,7 +326,7 @@ public final class Worker {
       for(var v:profile.stream().limit(1000).toList()){ObjectNode entry=violations.addObject();entry.put("type",v.getClass().getSimpleName());entry.put("detail",v.toString());}
       result.put("violationsComplete",profile.size()<=1000);out.putObject("error").put("code","OWL2_DL_PROFILE").put("message","Ontology violates OWL 2 DL restrictions");return out;
     }
-    result.put("legal",true);if(kind.equals("legality"))return out;
+    result.put("legal",true);engineEvidence(result);if(kind.equals("legality"))return out;
     List<OWLAxiom> q=List.of();if(List.of("entailment","satisfiability").contains(kind)||kind.equals("explanation")&&str(task,"target").equals("entailment"))q=queries(task);
     OWLReasoner r=selectReasoner(o,q,kind,end);engineEvidence(result);
     try{
@@ -396,6 +388,8 @@ public final class Worker {
     for(Throwable e=error;e!=null;e=e.getCause())if(e instanceof Refusal)return (Refusal)e;
     for(Throwable e=error;e!=null;e=e.getCause()){
       if(e instanceof UnloadableImportException||e instanceof OWLOntologyFactoryNotFoundException)return new Refusal("MISSING_IMPORT","MISSING_IMPORT","An import has no admitted offline document");
+      if(e instanceof XmlSchemaAutomata.Syntax)return invalid("XSD_REGEX",e.getMessage());
+      if(e instanceof XmlSchemaAutomata.ResourceLimit)return new Refusal("FAILED","REGEX_RESOURCE_LIMIT",e.getMessage());
       if(e instanceof TimeOutException)return new Refusal("TIMEOUT","ENGINE_TIMEOUT","Formal engine deadline reached");
       // The pinned Turtle parser's generated syntax exception/token error are
       // package-private. Match their exact classes, never human-readable messages.
