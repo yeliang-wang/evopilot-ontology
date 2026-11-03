@@ -36,6 +36,30 @@ test('actual DL classification retains open-world distinction after removing its
   await run(removed,{kind:'entailment',query:query('ClassAssertion(ObjectComplementOf(:SensitiveService) :api)')},'NOT_ENTAILED');
 });
 
+test('engine selection covers the whole closure and query without dropping non-ALC semantics',async()=>{
+  const optimized=await run(sensitive,{kind:'entailment',query:query('ClassAssertion(:SensitiveService :api)')},'ENTAILED');
+  assert.equal(optimized.result.reasoningEngine,'JFACT_5_0_3_ALC');
+  assert.equal(optimized.result.engineSelectionPolicy,'STRUCTURAL_ALC_V1');
+  const keys=await run(keyed,{kind:'entailment',query:query('SameIndividual(:a :b)')},'ENTAILED');
+  assert.equal(keys.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  const imported=request('',{kind:'entailment',query:query('SameIndividual(:a :b)')});
+  imported.closure.documents=[
+    document(ofn('Import(<'+ns+'key-model>)').replace('Ontology(','Ontology(<'+ns+'root-model> '),{ontologyIri:ns+'root-model'}),
+    document(ofn(keyed).replace('Ontology(','Ontology(<'+ns+'key-model> '),{id:'keys',documentIri:ns+'key-model',ontologyIri:ns+'key-model'}),
+  ];
+  imported.closure.imports=[{from:'root',iri:ns+'key-model',to:'keys'}];
+  const importedResult=await runner.run(imported);assert.equal(importedResult.status,'ENTAILED',JSON.stringify(importedResult));
+  assert.equal(importedResult.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  const datatypes=declaration({data:['n'],individuals:['a']})+' Declaration(Datatype(:Small)) DatatypeDefinition(:Small DataOneOf("1"^^xsd:integer)) DataPropertyAssertion(:n :a "1"^^xsd:integer)';
+  const range=await run(datatypes,{kind:'entailment',query:query('ClassAssertion(DataSomeValuesFrom(:n :Small) :a)')},'ENTAILED');
+  assert.equal(range.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  // Unsupported query structure must select complete DL even with an ALC premise.
+  const queryOnly=await run(sensitive,{kind:'entailment',query:query('ClassAssertion(ObjectMinCardinality(1 :accesses) :api)')},'ENTAILED');
+  assert.equal(queryOnly.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  const projection=await run(sensitive,{kind:'classHierarchy',entities:[ns+'SensitiveService'],direct:false});
+  assert.equal(projection.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+});
+
 test('empty logical conclusion is explicitly vacuous and is not a business coverage claim',async()=>{
   const result=await run(sensitive,{kind:'entailment',query:query('')},'ENTAILED');
   assert.equal(result.result.vacuous,true);assert.deepEqual(result.result.queryAxioms,[]);
@@ -151,6 +175,8 @@ test('completed RDF input admits qualified data cardinalities before axiom mappi
 
 test('engine union simplification proves contradictions and entailments without empty-union constructor failures',async()=>{
   await run('EquivalentClasses(owl:Thing owl:Nothing)',{kind:'consistency'},'INCONSISTENT');
+  const full=await run('Declaration(DataProperty(:marker)) DataPropertyRange(:marker xsd:string) EquivalentClasses(owl:Thing owl:Nothing)',{kind:'consistency'},'INCONSISTENT');
+  assert.equal(full.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
   const declarations=declaration({classes:['A','B'],individuals:['a']});
   await run(declarations+' SubClassOf(owl:Thing ObjectComplementOf(owl:Thing))',{kind:'consistency'},'INCONSISTENT');
   const body=declarations+' EquivalentClasses(:A ObjectUnionOf(owl:Nothing :B)) ClassAssertion(:A :a)';
@@ -221,10 +247,12 @@ test('illegal global restrictions fail before ordinary reasoning',async()=>{
 });
 
 test('joint anonymous-individual queries do not combine different witnesses into one',async()=>{
-  const body=declaration({classes:['B'],objects:['p'],individuals:['a','x','y']})+'\nObjectPropertyAssertion(:p :a :x) ClassAssertion(:B :y) DifferentIndividuals(:x :y)';
+  const body=declaration({classes:['B'],objects:['p'],individuals:['a','x','y']})+'\nObjectPropertyAssertion(:p :a :x) ClassAssertion(:B :y)';
   const task={kind:'entailment',query:query('ObjectPropertyAssertion(:p :a _:shared) ClassAssertion(:B _:shared)')};
-  await run(body,task,'NOT_ENTAILED');
-  await run(body+'\nClassAssertion(:B :x)',task,'ENTAILED');
+  const negative=await run(body,task,'NOT_ENTAILED');
+  assert.equal(negative.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  const positive=await run(body+'\nClassAssertion(:B :x)',task,'ENTAILED');
+  assert.equal(positive.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
 });
 
 test('pinned transitive imports combine Turtle and RDF/XML without fetching their addresses',async t=>{

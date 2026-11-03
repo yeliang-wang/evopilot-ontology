@@ -18,7 +18,7 @@ if(lock.enginePatch.file!=='engine-compat.json')throw new Error('Unknown engine 
 const patchFile=join(directory,lock.enginePatch.file);
 if(sha(patchFile)!==lock.enginePatch.sha256)throw new Error('Engine patch digest mismatch');
 const patch=JSON.parse(readFileSync(patchFile)),engineSource=realpathSync(flags.get('--engine-source'));
-if(patch.schema!=='ontology-dl-engine-compat/v1'||patch.engine!==lock.engine||sha(engineSource)!==patch.sourceArchive.sha256)throw new Error('Engine source differs from exact compatibility binding');
+if(patch.schema!=='ontology-dl-engine-compat/v1'||patch.engine!=='org.semanticweb.hermit:1.4.5.519+evopilot.1'||sha(engineSource)!==patch.sourceArchive.sha256)throw new Error('Engine source differs from exact compatibility binding');
 if(patch.sourceEntry!=='org/semanticweb/HermiT/structural/ExpressionManager.java')throw new Error('Unknown patched source entry');
 if(JSON.stringify(readdirSync(dependencies).sort())!==JSON.stringify(lock.files.map(f=>f.file).sort()))throw new Error('Dependency closure differs from source lock');
 for(const file of lock.files)if(sha(join(dependencies,file.file))!==file.sha256)throw new Error('Dependency digest mismatch: '+file.file);

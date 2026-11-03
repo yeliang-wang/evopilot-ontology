@@ -12,5 +12,9 @@
     <dependency>
       <groupId>net.sourceforge.owlapi</groupId><artifactId>owlapi-distribution</artifactId><version>5.5.1</version>
     </dependency>
+    <dependency>
+      <groupId>net.sourceforge.owlapi</groupId><artifactId>jfact</artifactId><version>5.0.3</version>
+      <exclusions><exclusion><groupId>net.sourceforge.owlapi</groupId><artifactId>owlapi-distribution</artifactId></exclusion></exclusions>
+    </dependency>
   </dependencies>
 </project>

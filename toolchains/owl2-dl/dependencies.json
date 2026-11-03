@@ -1,6 +1,6 @@
 {
   "schema": "ontology-dl-dependencies/v1",
-  "engine": "org.semanticweb.hermit:1.4.5.519+evopilot.1",
+  "engine": "hermit:1.4.5.519+evopilot.1;jfact:5.0.3;structural-alc:1",
   "owlapi": "owlapi-distribution:5.5.1",
   "files": [
     {
@@ -232,6 +232,18 @@
       "url": "https://repo.maven.apache.org/maven2/org/slf4j/jcl-over-slf4j/2.0.11/jcl-over-slf4j-2.0.11.jar"
     },
     {
+      "url": "https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/jfact/5.0.3/jfact-5.0.3.jar",
+      "file": "jfact-5.0.3.jar",
+      "sha256": "d581fe7caa1da61e65bfc2702d2c1bc79ac207831d47b8b9df54d337d61fec9b",
+      "repositoryPath": "net/sourceforge/owlapi/jfact/5.0.3/jfact-5.0.3.jar"
+    },
+    {
+      "url": "https://repo.maven.apache.org/maven2/joda-time/joda-time/2.9.7/joda-time-2.9.7.jar",
+      "file": "joda-time-2.9.7.jar",
+      "sha256": "2bcac56802ec8d6f16941ef8a8d5fee4032902ba9937549be220f0a06eb9f503",
+      "repositoryPath": "joda-time/joda-time/2.9.7/joda-time-2.9.7.jar"
+    },
+    {
       "file": "jsonld-java-0.13.6.jar",
       "sha256": "ac158c23504fa76dc1a5f43436df2cb34b4b435b79b38c9b941d1c75e2efbe90",
       "repositoryPath": "com/github/jsonld-java/jsonld-java/0.13.6/jsonld-java-0.13.6.jar",
@@ -452,6 +464,12 @@
       "sha256": "68b5f3b70ebbcf6505bda7f10a0febf45e2da17daa98b0ae0ec5730894ea97d4",
       "repositoryPath": "org/eclipse/rdf4j/rdf4j-rio-turtle/5.0.2/rdf4j-rio-turtle-5.0.2.jar",
       "url": "https://repo.maven.apache.org/maven2/org/eclipse/rdf4j/rdf4j-rio-turtle/5.0.2/rdf4j-rio-turtle-5.0.2.jar"
+    },
+    {
+      "url": "https://repo.maven.apache.org/maven2/org/roaringbitmap/RoaringBitmap/0.6.32/RoaringBitmap-0.6.32.jar",
+      "file": "RoaringBitmap-0.6.32.jar",
+      "sha256": "0fa859ad3cc35bb5bd401d54efb15f4d3b719fd497fa2c84ca41f09a978b5280",
+      "repositoryPath": "org/roaringbitmap/RoaringBitmap/0.6.32/RoaringBitmap-0.6.32.jar"
     },
     {
       "file": "slf4j-api-2.0.11.jar",

@@ -34,6 +34,7 @@ public final class Worker {
   static final ObjectMapper JSON=new ObjectMapper().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
   static final int INPUT_BYTES=48*1024*1024, OUTPUT_BYTES=8*1024*1024, AXIOMS=100000;
   static String refusedImport=null;
+  static String selectedEngine=null;
   static int importTraversals=0;
   static final class Refusal extends RuntimeException {
     final String status,code;
@@ -247,6 +248,31 @@ public final class Worker {
     deadline(end);Configuration c=new Configuration();c.ignoreUnsupportedDatatypes=false;c.throwInconsistentOntologyException=true;
     c.individualTaskTimeout=Math.max(1,(end-System.nanoTime())/1000000);return new ReasonerFactory().createReasoner(o,c);
   }
+  static boolean alcProperty(OWLObjectPropertyExpression p){return !p.isAnonymous()&&!p.isOWLTopObjectProperty()&&!p.isOWLBottomObjectProperty();}
+  static boolean alcExpression(OWLClassExpression expression){
+    return expression.nestedClassExpressions().allMatch(c->c instanceof OWLClass||c instanceof OWLObjectIntersectionOf||c instanceof OWLObjectUnionOf||c instanceof OWLObjectComplementOf||c instanceof OWLObjectSomeValuesFrom some&&alcProperty(some.getProperty())||c instanceof OWLObjectAllValuesFrom all&&alcProperty(all.getProperty()));
+  }
+  static boolean alcAxiom(OWLAxiom ax){
+    if(!ax.isLogicalAxiom())return true;
+    if(ax instanceof OWLSubClassOfAxiom a)return alcExpression(a.getSubClass())&&alcExpression(a.getSuperClass());
+    if(ax instanceof OWLEquivalentClassesAxiom a)return a.classExpressions().allMatch(Worker::alcExpression);
+    if(ax instanceof OWLDisjointClassesAxiom a)return a.classExpressions().allMatch(Worker::alcExpression);
+    if(ax instanceof OWLClassAssertionAxiom a)return a.getIndividual().isNamed()&&alcExpression(a.getClassExpression());
+    if(ax instanceof OWLObjectPropertyAssertionAxiom a)return a.getSubject().isNamed()&&a.getObject().isNamed()&&alcProperty(a.getProperty());
+    return false;
+  }
+  static OWLReasoner selectReasoner(OWLOntology o,List<OWLAxiom> q,String kind,long end){
+    // JFact 5.0.3 silently ignores keys/datatype definitions and tests a set of
+    // entailments individually. Admit only this explicit ALC grammar with named
+    // individuals, for which conjunction of individual entailments is equivalent.
+    // All other legal DL inputs/tasks retain HermiT; selection never follows an
+    // error/timeout and is independent of case names, expected answers or sizes.
+    boolean alc=List.of("consistency","entailment").contains(kind)&&o.logicalAxioms().allMatch(Worker::alcAxiom)&&q.stream().allMatch(Worker::alcAxiom);
+    selectedEngine=alc?"JFACT_5_0_3_ALC":"HERMIT_1_4_5_519_EVOPILOT_1_DL";
+    deadline(end);
+    return alc?new uk.ac.manchester.cs.jfact.JFactFactory().createReasoner(o,new SimpleConfiguration(Math.max(1,(end-System.nanoTime())/1000000))):reasoner(o,end);
+  }
+  static void engineEvidence(ObjectNode result){if(selectedEngine!=null){result.put("reasoningEngine",selectedEngine);result.put("engineSelectionPolicy","STRUCTURAL_ALC_V1");}}
   static boolean entailed(OWLReasoner r,List<OWLAxiom> axioms){
     for(OWLAxiom ax:axioms)if(!r.isEntailmentCheckingSupported(ax.getAxiomType()))throw new Refusal("FAILED","ENGINE_CAPABILITY_GAP","Engine does not support this entailment axiom type: "+ax.getAxiomType());
     // Shared anonymous individuals make a query a joint existential conjunction.
@@ -266,7 +292,7 @@ public final class Worker {
     }
     result.put("legal",true);if(kind.equals("legality"))return out;
     List<OWLAxiom> q=List.of();if(List.of("entailment","satisfiability").contains(kind)||kind.equals("explanation")&&str(task,"target").equals("entailment"))q=queries(task);
-    OWLReasoner r=reasoner(o,end);
+    OWLReasoner r=selectReasoner(o,q,kind,end);engineEvidence(result);
     try{
       boolean consistent=r.isConsistent();result.put("consistent",consistent);
       if(kind.equals("explanation"))return explanation(loaded,task,q,r,consistent,end);
@@ -314,7 +340,7 @@ public final class Worker {
       try{boolean c=r.isConsistent();if(inconsistency?!c:c&&entailed(r,q))support.remove(ax);}finally{r.dispose();}
     }
     deadline(end);ObjectNode out=JSON.createObjectNode();out.put("status","COMPLETED");out.put("complete",true);ObjectNode result=out.putObject("result");
-    result.put("target",str(task,"target"));result.put("method","DELETION_REPLAY");result.put("allMinimalJustifications",false);ArrayNode supporting=result.putArray("support");
+    result.put("target",str(task,"target"));result.put("method","DELETION_REPLAY");result.put("allMinimalJustifications",false);engineEvidence(result);ArrayNode supporting=result.putArray("support");
     for(OWLAxiom ax:support){ObjectNode item=supporting.addObject();item.put("axiom",ax.toString());item.put("axiomDigest",sha(ax.toString()));ArrayNode sources=item.putArray("sources");
       for(JsonNode doc:loaded.origins().get(ax)){ObjectNode s=sources.addObject();s.put("documentId",str(doc,"id"));s.put("documentDigest",str(doc,"digest"));s.put("selectorKind","OWL_STRUCTURAL_AXIOM");s.put("axiomDigest",sha(ax.toString()));}
     }
@@ -345,7 +371,7 @@ public final class Worker {
       require(ms>=1&&ms<=maximum,"INVALID_ENVELOPE","Task deadline outside fixed budget");
       response.setAll(execute(request,System.nanoTime()+ms*1000000));
       if(!response.has("error"))response.putNull("error");
-    }catch(Throwable e){Refusal r=refusal(e);response.put("status",r.status);response.put("complete",false);response.set("result",JSON.createObjectNode());response.putObject("error").put("code",r.code).put("message",r.getMessage());}
+    }catch(Throwable e){Refusal r=refusal(e);response.put("status",r.status);response.put("complete",false);var result=JSON.createObjectNode();engineEvidence(result);response.set("result",result);response.putObject("error").put("code",r.code).put("message",r.getMessage());}
     byte[] output=JSON.writeValueAsBytes(response);
     if(output.length>OUTPUT_BYTES){response.put("status","FAILED");response.put("complete",false);response.set("result",JSON.createObjectNode());response.putObject("error").put("code","OUTPUT_LIMIT").put("message","Formal output exceeds fixed byte budget");output=JSON.writeValueAsBytes(response);}
     System.out.write(output);System.out.write('\n');System.out.flush();
