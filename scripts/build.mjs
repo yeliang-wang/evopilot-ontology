@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const compiler = fileURLToPath(new URL('../node_modules/typescript/bin/tsc', import.meta.url));
+const generated=spawnSync(process.execPath,[fileURLToPath(new URL('./generate-native-v2.mjs',import.meta.url))],{cwd:root,stdio:'inherit'});
+if(generated.error)throw generated.error;
+if(generated.status!==0)throw new Error('Native v2 contract generation failed');
 await rm(new URL('../dist/', import.meta.url), { recursive: true, force: true });
 const result = spawnSync(process.execPath, [compiler, '-p', fileURLToPath(new URL('../tsconfig.json', import.meta.url))], { cwd: root, stdio: 'inherit' });
 if (result.error) throw result.error;

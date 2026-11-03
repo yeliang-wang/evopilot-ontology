@@ -1,0 +1,187 @@
+// Generated from schemas/v2/sources.schema.json; edit the schema, then regenerate.
+export const SOURCE_SCHEMA_DIGEST = "sha256:8ae947e8fc68db85dadf0c64a0ee726bb1763ec2a76e3d3604f30e387278ac56";
+export const SOURCE_SCHEMA = {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:evopilot:ontology:sources:v2",
+  "title": "SourceSet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "sources",
+    "fragments"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ontology-source-set/v2"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/SourceDocument"
+      }
+    },
+    "fragments": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {
+        "$ref": "#/$defs/SourceFragment"
+      }
+    }
+  },
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}(?![\\s\\S])"
+    },
+    "SHA256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}(?![\\s\\S])"
+    },
+    "SourceDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "locator",
+        "revision",
+        "origin",
+        "format",
+        "content",
+        "digest"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "source",
+            "requirement",
+            "design",
+            "reference"
+          ]
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "text",
+            "json",
+            "turtle",
+            "rdfxml"
+          ]
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 8388608
+        },
+        "digest": {
+          "$ref": "#/$defs/SHA256"
+        }
+      }
+    },
+    "SourceFragment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceId",
+        "sourceDigest",
+        "selector",
+        "fragmentDigest"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "sourceId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "sourceDigest": {
+          "$ref": "#/$defs/SHA256"
+        },
+        "selector": {
+          "$ref": "#/$defs/SourceSelector"
+        },
+        "fragmentDigest": {
+          "$ref": "#/$defs/SHA256"
+        }
+      }
+    },
+    "SourceSelector": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "document"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "start",
+            "end"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "utf8-range"
+            },
+            "start": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8388608
+            },
+            "end": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8388608
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "pointer"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "json-pointer"
+            },
+            "pointer": {
+              "type": "string",
+              "maxLength": 4096,
+              "pattern": "^(?:/(?:[^~/]|~[01])*)*(?![\\s\\S])"
+            }
+          }
+        }
+      ]
+    }
+  }
+} as const;

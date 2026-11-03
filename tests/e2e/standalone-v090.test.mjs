@@ -11,7 +11,7 @@ import {initializeWorkspace} from '../../dist/installation/workspace.js';
 import {createStandaloneService} from '../../dist/standalone/service.js';
 import {listenStandalone} from '../../dist/standalone/http.js';
 import {hashBytes} from '../../dist/standalone/validation.js';
-import {openWorkspace} from '../../dist/standalone/workspace.js';
+import {openWorkspace,STATE_VERSION} from '../../dist/standalone/workspace.js';
 import {LIMITS} from '../../dist/standalone/types.js';
 
 function fixture(t) {
@@ -79,7 +79,7 @@ test('occupied paths, linked files, loose permissions and state substitution are
   chmodSync(join(f.root,'credentials.json'),0o600);
   const db=new DatabaseSync(join(f.root,'ontology.sqlite'));db.exec('PRAGMA user_version=99');db.close();
   assert.throws(()=>createStandaloneService(f.setup),{code:'UNSUPPORTED_STATE'});
-  const d2=new DatabaseSync(join(f.root,'ontology.sqlite'));d2.exec('PRAGMA user_version=9');d2.close();
+  const d2=new DatabaseSync(join(f.root,'ontology.sqlite'));d2.exec('PRAGMA user_version='+STATE_VERSION);d2.close();
   const file=join(f.root,'credentials.json');renameSync(file,file+'.old');symlinkSync(file+'.old',file);
   assert.throws(()=>createStandaloneService(f.setup),{code:'UNSAFE_PATH'});
 });

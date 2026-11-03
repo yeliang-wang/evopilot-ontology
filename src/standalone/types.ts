@@ -1,7 +1,7 @@
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export interface WorkspaceIdentity {
   schema: 'ontology-workspace/v1'; workspaceId: string; serviceId: string;
-  stateVersion: 9; createdAt: string;
+  stateVersion: 10; createdAt: string;
 }
 export interface Grant {
   id: string; principalId: string; tokenHash: string; projectIds: string[];

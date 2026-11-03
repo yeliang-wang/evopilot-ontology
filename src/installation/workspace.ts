@@ -6,6 +6,7 @@ import { FILES, STATE_VERSION, workspacePath } from '../standalone/workspace.js'
 import { id, hashBytes } from '../standalone/validation.js';
 import { fail } from '../standalone/types.js';
 import type { Credentials, WorkspaceIdentity } from '../standalone/types.js';
+import { SOURCE_TABLES } from '../native-v2/store.js';
 
 /** Local operator only: never imported by the domain service or HTTP dispatcher. */
 export function initializeWorkspace(input: {root: string; workspaceId: string; projectId: string; principalId: string; serviceId?:string}) {
@@ -31,6 +32,7 @@ export function initializeWorkspace(input: {root: string; workspaceId: string; p
       CREATE TABLE project_heads(project_id TEXT PRIMARY KEY,intent_digest TEXT,FOREIGN KEY(project_id) REFERENCES projects(id));
       CREATE TABLE receipts(project_id TEXT NOT NULL,principal_id TEXT NOT NULL,request_id TEXT NOT NULL,digest TEXT NOT NULL,receipt TEXT NOT NULL,PRIMARY KEY(project_id,principal_id,request_id));
       CREATE TABLE audit(sequence INTEGER PRIMARY KEY,project_id TEXT NOT NULL,principal_id TEXT NOT NULL,request_id TEXT NOT NULL,operation TEXT NOT NULL,request_digest TEXT NOT NULL,receipt_digest TEXT NOT NULL,recorded_at TEXT NOT NULL);
+      ${SOURCE_TABLES}
       PRAGMA user_version=${STATE_VERSION};`);
     db.prepare('INSERT INTO workspace VALUES(1,?)').run(raw); db.exec('COMMIT');
   } finally {db.close();}

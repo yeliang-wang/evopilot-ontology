@@ -97,6 +97,8 @@ async function files(directory) {
 
 export async function checkSource() {
   await checkDocumentation();
+  const nativeGeneration=spawnSync(process.execPath,[resolve(ROOT,'scripts/generate-native-v2.mjs'),'--check'],{cwd:ROOT,encoding:'utf8'});
+  assert.ifError(nativeGeneration.error);assert.equal(nativeGeneration.status,0,nativeGeneration.stdout+nativeGeneration.stderr);
   const pkg = JSON.parse(await readFile(resolve(ROOT, 'package.json'), 'utf8'));
   for (const [key, value] of Object.entries(expected)) assert.deepEqual(pkg[key], value, key);
   for (const key of ['peerDependencies', 'optionalDependencies']) assert.deepEqual(pkg[key] ?? {}, {});
@@ -216,6 +218,7 @@ export async function checkSource() {
       if (path===resolve(ROOT,'src/standalone/bridge.ts') && ['@modelcontextprotocol/server','@modelcontextprotocol/server/stdio','@modelcontextprotocol/client'].includes(specifier)) continue;
       if (specifier === 'yaml' && (path.endsWith('/src/asset-sources.ts') || path === resolve(ROOT, 'src/import-operations.ts') || PRODUCT === 'ontology' && path.includes('/src/compat/'))) continue;
       if (PRODUCT === 'ontology' && path.includes('/src/compat/') && specifier === 'ajv/dist/2020.js') continue;
+      if (path === resolve(ROOT,'src/native-v2/sources.ts') && ['ajv/dist/2020.js','yaml'].includes(specifier)) continue;
       assert(specifier.startsWith('.'), 'Undeclared import: ' + specifier);
       const target = resolve(dirname(path), path.endsWith('.ts') && specifier.endsWith('.js') ? specifier.slice(0, -3) + '.ts' : specifier);
       assert(target.startsWith(resolve(ROOT, 'src') + sep) || feedbackImports.includes(target) || onlineImports.includes(target) || responseImports.includes(target) || readabilityImports.includes(target) || readinessImports.includes(target) || usabilityImports.includes(target) || path.startsWith(generatedRoot + sep) && target.startsWith(generatedRoot + sep) || [resolve(vendor, 'reference.mjs'),resolve(vendor,'native.mjs'),resolve(vendor,'decision-evidence.mjs')].includes(target), 'Foreign source import');
