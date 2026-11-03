@@ -72,6 +72,8 @@ Current frozen executor budgets: 64 documents; 8 MiB per document; 32 MiB total 
 
 The JVM has a 1 GiB heap limit, separately bounded direct memory/metadata/code cache, one active processor and Serial GC. These settings do **not** establish the plan's total-process 2 GiB memory ceiling. Actual total-process enforcement and reference-corpus resource acceptance remain P4 obligations; no heap-only measurement may close that requirement.
 
+The [Linux cgroup development mechanism](worker-isolation-v090.md) has passed actual Java heap-bypass, Python allocation and formal-worker probes. It is not yet selected by the managed reasoner runner; installed integration and candidate resource acceptance remain required.
+
 ## Remaining acceptance
 
 Business/regression fixtures exercise actual installed Java processes, not mocked logical results. Their fixed expectations come from the approved scenarios: sensitive classification/open-world absence, dependency chains, read-only conflicts, unsatisfiable templates, key identity, datatype values and finite projections. Import tests use an actual HTTP listener to observe zero dependency/XXE fetches. Explanation tests rerun the returned supporting ontology in a separate actual worker.
