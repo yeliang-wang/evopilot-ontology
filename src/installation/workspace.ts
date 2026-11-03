@@ -8,14 +8,15 @@ import { fail } from '../standalone/types.js';
 import type { Credentials, WorkspaceIdentity } from '../standalone/types.js';
 
 /** Local operator only: never imported by the domain service or HTTP dispatcher. */
-export function initializeWorkspace(input: {root: string; workspaceId: string; projectId: string; principalId: string}) {
+export function initializeWorkspace(input: {root: string; workspaceId: string; projectId: string; principalId: string; serviceId?:string}) {
   id(input.workspaceId); id(input.projectId); id(input.principalId);
+  if(input.serviceId!==undefined)id(input.serviceId);
   if (!isAbsolute(input.root)) fail('UNSAFE_PATH','Absolute workspace location required');
   const root=join(realpathSync(dirname(resolve(input.root))), resolve(input.root).split('/').at(-1)!);
   // Exclusive creation avoids adopting or overwriting any occupied workspace.
   try {mkdirSync(root,{mode:0o700});} catch (e) { if ((e as NodeJS.ErrnoException).code==='EEXIST') fail('WORKSPACE_EXISTS','Explicit attach or recovery required',409); throw e; }
   workspacePath(root);
-  const identity: WorkspaceIdentity={schema:'ontology-workspace/v1',workspaceId:input.workspaceId,serviceId:randomUUID(),stateVersion:STATE_VERSION,createdAt:new Date().toISOString()};
+  const identity: WorkspaceIdentity={schema:'ontology-workspace/v1',workspaceId:input.workspaceId,serviceId:input.serviceId??randomUUID(),stateVersion:STATE_VERSION,createdAt:new Date().toISOString()};
   const raw=JSON.stringify(identity), token=randomBytes(32).toString('base64url');
   const credentials: Credentials={schema:'ontology-credentials/v1',workspaceId:identity.workspaceId,serviceId:identity.serviceId,grants:[{id:randomUUID(),principalId:input.principalId,tokenHash:hashBytes(token),projectIds:[input.projectId],permissions:['read','write'],expiresAt:new Date(Date.now()+30*86400000).toISOString(),revoked:false}]};
   const write = (name: string, bytes: string): void => {const fd=openSync(join(root,name),'wx',0o600);try {writeFileSync(fd,bytes);fsyncSync(fd);} finally {closeSync(fd);}};

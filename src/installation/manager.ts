@@ -1,0 +1,134 @@
+import {existsSync,mkdirSync,realpathSync,mkdtempSync,chmodSync,writeFileSync,openSync,closeSync,readFileSync,readdirSync} from 'node:fs';
+import {join,dirname,basename,resolve,isAbsolute} from 'node:path';
+import {tmpdir} from 'node:os';
+import {randomUUID} from 'node:crypto';
+import {spawn} from 'node:child_process';
+import {outsideSource,createPrivateRoot,assertSeparate,writePrivate,readPrivate,operatorLock} from './files.js';
+import {inspectRuntime,verifyRuntime} from './runtime.js';
+import type {RuntimeBinding} from './runtime.js';
+import {initializeWorkspace} from './workspace.js';
+import {privatePath,privateRead} from '../standalone/workspace.js';
+import {createStandaloneService} from '../standalone/service.js';
+import {exact,id,digest,hash,validateIdentity} from '../standalone/validation.js';
+import {fail} from '../standalone/types.js';
+import type {Json} from '../standalone/types.js';
+import {operatorRequest,processPresent,validateRun} from './control.js';
+import type {RunRecord} from './control.js';
+
+export interface Installation {schema:'ontology-installation/v1';installationId:string;root:string;workspaceRoot:string;workspaceId:string;serviceId:string;projectId:string;principalId:string;credentialFile:string;runtime:RuntimeBinding;port:number;createdAt:string;}
+export interface PrepareInput{root:string;workspaceRoot:string;workspaceId:string;projectId:string;principalId:string;runtimeRoot:string;runtimeDigest:string;mode:'create'|'attach';serviceId?:string;port?:number;}
+export function readInstallation(path:string):Installation{
+  privatePath(path,true);const root=outsideSource(path),value=readPrivate(join(root,'installation.json'));
+  exact(value,['schema','installationId','root','workspaceRoot','workspaceId','serviceId','projectId','principalId','credentialFile','runtime','port','createdAt']);
+  if(value.schema!=='ontology-installation/v1'||value.root!==root)fail('IDENTITY_MISMATCH','Installation root changed',403);
+  id(value.installationId);id(value.workspaceId);id(value.serviceId);id(value.projectId);id(value.principalId);
+  if(typeof value.workspaceRoot!=='string'||!isAbsolute(value.workspaceRoot)||value.credentialFile!==join(value.workspaceRoot,'operator-token'))fail('INVALID_STATE','Invalid workspace credential reference');
+  if(!Number.isInteger(value.port)||(value.port as number)<0||(value.port as number)>65535)fail('INVALID_STATE','Invalid installation port');
+  exact(value.runtime,['root','packageRoot','version','digest','files','bytes','nodePath','nodeDigest','nodeVersion']);
+  digest(value.runtime.digest);digest(value.runtime.nodeDigest);
+  if(typeof value.runtime.root!=='string'||!isAbsolute(value.runtime.root)||value.runtime.packageRoot!==join(value.runtime.root,'node_modules/@evopilot-next/ontology'))fail('INVALID_STATE','Invalid runtime location');
+  return value as unknown as Installation;
+}
+function plugin(installation:Installation):void{
+  const root=join(installation.root,'plugin'),skillRoot=join(root,'skills','evopilot-ontology-expert');
+  for(const dir of [root,join(root,'.codex-plugin'),join(root,'skills'),skillRoot,join(skillRoot,'agents')]){if(!existsSync(dir))mkdirSync(dir,{mode:0o700});privatePath(dir,true);}
+  const source=join(installation.runtime.packageRoot,'plugins/codex');
+  for(const [sourcePath,target] of [['.codex-plugin/plugin.json',join(root,'.codex-plugin/plugin.json')],['skills/evopilot-ontology-expert/agents/openai.yaml',join(skillRoot,'agents/openai.yaml')]]){
+    const value=readSource(join(source,sourcePath));
+    if(sourcePath.endsWith('.json'))writePrivate(target,JSON.parse(value),true);else writeText(target,value);
+  }
+  writeText(join(skillRoot,'SKILL.md'),readSource(join(source,'skills/evopilot-ontology-expert/SKILL.md')));
+  writePrivate(join(root,'.mcp.json'),{mcpServers:{'evopilot-ontology':{command:installation.runtime.nodePath,args:[join(installation.runtime.packageRoot,'dist/standalone/bridge.js'),'--connection',join(installation.root,'connection.json')],env:{NODE_OPTIONS:'',NODE_PATH:''}}}},true);
+}
+// Public package files may be world readable. Only generated bindings contain private locations.
+const readSource=(path:string)=>readFileSync(path,'utf8');
+function writeText(path:string,value:string):void{if(existsSync(path))privatePath(path);writeFileSync(path,value,{mode:0o600});chmodSync(path,0o600);}
+export function prepareInstallation(input:PrepareInput):Installation{
+  id(input.workspaceId);id(input.projectId);id(input.principalId);digest(input.runtimeDigest);
+  if(!['create','attach'].includes(input.mode))fail('INVALID_INPUT','Explicit create or attach mode required');
+  const runtime=inspectRuntime(input.runtimeRoot);if(runtime.digest!==input.runtimeDigest)fail('RUNTIME_CHANGED','Runtime digest differs from selected package',409);
+  const port=input.port??0;if(!Number.isInteger(port)||port<0||port>65535)fail('INVALID_INPUT','Invalid port');
+  if(!isAbsolute(input.root)||!isAbsolute(input.workspaceRoot))fail('UNSAFE_PATH','Absolute roots required');
+  // Resolve parent aliases before checking separation (for example /tmp versus /private/tmp).
+  const canonicalRoot=(path:string)=>join(outsideSource(dirname(resolve(path))),basename(resolve(path)));
+  const root=canonicalRoot(input.root),workspaceRoot=canonicalRoot(input.workspaceRoot);
+  assertSeparate(root,workspaceRoot);assertSeparate(root,runtime.root);assertSeparate(workspaceRoot,runtime.root);
+  const requestDigest=hash({root,workspaceRoot,workspaceId:input.workspaceId,projectId:input.projectId,principalId:input.principalId,runtimeRoot:runtime.root,runtimeDigest:input.runtimeDigest,mode:input.mode,serviceId:input.serviceId??null,port});
+  if(!existsSync(root))createPrivateRoot(root);
+  else{privatePath(root,true);if(readdirSync(root).length&&!existsSync(join(root,'setup.json')))fail('INSTALLATION_EXISTS','Occupied directory has no retained Ontology setup',409);}
+  privatePath(root,true);outsideSource(root);
+  const unlock=operatorLock(root);
+  try{
+    const setupFile=join(root,'setup.json');let setup:{requestDigest:string;installationId:string;serviceId:string;createdAt:string};
+    if(existsSync(setupFile)){const value=readPrivate(setupFile);exact(value,['requestDigest','installationId','serviceId','createdAt']);if(value.requestDigest!==requestDigest)fail('SETUP_CONFLICT','Retained setup binds a different request',409);id(value.installationId);id(value.serviceId);setup=value as typeof setup;}
+    else{
+      if(input.mode==='create'&&existsSync(workspaceRoot))fail('WORKSPACE_EXISTS','Create refuses occupied workspace; select explicit attach',409);
+      if(input.mode==='attach'&&!input.serviceId)fail('INVALID_INPUT','Attach requires exact service identity');
+      setup={requestDigest,installationId:randomUUID(),serviceId:input.serviceId??randomUUID(),createdAt:new Date().toISOString()};writePrivate(setupFile,setup);
+    }
+    if(!existsSync(workspaceRoot)){
+      if(input.mode==='attach')fail('NOT_FOUND','Selected workspace does not exist',404);
+      initializeWorkspace({root:workspaceRoot,workspaceId:input.workspaceId,projectId:input.projectId,principalId:input.principalId,serviceId:setup.serviceId});
+    }
+    const value=readPrivate(join(workspaceRoot,'identity.json'));validateIdentity(value);
+    if(value.workspaceId!==input.workspaceId||value.serviceId!==setup.serviceId)fail('IDENTITY_MISMATCH','Workspace differs from retained setup',403);
+    if(existsSync(join(root,'installation.json'))){const existing=readInstallation(root);if(existing.installationId!==setup.installationId)fail('IDENTITY_MISMATCH','Installation differs from retained setup');return existing;}
+    const credentialFile=join(workspaceRoot,'operator-token'),service=createStandaloneService({root:workspaceRoot,workspaceId:value.workspaceId,serviceId:value.serviceId});
+    try{const context=service.context(privateRead(credentialFile,256));if(!context||typeof context!=='object'||Array.isArray(context)||context.principalId!==input.principalId||!Array.isArray(context.projectIds)||!context.projectIds.includes(input.projectId))fail('FORBIDDEN','Credential does not match selected principal/project',403);}finally{service.close();}
+    const installation:Installation={schema:'ontology-installation/v1',installationId:setup.installationId,root:realpathSync(root),workspaceRoot:realpathSync(workspaceRoot),workspaceId:value.workspaceId,serviceId:value.serviceId,projectId:input.projectId,principalId:input.principalId,credentialFile,runtime,port,createdAt:setup.createdAt};
+    const runs=join(root,'runs');if(!existsSync(runs))mkdirSync(runs,{mode:0o700});privatePath(runs,true);
+    plugin(installation);writePrivate(join(root,'installation.json'),installation);return installation;
+  }finally{unlock();}
+}
+export function currentRun(installation:Installation):RunRecord|null{
+  const pointer=join(installation.root,'current-run.json');if(!existsSync(pointer))return null;
+  const selected=readPrivate(pointer);exact(selected,['runId']);id(selected.runId);
+  const value=readPrivate(join(installation.root,'runs',selected.runId+'.json'));validateRun(value);
+  if(value.installationId!==installation.installationId||value.runId!==selected.runId)fail('IDENTITY_MISMATCH','Managed run identity changed',403);return value;
+}
+export function writeRun(installation:Installation,run:RunRecord):void{
+  if(run.installationId!==installation.installationId)fail('IDENTITY_MISMATCH','Managed run owner differs');
+  writePrivate(join(installation.root,'runs',run.runId+'.json'),run,true);
+}
+export async function inspectInstallation(path:string):Promise<Json>{
+  const installation=readInstallation(path),run=currentRun(installation);
+  if(!run)return {installation:{...installation,runtime:{...installation.runtime}},observed:'STOPPED',run:null};
+  try{const actual=await operatorRequest(run,'status');return {installationId:installation.installationId,observed:actual.state,run:{...actual}};}
+  catch{const alive=processPresent(run.pid);return {installationId:installation.installationId,observed:run.state==='STOPPED'||run.state==='FAILED'?run.state:alive===false?'DEAD':'UNKNOWN',run:{...run}};}
+}
+const pause=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
+export async function startInstallation(path:string):Promise<Json>{
+  const installation=readInstallation(path),unlock=operatorLock(installation.root);
+  try{
+    verifyRuntime(installation.runtime);
+    const old=currentRun(installation);
+    if(old){try{const actual=await operatorRequest(old,'status');if(actual.state==='RUNNING')return {installationId:installation.installationId,observed:'RUNNING',run:{...actual},reused:true};}catch{}
+      if(!['STOPPED','FAILED'].includes(old.state)&&processPresent(old.pid)!==false)fail('LAUNCH_UNKNOWN','Original launch outcome is unresolved; inspect it before starting another',409);}
+    const controlRoot=realpathSync(mkdtempSync(join(tmpdir(),'ont-op-')));chmodSync(controlRoot,0o700);
+    const run:RunRecord={schema:'ontology-managed-run/v1',installationId:installation.installationId,runId:randomUUID(),createdAt:new Date().toISOString(),pid:null,controlSocket:join(controlRoot,'control.sock'),state:'STARTING',origin:null,error:null};
+    writeRun(installation,run);writePrivate(join(installation.root,'current-run.json'),{runId:run.runId},true);
+    const log=join(installation.root,'runs',run.runId+'.log'),fd=openSync(log,'wx',0o600);
+    try{
+      const child=spawn(installation.runtime.nodePath,[join(installation.runtime.packageRoot,'dist/installation/daemon.js'),'--installation',installation.root,'--run',run.runId],{detached:true,cwd:installation.root,stdio:['ignore',fd,fd],env:{PATH:dirname(installation.runtime.nodePath),LANG:'C.UTF-8',NODE_OPTIONS:'',NODE_PATH:''}});
+      child.on('error',()=>{const current=currentRun(installation);if(current?.runId===run.runId&&current.state==='STARTING'&&current.pid===null){current.state='FAILED';current.error='SPAWN_FAILED';writeRun(installation,current);}});child.unref();
+      // The daemon owns later state transitions; parent never overwrites its STARTING/RUNNING receipt.
+    }finally{closeSync(fd);}
+    for(let i=0;i<100;i++){
+      const current=currentRun(installation)!;
+      if(current.state==='FAILED')fail(current.error??'START_FAILED','Managed service failed to start; inspect retained run',409);
+      if(current.state==='RUNNING'){try{const actual=await operatorRequest(current,'status');return {installationId:installation.installationId,observed:'RUNNING',run:{...actual},reused:false};}catch{}}
+      await pause(100);
+    }
+    fail('LAUNCH_UNKNOWN','Managed start timed out; inspect its original retained run',503);
+  }finally{unlock();}
+}
+export async function stopInstallation(path:string):Promise<Json>{
+  const installation=readInstallation(path),unlock=operatorLock(installation.root);
+  try{
+    const run=currentRun(installation);if(!run)return {observed:'STOPPED',run:null};
+    if(['STOPPED','FAILED'].includes(run.state))return {observed:run.state,run:{...run}};
+    try{await operatorRequest(run,'stop');}catch{if(processPresent(run.pid)===false)return {observed:'DEAD',run:{...run}};fail('STOP_UNKNOWN','Cannot authenticate the original service; no PID signal was sent',503);}
+    for(let i=0;i<100;i++){const current=currentRun(installation)!;if(current.state==='STOPPED')return {observed:'STOPPED',run:{...current}};await pause(100);}
+    fail('STOP_UNKNOWN','Stop requested; inspect its original retained run',503);
+  }finally{unlock();}
+}

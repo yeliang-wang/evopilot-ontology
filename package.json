@@ -66,6 +66,7 @@
     "test": "node --test tests/e2e/*.test.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
     "@modelcontextprotocol/node": "2.1.2",
     "@modelcontextprotocol/server": "2.4.0",
     "ajv": "8.20.0",
@@ -77,7 +78,6 @@
     "evopilot-ontology": "dist/standalone/cli.js"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "2.4.0",
     "@types/node": "24.19.2",
     "typescript": "5.9.3"
   }

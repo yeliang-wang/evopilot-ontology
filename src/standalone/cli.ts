@@ -3,6 +3,8 @@ import { isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { constants, openSync, closeSync, readSync, fstatSync, realpathSync } from 'node:fs';
 import { initializeWorkspace } from '../installation/workspace.js';
+import { inspectRuntime } from '../installation/runtime.js';
+import { prepareInstallation,inspectInstallation,startInstallation,stopInstallation } from '../installation/manager.js';
 import { listenStandalone } from './http.js';
 import { readConnection, sendRequest } from './client.js';
 import { READ_OPERATIONS, WRITE_OPERATIONS } from './service.js';
@@ -10,7 +12,7 @@ import { json, object } from './validation.js';
 import { LIMITS, ServiceError, fail } from './types.js';
 import type { Json, ServiceRequest } from './types.js';
 
-const usage='evopilot-ontology init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
+const usage='evopilot-ontology runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
 function flags(args: string[],required: string[],optional: string[]=[]): Map<string,string>{
   const found=new Map<string,string>();
   for(let i=0;i<args.length;i++){
@@ -38,6 +40,19 @@ function readInput(path:string):Buffer{
 }
 export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>{
   const [command,...args]=argv;
+  if(command==='runtime-inspect'){
+    const f=flags(args,['--runtime-root']);emit({...inspectRuntime(f.get('--runtime-root')!)});return;
+  }
+  if(command==='install'){
+    const f=flags(args,['--root','--workspace-root','--workspace','--project','--principal','--runtime-root','--runtime-digest','--mode'],['--service','--port']);
+    const mode=f.get('--mode');if(mode!=='create'&&mode!=='attach')fail('INVALID_ARGUMENTS','Mode must be create or attach');
+    const result=prepareInstallation({root:f.get('--root')!,workspaceRoot:f.get('--workspace-root')!,workspaceId:f.get('--workspace')!,projectId:f.get('--project')!,principalId:f.get('--principal')!,runtimeRoot:f.get('--runtime-root')!,runtimeDigest:f.get('--runtime-digest')!,mode,serviceId:f.get('--service'),port:f.has('--port')?integer(f.get('--port')!):0});
+    emit({...result,runtime:{...result.runtime}});return;
+  }
+  if(['installation-inspect','start','stop'].includes(command)){
+    const f=flags(args,['--installation']);
+    emit(await (command==='start'?startInstallation:command==='stop'?stopInstallation:inspectInstallation)(f.get('--installation')!));return;
+  }
   if(command==='init'){
     const f=flags(args,['--root','--workspace','--project','--principal']);
     emit(initializeWorkspace({root:f.get('--root')!,workspaceId:f.get('--workspace')!,projectId:f.get('--project')!,principalId:f.get('--principal')!}));return;

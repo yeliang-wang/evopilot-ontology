@@ -66,13 +66,13 @@ const expected = {
     "test": "node --test tests/e2e/*.test.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
     "@modelcontextprotocol/node": "2.1.2",
     "@modelcontextprotocol/server": "2.4.0",
     "ajv": "8.20.0",
     "yaml": "2.9.0"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "2.4.0",
     "typescript": "5.9.3",
     "@types/node": "24.19.2"
   }
@@ -185,6 +185,7 @@ export async function checkSource() {
     for (const specifier of specifiers(source)) {
       if (isBuiltin(specifier)) continue;
       if (path===resolve(ROOT,'src/standalone/mcp.ts') && ['@modelcontextprotocol/server','@modelcontextprotocol/node'].includes(specifier)) continue;
+      if (path===resolve(ROOT,'src/standalone/bridge.ts') && ['@modelcontextprotocol/server','@modelcontextprotocol/server/stdio','@modelcontextprotocol/client'].includes(specifier)) continue;
       if (specifier === 'yaml' && (path.endsWith('/src/asset-sources.ts') || path === resolve(ROOT, 'src/import-operations.ts') || PRODUCT === 'ontology' && path.includes('/src/compat/'))) continue;
       if (PRODUCT === 'ontology' && path.includes('/src/compat/') && specifier === 'ajv/dist/2020.js') continue;
       assert(specifier.startsWith('.'), 'Undeclared import: ' + specifier);

@@ -31,7 +31,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
     if (!grant.permissions.includes('read')) fail('FORBIDDEN','Read permission required for service discovery',403);
     return {product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P1_FOUNDATION',
       workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,
-      projectIds:[...grant.projectIds],permissions:[...grant.permissions],
+      principalId:grant.principalId,projectIds:[...grant.projectIds],permissions:[...grant.permissions],
       readOperations:[...READ_OPERATIONS],writeOperations:grant.permissions.includes('write')?[...WRITE_OPERATIONS]:[],
       reasoningReady:false,nativeV2Ready:false,authority:false};
   };

@@ -21,7 +21,7 @@ async function fixture(t){
   };
   const read=(operation,input={},extra={})=>({workspaceId:setup.workspaceId,serviceId:setup.serviceId,projectId:'demo',operation,input,...extra});
   const write=(operation,input,requestId,expectedRevision)=>read(operation,input,{requestId,expectedRevision});
-  const call=(c,name,args={})=>c.callTool({name,arguments:args},undefined,{timeout:5000});
+  const call=(c,name,args={})=>c.callTool({name,arguments:args},{timeout:5000});
   return {base,root,setup,token,server,client,read,write,call};
 }
 const definition={purpose:'Source-grounded sensitive service classification',mode:'forward',scope:'Synthetic service model',exclusions:['Live data'],sources:[{id:'req',locator:'requirements.txt',revision:'v1',digest:hashBytes('independently fixed example'),origin:'requirement'}],requirements:[{id:'r1',statement:'Sensitive access is classified with its supporting premises'}]};
