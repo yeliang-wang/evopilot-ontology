@@ -17,6 +17,10 @@ import org.semanticweb.owlapi.model.*;
 import org.semanticweb.owlapi.formats.*;
 import org.semanticweb.owlapi.io.*;
 import org.semanticweb.owlapi.profiles.OWL2DLProfile;
+import org.semanticweb.owlapi.profiles.OWLProfileViolation;
+import org.semanticweb.owlapi.profiles.violations.LexicalNotInLexicalSpace;
+import org.semanticweb.owlapi.util.AnnotationWalkingControl;
+import org.semanticweb.owlapi.util.OWLObjectWalker;
 import org.semanticweb.owlapi.util.OWLObjectTransformer;
 import org.semanticweb.owlapi.reasoner.*;
 import org.semanticweb.owlapi.functional.parser.OWLFunctionalSyntaxOWLParserFactory;
@@ -232,6 +236,46 @@ public final class Worker {
     require(++importTraversals<=8192,"IMPORT_TRAVERSAL_LIMIT","Import traversal budget");require(docs.containsKey(id),"MISSING_IMPORT","Root document absent");if(path.contains(id))return;require(path.size()<16,"IMPORT_DEPTH","Import depth budget");
     reached.add(id);var next=new HashSet<>(path);next.add(id);for(String to:edges.getOrDefault(id,Map.of()).values())walk(to,edges,docs,next,reached);
   }
+  static boolean between(int c,int low,int high){return c>=low&&c<=high;}
+  static boolean xmlNameStart(int c){
+    // XML 1.0 Fifth Edition productions [4] / [4a], used by XSD 1.1 Names.
+    // Iterate Unicode code points, not UTF-16 code units or Java \w classes.
+    return c==':'||c=='_'||between(c,'A','Z')||between(c,'a','z')||between(c,0xC0,0xD6)||between(c,0xD8,0xF6)
+      ||between(c,0xF8,0x2FF)||between(c,0x370,0x37D)||between(c,0x37F,0x1FFF)||between(c,0x200C,0x200D)
+      ||between(c,0x2070,0x218F)||between(c,0x2C00,0x2FEF)||between(c,0x3001,0xD7FF)||between(c,0xF900,0xFDCF)
+      ||between(c,0xFDF0,0xFFFD)||between(c,0x10000,0xEFFFF);
+  }
+  static boolean xmlNameChar(int c){return xmlNameStart(c)||c=='-'||c=='.'||between(c,'0','9')||c==0xB7||between(c,0x300,0x36F)||between(c,0x203F,0x2040);}
+  static Boolean correctedStringLexical(OWLLiteral literal){
+    String iri=literal.getDatatype().getIRI().toString(),xsd="http://www.w3.org/2001/XMLSchema#";
+    if(!Set.of(xsd+"Name",xsd+"NCName",xsd+"NMTOKEN",xsd+"token").contains(iri))return null;
+    String s=literal.getLiteral();
+    if(iri.equals(xsd+"token")){
+      // XSD token admits the empty string and forbids XML whitespace other
+      // than single internal spaces. Do not trim/normalize original literals.
+      if(s.startsWith(" ")||s.endsWith(" ")||s.contains("  "))return false;
+      return s.codePoints().allMatch(c->c!=9&&c!=10&&c!=13&&(between(c,0x20,0xD7FF)||between(c,0xE000,0xFFFD)||between(c,0x10000,0x10FFFF)));
+    }
+    if(s.isEmpty())return false;boolean token=iri.equals(xsd+"NMTOKEN"),nonColon=iri.equals(xsd+"NCName");
+    for(int offset=0;offset<s.length();){int c=s.codePointAt(offset);
+      if(nonColon&&c==':'||!(offset==0&&!token?xmlNameStart(c):xmlNameChar(c)))return false;
+      offset+=Character.charCount(c);
+    }
+    return true;
+  }
+  static List<OWLProfileViolation> profileViolations(OWLOntology o){
+    // OWLAPI 5.5.1 has ungrouped Name/NCName regex alternatives, accepts any
+    // NMTOKEN and rejects the empty token. Replace only these lexical checks
+    // with the standard productions; retain every other profile restriction.
+    var violations=new ArrayList<OWLProfileViolation>();
+    for(var v:new OWL2DLProfile().checkOntology(o).getViolations())
+      if(!(v instanceof LexicalNotInLexicalSpace l)||correctedStringLexical(l.getExpression())==null)violations.add(v);
+    var walker=new OWLObjectWalker<OWLOntology>(List.of(o),false,AnnotationWalkingControl.WALK_ANNOTATIONS);
+    walker.walkStructure(new OWLObjectVisitor(){public void visit(OWLLiteral literal){
+      if(Boolean.FALSE.equals(correctedStringLexical(literal)))violations.add(new LexicalNotInLexicalSpace(o,walker.getAxiom(),literal));
+    }});
+    return violations;
+  }
   static List<OWLAxiom> queries(JsonNode task)throws Exception {
     JsonNode q=task.get("query");require(q!=null&&q.isObject(),"INVALID_QUERY","Query ontology required");
     var parsed=parse(manager(),q,"urn:evopilot:ontology:query",List.of());OWLOntology o=parsed.ontology();
@@ -240,7 +284,7 @@ public final class Worker {
     // Supply declarations only in this separate profile-check projection, never as premises.
     var qm=o.getOWLOntologyManager();var syntaxAxioms=new HashSet<>(parsed.syntaxAxioms());syntaxAxioms.addAll(o.getAxioms());
     var validation=anonymous(qm,syntaxAxioms);validation.signature().toList().forEach(e->qm.addAxiom(validation,qm.getOWLDataFactory().getOWLDeclarationAxiom(e)));
-    require(new OWL2DLProfile().checkOntology(validation).isInProfile(),"INVALID_QUERY","Query violates OWL 2 DL restrictions");
+    require(profileViolations(validation).isEmpty(),"INVALID_QUERY","Query violates OWL 2 DL restrictions");
     List<OWLAxiom> axioms=o.logicalAxioms().map(a->(OWLAxiom)a).sorted(Comparator.comparing(Object::toString)).toList();
     require(axioms.size()<=1000,"INVALID_QUERY","Query axiom budget exceeded");return axioms;
   }
@@ -284,11 +328,11 @@ public final class Worker {
     Loaded loaded=load(request.get("closure"),end);OWLOntology o=loaded.ontology();JsonNode task=request.get("task");String kind=str(task,"kind");
     ObjectNode out=JSON.createObjectNode();ObjectNode result=out.putObject("result");out.put("status","COMPLETED");out.put("complete",true);
     result.put("semantics","OWL_2_DL_DIRECT");result.put("axiomCount",o.getAxiomCount());
-    var profile=new OWL2DLProfile().checkOntology(loaded.validationOntology());
-    if(!profile.isInProfile()){
+    var profile=profileViolations(loaded.validationOntology());
+    if(!profile.isEmpty()){
       out.put("status","INVALID_INPUT");out.put("complete",false);result.put("legal",false);ArrayNode violations=result.putArray("violations");
-      for(var v:profile.getViolations().stream().limit(1000).toList()){ObjectNode entry=violations.addObject();entry.put("type",v.getClass().getSimpleName());entry.put("detail",v.toString());}
-      result.put("violationsComplete",profile.getViolations().size()<=1000);out.putObject("error").put("code","OWL2_DL_PROFILE").put("message","Ontology violates OWL 2 DL restrictions");return out;
+      for(var v:profile.stream().limit(1000).toList()){ObjectNode entry=violations.addObject();entry.put("type",v.getClass().getSimpleName());entry.put("detail",v.toString());}
+      result.put("violationsComplete",profile.size()<=1000);out.putObject("error").put("code","OWL2_DL_PROFILE").put("message","Ontology violates OWL 2 DL restrictions");return out;
     }
     result.put("legal",true);if(kind.equals("legality"))return out;
     List<OWLAxiom> q=List.of();if(List.of("entailment","satisfiability").contains(kind)||kind.equals("explanation")&&str(task,"target").equals("entailment"))q=queries(task);

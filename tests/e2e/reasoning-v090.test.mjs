@@ -65,6 +65,50 @@ test('empty logical conclusion is explicitly vacuous and is not a business cover
   assert.equal(result.result.vacuous,true);assert.deepEqual(result.result.queryAxioms,[]);
 });
 
+test('XML string datatype lexical checks admit ordinary names and empty tokens in actual entailment',async()=>{
+  // Independent grammar/value expectations: XSD 1.1 sections 3.4.2, 3.4.4,
+  // 3.4.6 and 3.4.7. These strings denote the same values as xsd:string.
+  const values=[['Name','name'],['Name','a:name'],['Name',':name'],['Name','服务'],
+    ['NCName','name'],['NCName','_name'],['NCName','a-b.c'],['NCName','a\u0301'],
+    ['NMTOKEN','9:a-b.c'],['token',''],['token','a b'],['token','a\u00A0b']];
+  const props=values.map((_,i)=>'p'+i),decl=declaration({data:props,individuals:['a']});
+  const assertions=values.map(([type,value],i)=>`DataPropertyAssertion(:p${i} :a ${JSON.stringify(value)}^^xsd:${type})`).join('\n');
+  const strings=values.map(([,value],i)=>`DataPropertyAssertion(:p${i} :a ${JSON.stringify(value)}^^xsd:string)`).join('\n');
+  const proof=await run(decl+assertions,{kind:'entailment',query:query(strings)},'ENTAILED');
+  assert.equal(proof.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_1_DL');
+  await run(decl+strings,{kind:'entailment',query:query(assertions)},'ENTAILED');
+});
+
+test('XML name legality uses Unicode code points and preserves other DL profile violations',async()=>{
+  // XML 1.0 Fifth Edition adds these names; legal syntax is separate from
+  // the outstanding upstream engine Unicode/datatype conformance obligation.
+  const values=['\u037Fname','\u200Cname','\u{10000}name','\u{EFFFF}'];
+  const decl=declaration({data:['p'],individuals:['a']});
+  const body=decl+values.flatMap(value=>['Name','NCName','NMTOKEN'].map(type=>`DataPropertyAssertion(:p :a ${JSON.stringify(value)}^^xsd:${type})`)).join('\n');
+  await run(body,{kind:'legality'});
+  const illegal=body+declaration({objects:['r'],classes:['A']})+' TransitiveObjectProperty(:r) SubClassOf(:A ObjectMaxCardinality(1 :r))';
+  const rejected=await run(illegal,{kind:'legality'},'INVALID_INPUT');
+  assert.ok(rejected.result.violations.some(v=>v.type==='UseOfNonSimplePropertyInCardinalityRestriction'));
+});
+
+test('invalid XML names and tokens are rejected in premises, queries and nested annotations',async()=>{
+  const decl=declaration({data:['p'],individuals:['a']});
+  const invalid=[['Name','9name'],['Name',' a'],['Name','a/b'],['Name','\u{F0000}'],
+    ['NCName','a:name'],['NCName',''],['NMTOKEN',''],['NMTOKEN','a b'],
+    ['token',' a'],['token','a '],['token','a  b'],['token','a\tb']];
+  for(const [type,value] of invalid){
+    // Functional Syntax allows literal tab characters; preserve the raw value.
+    const literal='"'+value+'"^^xsd:'+type,ax=`DataPropertyAssertion(:p :a ${literal})`;
+    const premise=await run(decl+ax,{kind:'legality'},'INVALID_INPUT');
+    assert.equal(premise.error.code,'OWL2_DL_PROFILE');
+    assert.ok(premise.result.violations.some(v=>v.type==='LexicalNotInLexicalSpace'));
+    const conclusion=await run(decl,{kind:'entailment',query:query(ax)},'INVALID_INPUT');
+    assert.equal(conclusion.error.code,'INVALID_QUERY');
+  }
+  const annotation='Declaration(AnnotationProperty(:note)) Declaration(Class(:A)) SubClassOf(Annotation(:note "a:b"^^xsd:NCName) :A owl:Thing)';
+  await run(annotation,{kind:'legality'},'INVALID_INPUT');
+});
+
 test('RDF singleton class expressions follow OWL 2 compatibility mapping including nested datatype facets',async()=>{
   const content=`@prefix : <urn:evopilot:formal-test:> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
