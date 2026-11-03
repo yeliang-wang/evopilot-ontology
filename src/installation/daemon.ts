@@ -4,6 +4,7 @@ import {dirname,join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {readInstallation,currentRun,writeRun} from './manager.js';
 import {verifyRuntime} from './runtime.js';
+import {currentToolchainBinding,verifyManagedToolchains} from './toolchains.js';
 import {writePrivate} from './files.js';
 import {listenStandalone} from '../standalone/http.js';
 import {ServiceError,fail} from '../standalone/types.js';
@@ -24,7 +25,10 @@ export async function runDaemon(root:string,runId:string):Promise<void>{
   };
   try{
     run.pid=process.pid;writeRun(installation,run);verifyRuntime(installation.runtime);
-    service=await listenStandalone({root:installation.workspaceRoot,workspaceId:installation.workspaceId,serviceId:installation.serviceId,port:installation.port});
+    const binding=currentToolchainBinding(installation);
+    if(run.toolchainBindingDigest!==(binding?.digest??null))fail('TOOLCHAIN_BINDING_CONFLICT','Managed run toolchain binding changed before launch',409);
+    const formal=verifyManagedToolchains(installation,binding);
+    service=await listenStandalone({root:installation.workspaceRoot,workspaceId:installation.workspaceId,serviceId:installation.serviceId,port:installation.port,...formal});
     control=createServer(socket=>{
       let data='',handled=false;socket.setTimeout(2000,()=>socket.destroy());
       socket.on('error',()=>{});

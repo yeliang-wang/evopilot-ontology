@@ -7,13 +7,15 @@ import {outsideSource,createPrivateRoot,assertSeparate,writePrivate,readPrivate,
 import {inspectRuntime,verifyRuntime} from './runtime.js';
 import type {RuntimeBinding} from './runtime.js';
 import {initializeWorkspace} from './workspace.js';
-import {privatePath,privateRead} from '../standalone/workspace.js';
+import {privatePath,privateRead,openWorkspace} from '../standalone/workspace.js';
 import {createStandaloneService} from '../standalone/service.js';
 import {exact,id,digest,hash,validateIdentity} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
 import {operatorRequest,processPresent,validateRun} from './control.js';
 import type {RunRecord} from './control.js';
+import {readToolchainLedger,verifyManagedToolchains,recordToolchainBinding,toolchainRequestDigest,validateToolchainInput} from './toolchains.js';
+import type {BindToolchainsInput,ToolchainRecord} from './toolchains.js';
 
 export interface Installation {schema:'ontology-installation/v1';installationId:string;root:string;workspaceRoot:string;workspaceId:string;serviceId:string;projectId:string;principalId:string;credentialFile:string;runtime:RuntimeBinding;port:number;createdAt:string;}
 export interface PrepareInput{root:string;workspaceRoot:string;workspaceId:string;projectId:string;principalId:string;runtimeRoot:string;runtimeDigest:string;mode:'create'|'attach';serviceId?:string;port?:number;}
@@ -96,16 +98,46 @@ export async function inspectInstallation(path:string):Promise<Json>{
   try{const actual=await operatorRequest(run,'status');return {installationId:installation.installationId,observed:actual.state,run:{...actual}};}
   catch{const alive=processPresent(run.pid);return {installationId:installation.installationId,observed:run.state==='STOPPED'||run.state==='FAILED'?run.state:alive===false?'DEAD':'UNKNOWN',run:{...run}};}
 }
+export function bindInstallationToolchains(path:string,input:BindToolchainsInput):Json {
+  const installation=readInstallation(path),unlock=operatorLock(installation.root);
+  try{
+    validateToolchainInput(input);verifyRuntime(installation.runtime);
+    const ledger=readToolchainLedger(installation),requestDigest=toolchainRequestDigest(installation,input),old=ledger.records.find(r=>r.binding.requestId===input.requestId),run=currentRun(installation);
+    requireRunToolchainHistory(run,ledger.records);
+    if(old){if(old.binding.requestDigest!==requestDigest)fail('REQUEST_CONFLICT','Toolchain request ID binds different parameters',409);return {receipt:old as unknown as Json,replayed:true,currentBindingDigest:ledger.records.at(-1)!.digest,authority:false};}
+    if(run&&!['STOPPED','FAILED'].includes(run.state)&&processPresent(run.pid)!==false)fail('INSTALLATION_RUNNING','Stop or reconcile the exact managed service before changing toolchain binding',409);
+    const workspace=openWorkspace(installation.workspaceRoot,installation);
+    try{
+      if(workspace.db.prepare("SELECT id FROM native_reasoning_tasks WHERE state!='FINISHED' LIMIT 1").get())fail('TASK_RECOVERY_REQUIRED','Unresolved formal work must be reconciled before replacing tools',409);
+      const receipt=recordToolchainBinding(installation,input,ledger);
+      return {receipt:receipt as unknown as Json,replayed:false,currentBindingDigest:receipt.digest,authority:false};
+    }finally{workspace.close();}
+  }finally{unlock();}
+}
+export function inspectInstallationToolchains(path:string):Json {
+  const installation=readInstallation(path);verifyRuntime(installation.runtime);const ledger=readToolchainLedger(installation),record=ledger.records.at(-1)??null;
+  requireRunToolchainHistory(currentRun(installation),ledger.records);
+  verifyManagedToolchains(installation,record);
+  return {installationId:installation.installationId,status:record?'VERIFIED':'UNCONFIGURED',bindingDigest:record?.digest??null,binding:(record?.binding??null) as unknown as Json,executorsReplayed:false,productAcceptance:'NOT_EVALUATED',authority:false};
+}
+function requireRunToolchainHistory(run:RunRecord|null,records:ToolchainRecord[]):void {
+  if(run?.toolchainBindingDigest&&!records.some(r=>r.digest===run.toolchainBindingDigest))fail('TOOLCHAIN_BINDING_MISSING','Earlier managed run requires its missing binding history; no reset or unconfigured fallback',409);
+}
 const pause=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 export async function startInstallation(path:string):Promise<Json>{
   const installation=readInstallation(path),unlock=operatorLock(installation.root);
   try{
     verifyRuntime(installation.runtime);
-    const old=currentRun(installation);
-    if(old){try{const actual=await operatorRequest(old,'status');if(actual.state==='RUNNING')return {installationId:installation.installationId,observed:'RUNNING',run:{...actual},reused:true};}catch{}
+    const ledger=readToolchainLedger(installation),binding=ledger.records.at(-1)??null,old=currentRun(installation);
+    requireRunToolchainHistory(old,ledger.records);verifyManagedToolchains(installation,binding,true);
+    if(old){let actual:RunRecord|null=null;try{actual=await operatorRequest(old,'status');}catch{}
+      if(actual?.state==='RUNNING'){
+        if(actual.toolchainBindingDigest!==(binding?.digest??null))fail('TOOLCHAIN_BINDING_CONFLICT','Live service uses another toolchain binding; stop it explicitly',409);
+        return {installationId:installation.installationId,observed:'RUNNING',run:{...actual},reused:true};
+      }
       if(!['STOPPED','FAILED'].includes(old.state)&&processPresent(old.pid)!==false)fail('LAUNCH_UNKNOWN','Original launch outcome is unresolved; inspect it before starting another',409);}
     const controlRoot=realpathSync(mkdtempSync(join(tmpdir(),'ont-op-')));chmodSync(controlRoot,0o700);
-    const run:RunRecord={schema:'ontology-managed-run/v1',installationId:installation.installationId,runId:randomUUID(),createdAt:new Date().toISOString(),pid:null,controlSocket:join(controlRoot,'control.sock'),state:'STARTING',origin:null,error:null};
+    const run:RunRecord={schema:'ontology-managed-run/v2',installationId:installation.installationId,runId:randomUUID(),toolchainBindingDigest:binding?.digest??null,createdAt:new Date().toISOString(),pid:null,controlSocket:join(controlRoot,'control.sock'),state:'STARTING',origin:null,error:null};
     writeRun(installation,run);writePrivate(join(installation.root,'current-run.json'),{runId:run.runId},true);
     const log=join(installation.root,'runs',run.runId+'.log'),fd=openSync(log,'wx',0o600);
     try{

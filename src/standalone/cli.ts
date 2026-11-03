@@ -5,7 +5,7 @@ import { constants, openSync, closeSync, readSync, fstatSync, realpathSync } fro
 import { grantReviewer,revokeReviewer } from '../installation/reviewer.js';
 import { initializeWorkspace } from '../installation/workspace.js';
 import { inspectRuntime } from '../installation/runtime.js';
-import { prepareInstallation,inspectInstallation,startInstallation,stopInstallation } from '../installation/manager.js';
+import { prepareInstallation,inspectInstallation,startInstallation,stopInstallation,bindInstallationToolchains,inspectInstallationToolchains } from '../installation/manager.js';
 import { listenStandalone } from './http.js';
 import { readConnection, sendRequest } from './client.js';
 import { READ_OPERATIONS, WRITE_OPERATIONS } from './service.js';
@@ -13,7 +13,7 @@ import { json, object } from './validation.js';
 import { LIMITS, ServiceError, fail } from './types.js';
 import type { Json, ServiceRequest } from './types.js';
 
-const usage='evopilot-ontology reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
+const usage='evopilot-ontology toolchains-bind --installation ABS --request-id ID --previous-binding none|SHA256 --dl-toolchain ABS --dl-digest SHA256 --shacl-toolchain ABS --shacl-digest SHA256 --json | toolchains-inspect --installation ABS --json | reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
 function flags(args: string[],required: string[],optional: string[]=[]): Map<string,string>{
   const found=new Map<string,string>();
   for(let i=0;i<args.length;i++){
@@ -41,6 +41,13 @@ function readInput(path:string):Buffer{
 }
 export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>{
   const [command,...args]=argv;
+  if(command==='toolchains-bind'){
+    const f=flags(args,['--installation','--request-id','--previous-binding','--dl-toolchain','--dl-digest','--shacl-toolchain','--shacl-digest']);
+    emit(bindInstallationToolchains(f.get('--installation')!,{requestId:f.get('--request-id')!,previousBindingDigest:f.get('--previous-binding')==='none'?null:f.get('--previous-binding')!,dl:{toolchainFile:f.get('--dl-toolchain')!,toolchainDigest:f.get('--dl-digest')!},shacl:{toolchainFile:f.get('--shacl-toolchain')!,toolchainDigest:f.get('--shacl-digest')!}}));return;
+  }
+  if(command==='toolchains-inspect'){
+    const f=flags(args,['--installation']);emit(inspectInstallationToolchains(f.get('--installation')!));return;
+  }
   if(command==='reviewer-grant'||command==='reviewer-revoke'){
     const f=flags(args,['--root','--workspace','--service','--grant-id',...(command==='reviewer-grant'?['--project','--principal','--expires-at']:[])]);
     const base={root:f.get('--root')!,workspaceId:f.get('--workspace')!,serviceId:f.get('--service')!,grantId:f.get('--grant-id')!};

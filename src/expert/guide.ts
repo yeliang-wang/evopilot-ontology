@@ -4,6 +4,7 @@ import type { Json } from '../standalone/types.js';
 const guides:Record<string,{operations:string[];steps:string[]}>= {
   'first-use':{operations:['service.inspect','project.list','project.create','project.inspect'],steps:[
     'Inspect ontology_context first. Preserve its workspaceId/serviceId and permitted projectIds; do not infer installed readiness from a plugin label.',
+    'Inspect reasoningExecutionConfigured, validationExecutionConfigured and their exact toolchain digests. Managed installation can bind already provisioned executors through the separate local operator toolchains-bind/toolchains-inspect commands while the owner is stopped. These are not domain/MCP tools. Pin verified component identities; binding does not download components or prove full conformance.',
     'Read the selected project. For an actual modeling request in an empty authorized scope, create the project with expectedRevision 0 and a retained request ID. Reuse existing projects; do not create another merely because the chat changed.',
     'The development service supports retained intent, verified sources, independent expected cases, model drafts and configured DL/SHACL validation tasks. Exact candidate review, separately authorized semantic decisions and immutable local delivery are available; actual Host and full product acceptance remain pending. Use only listed operations.',
   ]},
