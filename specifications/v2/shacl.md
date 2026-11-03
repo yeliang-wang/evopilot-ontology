@@ -1,0 +1,33 @@
+# Native v2 SHACL execution
+
+This is an implemented internal executor contract, not product acceptance or an installed Expert capability. The standalone durable owner task API, independent requirement/case storage, explicit derived-view production and review/delivery integration remain pending. Frozen v1 validation is unchanged.
+
+## Contract and graph identity
+
+The authoritative [JSON Schema](../../schemas/v2/shacl.schema.json) defines `ontology-shacl-request/v2`; its document/closure types reference the model schema rather than defining another asset format. The bounded generator emits TypeScript types and the runtime schema. The request binds an exact model digest, `view.kind: asserted`, the complete offline RDF closure, shape documents and a separately fixed required-shape/focus ledger. All byte digests are checked before execution. JSON Schema validation is not RDF syntax validation or business confirmation.
+
+`viewDigest` binds the asserted view to the model and closure identity. `shapesDigest` binds every shape document, and `expectationsDigest` binds the required ledger. These are source identities, not claims of graph-isomorphism canonicalization. Every worker response repeats these identities, the request/configuration digest and the installed toolchain identity. Caller mutation after dispatch cannot change the retained request snapshot.
+
+The current adapter merges exactly the admitted ontology documents as the data graph and the admitted shape documents as the shapes graph. Distinct documents have distinct blank-node scopes. RDF/Turtle and RDF/XML are supported; DTD/entity declarations are rejected. Every parsed `owl:imports` declaration must match an admitted closure edge. There is no remote dereference, implicit shape import or arbitrary file input. Missing imports return `MISSING_IMPORT`; they never validate a silently smaller graph.
+
+## Formal behavior and coverage
+
+Python 3.12.12, RDFLib 7.6.0 and pySHACL 0.40.1 perform actual SHACL Core and bounded local SHACL-SPARQL SELECT validation. `inference=none`, `advanced=false`, `js=false` and `do_owl_imports=false` are fixed. OWL axioms may occur in the data graph; SHACL does not run a second OWL reasoner or invent property values from an existential restriction. Standard SHACL target/class behavior, including subclass and implicit class targets, is resolved by the pinned pySHACL implementation.
+
+The required ledger is supplied independently of the generated shape/model content. This executor verifies its digest but cannot establish who authored or approved it. The owner integration must retain and bind that independent snapshot before treating its results as lifecycle evidence. Positive/negative independent business case execution is a separate unfinished obligation.
+
+Each independently required shape must have a stable named identity, exist, meet its positive `minimumFocusCount` and include every required named focus in `requiredFocusIris`. Named expected focuses are checked against actual targets; they are never inserted to make a missing target pass. Literal/blank-node focuses participate in actual validation and the minimum count without inventing a stable business identity for a blank node. A count alone is not proof of semantic coverage; independent positive/negative case oracles remain necessary. Every shape with actual targets must have a ledger entry. Targetless nested shapes remain legal and are evaluated through their parent constraints. A disabled shape, missing required shape, empty target or narrowed required target set returns `INCOMPLETE_COVERAGE`. This is a product coverage gate, separate from SHACL's general graph conformance semantics. A `sh:targetNode` target may legally be absent as a subject in the data graph; presence must be expressed by the actual required constraints.
+
+Meta-SHACL is enabled. Recursive shape dependencies are explicitly unsupported rather than silently skipped. Local SELECT constraints reject SERVICE, external datasets, GRAPH, MINUS, VALUES and custom function calls. Unknown executable SHACL vocabulary, custom components, SHACL-AF and SHACL-JS cannot silently disable checks. Network blocking in the adapter is defense in depth, not an OS network sandbox.
+
+Completed formal outcomes are `CONFORMS` and `NONCONFORMING`, with the original SHACL report graph and typed RDF-term renderings for report properties. `INVALID_INPUT`, `MISSING_IMPORT`, `INCOMPLETE_COVERAGE`, `UNSUPPORTED`, `TIMEOUT`, `CANCELLED` and `FAILED` are incomplete. An exception, malformed report, toolchain drift or missing coverage never becomes an empty conforming result. No result records human review, Harness quality grades or release approval.
+
+## Process and toolchain binding
+
+`scripts/prepare-shacl-worker.mjs ABS_PRIVATE_RUNTIME_ROOT ABS_NEW_WORKER_ROOT` prepares an isolated copy of the adapter using an already provisioned private Python runtime. It does not install dependencies, contact a network or change the daily workspace. It pins the entire `python/` and `venv/` inventory, the adapter and actual interpreter/library versions. OPA/Conftest are not SHACL runtime requirements. The venv executable path is preserved at launch; resolving its symlink before spawn would lose the venv dependencies.
+
+The runner verifies the installed inventory before and after execution, uses one private worker lock, and runs `python -I -B` with a minimal environment. Cancellation/deadline kills the owned process and waits for observed exit; partial output is discarded. The maximum deadline is 60 seconds, request envelope 48 MiB, aggregate shape text 16 MiB, response 16 MiB, diagnostics 64 KiB, each union graph 200,000 triples, total targeted focuses 20,000 and dependency depth 32. The existing RDF closure limits also apply. These limits are not evidence of a total-process memory ceiling; platform resource enforcement remains P4 work.
+
+Required checks use the actual installed worker, covering conformance/violations, missing/disabled/empty targets, local SELECT evaluation, locked/missing imports, RDF/XML/entity refusal, remote-query refusal, recursive/malformed shapes, immutable inputs, timeout, cancellation and worker contention. Passing these checks establishes source evidence only. Full SHACL standard/case coverage and actual Host journeys remain required for v0.9 acceptance.
+
+Primary references: [W3C SHACL targets](https://www.w3.org/TR/shacl/#targets), [recursive shapes](https://www.w3.org/TR/shacl/#shapes-recursion), [SHACL-SPARQL restrictions](https://www.w3.org/TR/shacl/#sparql-constraints), [pySHACL](https://github.com/RDFLib/pySHACL).
