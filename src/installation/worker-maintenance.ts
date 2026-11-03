@@ -5,19 +5,16 @@ import type {DatabaseSync} from 'node:sqlite';
 import type {Json} from '../standalone/types.js';
 import {fail} from '../standalone/types.js';
 import {exact,id,digest,hash} from '../standalone/validation.js';
-import {privatePath,privateRead,openWorkspace} from '../standalone/workspace.js';
+import {privatePath} from '../standalone/workspace.js';
 import type {WorkspaceStore} from '../standalone/workspace.js';
 import {boundedJSON} from '../reasoning/request.js';
-import {readInstallation,currentRun} from './manager.js';
 import type {Installation} from './manager.js';
-import {operatorLock} from './files.js';
-import {verifyRuntime} from './runtime.js';
-import {processPresent} from './control.js';
-import {currentToolchainBinding} from './toolchains.js';
-import {readWorkerAttempt,withWorkerJournal,requireWorkerMaintenanceComplete} from './worker-journal.js';
+import {readWorkerAttempt,withWorkerJournal,withWorkerJournalHistory,requireWorkerMaintenanceComplete} from './worker-journal.js';
 import type {WorkerReference} from './worker-journal.js';
 import {retireSystemdUnit,systemdUnitPresent} from './systemd-worker.js';
 import {completedTaskWorkerEvidence} from '../native-v2/task-recovery.js';
+
+import {withStoppedWorkerInstallation} from './worker-operator.js';
 
 interface NodeIdentity {device:string;inode:string;}
 interface FileIdentity extends NodeIdentity {name:'input'|'stdout'|'stderr';bytes:number;digest:string;}
@@ -61,10 +58,10 @@ function requestDigest(i:Installation,input:Request):string {
   id(input.projectId);id(input.taskId);id(input.requestId);digest(input.expectedReportDigest);
   return sha({installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,projectId:input.projectId,taskId:input.taskId,expectedReportDigest:input.expectedReportDigest});
 }
-function records(i:Installation,root:string):Record[] {
-  return withWorkerJournal(root,j=>{
-    if(!hasTable(j.db))return [];
-    const rows=j.db.prepare('SELECT * FROM worker_maintenance ORDER BY rowid LIMIT 4097').all();if(rows.length>4096)fail('WORKER_MAINTENANCE_LIMIT','Maintenance history exceeds its budget',409);
+export function workerMaintenanceRecords(i:Installation,root:string,selection?:{requestId?:string;projectId:string;taskId:string},journalId?:string):Record[] {
+  return withWorkerJournalHistory(root,j=>{
+    if(journalId!==undefined&&j.journalId!==journalId||!hasTable(j.db))return [];
+    const rows=selection?j.db.prepare("SELECT * FROM worker_maintenance WHERE request_id=? OR (json_extract(plan,'$.task.projectId')=? AND json_extract(plan,'$.task.taskId')=?) OR receipt IS NULL ORDER BY rowid LIMIT 4097").all(selection.requestId??'',selection.projectId,selection.taskId):j.db.prepare('SELECT * FROM worker_maintenance ORDER BY rowid LIMIT 4097').all();if(rows.length>4096)fail('WORKER_MAINTENANCE_LIMIT','Maintenance history exceeds its budget',409);
     return rows.map(r=>{
       id(r.request_id);digest(r.request_digest);digest(r.plan_digest);
       if(typeof r.plan!=='string'||Buffer.byteLength(r.plan)>512*1024)fail('WORKER_MAINTENANCE_EVIDENCE','Invalid retained plan envelope',409);
@@ -79,7 +76,7 @@ function records(i:Installation,root:string):Record[] {
       }else if(r.receipt_digest!==null||!(r.receipt_space instanceof Uint8Array)||r.receipt_space.length!==4096)fail('WORKER_MAINTENANCE_EVIDENCE','Partial maintenance receipt or missing completion reservation',409);
       return {requestId:String(r.request_id),requestDigest:String(r.request_digest),plan,planDigest:String(r.plan_digest),receipt};
     });
-  });
+  }).flat();
 }
 function fileIdentity(path:string,name:FileIdentity['name'],limit:number):FileIdentity {
   privatePath(path);const fd=openSync(path,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
@@ -113,26 +110,11 @@ function makePlan(i:Installation,store:WorkspaceStore,root:string,projectId:stri
   const plan:Plan={schema:'ontology-worker-maintenance-plan/v1',installationId:i.installationId,workRoot:root,task,base:absent(basePath)?null:identity(basePath),entries:task.references.map(entry)};
   validatePlan(plan,i,root);return plan;
 }
-async function stopped<T>(path:string,use:(i:Installation,store:WorkspaceStore,root:string)=>Promise<T>):Promise<T> {
-  const i=readInstallation(path),unlock=operatorLock(i.root);
-  try{
-    verifyRuntime(i.runtime);const run=currentRun(i);
-    if(run&&!['STOPPED','FAILED'].includes(run.state)&&processPresent(run.pid)!==false)fail('INSTALLATION_RUNNING','Stop the exact owner before worker maintenance',409);
-    const binding=currentToolchainBinding(i);if(!binding)fail('TOOLCHAIN_BINDING_MISSING','Original managed worker root is required',409);
-    const root=binding.binding.workRoot,expected={schema:'ontology-managed-work/v1',installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,root};
-    privatePath(root,true);if(sha(JSON.parse(privateRead(join(root,'owner.json'),4096)))!==sha(expected))fail('WORK_ROOT_CONFLICT','Foreign worker root',409);
-    const store=openWorkspace(i.workspaceRoot,i);
-    try{
-      if(store.db.prepare("SELECT id FROM native_reasoning_tasks WHERE state!='FINISHED' LIMIT 1").get())fail('TASK_RECOVERY_REQUIRED','Resolve unfinished formal tasks before maintenance',409);
-      return await use(i,store,root);
-    }finally{store.close();}
-  }finally{unlock();}
-}
 export async function inspectInstallationWorkerMaintenance(path:string,projectId:string,taskId:string):Promise<Json> {
-  return stopped<Json>(path,async(i,store,root):Promise<Json>=>{
+  return withStoppedWorkerInstallation<Json>(path,async(i,store,root):Promise<Json>=>{
     const task=completedTaskWorkerEvidence(store,projectId,taskId,[root]);
     if(!task.references.length)return {status:'NOT_NEEDED',requestId:null,report:null,reportDigest:null,receipt:null,authority:false};
-    const saved=records(i,root).find(r=>r.plan.task.taskId===taskId&&r.plan.task.projectId===projectId);
+    const saved=workerMaintenanceRecords(i,root,{projectId,taskId}).find(r=>r.plan.task.taskId===taskId&&r.plan.task.projectId===projectId);
     if(saved){if(sha(task)!==sha(saved.plan.task))fail('WORKER_MAINTENANCE_EVIDENCE','Original task changed',409);return {status:saved.receipt?'COMPLETED':'PENDING',requestId:saved.requestId,report:saved.plan as unknown as Json,reportDigest:saved.planDigest,receipt:saved.receipt as unknown as Json,authority:false};}
     requireWorkerMaintenanceComplete(root);const plan=makePlan(i,store,root,projectId,taskId);
     return {status:'READY',requestId:null,report:plan as unknown as Json,reportDigest:sha(plan),receipt:null,authority:false};
@@ -164,10 +146,10 @@ function removeFiles(plan:Plan,e:Entry):void {
   }finally{closeSync(parent);}
 }
 export async function maintainInstallationWorkers(path:string,input:Request):Promise<Json> {
-  return stopped(path,async(i,store,root)=>{
+  return withStoppedWorkerInstallation(path,async(i,store,root)=>{
     const requested=requestDigest(i,input),task=completedTaskWorkerEvidence(store,input.projectId,input.taskId,[root]);
     if(!task.references.length)fail('WORKER_MAINTENANCE_EMPTY','This completed task has no worker resources to release',409);
-    const history=records(i,root);let record=history.find(r=>r.requestId===input.requestId);
+    const history=workerMaintenanceRecords(i,root,input);let record=history.find(r=>r.requestId===input.requestId);
     if(record){
       if(record.requestDigest!==requested)fail('REQUEST_CONFLICT','Maintenance request ID binds different parameters',409);
       if(sha(completedTaskWorkerEvidence(store,input.projectId,input.taskId,[root]))!==sha(record.plan.task))fail('WORKER_MAINTENANCE_EVIDENCE','Original completed task changed',409);
@@ -177,10 +159,10 @@ export async function maintainInstallationWorkers(path:string,input:Request):Pro
       if(history.some(r=>r.plan.task.projectId===input.projectId&&r.plan.task.taskId===input.taskId))fail('WORKER_ALREADY_MAINTAINED','Inspect the original task maintenance receipt',409);
       const plan=makePlan(i,store,root,input.projectId,input.taskId),planDigest=sha(plan);
       if(planDigest!==input.expectedReportDigest)fail('WORKER_MAINTENANCE_CONFLICT','Inspected cleanup evidence changed',409);
-      if(history.length>=4096)fail('WORKER_MAINTENANCE_LIMIT','Retained maintenance history reached its budget',409);
       record={requestId:input.requestId,requestDigest:requested,plan,planDigest,receipt:null};
       withWorkerJournal(root,j=>{
         j.db.exec('BEGIN IMMEDIATE');j.guard();j.db.exec(table);
+        if(Number(j.db.prepare('SELECT count(*) AS n FROM worker_maintenance').get()!.n)>=4096)fail('WORKER_MAINTENANCE_LIMIT','Rotate the closed worker journal before another maintenance request',409);
         if(j.db.prepare('SELECT request_id FROM worker_maintenance WHERE receipt IS NULL LIMIT 1').get())fail('WORKER_MAINTENANCE_PENDING','Another original cleanup request is unfinished',409);
         // Reserve the bounded receipt's row space before releasing any files.
         j.db.prepare('INSERT INTO worker_maintenance(request_id,request_digest,plan,plan_digest,receipt_space) VALUES(?,?,?,?,zeroblob(4096))').run(input.requestId,requested,JSON.stringify(plan),planDigest);j.db.exec('COMMIT');

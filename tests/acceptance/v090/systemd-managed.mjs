@@ -30,6 +30,7 @@ const {inspectSystemdBinding,ownerProcess,ownerPresent,systemdCall}=await instal
 const {taskWorkerReferences,readWorkerAttempt,workerUnitName,createWorkerAttempt}=await installed('installation/worker-journal.js');
 const {reconcileSystemdWorker}=await installed('installation/systemd-worker.js');
 const {inspectInstallationWorkerMaintenance,maintainInstallationWorkers}=await installed('installation/worker-maintenance.js');
+const {inspectInstallationWorkerRotation,rotateInstallationWorkerJournal}=await installed('installation/worker-rotation.js');
 const binding=inspectSystemdBinding();
 const tools={dl:{toolchainFile:options.dl,toolchainDigest:JSON.parse(readFileSync(options.dl)).digest},shacl:{toolchainFile:options.shacl,toolchainDigest:JSON.parse(readFileSync(options.shacl)).digest}};
 const results=[],fixtures=[],references=new Map();let failure=null;
@@ -79,6 +80,21 @@ async function interruptedMaintenance(f,args,entries){
     return {exit:exited,remainingJobs:remaining};
   }finally{observer.close();}
 }
+async function interruptedRotation(f,args){
+  const catalog=join(f.workRoot,'worker-archives.json');let child,killed=false,output='',diagnostic='';
+  const observer=watch(f.workRoot,(_event,name)=>{
+    if(killed||!child?.pid||String(name)!=='worker-archives.json'||!existsSync(catalog))return;
+    const value=JSON.parse(readFileSync(catalog));if(value.pending)killed=child.kill('SIGKILL');
+  });
+  try{
+    child=spawn(process.execPath,[cli,...args],{env:{...process.env,NODE_NO_WARNINGS:'1'},stdio:['ignore','pipe','pipe']});
+    child.stdout.on('data',b=>{output+=b;if(output.length>65536)child.kill('SIGKILL');});child.stderr.on('data',b=>{diagnostic+=b;if(diagnostic.length>65536)child.kill('SIGKILL');});
+    const exited=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{child.kill('SIGKILL');reject(Error('Rotation fault window was not reached'));},15000);child.once('error',e=>{clearTimeout(timer);reject(e);});child.once('close',(code,signal)=>{clearTimeout(timer);resolve({code,signal});});});
+    assert.equal(killed,true,output+diagnostic);assert.equal(exited.signal,'SIGKILL');
+    const pending=JSON.parse(readFileSync(catalog)).pending;assert.ok(pending,'Fault must interrupt a persisted rotation before activation');
+    return {exit:exited,pendingRequestId:pending.requestId,successorExists:existsSync(join(f.workRoot,pending.next.file))};
+  }finally{observer.close();}
+}
 try{
   const inspected=await command(['worker-isolation-inspect','--json']);assert.equal(inspected.digest,binding.digest);
   {
@@ -91,6 +107,7 @@ try{
     assert.throws(()=>bindInstallationToolchains(f.setup.root,{...f.input,systemd:undefined}),e=>['REQUEST_CONFLICT','INVALID_INPUT'].includes(e.code));
     await assert.rejects(inspectInstallationWorkerMaintenance(f.setup.root,'demo',taskId),e=>e.code==='INSTALLATION_RUNNING');
     await stopInstallation(f.setup.root);
+    await assert.rejects(inspectInstallationWorkerRotation(f.setup.root),e=>e.code==='WORKER_ARCHIVE_RESOURCES');
     // Cache corruption and redirected paths must not create a cleanup plan.
     const firstInput=join(f.workRoot,'unit-jobs',refs[0].attemptId,'input'),originalInput=readFileSync(firstInput),foreign=join(options.root,'unrelated-private-file'),backup=join(options.root,'retained-input');
     writeFileSync(foreign,'unrelated private data\n',{mode:0o600,flag:'wx'});
@@ -114,11 +131,29 @@ try{
     assert.deepEqual((await maintainInstallationWorkers(f.setup.root,cleanupInput)).receipt,cleaned.receipt);assert.equal((await inspectInstallationWorkerMaintenance(f.setup.root,'demo',taskId)).status,'COMPLETED');
     for(const r of refs){assert.equal(existsSync(join(f.workRoot,'unit-jobs',r.attemptId)),false);assert.equal(readWorkerAttempt(r).outcome.state,'EXITED');}
     assert.equal(readFileSync(foreign,'utf8'),'unrelated private data\n');
+    const rotation=await command(['worker-rotation-inspect','--installation',f.setup.root,'--json']);assert.equal(rotation.status,'READY');
+    const rotationArgs=['worker-rotation-apply','--installation',f.setup.root,'--request-id','rotate','--expected-report',rotation.reportDigest,'--json'],oldJournal=hashBytes(readFileSync(join(f.workRoot,rotation.report.source.file)));
+    const rotationFault=await interruptedRotation(f,rotationArgs);
+    assert.equal((await inspectInstallationWorkerRotation(f.setup.root)).status,'PENDING');
+    await assert.rejects(f.start(),e=>e.code==='WORKER_ROTATION_PENDING');
+    assert.throws(()=>createWorkerAttempt(f.workRoot,{...readWorkerAttempt(refs[0]).intent,requestId:'blocked-by-rotation'}),e=>e.code==='WORKER_ROTATION_PENDING');
+    assert.throws(()=>bindInstallationToolchains(f.setup.root,{...f.input,requestId:'rotation-rebind',previousBindingDigest:f.bound.receipt.digest}),e=>e.code==='WORKER_ROTATION_PENDING');
+    assert.deepEqual((await maintainInstallationWorkers(f.setup.root,cleanupInput)).receipt,cleaned.receipt);
+    await assert.rejects(rotateInstallationWorkerJournal(f.setup.root,{requestId:'rotate',expectedReportDigest:hash('changed-rotation')}),e=>e.code==='REQUEST_CONFLICT');
+    const rotated=await command(rotationArgs);assert.equal(rotated.replayed,false);
+    assert.equal(hashBytes(readFileSync(join(f.workRoot,rotation.report.source.file))),oldJournal);
+    assert.deepEqual((await command(rotationArgs)).receipt,rotated.receipt);
+    assert.deepEqual((await command(['worker-rotation-inspect','--installation',f.setup.root,'--request-id','rotate','--json'])).receipt,rotated.receipt);
+    assert.deepEqual((await maintainInstallationWorkers(f.setup.root,cleanupInput)).receipt,cleaned.receipt);
+    assert.deepEqual(taskWorkerReferences(f.workRoot,taskId),refs);
     const second=await f.start();assert.notEqual(first.runId,second.runId);
     assert.deepEqual(await f.call(client,'ontology_write',v.request),v.receipt);assert.equal(retain(f,taskId).length,refs.length);
     assert.equal((await f.finished(client,'validation.inspect',taskId)).resultDigest,result.resultDigest);
     results.push({name:'installed-mcp-validation-and-restart',status:'PASS',bindingReceipt:f.bound.receipt,taskId,result,attempts:refs.map(readWorkerAttempt)});
-    const later=await p.write('reasoning.start',{assetId:'services',modelDigest:p.modelDigest,task:{kind:'consistency'}},'after-maintenance');assert.equal((await f.finished(client,'reasoning.inspect',later.receipt.result.taskId)).formalStatus,'COMPLETED');retain(f,later.receipt.result.taskId);
+    const later=await p.write('reasoning.start',{assetId:'services',modelDigest:p.modelDigest,task:{kind:'consistency'}},'after-maintenance');assert.equal((await f.finished(client,'reasoning.inspect',later.receipt.result.taskId)).formalStatus,'COMPLETED');const laterRefs=retain(f,later.receipt.result.taskId);assert.equal(laterRefs[0].journalId,rotated.receipt.activeJournalId);assert.notEqual(laterRefs[0].journalId,refs[0].journalId);
+    await stopInstallation(f.setup.root);const laterCleanup=await inspectInstallationWorkerMaintenance(f.setup.root,'demo',later.receipt.result.taskId);
+    await assert.rejects(maintainInstallationWorkers(f.setup.root,{projectId:'demo',taskId:later.receipt.result.taskId,requestId:'clean',expectedReportDigest:laterCleanup.reportDigest}),e=>e.code==='REQUEST_CONFLICT');
+    results.push({name:'installed-worker-journal-rotation-interruption-and-replay',status:'PASS',report:rotation,interruption:rotationFault,receipt:rotated.receipt,originalMaintenanceReceipt:cleaned.receipt,laterJournalId:laterRefs[0].journalId,originalResultDigest:result.resultDigest,archiveUnchanged:oldJournal===hashBytes(readFileSync(join(f.workRoot,rotation.report.source.file)))});
     results.push({name:'installed-worker-maintenance-interruption-and-resume',status:'PASS',taskId,report:maintenance,interruption,receipt:cleaned.receipt,originalResultDigest:result.resultDigest});
   }
   for(const kind of ['dl','shacl']){
@@ -160,6 +195,6 @@ finally{
   for(const f of fixtures){for(const c of f.clients)try{await c.close();}catch{}try{await stopInstallation(f.setup.root);}catch(e){failure??={code:e.code??null,message:'Fixture owner cleanup failed'};}for(const id of f.tasks)try{retain(f,id);}catch{}}
   for(const r of references.values()){try{unitCall(r,'StopUnit','ss',['replace']);}catch{}try{unitCall(r,'ResetFailedUnit','s');}catch{}}
 }
-const artifacts=['../../../dist/installation/worker-maintenance.js','../../../dist/installation/worker-journal.js','../../../dist/installation/toolchains.js','../../../dist/installation/systemd-binding.js','../../../dist/installation/systemd-worker.js','../../../dist/reasoning/runner.js','../../../dist/native-v2/shacl-toolchain.js','../../../dist/native-v2/shacl-runner.js','../../../dist/native-v2/validation-runner.js','../../../dist/native-v2/tasks.js','../../../dist/native-v2/task-recovery.js','../../../dist/standalone/cli.js','./systemd-managed.mjs'].map(path=>({path,digest:hashBytes(readFileSync(new URL(path,import.meta.url)))}));
+const artifacts=['../../../dist/installation/worker-archives.js','../../../dist/installation/worker-rotation.js','../../../dist/installation/worker-operator.js','../../../dist/installation/worker-maintenance.js','../../../dist/installation/worker-journal.js','../../../dist/installation/toolchains.js','../../../dist/installation/systemd-binding.js','../../../dist/installation/systemd-worker.js','../../../dist/reasoning/runner.js','../../../dist/native-v2/shacl-toolchain.js','../../../dist/native-v2/shacl-runner.js','../../../dist/native-v2/validation-runner.js','../../../dist/native-v2/tasks.js','../../../dist/native-v2/task-recovery.js','../../../dist/standalone/cli.js','./systemd-managed.mjs'].map(path=>({path,digest:hashBytes(readFileSync(new URL(path,import.meta.url)))}));
 writeFileSync(options.out,JSON.stringify({schema:'ontology-systemd-managed-probe/v1',binding,runtime,tools,artifacts,results,failure,recoveryObservations:fixtures.filter(f=>f.lastRecoveryInspection).map(f=>({fixture:f.name,...f.lastRecoveryInspection})),acceptance:'NOT_EVALUATED',limitations:['Synthetic installed-package and MCP evidence; not an actual Codex Host session','No published distribution/provisioning, complete conformance or selected asset reset']},null,2)+'\n',{mode:0o600,flag:'wx'});
 console.log(JSON.stringify({cases:results.length,pass:results.length,fail:failure?1:0,skip:0,report:options.out,failure}));if(failure)process.exitCode=1;

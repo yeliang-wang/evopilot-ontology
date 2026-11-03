@@ -1,7 +1,9 @@
 import {DatabaseSync} from 'node:sqlite';
-import {existsSync,openSync,closeSync,lstatSync} from 'node:fs';
+import {openSync,closeSync,lstatSync,fsyncSync} from 'node:fs';
 import {join,isAbsolute} from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {JOURNAL_BYTES,journalLocation,readArchiveCatalog,verifyJournalImage,requireNoRotation,journalFilename,workerFilePresent} from './worker-archives.js';
+import type {JournalHead} from './worker-archives.js';
 import {outsideSource} from './files.js';
 import {privatePath} from '../standalone/workspace.js';
 import {exact,hash,id,digest,text} from '../standalone/validation.js';
@@ -49,23 +51,51 @@ export function validateWorkerPlan(value:unknown):asserts value is WorkerPlan {
   for(const [key,min,max] of [['stdinBytes',1,50*1024*1024],['timeoutMs',1,120000],['outputBytes',1,17*1024*1024],['diagnosticBytes',1,65536]] as const){if(!Number.isSafeInteger(value[key])||(value[key] as number)<min||(value[key] as number)>max)fail('WORKER_PROTOCOL','Worker budget exceeds fixed envelope');}
   if(Buffer.byteLength(encoded(value))>32768)fail('WORKER_PROTOCOL','Worker intent byte budget exceeded');
 }
-function open(root:string,create=false){
+function openFile(root:string,file:string,create=false,expectedId?:string,readOnly=false){
   privatePath(root,true);if(outsideSource(root)!==root)fail('UNSAFE_PATH','Canonical worker root required');
-  const file=join(root,'worker-journal.sqlite');let fresh=false;
-  if(!existsSync(file)){if(!create)fail('WORKER_EVIDENCE_MISSING','Worker journal is absent',409);const fd=openSync(file,'wx',0o600);closeSync(fd);fresh=true;}
-  privatePath(file);const anchor=lstatSync(file),db=new DatabaseSync(file,{timeout:1000});
+  let fresh=false;
+  if(!workerFilePresent(file)){if(!create)fail('WORKER_EVIDENCE_MISSING','Worker journal is absent',409);const fd=openSync(file,'wx',0o600);closeSync(fd);fresh=true;}
+  privatePath(file);for(const suffix of ['-journal','-wal','-shm'])if(workerFilePresent(file+suffix))privatePath(file+suffix);
+  const anchor=lstatSync(file),db=new DatabaseSync(file,{timeout:1000,readOnly});
   try{
     db.exec('PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON;');
-    if(fresh){db.exec('BEGIN IMMEDIATE; CREATE TABLE identity(value TEXT NOT NULL); CREATE TABLE attempts(id TEXT PRIMARY KEY,intent TEXT NOT NULL,intent_digest TEXT NOT NULL,supervisor TEXT,supervisor_digest TEXT,worker TEXT,worker_digest TEXT,outcome TEXT,outcome_digest TEXT); PRAGMA user_version=1;');db.prepare('INSERT INTO identity VALUES(?)').run(encoded({schema:'ontology-worker-journal/v1',root,journalId:randomUUID()}));db.exec('COMMIT');}
+    if(create&&expectedId&&db.prepare('PRAGMA user_version').get()?.user_version===0&&db.prepare("SELECT name FROM sqlite_master WHERE type='table' LIMIT 1").get()===undefined)fresh=true;
+    if(fresh){db.exec('BEGIN IMMEDIATE; CREATE TABLE identity(value TEXT NOT NULL); CREATE TABLE attempts(id TEXT PRIMARY KEY,intent TEXT NOT NULL,intent_digest TEXT NOT NULL,supervisor TEXT,supervisor_digest TEXT,worker TEXT,worker_digest TEXT,outcome TEXT,outcome_digest TEXT); PRAGMA user_version=1;');db.prepare('INSERT INTO identity VALUES(?)').run(encoded({schema:'ontology-worker-journal/v1',root,journalId:expectedId??randomUUID()}));db.exec('COMMIT');}
     if(db.prepare('PRAGMA user_version').get()?.user_version!==1||db.prepare('PRAGMA journal_mode').get()?.journal_mode!=='delete')fail('WORKER_EVIDENCE_INVALID','Unknown worker journal schema',409);
-    const bytes=Number(db.prepare('PRAGMA page_count').get()?.page_count)*Number(db.prepare('PRAGMA page_size').get()?.page_size);if(bytes>64*1024*1024)fail('WORKER_JOURNAL_LIMIT','Worker journal exceeds its fixed budget',409);
-    db.exec('PRAGMA max_page_count='+Math.floor(64*1024*1024/Number(db.prepare('PRAGMA page_size').get()?.page_size)));
+    const bytes=Number(db.prepare('PRAGMA page_count').get()?.page_count)*Number(db.prepare('PRAGMA page_size').get()?.page_size);if(bytes>JOURNAL_BYTES)fail('WORKER_JOURNAL_LIMIT','Worker journal exceeds its fixed budget',409);
+    if(!readOnly)db.exec('PRAGMA max_page_count='+Math.floor(JOURNAL_BYTES/Number(db.prepare('PRAGMA page_size').get()?.page_size)));
     const identities=db.prepare('SELECT value FROM identity').all();if(identities.length!==1)fail('WORKER_EVIDENCE_INVALID','Worker journal identity is ambiguous',409);
     const identity:unknown=JSON.parse(String(identities[0].value));exact(identity,['schema','root','journalId']);id(identity.journalId);
-    if(identity.schema!=='ontology-worker-journal/v1'||identity.root!==root)fail('WORKER_EVIDENCE_INVALID','Worker journal owner differs',409);
-    const guard=()=>{privatePath(file);const s=lstatSync(file);if(s.ino!==anchor.ino||s.dev!==anchor.dev)fail('WORKER_EVIDENCE_INVALID','Worker journal was replaced',409);if(existsSync(file+'-journal'))privatePath(file+'-journal');};
+    if(identity.schema!=='ontology-worker-journal/v1'||identity.root!==root||expectedId!==undefined&&identity.journalId!==expectedId)fail('WORKER_EVIDENCE_INVALID','Worker journal owner differs',409);
+    const guard=()=>{privatePath(file);const s=lstatSync(file);if(s.ino!==anchor.ino||s.dev!==anchor.dev)fail('WORKER_EVIDENCE_INVALID','Worker journal was replaced',409);if(workerFilePresent(file+'-journal'))privatePath(file+'-journal');};
     guard();return {db,journalId:identity.journalId,guard};
   }catch(e){db.close();throw e;}
+}
+function open(root:string,create=false,journalId?:string,readOnly=false){
+  const location=journalLocation(root,journalId,!readOnly),file=join(root,location.head?.file??'worker-journal.sqlite');
+  if(location.image)verifyJournalImage(root,location.image);
+  const j=openFile(root,file,create&&location.head===null,location.head?.journalId,readOnly),guard=()=>{
+    j.guard();const current=journalLocation(root,journalId,!readOnly);
+    if(current.head?.journalId!==location.head?.journalId||current.head?.file!==location.head?.file)fail('WORKER_EVIDENCE_INVALID','Journal routing changed',409);
+    if(location.image)verifyJournalImage(root,location.image);
+  };
+  try{guard();return {...j,guard};}catch(e){j.db.close();throw e;}
+}
+/** Only a recorded pending rotation may initialize its exact fresh shard. */
+export function prepareNextWorkerJournal(root:string,next:JournalHead):void {
+  const c=readArchiveCatalog(root);
+  if(!c?.pending||sha(c.pending.next)!==sha(next)||next.file!==journalFilename(next.journalId))fail('WORKER_ROTATION_PENDING','Exact pending rotation is required',409);
+  const file=join(root,next.file),j=openFile(root,file,true,next.journalId);
+  try{
+    j.guard();if(j.db.prepare('SELECT id FROM attempts LIMIT 1').get()||j.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('identity','attempts') LIMIT 1").get())fail('WORKER_ARCHIVE_EVIDENCE','Next journal is occupied',409);
+  }finally{j.db.close();}
+  const fd=openSync(file,'r'),dir=openSync(root,'r');try{fsyncSync(fd);fsyncSync(dir);}finally{closeSync(fd);closeSync(dir);}
+}
+/** Read historical shards through exact immutable routing. */
+export function withWorkerJournalHistory<T>(root:string,use:(journal:ReturnType<typeof open>)=>T):T[] {
+  const c=readArchiveCatalog(root),heads=c?[...c.archives.map(r=>r.plan.source),c.current]:[undefined];
+  if(!c&&!workerFilePresent(join(root,'worker-journal.sqlite')))return [];
+  return heads.map(h=>{const j=open(root,false,h?.journalId,true);try{const result=use(j);j.guard();return result;}finally{j.db.close();}});
 }
 /** Internal synchronous journal access; callers must retain owner leases. */
 export function withWorkerJournal<T>(root:string,use:(journal:ReturnType<typeof open>)=>T):T {
@@ -75,10 +105,28 @@ function requireNoMaintenance(db:DatabaseSync):void {
   if(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='worker_maintenance'").get()&&db.prepare('SELECT request_id FROM worker_maintenance WHERE receipt IS NULL LIMIT 1').get())fail('WORKER_MAINTENANCE_PENDING','Resume the original worker maintenance request before new execution',409);
 }
 export function requireWorkerMaintenanceComplete(root:string):void {
-  if(existsSync(join(root,'worker-journal.sqlite')))withWorkerJournal(root,j=>requireNoMaintenance(j.db));
+  requireNoRotation(root);
+  for(const r of readArchiveCatalog(root)?.archives??[])verifyJournalImage(root,r.plan.source);
+  if(workerFilePresent(join(root,'worker-journal.sqlite')))withWorkerJournal(root,j=>requireNoMaintenance(j.db));
+}
+function requireAdmissionCapacity(db:DatabaseSync,root:string,intent:WorkerPlan):void {
+  const pageSize=Number(db.prepare('PRAGMA page_size').get()?.page_size),used=(Number(db.prepare('PRAGMA page_count').get()?.page_count)-Number(db.prepare('PRAGMA freelist_count').get()?.freelist_count))*pageSize;
+  let unmaintained=0;
+  if(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='systemd_workers'").get()){
+    const hasMaintenance=Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='worker_maintenance'").get());
+    const cleaned=hasMaintenance?"AND s.attempt_id NOT IN (SELECT json_extract(e.value,'$.reference.attemptId') FROM worker_maintenance m,json_each(m.plan,'$.entries') e WHERE m.receipt IS NOT NULL)":'';
+    unmaintained=Number(db.prepare('SELECT count(*) AS n FROM systemd_workers s WHERE 1=1 '+cleaned).get()!.n);
+  }
+  // 1 MiB remains for bounded transaction/maintenance overhead; 8 KiB per
+  // unmaintained unit plus three encoded root copies reserves its later
+  // plan/receipt even for long or escaped paths; 128 KiB closes this launch.
+  const cleanupBytes=8192+3*Buffer.byteLength(JSON.stringify(root));
+  if(used+1024*1024+(unmaintained+(intent.systemd?1:0))*cleanupBytes+128*1024+Buffer.byteLength(encoded(intent))*2>JOURNAL_BYTES)fail('WORKER_JOURNAL_LIMIT','Rotate the closed worker journal before admitting another executor',409);
 }
 export function createWorkerAttempt(root:string,intent:WorkerPlan):WorkerReference {
-  validateWorkerPlan(intent);const j=open(root,true);
+  validateWorkerPlan(intent);requireNoRotation(root);
+  for(const r of readArchiveCatalog(root)?.archives??[])verifyJournalImage(root,r.plan.source);
+  const j=open(root,true);
   try{
     const last=j.db.prepare('SELECT id,intent_digest FROM attempts ORDER BY rowid DESC LIMIT 1').get();
     if(last)readWorkerAttempt({root,journalId:j.journalId,attemptId:String(last.id),intentDigest:String(last.intent_digest)});
@@ -86,6 +134,7 @@ export function createWorkerAttempt(root:string,intent:WorkerPlan):WorkerReferen
     if(j.db.prepare('SELECT id FROM attempts WHERE outcome IS NULL LIMIT 1').get())fail('WORKER_RECOVERY_REQUIRED','Earlier worker exit is unproven; no replacement was dispatched',409);
     if(j.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='systemd_workers'").get()&&j.db.prepare("SELECT a.id FROM attempts a JOIN systemd_workers s ON s.attempt_id=a.id WHERE s.terminal IS NULL AND NOT(s.fence IS NOT NULL AND s.unit IS NULL AND json_extract(a.outcome,'$.state')='NOT_STARTED') LIMIT 1").get())fail('WORKER_RECOVERY_REQUIRED','Earlier unit termination is unproven; no replacement was dispatched',409);
     if(Number(j.db.prepare('SELECT count(*) AS n FROM attempts').get()!.n)>=4096)fail('WORKER_JOURNAL_LIMIT','Worker history reached its fixed attempt budget',409);
+    requireAdmissionCapacity(j.db,root,intent);
     const reference={root,journalId:j.journalId,attemptId:randomUUID(),intentDigest:sha(intent)};
     j.db.prepare('INSERT INTO attempts(id,intent,intent_digest) VALUES(?,?,?)').run(reference.attemptId,encoded(intent),reference.intentDigest);
     if(intent.systemd){
@@ -96,12 +145,7 @@ export function createWorkerAttempt(root:string,intent:WorkerPlan):WorkerReferen
   }finally{j.db.close();}
 }
 function referenceCheck(value:unknown):asserts value is WorkerReference {exact(value,['root','journalId','attemptId','intentDigest']);text(value.root,4096);id(value.journalId);id(value.attemptId);digest(value.intentDigest);}
-export function readWorkerAttempt(reference:WorkerReference):WorkerAttempt {
-  referenceCheck(reference);const j=open(reference.root);
-  try{
-    // Admission commits the attempt and unit rows together. Read both from one
-    // snapshot so a concurrent claim cannot look like partially written proof.
-    j.db.exec('BEGIN');
+function readAttempt(j:ReturnType<typeof open>,reference:WorkerReference):WorkerAttempt {
     if(j.journalId!==reference.journalId)fail('WORKER_EVIDENCE_INVALID','Worker journal identity differs',409);
     const r=j.db.prepare('SELECT * FROM attempts WHERE id=?').get(reference.attemptId);if(!r||r.intent_digest!==reference.intentDigest)fail('WORKER_EVIDENCE_MISSING','Exact worker attempt is absent',409);
     const field=(name:string)=>{if(r[name]===null){if(r[name+'_digest']!==null)fail('WORKER_EVIDENCE_INVALID','Partial worker evidence',409);return null;}const value:unknown=JSON.parse(String(r[name]));if(sha(value)!==r[name+'_digest'])fail('WORKER_EVIDENCE_INVALID','Worker evidence digest differs',409);return value;};
@@ -134,11 +178,24 @@ export function readWorkerAttempt(reference:WorkerReference):WorkerAttempt {
       if(raw.state==='GROUP_TERMINATED'&&(!intent.systemd||!fence||!terminal||raw.reason===null||raw.exitCode!==null||raw.signal!==null))fail('WORKER_EVIDENCE_INVALID','Group termination requires a durable fence and actual unit closure, without an invented child exit status',409);
       outcome=raw as unknown as WorkerOutcome;
     }
-    j.guard();return {reference:{...reference},intent,supervisor,worker,outcome,outcomeDigest:r.outcome_digest===null?null:String(r.outcome_digest),unit,fence,terminal,terminalDigest};
+    return {reference:{...reference},intent,supervisor,worker,outcome,outcomeDigest:r.outcome_digest===null?null:String(r.outcome_digest),unit,fence,terminal,terminalDigest};
+}
+export function readWorkerAttempt(reference:WorkerReference):WorkerAttempt {
+  referenceCheck(reference);const j=open(reference.root,false,reference.journalId,true);
+  try{j.db.exec('BEGIN');const result=readAttempt(j,reference);j.guard();return result;}finally{j.db.close();}
+}
+/** One consistent read-only snapshot for bounded stopped-owner archival. */
+export function currentWorkerAttempts(root:string):{journalId:string;attempts:WorkerAttempt[]} {
+  const j=open(root,false,undefined,true);
+  try{
+    j.db.exec('BEGIN');const rows=j.db.prepare('SELECT id,intent_digest FROM attempts ORDER BY rowid LIMIT 4097').all();
+    if(rows.length>4096)fail('WORKER_JOURNAL_LIMIT','Worker history exceeds its attempt budget',409);
+    const attempts=rows.map(r=>readAttempt(j,{root,journalId:j.journalId,attemptId:String(r.id),intentDigest:String(r.intent_digest)}));
+    j.guard();return {journalId:j.journalId,attempts};
   }finally{j.db.close();}
 }
 export function recordWorkerEvidence(reference:WorkerReference,field:'supervisor'|'worker'|'outcome',value:ProcessRecord|WorkerOutcome):void {
-  const before=readWorkerAttempt(reference);if(before.intent.systemd&&field!=='outcome')fail('WORKER_PROTOCOL','Bound unit process claims require atomic launch admission');const j=open(reference.root);
+  const before=readWorkerAttempt(reference);if(before.intent.systemd&&field!=='outcome')fail('WORKER_PROTOCOL','Bound unit process claims require atomic launch admission');const j=open(reference.root,false,reference.journalId);
   try{j.guard();if(j.journalId!==reference.journalId)fail('WORKER_EVIDENCE_INVALID','Worker journal changed',409);
     const condition=field==='supervisor'?' AND outcome IS NULL AND worker IS NULL':field==='worker'?' AND outcome IS NULL AND supervisor IS NOT NULL':'';
     const changed=j.db.prepare(`UPDATE attempts SET ${field}=?,${field}_digest=? WHERE id=? AND intent_digest=? AND ${field} IS NULL${condition}`).run(encoded(value),sha(value),reference.attemptId,reference.intentDigest);
@@ -147,12 +204,14 @@ export function recordWorkerEvidence(reference:WorkerReference,field:'supervisor
   readWorkerAttempt(reference);
 }
 export function taskWorkerReferences(root:string,taskId:string):WorkerReference[]{
-  id(taskId);privatePath(root,true);if(!existsSync(join(root,'worker-journal.sqlite')))return [];
-  const j=open(root);try{
+  id(taskId);privatePath(root,true);
+  const refs=withWorkerJournalHistory(root,j=>{
     const prefix=taskId+'-',rows=j.db.prepare("SELECT id,intent_digest FROM attempts WHERE json_extract(intent,'$.requestId')=? OR substr(json_extract(intent,'$.requestId'),1,?)=? ORDER BY id LIMIT 4097").all(taskId,prefix.length,prefix);
-    if(rows.length>4096)fail('WORKER_JOURNAL_LIMIT','Worker history exceeds its fixed attempt budget',409);
-    return rows.map(r=>({root,journalId:j.journalId,attemptId:String(r.id),intentDigest:String(r.intent_digest)}));
-  }finally{j.db.close();}
+    if(rows.length>4096)fail('WORKER_JOURNAL_LIMIT','Task worker history exceeds its fixed budget',409);
+    j.guard();return rows.map(r=>({root,journalId:j.journalId,attemptId:String(r.id),intentDigest:String(r.intent_digest)}));
+  }).flat();
+  if(refs.length>4096||new Set(refs.map(r=>r.attemptId)).size!==refs.length)fail('WORKER_EVIDENCE_INVALID','Task worker history is oversized or ambiguous',409);
+  return refs;
 }
 /** Caller has stopped the owning service. This CAS fences a not-yet-started
  * supervisor; recordWorkerEvidence cannot launch through the committed fence. */
@@ -160,7 +219,7 @@ export function sealWorkerNotStarted(reference:WorkerReference):void {
   let a=readWorkerAttempt(reference);if(a.intent.systemd){fenceSystemdWorker(reference,'DISPATCH_REJECTED');a=readWorkerAttempt(reference);}if(a.supervisor||a.worker)fail('WORKER_EXIT_UNPROVEN','Supervisor already started; an actual exit receipt is required',409);
   if(a.outcome)return;
   const value:WorkerOutcome={state:'NOT_STARTED',reason:a.fence?.reason??'DISPATCH_REJECTED',workerPid:null,exitCode:null,signal:null,stdoutDigest:'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',stderrDigest:'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',stdoutBytes:0,stderrBytes:0,recordedAt:new Date().toISOString()};
-  const j=open(reference.root);try{
+  const j=open(reference.root,false,reference.journalId);try{
     if(j.journalId!==reference.journalId)fail('WORKER_EVIDENCE_INVALID','Worker journal changed',409);j.guard();
     const changed=j.db.prepare('UPDATE attempts SET outcome=?,outcome_digest=? WHERE id=? AND intent_digest=? AND supervisor IS NULL AND worker IS NULL AND outcome IS NULL').run(encoded(value),sha(value),reference.attemptId,reference.intentDigest);
     if(changed.changes!==1)fail('RECOVERY_CONFLICT','Worker launch state changed during recovery; inspect it again',409);
@@ -172,7 +231,7 @@ export function sealWorkerNotStarted(reference:WorkerReference):void {
 export function claimSystemdSupervisor(reference:WorkerReference,unit:UnitRecord):void {
   const a=readWorkerAttempt(reference);validateUnitRecord(unit,reference);
   if(!a.intent.systemd||unit.supervisorPid!==process.pid||unit.bootId!==a.intent.systemd.owner.bootId)fail('WORKER_PROTOCOL','The actual bound unit supervisor must claim itself');
-  const j=open(reference.root);
+  const j=open(reference.root,false,reference.journalId);
   try{
     j.db.exec('BEGIN IMMEDIATE');j.guard();
     const resource=j.db.prepare('SELECT * FROM systemd_workers WHERE attempt_id=?').get(reference.attemptId);
@@ -188,7 +247,7 @@ export function claimSystemdSupervisor(reference:WorkerReference,unit:UnitRecord
 export function launchSystemdChild<T extends {pid?:number;kill:(signal:'SIGKILL')=>boolean}>(reference:WorkerReference,launch:()=>T):T {
   const a=readWorkerAttempt(reference);
   if(!a.intent.systemd||!a.unit||a.supervisor?.pid!==process.pid)fail('WORKER_PROTOCOL','Exact admitted unit supervisor required');
-  const j=open(reference.root);let child:T|undefined;
+  const j=open(reference.root,false,reference.journalId);let child:T|undefined;
   try{
     j.db.exec('BEGIN IMMEDIATE');j.guard();
     const resource=j.db.prepare('SELECT * FROM systemd_workers WHERE attempt_id=?').get(reference.attemptId),attempt=j.db.prepare('SELECT * FROM attempts WHERE id=?').get(reference.attemptId);
@@ -201,7 +260,7 @@ export function launchSystemdChild<T extends {pid?:number;kill:(signal:'SIGKILL'
 }
 export function fenceSystemdWorker(reference:WorkerReference,reason:LaunchFence['reason']):LaunchFence {
   const a=readWorkerAttempt(reference);if(!a.intent.systemd||!reasons.includes(reason)||reason===null)fail('WORKER_PROTOCOL','A bound unit and explicit stop reason are required');
-  const j=open(reference.root);
+  const j=open(reference.root,false,reference.journalId);
   try{
     j.db.exec('BEGIN IMMEDIATE');j.guard();
     const old=j.db.prepare('SELECT fence,fence_digest FROM systemd_workers WHERE attempt_id=?').get(reference.attemptId);
@@ -215,7 +274,7 @@ export function fenceSystemdWorker(reference:WorkerReference,reason:LaunchFence[
 export function recordUnitTerminal(reference:WorkerReference,value:UnitTerminal):UnitTerminal {
   const a=readWorkerAttempt(reference);if(a.terminal)return a.terminal;
   if(!a.unit||sha(value.unit)!==sha(a.unit))fail('WORKER_EVIDENCE_INVALID','Foreign unit terminal record',409);
-  const j=open(reference.root);
+  const j=open(reference.root,false,reference.journalId);
   try{
     j.guard();const changed=j.db.prepare('UPDATE systemd_workers SET terminal=?,terminal_digest=? WHERE attempt_id=? AND unit_digest=? AND terminal IS NULL').run(encoded(value),sha(value),reference.attemptId,sha(a.unit));
     if(changed.changes!==1)fail('WORKER_EVIDENCE_CONFLICT','Unit terminal evidence changed',409);
