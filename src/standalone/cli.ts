@@ -3,6 +3,7 @@ import { isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { constants, openSync, closeSync, readSync, fstatSync, realpathSync } from 'node:fs';
 import { grantReviewer,revokeReviewer } from '../installation/reviewer.js';
+import {inspectInstallationTaskRecovery,reconcileInstallationTask} from '../installation/task-recovery.js';
 import { initializeWorkspace } from '../installation/workspace.js';
 import { inspectRuntime } from '../installation/runtime.js';
 import { prepareInstallation,inspectInstallation,startInstallation,stopInstallation,bindInstallationToolchains,inspectInstallationToolchains } from '../installation/manager.js';
@@ -13,7 +14,7 @@ import { json, object } from './validation.js';
 import { LIMITS, ServiceError, fail } from './types.js';
 import type { Json, ServiceRequest } from './types.js';
 
-const usage='evopilot-ontology toolchains-bind --installation ABS --request-id ID --previous-binding none|SHA256 --dl-toolchain ABS --dl-digest SHA256 --shacl-toolchain ABS --shacl-digest SHA256 --json | toolchains-inspect --installation ABS --json | reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
+const usage='evopilot-ontology task-recovery-inspect --installation ABS --project ID --task ID --json | task-reconcile --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | toolchains-bind --installation ABS --request-id ID --previous-binding none|SHA256 --dl-toolchain ABS --dl-digest SHA256 --shacl-toolchain ABS --shacl-digest SHA256 --json | toolchains-inspect --installation ABS --json | reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
 function flags(args: string[],required: string[],optional: string[]=[]): Map<string,string>{
   const found=new Map<string,string>();
   for(let i=0;i<args.length;i++){
@@ -41,6 +42,10 @@ function readInput(path:string):Buffer{
 }
 export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>{
   const [command,...args]=argv;
+  if(command==='task-recovery-inspect'||command==='task-reconcile'){
+    const f=flags(args,['--installation','--project','--task',...(command==='task-reconcile'?['--request-id','--expected-report']:[])]);
+    emit(command==='task-recovery-inspect'?inspectInstallationTaskRecovery(f.get('--installation')!,f.get('--project')!,f.get('--task')!):reconcileInstallationTask(f.get('--installation')!,{projectId:f.get('--project')!,taskId:f.get('--task')!,requestId:f.get('--request-id')!,expectedReportDigest:f.get('--expected-report')!}));return;
+  }
   if(command==='toolchains-bind'){
     const f=flags(args,['--installation','--request-id','--previous-binding','--dl-toolchain','--dl-digest','--shacl-toolchain','--shacl-digest']);
     emit(bindInstallationToolchains(f.get('--installation')!,{requestId:f.get('--request-id')!,previousBindingDigest:f.get('--previous-binding')==='none'?null:f.get('--previous-binding')!,dl:{toolchainFile:f.get('--dl-toolchain')!,toolchainDigest:f.get('--dl-digest')!},shacl:{toolchainFile:f.get('--shacl-toolchain')!,toolchainDigest:f.get('--shacl-digest')!}}));return;

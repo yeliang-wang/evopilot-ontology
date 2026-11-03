@@ -6,6 +6,7 @@ import {join} from 'node:path';
 import {createServer} from 'node:http';
 import {createSHACLRunner} from '../../dist/native-v2/shacl-runner.js';
 import {readSHACLToolchain} from '../../dist/native-v2/shacl-toolchain.js';
+import {readWorkerAttempt} from '../../dist/installation/worker-journal.js';
 import {validateSHACLRequest,shaclIdentities} from '../../dist/native-v2/shacl-request.js';
 import {hash,hashBytes} from '../../dist/standalone/validation.js';
 import {request,document,prefixes,data,shapes} from '../fixtures/v090/shacl.mjs';
@@ -90,10 +91,17 @@ test('source snapshots and required coverage cannot be silently mutated, downgra
  const empty=request();empty.expectations.requiredShapes=[];empty.expectations.digest=hash([]);assert.throws(()=>validateSHACLRequest(empty),{code:'SHACL_SCHEMA'});
 });
 test('one worker lock, timeout and cancellation never return partial conformance',async t=>{
- const r=runner(t),controller=new AbortController(),pending=r.run(request(),{signal:controller.signal});
- await assert.rejects(r.run(request()),{code:'VALIDATOR_BUSY'});controller.abort();const cancelled=await pending;expect(cancelled,'CANCELLED');assert.equal(cancelled.result.signal,'SIGKILL');
- expect(await r.run(request(),{timeoutMs:1}),'TIMEOUT');
- const before=new AbortController();before.abort();expect(await r.run(request(),{signal:before.signal}),'CANCELLED');
+ const r=runner(t),controller=new AbortController();let cancelledAttempt,timedAttempt;
+ const pending=r.run(request(),{signal:controller.signal,beforeDispatch:ref=>{cancelledAttempt=ref;}});
+ await assert.rejects(r.run(request()),{code:'VALIDATOR_BUSY'});controller.abort();const cancelled=await pending;expect(cancelled,'CANCELLED');
+ const confirm=(ref,result,reason)=>{
+   const a=readWorkerAttempt(ref);assert.equal(a.outcome.reason,reason);assert.equal(result.result.signal,a.outcome.signal);assert.equal(result.result.exitCode,a.outcome.exitCode);
+   if(a.worker){assert.equal(a.outcome.state,'EXITED');assert.equal(a.outcome.signal,'SIGKILL');}
+   else{assert.equal(a.outcome.state,'NOT_STARTED');assert.equal(a.outcome.workerPid,null);assert.equal(a.outcome.signal,null);}
+ };
+ confirm(cancelledAttempt,cancelled,'CANCELLED');
+ const timed=await r.run(request(),{timeoutMs:1,beforeDispatch:ref=>{timedAttempt=ref;}});expect(timed,'TIMEOUT');confirm(timedAttempt,timed,'TASK_DEADLINE');
+ const before=new AbortController();before.abort();let dispatched=false;expect(await r.run(request(),{signal:before.signal,beforeDispatch:()=>{dispatched=true;}}),'CANCELLED');assert.equal(dispatched,false);
  expect(await r.run(request()),'CONFORMS');
 });
 test('an installed adapter mismatch is rejected before any validation process',t=>{

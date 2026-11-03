@@ -1,3 +1,4 @@
+import type {WorkerObservation} from '../installation/worker-process.js';
 import type {createDLRunner} from '../reasoning/runner.js';
 import {DL_JVM_ARGUMENTS} from '../reasoning/runner.js';
 import {closureDigest} from '../reasoning/request.js';
@@ -33,7 +34,7 @@ export function validationConfiguration(timeoutMs:number):string {
 }
 export function createValidationRunner(dl:ReturnType<typeof createDLRunner>,shacl:ReturnType<typeof createSHACLRunner>){
   const toolchainDigest=hash({dl:dl.toolchainDigest,shacl:shacl.toolchainDigest});
-  return {toolchainDigest,async run(value:ValidationPlan,options:{timeoutMs:number;signal:AbortSignal;progress:(detail:Json)=>void}):Promise<ValidationResponse>{
+  return {toolchainDigest,async run(value:ValidationPlan,options:{timeoutMs:number;signal:AbortSignal;progress:(detail:Json)=>void}&WorkerObservation):Promise<ValidationResponse>{
     const plan=structuredClone(value),requestDigest=hash(plan as unknown as Json),configurationDigest=validationConfiguration(options.timeoutMs),started=performance.now(),deadline=started+options.timeoutMs;
     if(plan.modelDigest!==hash(plan.model as unknown as Json)||plan.expectationsDigest!==hash(plan.expectations as unknown as Json)||plan.closureDigest!==closureDigest(plan.view.closure as DLRequest['closure'])||hash(plan.view.closure as unknown as Json)!==hash(plan.model.closure as unknown as Json))fail('CORRUPT_STATE','Validation snapshots differ from immutable identities',409);
     const chosen:SHACLRequest={schema:'ontology-shacl-request/v2',requestId:plan.requestId,modelDigest:plan.modelDigest,view:plan.view,shapes:plan.model.shapes,expectations:{digest:hash(plan.expectations.requiredShapes as unknown as Json),requiredShapes:plan.expectations.requiredShapes}};
@@ -57,12 +58,12 @@ export function createValidationRunner(dl:ReturnType<typeof createDLRunner>,shac
       if(!result.complete)return response(result.status==='CANCELLED'?'CANCELLED':result.status==='TIMEOUT'?'TIMEOUT':'INCOMPLETE',false,{code:'FORMAL_CHECK_INCOMPLETE',message:'A required formal check did not complete: '+id});
       return boundary();
     }
-    let stopped=await check('model-consistency','owl','COMPLETED',()=>dl.run(owlRequest('base-dl',{kind:'consistency'}),{timeoutMs:remaining(DL_LIMITS.taskMs),signal:options.signal}),r=>!!r.result&&typeof r.result==='object'&&!Array.isArray(r.result)&&r.result.consistent===true&&r.result.legal===true);if(stopped)return stopped;
-    stopped=await check('model-shacl','shacl','CONFORMS',()=>shacl.run({...chosen,requestId:plan.requestId+'-base-shacl'},{timeoutMs:remaining(SHACL_LIMITS.taskMs),signal:options.signal}));if(stopped)return stopped;
+    let stopped=await check('model-consistency','owl','COMPLETED',()=>dl.run(owlRequest('base-dl',{kind:'consistency'}),{timeoutMs:remaining(DL_LIMITS.taskMs),signal:options.signal,beforeDispatch:options.beforeDispatch}),r=>!!r.result&&typeof r.result==='object'&&!Array.isArray(r.result)&&r.result.consistent===true&&r.result.legal===true);if(stopped)return stopped;
+    stopped=await check('model-shacl','shacl','CONFORMS',()=>shacl.run({...chosen,requestId:plan.requestId+'-base-shacl'},{timeoutMs:remaining(SHACL_LIMITS.taskMs),signal:options.signal,beforeDispatch:options.beforeDispatch}));if(stopped)return stopped;
     for(const [index,c] of plan.expectations.cases.entries()){
       const sub='case-'+index;
-      if(c.kind==='owl-entailment')stopped=await check(c.id,'owl',c.expectedStatus,()=>dl.run(owlRequest(sub,{kind:'entailment',query:{...c.query}}),{timeoutMs:remaining(DL_LIMITS.taskMs),signal:options.signal}),r=>!!r.result&&typeof r.result==='object'&&!Array.isArray(r.result)&&r.result.vacuous===false);
-      else stopped=await check(c.id,'shacl',c.expectedConforms?'CONFORMS':'NONCONFORMING',()=>shacl.run(shaclRequest(sub,c.closure),{timeoutMs:remaining(SHACL_LIMITS.taskMs),signal:options.signal}),r=>{
+      if(c.kind==='owl-entailment')stopped=await check(c.id,'owl',c.expectedStatus,()=>dl.run(owlRequest(sub,{kind:'entailment',query:{...c.query}}),{timeoutMs:remaining(DL_LIMITS.taskMs),signal:options.signal,beforeDispatch:options.beforeDispatch}),r=>!!r.result&&typeof r.result==='object'&&!Array.isArray(r.result)&&r.result.vacuous===false);
+      else stopped=await check(c.id,'shacl',c.expectedConforms?'CONFORMS':'NONCONFORMING',()=>shacl.run(shaclRequest(sub,c.closure),{timeoutMs:remaining(SHACL_LIMITS.taskMs),signal:options.signal,beforeDispatch:options.beforeDispatch}),r=>{
         if(c.expectedConforms)return true;
         const result=r.result as {results?:{properties:{predicate:string;object:string}[]}[]},observed=new Set(result.results?.flatMap(row=>row.properties.filter(p=>p.predicate==='http://www.w3.org/ns/shacl#sourceShape').map(p=>p.object))??[]);
         return c.expectedViolationShapeIris.every(iri=>observed.has('<'+iri+'>'));

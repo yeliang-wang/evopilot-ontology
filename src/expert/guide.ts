@@ -86,6 +86,7 @@ const guides:Record<string,{operations:string[];steps:string[]}>= {
     'After timeout, disconnect or an uncertain write, inspect receipt.read with the original request ID in the same project and credential principal scope.',
     'A completed receipt establishes the exact committed operation. Preserve request identity and inspect current project state before the next new write. A missing receipt or changed credential is not permission to generate a replacement request.',
     'Resume retained drafts across chats. Reject unknown state schema or substituted identity; do not write the SQLite database, restore old fixtures or copy credentials from another owner.',
+    'For an interrupted formal task, the stopped managed installation operator uses task-recovery-inspect, then task-reconcile with the exact task and observed report digest. Confirmed worker exits or atomic no-launch fences close only that original task as incomplete FAILED. Missing exit evidence retains the barrier. These commands are outside domain/MCP tools and never redispatch or create semantic approval.',
   ]},
   'boundaries':{operations:['service.inspect'],steps:[
     'Ontology owns semantic authoring, provenance, formal reasoning and immutable delivery. Runtime execution and Harness grading are optional independent consumers, not prerequisites for Ontology.',

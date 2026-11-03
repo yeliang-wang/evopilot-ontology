@@ -1,4 +1,5 @@
-import {spawn} from 'node:child_process';
+import {runOwnedWorker} from '../installation/worker-process.js';
+import type {WorkerObservation} from '../installation/worker-process.js';
 import {join} from 'node:path';
 import {operatorLock,outsideSource,assertSeparate} from '../installation/files.js';
 import {privatePath} from '../standalone/workspace.js';
@@ -21,7 +22,7 @@ export function createDLRunner(options:{toolchainFile:string;workRoot:string}){
   assertSeparate(workRoot,binding.root);assertSeparate(workRoot,binding.javaRoot);
   return {
     toolchainDigest:binding.digest,
-    async run(value:unknown,options:{timeoutMs?:number;signal?:AbortSignal}={}):Promise<DLResponse>{
+    async run(value:unknown,options:{timeoutMs?:number;signal?:AbortSignal}&WorkerObservation={}):Promise<DLResponse>{
       validateDLRequest(value);
       // Copy admitted input before asynchronous execution so caller mutation cannot change it.
       const request:DLRequest=structuredClone(value),requestDigest=hash(request as unknown as Json),closure=closureDigest(request.closure);
@@ -37,33 +38,20 @@ export function createDLRunner(options:{toolchainFile:string;workRoot:string}){
         verifyDLToolchain(binding);
         if(options.signal?.aborted)return failure('CANCELLED','CANCELLED_BEFORE_START','Cancelled before worker execution');
         const input=JSON.stringify({...request,schema:'ontology-dl-worker-request/v1',requestDigest,closureDigest:closure,configurationDigest,timeoutMs});
-        return await new Promise<DLResponse>(resolve=>{
-          const child=spawn(join(binding.javaRoot,'bin/java'),[...DL_JVM_ARGUMENTS,'-Djava.io.tmpdir='+workRoot,'-cp',javaClasspath(binding),'io.evopilot.ontology.Worker'],{cwd:workRoot,stdio:['pipe','pipe','pipe'],env:{PATH:join(binding.javaRoot,'bin'),LANG:'C.UTF-8',TZ:'UTC',JAVA_TOOL_OPTIONS:'',JDK_JAVA_OPTIONS:'',_JAVA_OPTIONS:''}});
-          let outputBytes=0,errorBytes=0,spawnFailed=false,terminal:{status:DLStatus;code:string;message:string}|null=null;
-          const output:Buffer[]=[],diagnostics:Buffer[]=[];
-          const terminate=(status:DLStatus,code:string,message:string)=>{if(terminal)return;terminal={status,code,message};child.kill('SIGKILL');};
-          const timer=setTimeout(()=>terminate('TIMEOUT','TASK_DEADLINE','Worker deadline reached; partial output discarded'),timeoutMs);
-          const abort=()=>terminate('CANCELLED','CANCELLED','Worker cancellation confirmed by process exit');options.signal?.addEventListener('abort',abort,{once:true});
-          if(options.signal?.aborted)abort();
-          child.on('error',()=>{spawnFailed=true;});child.stdin.on('error',()=>{});
-          child.stdout.on('data',(chunk:Buffer)=>{outputBytes+=chunk.length;if(outputBytes>DL_LIMITS.outputBytes+4096)terminate('FAILED','OUTPUT_LIMIT','Worker output exceeds fixed budget');else output.push(chunk);});
-          child.stderr.on('data',(chunk:Buffer)=>{errorBytes+=chunk.length;if(errorBytes>65536)terminate('FAILED','DIAGNOSTIC_LIMIT','Worker diagnostics exceed fixed budget');else diagnostics.push(chunk);});
-          child.once('close',(code,signal)=>{
-            clearTimeout(timer);options.signal?.removeEventListener('abort',abort);
-            const diagnostic={stderrDigest:hashBytes(Buffer.concat(diagnostics)),stderrBytes:errorBytes,exitCode:code,signal};
-            if(terminal){resolve(failure(terminal.status,terminal.code,terminal.message,diagnostic));return;}
-            if(spawnFailed||code!==0){const memory=Buffer.concat(diagnostics).includes(Buffer.from('OutOfMemoryError'));resolve(failure('FAILED',memory?'MEMORY_LIMIT':'WORKER_EXIT','Formal worker did not produce a completed response',diagnostic));return;}
-            try{
-              const actual:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(output)));boundedJSON(actual,DL_LIMITS.outputBytes+4096);
-              exact(actual,['schema','requestId','requestDigest','closureDigest','configurationDigest','status','complete','result','error']);
-              if(actual.schema!=='ontology-dl-worker-result/v1'||actual.requestId!==request.requestId||actual.requestDigest!==requestDigest||actual.closureDigest!==closure||actual.configurationDigest!==configurationDigest||!statuses.includes(actual.status as DLStatus)||typeof actual.complete!=='boolean')throw new Error('Worker identity mismatch');
-              if(['INVALID_INPUT','MISSING_IMPORT','TIMEOUT','CANCELLED','FAILED'].includes(actual.status as string)&&actual.complete)throw new Error('Failure marked complete');
-              if(actual.error!==null){exact(actual.error,['code','message']);if(typeof actual.error.code!=='string'||typeof actual.error.message!=='string')throw new Error('Invalid diagnostic');}
-              resolve({...envelope,status:actual.status as DLStatus,complete:actual.complete,elapsedMs:Math.ceil(performance.now()-started),result:actual.result as Json,error:actual.error as DLResponse['error']});
-            }catch{resolve(failure('FAILED','WORKER_PROTOCOL','Malformed or mismatched worker response; no logical conclusion established',diagnostic));}
-          });
-          child.stdin.end(input);
-        });
+        const {outcome,stdout,stderr}=await runOwnedWorker({workRoot,requestId:request.requestId,requestDigest,configurationDigest,toolchainDigest:binding.digest,
+          executable:join(binding.javaRoot,'bin/java'),args:[...DL_JVM_ARGUMENTS,'-Djava.io.tmpdir='+workRoot,'-cp',javaClasspath(binding),'io.evopilot.ontology.Worker'],
+          env:{PATH:join(binding.javaRoot,'bin'),LANG:'C.UTF-8',TZ:'UTC',JAVA_TOOL_OPTIONS:'',JDK_JAVA_OPTIONS:'',_JAVA_OPTIONS:''},input,timeoutMs,outputBytes:DL_LIMITS.outputBytes+4096,diagnosticBytes:65536,signal:options.signal,beforeDispatch:options.beforeDispatch});
+        const diagnostic={stderrDigest:hashBytes(stderr),stderrBytes:outcome.stderrBytes,exitCode:outcome.exitCode,signal:outcome.signal};
+        if(outcome.reason){const status:DLStatus=outcome.reason==='TASK_DEADLINE'?'TIMEOUT':['CANCELLED','OWNER_LOST'].includes(outcome.reason)?'CANCELLED':'FAILED';return failure(status,outcome.reason,'Owned worker did not complete; retained process exit is confirmed',diagnostic);}
+        if(outcome.state!=='EXITED'||outcome.exitCode!==0){return failure('FAILED',stderr.includes(Buffer.from('OutOfMemoryError'))?'MEMORY_LIMIT':'WORKER_EXIT','Formal worker did not produce a completed response',diagnostic);}
+        try{
+          const actual:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(stdout));boundedJSON(actual,DL_LIMITS.outputBytes+4096);
+          exact(actual,['schema','requestId','requestDigest','closureDigest','configurationDigest','status','complete','result','error']);
+          if(actual.schema!=='ontology-dl-worker-result/v1'||actual.requestId!==request.requestId||actual.requestDigest!==requestDigest||actual.closureDigest!==closure||actual.configurationDigest!==configurationDigest||!statuses.includes(actual.status as DLStatus)||typeof actual.complete!=='boolean')throw new Error('Worker identity mismatch');
+          if(['INVALID_INPUT','MISSING_IMPORT','TIMEOUT','CANCELLED','FAILED'].includes(actual.status as string)&&actual.complete)throw new Error('Failure marked complete');
+          if(actual.error!==null){exact(actual.error,['code','message']);if(typeof actual.error.code!=='string'||typeof actual.error.message!=='string')throw new Error('Invalid diagnostic');}
+          return {...envelope,status:actual.status as DLStatus,complete:actual.complete,elapsedMs:Math.ceil(performance.now()-started),result:actual.result as Json,error:actual.error as DLResponse['error']};
+        }catch{return failure('FAILED','WORKER_PROTOCOL','Malformed or mismatched worker response; no logical conclusion established',diagnostic);}
       }finally{unlock();}
     },
   };

@@ -14,6 +14,8 @@ import {modelStore} from './model-store.js';
 import {exact,id,digest,hash,canonical} from '../standalone/validation.js';
 import {fail,ServiceError} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
+import {WORKER_PROTOCOL} from '../installation/worker-journal.js';
+import type {WorkerReference} from '../installation/worker-journal.js';
 
 export interface ReasoningConfiguration {toolchainFile:string;workRoot:string;}
 export const TASK_TABLES=`
@@ -82,16 +84,22 @@ export function reasoningTasks(db:DatabaseSync,guard:()=>void,configuration?:Rea
     if(!Number.isSafeInteger(timeoutMs)||(timeoutMs as number)<1||(timeoutMs as number)>maximum)fail('INVALID_INPUT','Task deadline exceeds its fixed envelope');
     const configurationDigest=kind==='dl'?hash({timeoutMs:timeoutMs as number,jvm:[...DL_JVM_ARGUMENTS],limits:{...DL_LIMITS}}):validationConfiguration(timeoutMs as number),created=now(),requestDigest=hash(request),toolchainDigest=toolchain(kind)!;
     db.prepare('INSERT INTO native_reasoning_tasks(id,task_kind,expectations_digest,project_id,asset_id,model_digest,principal_id,request_id,state,request,request_digest,closure_digest,configuration_digest,toolchain_digest,timeout_ms,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(taskId,kind,expectationsDigest,projectId,input.assetId,input.modelDigest,principalId,requestId,'QUEUED',canonical(request),requestDigest,model.closureDigest,configurationDigest,toolchainDigest,timeoutMs as number,created,created);
-    event(taskId,'QUEUED',{kind,projectId,assetId:input.assetId,modelDigest:input.modelDigest,expectationsDigest,requestDigest,closureDigest:model.closureDigest,configurationDigest,toolchainDigest});
+    event(taskId,'QUEUED',{kind,projectId,assetId:input.assetId,modelDigest:input.modelDigest,expectationsDigest,requestDigest,closureDigest:model.closureDigest,configurationDigest,toolchainDigest,workerProtocol:WORKER_PROTOCOL});
     return {taskId,kind,state:'QUEUED',modelDigest:input.modelDigest,expectationsDigest,closureDigest:model.closureDigest,configurationDigest,toolchainDigest,authority:false};
   }
   async function execute(r:Row,controller:AbortController):Promise<void>{
     let result:DLResponse|ValidationResponse;
     try{
       const request=JSON.parse(String(r.request));if(hash(request)!==r.request_digest)fail('CORRUPT_STATE','Task request changed before execution');
-      result=r.task_kind==='validation'?await suite!.run(request,{timeoutMs:Number(r.timeout_ms),signal:controller.signal,progress:detail=>tx(()=>event(String(r.id),'CHECK_FINISHED',detail))}):await runner!.run(request,{timeoutMs:Number(r.timeout_ms),signal:controller.signal});
+      const beforeDispatch=(reference:WorkerReference)=>tx(()=>event(String(r.id),'WORKER_ATTEMPT',reference as unknown as Json));
+      result=r.task_kind==='validation'?await suite!.run(request,{timeoutMs:Number(r.timeout_ms),signal:controller.signal,beforeDispatch,progress:detail=>tx(()=>event(String(r.id),'CHECK_FINISHED',detail))}):await runner!.run(request,{timeoutMs:Number(r.timeout_ms),signal:controller.signal,beforeDispatch});
     }
-    catch(e){result=failure(r,'FAILED',e instanceof ServiceError?e.code:'EXECUTOR_FAILURE','Configured executor failed before establishing a formal result');}
+    catch(e){
+      if(e instanceof ServiceError&&['WORKER_OUTCOME_UNKNOWN','WORKER_RECOVERY_REQUIRED'].includes(e.code)){
+        tx(()=>{db.prepare("UPDATE native_reasoning_tasks SET state='INTERRUPTED',updated_at=? WHERE id=?").run(now(),String(r.id));event(String(r.id),'INTERRUPTED',{code:e.code,automaticRedispatch:false});});return;
+      }
+      result=failure(r,'FAILED',e instanceof ServiceError?e.code:'EXECUTOR_FAILURE','Configured executor failed before establishing a formal result');
+    }
     tx(()=>finish(r,result));
   }
   function kick(taskId:string):void {
