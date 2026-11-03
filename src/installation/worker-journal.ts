@@ -7,25 +7,41 @@ import {privatePath} from '../standalone/workspace.js';
 import {exact,hash,id,digest,text} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
+import {validateSystemdSelection} from './systemd-binding.js';
+import type {SystemdSelection} from './systemd-binding.js';
 
 export const WORKER_PROTOCOL='ontology-owned-worker/v1';
+export const ISOLATED_WORKER_PROTOCOL='ontology-owned-worker/v2';
 export interface WorkerPlan {
-  schema:typeof WORKER_PROTOCOL;requestId:string;requestDigest:string;configurationDigest:string;toolchainDigest:string;
+  schema:typeof WORKER_PROTOCOL|typeof ISOLATED_WORKER_PROTOCOL;systemd?:SystemdSelection;requestId:string;requestDigest:string;configurationDigest:string;toolchainDigest:string;
   executable:string;args:string[];env:Record<string,string>;stdinDigest:string;stdinBytes:number;
   timeoutMs:number;outputBytes:number;diagnosticBytes:number;
 }
 export interface WorkerReference {root:string;journalId:string;attemptId:string;intentDigest:string;}
 export interface ProcessRecord {pid:number;recordedAt:string;}
 export interface WorkerOutcome {
-  state:'EXITED'|'NOT_STARTED';reason:null|'OWNER_LOST'|'CANCELLED'|'TASK_DEADLINE'|'OUTPUT_LIMIT'|'DIAGNOSTIC_LIMIT'|'SPAWN_FAILED'|'INPUT_INVALID'|'DISPATCH_REJECTED';
+  state:'EXITED'|'NOT_STARTED'|'GROUP_TERMINATED';reason:null|'OWNER_LOST'|'CANCELLED'|'TASK_DEADLINE'|'OUTPUT_LIMIT'|'DIAGNOSTIC_LIMIT'|'SPAWN_FAILED'|'INPUT_INVALID'|'DISPATCH_REJECTED'|'MEMORY_LIMIT'|'SUPERVISOR_LOST';
   workerPid:number|null;exitCode:number|null;signal:string|null;stdoutDigest:string;stderrDigest:string;stdoutBytes:number;stderrBytes:number;recordedAt:string;
 }
-export interface WorkerAttempt {reference:WorkerReference;intent:WorkerPlan;supervisor:ProcessRecord|null;worker:ProcessRecord|null;outcome:WorkerOutcome|null;outcomeDigest:string|null;}
+export interface UnitRecord {schema:'ontology-worker-unit/v1';unitName:string;invocationId:string;bootId:string;supervisorPid:number;configurationDigest:string;controlGroup:string;device:string;inode:string;recordedAt:string;}
+export interface LaunchFence {reason:NonNullable<WorkerOutcome['reason']>;recordedAt:string;}
+export interface UnitTerminal {unit:UnitRecord;activeState:string;subState:string;result:string;execMainPid:number;execMainCode:number;execMainStatus:number;mainPid:0;empty:true;memoryPeak:number|null;recordedAt:string;}
+export interface WorkerAttempt {reference:WorkerReference;intent:WorkerPlan;supervisor:ProcessRecord|null;worker:ProcessRecord|null;outcome:WorkerOutcome|null;outcomeDigest:string|null;unit:UnitRecord|null;fence:LaunchFence|null;terminal:UnitTerminal|null;terminalDigest:string|null;}
 const encoded=(value:unknown)=>JSON.stringify(value);
 const sha=(value:unknown)=>hash(value as Json);
+const reasons:WorkerOutcome['reason'][]=[null,'OWNER_LOST','CANCELLED','TASK_DEADLINE','OUTPUT_LIMIT','DIAGNOSTIC_LIMIT','SPAWN_FAILED','INPUT_INVALID','DISPATCH_REJECTED','MEMORY_LIMIT','SUPERVISOR_LOST'];
+export const workerUnitName=(reference:WorkerReference)=>'ontology-worker-'+sha(reference).slice(7,39)+'.service';
+function validateUnitRecord(value:unknown,reference:WorkerReference):asserts value is UnitRecord {
+  exact(value,['schema','unitName','invocationId','bootId','supervisorPid','configurationDigest','controlGroup','device','inode','recordedAt']);
+  if(value.schema!=='ontology-worker-unit/v1'||value.unitName!==workerUnitName(reference)||typeof value.invocationId!=='string'||! /^[0-9a-f]{32}$/.test(value.invocationId)||!Number.isSafeInteger(value.supervisorPid)||(value.supervisorPid as number)<1||typeof value.controlGroup!=='string'||!value.controlGroup.startsWith('/user.slice/')||!value.controlGroup.endsWith('/'+value.unitName))fail('WORKER_EVIDENCE_INVALID','Invalid retained unit identity',409);
+  digest(value.configurationDigest);text(value.bootId,36);text(value.controlGroup,4096);text(value.recordedAt,40);
+  for(const field of ['device','inode'])if(typeof value[field]!=='string'||!/^\d+$/.test(value[field] as string))fail('WORKER_EVIDENCE_INVALID','Invalid kernel group identity',409);
+}
 export function validateWorkerPlan(value:unknown):asserts value is WorkerPlan {
-  exact(value,['schema','requestId','requestDigest','configurationDigest','toolchainDigest','executable','args','env','stdinDigest','stdinBytes','timeoutMs','outputBytes','diagnosticBytes']);
-  if(value.schema!==WORKER_PROTOCOL)fail('WORKER_PROTOCOL','Unknown owned worker protocol');
+  exact(value,['schema','requestId','requestDigest','configurationDigest','toolchainDigest','executable','args','env','stdinDigest','stdinBytes','timeoutMs','outputBytes','diagnosticBytes'],['systemd']);
+  if(![WORKER_PROTOCOL,ISOLATED_WORKER_PROTOCOL].includes(value.schema as string))fail('WORKER_PROTOCOL','Unknown owned worker protocol');
+  if(value.schema===ISOLATED_WORKER_PROTOCOL)validateSystemdSelection(value.systemd);
+  else if(value.systemd!==undefined)fail('WORKER_PROTOCOL','A bounded executor requires its versioned protocol');
   text(value.requestId,256);for(const key of ['requestDigest','configurationDigest','toolchainDigest','stdinDigest'])digest(value[key]);
   text(value.executable,4096);if(!isAbsolute(value.executable))fail('UNSAFE_PATH','Explicit installed executable required');
   if(!Array.isArray(value.args)||value.args.length>128||value.args.some(x=>typeof x!=='string'||x.includes('\0')||Buffer.byteLength(x)>24576))fail('WORKER_PROTOCOL','Invalid worker arguments');
@@ -58,36 +74,61 @@ export function createWorkerAttempt(root:string,intent:WorkerPlan):WorkerReferen
     if(last)readWorkerAttempt({root,journalId:j.journalId,attemptId:String(last.id),intentDigest:String(last.intent_digest)});
     j.db.exec('BEGIN IMMEDIATE');j.guard();
     if(j.db.prepare('SELECT id FROM attempts WHERE outcome IS NULL LIMIT 1').get())fail('WORKER_RECOVERY_REQUIRED','Earlier worker exit is unproven; no replacement was dispatched',409);
+    if(j.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='systemd_workers'").get()&&j.db.prepare("SELECT a.id FROM attempts a JOIN systemd_workers s ON s.attempt_id=a.id WHERE s.terminal IS NULL AND NOT(s.fence IS NOT NULL AND s.unit IS NULL AND json_extract(a.outcome,'$.state')='NOT_STARTED') LIMIT 1").get())fail('WORKER_RECOVERY_REQUIRED','Earlier unit termination is unproven; no replacement was dispatched',409);
     if(Number(j.db.prepare('SELECT count(*) AS n FROM attempts').get()!.n)>=4096)fail('WORKER_JOURNAL_LIMIT','Worker history reached its fixed attempt budget',409);
     const reference={root,journalId:j.journalId,attemptId:randomUUID(),intentDigest:sha(intent)};
-    j.db.prepare('INSERT INTO attempts(id,intent,intent_digest) VALUES(?,?,?)').run(reference.attemptId,encoded(intent),reference.intentDigest);j.db.exec('COMMIT');return reference;
+    j.db.prepare('INSERT INTO attempts(id,intent,intent_digest) VALUES(?,?,?)').run(reference.attemptId,encoded(intent),reference.intentDigest);
+    if(intent.systemd){
+      j.db.exec('CREATE TABLE IF NOT EXISTS systemd_workers(attempt_id TEXT PRIMARY KEY REFERENCES attempts(id),unit TEXT,unit_digest TEXT,fence TEXT,fence_digest TEXT,terminal TEXT,terminal_digest TEXT)');
+      j.db.prepare('INSERT INTO systemd_workers(attempt_id) VALUES(?)').run(reference.attemptId);
+    }
+    j.db.exec('COMMIT');return reference;
   }finally{j.db.close();}
 }
 function referenceCheck(value:unknown):asserts value is WorkerReference {exact(value,['root','journalId','attemptId','intentDigest']);text(value.root,4096);id(value.journalId);id(value.attemptId);digest(value.intentDigest);}
 export function readWorkerAttempt(reference:WorkerReference):WorkerAttempt {
   referenceCheck(reference);const j=open(reference.root);
   try{
+    // Admission commits the attempt and unit rows together. Read both from one
+    // snapshot so a concurrent claim cannot look like partially written proof.
+    j.db.exec('BEGIN');
     if(j.journalId!==reference.journalId)fail('WORKER_EVIDENCE_INVALID','Worker journal identity differs',409);
     const r=j.db.prepare('SELECT * FROM attempts WHERE id=?').get(reference.attemptId);if(!r||r.intent_digest!==reference.intentDigest)fail('WORKER_EVIDENCE_MISSING','Exact worker attempt is absent',409);
     const field=(name:string)=>{if(r[name]===null){if(r[name+'_digest']!==null)fail('WORKER_EVIDENCE_INVALID','Partial worker evidence',409);return null;}const value:unknown=JSON.parse(String(r[name]));if(sha(value)!==r[name+'_digest'])fail('WORKER_EVIDENCE_INVALID','Worker evidence digest differs',409);return value;};
     const intent=field('intent');validateWorkerPlan(intent);
     const processRecord=(value:unknown):ProcessRecord|null=>{if(value===null)return null;exact(value,['pid','recordedAt']);text(value.recordedAt,40);if(!Number.isSafeInteger(value.pid)||(value.pid as number)<1)fail('WORKER_EVIDENCE_INVALID','Invalid retained process identity',409);return value as unknown as ProcessRecord;};
     const supervisor=processRecord(field('supervisor')),worker=processRecord(field('worker')),raw=field('outcome');
+    let unit:UnitRecord|null=null,fence:LaunchFence|null=null,terminal:UnitTerminal|null=null,terminalDigest:string|null=null;
+    if(intent.systemd){
+      const resource=j.db.prepare('SELECT * FROM systemd_workers WHERE attempt_id=?').get(reference.attemptId);
+      if(!resource)fail('WORKER_EVIDENCE_MISSING','Bound unit journal is missing',409);
+      const retained=(key:string)=>{if(resource[key]===null){if(resource[key+'_digest']!==null)fail('WORKER_EVIDENCE_INVALID','Partial unit evidence',409);return null;}const value=JSON.parse(String(resource[key]));if(sha(value)!==resource[key+'_digest'])fail('WORKER_EVIDENCE_INVALID','Unit evidence digest differs',409);return value;};
+      unit=retained('unit');fence=retained('fence');terminal=retained('terminal');terminalDigest=resource.terminal_digest===null?null:String(resource.terminal_digest);
+      if(unit){validateUnitRecord(unit,reference);if(unit.supervisorPid!==supervisor?.pid||unit.bootId!==intent.systemd.owner.bootId)fail('WORKER_EVIDENCE_INVALID','Unit supervisor or boot differs',409);}
+      if(supervisor&&!unit)fail('WORKER_EVIDENCE_INVALID','Bound supervisor has no unit identity',409);
+      if(fence){exact(fence,['reason','recordedAt']);text(fence.recordedAt,40);if(!reasons.includes(fence.reason)||fence.reason===null)fail('WORKER_EVIDENCE_INVALID','Unknown launch fence',409);}
+      if(terminal){
+        exact(terminal,['unit','activeState','subState','result','execMainPid','execMainCode','execMainStatus','mainPid','empty','memoryPeak','recordedAt']);
+        if(!unit||sha(terminal.unit)!==sha(unit)||terminal.execMainPid!==unit.supervisorPid||terminal.mainPid!==0||terminal.empty!==true||!['active/exited','failed/failed'].includes(terminal.activeState+'/'+terminal.subState)||![terminal.execMainCode,terminal.execMainStatus].every(Number.isSafeInteger)||terminal.memoryPeak!==null&&(!Number.isSafeInteger(terminal.memoryPeak)||terminal.memoryPeak<0))fail('WORKER_EVIDENCE_INVALID','Unit closure differs from its retained identity',409);
+        text(terminal.result,64);text(terminal.recordedAt,40);
+      }
+    }
     if(worker&&!supervisor)fail('WORKER_EVIDENCE_INVALID','Worker lacks its supervisor identity',409);
     let outcome:WorkerOutcome|null=null;
     if(raw!==null){
       exact(raw,['state','reason','workerPid','exitCode','signal','stdoutDigest','stderrDigest','stdoutBytes','stderrBytes','recordedAt']);
-      if(!['EXITED','NOT_STARTED'].includes(raw.state as string)||![null,'OWNER_LOST','CANCELLED','TASK_DEADLINE','OUTPUT_LIMIT','DIAGNOSTIC_LIMIT','SPAWN_FAILED','INPUT_INVALID','DISPATCH_REJECTED'].includes(raw.reason as null|string))fail('WORKER_EVIDENCE_INVALID','Invalid worker outcome',409);
+      if(!['EXITED','NOT_STARTED','GROUP_TERMINATED'].includes(raw.state as string)||!reasons.includes(raw.reason as WorkerOutcome['reason']))fail('WORKER_EVIDENCE_INVALID','Invalid worker outcome',409);
       digest(raw.stdoutDigest);digest(raw.stderrDigest);text(raw.recordedAt,40);
       if(raw.workerPid!==(worker?.pid??null)||raw.state==='EXITED'&&!worker||raw.state==='NOT_STARTED'&&worker||raw.exitCode!==null&&!Number.isSafeInteger(raw.exitCode)||raw.signal!==null&&typeof raw.signal!=='string'||![raw.stdoutBytes,raw.stderrBytes].every(x=>Number.isSafeInteger(x)&&(x as number)>=0))fail('WORKER_EVIDENCE_INVALID','Worker exit identity or counters differ',409);
       if(raw.state==='EXITED'&&raw.exitCode===null&&raw.signal===null)fail('WORKER_EVIDENCE_INVALID','Exited worker lacks an exit status',409);
+      if(raw.state==='GROUP_TERMINATED'&&(!intent.systemd||!fence||!terminal||raw.reason===null||raw.exitCode!==null||raw.signal!==null))fail('WORKER_EVIDENCE_INVALID','Group termination requires a durable fence and actual unit closure, without an invented child exit status',409);
       outcome=raw as unknown as WorkerOutcome;
     }
-    j.guard();return {reference:{...reference},intent,supervisor,worker,outcome,outcomeDigest:r.outcome_digest===null?null:String(r.outcome_digest)};
+    j.guard();return {reference:{...reference},intent,supervisor,worker,outcome,outcomeDigest:r.outcome_digest===null?null:String(r.outcome_digest),unit,fence,terminal,terminalDigest};
   }finally{j.db.close();}
 }
 export function recordWorkerEvidence(reference:WorkerReference,field:'supervisor'|'worker'|'outcome',value:ProcessRecord|WorkerOutcome):void {
-  readWorkerAttempt(reference);const j=open(reference.root);
+  const before=readWorkerAttempt(reference);if(before.intent.systemd&&field!=='outcome')fail('WORKER_PROTOCOL','Bound unit process claims require atomic launch admission');const j=open(reference.root);
   try{j.guard();if(j.journalId!==reference.journalId)fail('WORKER_EVIDENCE_INVALID','Worker journal changed',409);
     const condition=field==='supervisor'?' AND outcome IS NULL AND worker IS NULL':field==='worker'?' AND outcome IS NULL AND supervisor IS NOT NULL':'';
     const changed=j.db.prepare(`UPDATE attempts SET ${field}=?,${field}_digest=? WHERE id=? AND intent_digest=? AND ${field} IS NULL${condition}`).run(encoded(value),sha(value),reference.attemptId,reference.intentDigest);
@@ -106,12 +147,68 @@ export function taskWorkerReferences(root:string,taskId:string):WorkerReference[
 /** Caller has stopped the owning service. This CAS fences a not-yet-started
  * supervisor; recordWorkerEvidence cannot launch through the committed fence. */
 export function sealWorkerNotStarted(reference:WorkerReference):void {
-  const a=readWorkerAttempt(reference);if(a.supervisor||a.worker)fail('WORKER_EXIT_UNPROVEN','Supervisor already started; an actual exit receipt is required',409);
+  let a=readWorkerAttempt(reference);if(a.intent.systemd){fenceSystemdWorker(reference,'DISPATCH_REJECTED');a=readWorkerAttempt(reference);}if(a.supervisor||a.worker)fail('WORKER_EXIT_UNPROVEN','Supervisor already started; an actual exit receipt is required',409);
   if(a.outcome)return;
-  const value:WorkerOutcome={state:'NOT_STARTED',reason:'DISPATCH_REJECTED',workerPid:null,exitCode:null,signal:null,stdoutDigest:'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',stderrDigest:'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',stdoutBytes:0,stderrBytes:0,recordedAt:new Date().toISOString()};
+  const value:WorkerOutcome={state:'NOT_STARTED',reason:a.fence?.reason??'DISPATCH_REJECTED',workerPid:null,exitCode:null,signal:null,stdoutDigest:'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',stderrDigest:'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',stdoutBytes:0,stderrBytes:0,recordedAt:new Date().toISOString()};
   const j=open(reference.root);try{
     if(j.journalId!==reference.journalId)fail('WORKER_EVIDENCE_INVALID','Worker journal changed',409);j.guard();
     const changed=j.db.prepare('UPDATE attempts SET outcome=?,outcome_digest=? WHERE id=? AND intent_digest=? AND supervisor IS NULL AND worker IS NULL AND outcome IS NULL').run(encoded(value),sha(value),reference.attemptId,reference.intentDigest);
     if(changed.changes!==1)fail('RECOVERY_CONFLICT','Worker launch state changed during recovery; inspect it again',409);
   }finally{j.db.close();}
+}
+
+/** Claim the manager-created supervisor and exact invocation in one transaction.
+ * A delayed unit cannot pass a previously committed no-launch fence. */
+export function claimSystemdSupervisor(reference:WorkerReference,unit:UnitRecord):void {
+  const a=readWorkerAttempt(reference);validateUnitRecord(unit,reference);
+  if(!a.intent.systemd||unit.supervisorPid!==process.pid||unit.bootId!==a.intent.systemd.owner.bootId)fail('WORKER_PROTOCOL','The actual bound unit supervisor must claim itself');
+  const j=open(reference.root);
+  try{
+    j.db.exec('BEGIN IMMEDIATE');j.guard();
+    const resource=j.db.prepare('SELECT * FROM systemd_workers WHERE attempt_id=?').get(reference.attemptId);
+    if(!resource||resource.fence!==null||resource.unit!==null)fail('WORKER_LAUNCH_FENCED','Unit launch is already claimed or permanently fenced',409);
+    const value={pid:process.pid,recordedAt:new Date().toISOString()};
+    const changed=j.db.prepare('UPDATE attempts SET supervisor=?,supervisor_digest=? WHERE id=? AND intent_digest=? AND supervisor IS NULL AND worker IS NULL AND outcome IS NULL').run(encoded(value),sha(value),reference.attemptId,reference.intentDigest);
+    if(changed.changes!==1)fail('WORKER_LAUNCH_FENCED','Worker attempt can no longer launch',409);
+    j.db.prepare('UPDATE systemd_workers SET unit=?,unit_digest=? WHERE attempt_id=?').run(encoded(unit),sha(unit),reference.attemptId);j.db.exec('COMMIT');
+  }finally{j.db.close();}
+}
+/** Kernel placement already exists for the supervisor and is inherited by its
+ * child. The durable fence and this actual spawn serialize on the same DB. */
+export function launchSystemdChild<T extends {pid?:number;kill:(signal:'SIGKILL')=>boolean}>(reference:WorkerReference,launch:()=>T):T {
+  const a=readWorkerAttempt(reference);
+  if(!a.intent.systemd||!a.unit||a.supervisor?.pid!==process.pid)fail('WORKER_PROTOCOL','Exact admitted unit supervisor required');
+  const j=open(reference.root);let child:T|undefined;
+  try{
+    j.db.exec('BEGIN IMMEDIATE');j.guard();
+    const resource=j.db.prepare('SELECT * FROM systemd_workers WHERE attempt_id=?').get(reference.attemptId),attempt=j.db.prepare('SELECT * FROM attempts WHERE id=?').get(reference.attemptId);
+    if(!resource||resource.fence!==null||resource.unit_digest!==sha(a.unit)||!attempt||attempt.outcome!==null||attempt.worker!==null||attempt.supervisor_digest!==sha(a.supervisor))fail('WORKER_LAUNCH_FENCED','Executor launch is permanently fenced or already claimed',409);
+    child=launch();if(!child.pid)fail('WORKER_SPAWN_FAILED','Kernel executor spawn failed');
+    const value={pid:child.pid,recordedAt:new Date().toISOString()};
+    j.db.prepare('UPDATE attempts SET worker=?,worker_digest=? WHERE id=?').run(encoded(value),sha(value),reference.attemptId);
+    j.db.exec('COMMIT');return child;
+  }catch(e){child?.kill('SIGKILL');throw e;}finally{j.db.close();}
+}
+export function fenceSystemdWorker(reference:WorkerReference,reason:LaunchFence['reason']):LaunchFence {
+  const a=readWorkerAttempt(reference);if(!a.intent.systemd||!reasons.includes(reason)||reason===null)fail('WORKER_PROTOCOL','A bound unit and explicit stop reason are required');
+  const j=open(reference.root);
+  try{
+    j.db.exec('BEGIN IMMEDIATE');j.guard();
+    const old=j.db.prepare('SELECT fence,fence_digest FROM systemd_workers WHERE attempt_id=?').get(reference.attemptId);
+    if(!old)fail('WORKER_EVIDENCE_MISSING','Unit journal missing',409);
+    if(old.fence!==null){const saved=JSON.parse(String(old.fence));if(sha(saved)!==old.fence_digest)fail('WORKER_EVIDENCE_INVALID','Launch fence changed',409);j.db.exec('COMMIT');return saved;}
+    const value={reason,recordedAt:new Date().toISOString()};
+    j.db.prepare('UPDATE systemd_workers SET fence=?,fence_digest=? WHERE attempt_id=? AND fence IS NULL').run(encoded(value),sha(value),reference.attemptId);
+    j.db.exec('COMMIT');return value;
+  }finally{j.db.close();}
+}
+export function recordUnitTerminal(reference:WorkerReference,value:UnitTerminal):UnitTerminal {
+  const a=readWorkerAttempt(reference);if(a.terminal)return a.terminal;
+  if(!a.unit||sha(value.unit)!==sha(a.unit))fail('WORKER_EVIDENCE_INVALID','Foreign unit terminal record',409);
+  const j=open(reference.root);
+  try{
+    j.guard();const changed=j.db.prepare('UPDATE systemd_workers SET terminal=?,terminal_digest=? WHERE attempt_id=? AND unit_digest=? AND terminal IS NULL').run(encoded(value),sha(value),reference.attemptId,sha(a.unit));
+    if(changed.changes!==1)fail('WORKER_EVIDENCE_CONFLICT','Unit terminal evidence changed',409);
+  }finally{j.db.close();}
+  return readWorkerAttempt(reference).terminal!;
 }

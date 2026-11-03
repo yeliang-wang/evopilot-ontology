@@ -1,18 +1,23 @@
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {createWorkerAttempt,readWorkerAttempt,recordWorkerEvidence,WORKER_PROTOCOL} from './worker-journal.js';
+import {createWorkerAttempt,readWorkerAttempt,recordWorkerEvidence,WORKER_PROTOCOL,ISOLATED_WORKER_PROTOCOL,fenceSystemdWorker} from './worker-journal.js';
 import type {WorkerReference,WorkerPlan,WorkerOutcome} from './worker-journal.js';
 import {hashBytes} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
+import {verifySystemdBinding,ownerProcess} from './systemd-binding.js';
+import type {SystemdBinding} from './systemd-binding.js';
+import {runSystemdOwnedWorker} from './systemd-worker.js';
 
 export interface WorkerObservation {beforeDispatch?:(reference:WorkerReference)=>void;}
-export async function runOwnedWorker(options:Omit<WorkerPlan,'schema'|'stdinDigest'|'stdinBytes'>&WorkerObservation&{workRoot:string;input:string;signal?:AbortSignal}):Promise<{outcome:WorkerOutcome;stdout:Buffer;stderr:Buffer}> {
-  const {workRoot,input,signal,beforeDispatch,...fields}=options;
-  const intent:WorkerPlan={schema:WORKER_PROTOCOL,...fields,stdinDigest:hashBytes(input),stdinBytes:Buffer.byteLength(input)};
+export async function runOwnedWorker(options:Omit<WorkerPlan,'schema'|'stdinDigest'|'stdinBytes'|'systemd'>&WorkerObservation&{workRoot:string;input:string;signal?:AbortSignal;systemd?:SystemdBinding}):Promise<{outcome:WorkerOutcome;stdout:Buffer;stderr:Buffer}> {
+  const {workRoot,input,signal,beforeDispatch,systemd,...fields}=options;
+  if(systemd)verifySystemdBinding(systemd);
+  const intent:WorkerPlan={schema:systemd?ISOLATED_WORKER_PROTOCOL:WORKER_PROTOCOL,...(systemd?{systemd:{binding:systemd,owner:ownerProcess()}}:{}),...fields,stdinDigest:hashBytes(input),stdinBytes:Buffer.byteLength(input)};
   const reference=createWorkerAttempt(workRoot,intent);
   const notStarted=(reason:WorkerOutcome['reason']):WorkerOutcome=>({state:'NOT_STARTED',reason,workerPid:null,exitCode:null,signal:null,stdoutDigest:hashBytes(''),stderrDigest:hashBytes(''),stdoutBytes:0,stderrBytes:0,recordedAt:new Date().toISOString()});
-  try{beforeDispatch?.(reference);}catch(e){recordWorkerEvidence(reference,'outcome',notStarted('DISPATCH_REJECTED'));throw e;}
-  if(signal?.aborted){const outcome=notStarted('CANCELLED');recordWorkerEvidence(reference,'outcome',outcome);return {outcome,stdout:Buffer.alloc(0),stderr:Buffer.alloc(0)};}
+  try{beforeDispatch?.(reference);}catch(e){if(systemd)fenceSystemdWorker(reference,'DISPATCH_REJECTED');recordWorkerEvidence(reference,'outcome',notStarted('DISPATCH_REJECTED'));throw e;}
+  if(signal?.aborted){const outcome=notStarted('CANCELLED');if(systemd)fenceSystemdWorker(reference,'CANCELLED');recordWorkerEvidence(reference,'outcome',outcome);return {outcome,stdout:Buffer.alloc(0),stderr:Buffer.alloc(0)};}
+  if(systemd)return runSystemdOwnedWorker(reference,input,signal);
   return new Promise((resolve,reject)=>{
     const child=spawn(process.execPath,[fileURLToPath(new URL('./worker-supervisor.js',import.meta.url)),JSON.stringify(reference)],{cwd:workRoot,detached:true,stdio:['pipe','pipe','pipe','ipc'],env:{PATH:'',LANG:'C.UTF-8',TZ:'UTC',NODE_OPTIONS:'',NODE_PATH:'',NODE_NO_WARNINGS:'1'}});
     let finished=false,spawned=false,bytes=0,errorBytes=0;const output:Buffer[]=[],errors:Buffer[]=[];
