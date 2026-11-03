@@ -1,0 +1,25 @@
+{
+  "schema": "ontology-expert-source-lock/v1",
+  "sourceRepository": "https://github.com/yeliang-wang/evopilot",
+  "sourceRevision": "e4344f9ae41cf53a4b9704bd81f13fc8dfccb852",
+  "files": [
+    {
+      "path": "expert/core/guide.ts",
+      "sha256": "bbc04c058c57c80cc7faff0c7205824ae14b178b45071a784326100aefede093"
+    },
+    {
+      "path": "expert/core/readiness-guides.ts",
+      "sha256": "14c7862db3773071fdacd4c63ec636a9bb1a7f4c31cabdb95cac411c4ed6cae2"
+    },
+    {
+      "path": "expert/adapters/codex/SKILL.md",
+      "sha256": "e634d3e24d9f872ac7d6db5ef921c79d8712d25b10b4efb0c3f60206e9d02db8"
+    },
+    {
+      "path": "plugins/codex/skills/evopilot-v01-expert/SKILL.md",
+      "sha256": "e634d3e24d9f872ac7d6db5ef921c79d8712d25b10b4efb0c3f60206e9d02db8"
+    }
+  ],
+  "scope": "Reference/extraction under explicit approved user plan, not parent runtime dependency",
+  "historicalRetiredMutations": "DO_NOT_RESTORE"
+}

@@ -132,3 +132,7 @@ This synchronized patch supports the parent transport guide and immutable conten
 ## v0.8.3 Preview documentation closure
 
 This synchronized maintenance release follows the accepted parent v0.8.1 plan and its 72 fixed variants. It corrects current-versus-historical guidance and installation routing, retains all original APIs and state semantics, and requires exact source, package, publication and installed readback evidence. No new product capability or execution authority is introduced.
+
+## v0.9.0 independent Ontology — accepted implementation direction
+
+The current accepted [v0.9 plan](ontology-v090-plan.md) supersedes the previous metric-semantics allocation for Ontology's next version: independent Expert/plugin/service, complete OWL 2 DL, native v2 convergence and selected historical test-asset reset. Metrics observation/computation remain a future candidate; parent coordination is a P0 requirement. Follow the [replacement ADR](architecture/0001-ontology-v090-independence.md) and [machine Target](../governance/target-v090.json). Implementation is authorized, acceptance NOT_EVALUATED. This is no claim of published capability, installed cutover or passing business acceptance.

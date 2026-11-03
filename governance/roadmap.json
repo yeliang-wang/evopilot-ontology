@@ -1,0 +1,75 @@
+{
+  "schema": "ontology-roadmap/v1",
+  "owner": "ontology",
+  "targetVersion": "0.9.0",
+  "objective": "Independent Expert, complete OWL 2 DL reasoning and source-grounded business ontology lifecycle; selected historical test asset reset without automatic rebuilding",
+  "plan": "docs/ontology-v090-plan.md",
+  "adr": "docs/architecture/0001-ontology-v090-independence.md",
+  "milestones": [
+    {
+      "id": "P0",
+      "groups": [
+        "GOV"
+      ]
+    },
+    {
+      "id": "P1",
+      "groups": [
+        "SETUP",
+        "HOST",
+        "AUTH"
+      ]
+    },
+    {
+      "id": "P2",
+      "groups": [
+        "DL",
+        "TASK",
+        "SEM",
+        "IMPORT",
+        "EXPLAIN",
+        "ASSET",
+        "SHACL"
+      ]
+    },
+    {
+      "id": "P3",
+      "groups": [
+        "BUS",
+        "JOURNEY",
+        "DELIVERY"
+      ]
+    },
+    {
+      "id": "P4",
+      "groups": [
+        "RECOVERY",
+        "INTEGRATE",
+        "MAINT"
+      ]
+    },
+    {
+      "id": "P5",
+      "groups": [
+        "RELEASE"
+      ]
+    },
+    {
+      "id": "P6",
+      "groups": [
+        "FINAL"
+      ]
+    }
+  ],
+  "exclusions": [
+    "Dashboard/browser UI",
+    "embedded LLM or copied Host credentials",
+    "SWRL/OWL Full completeness",
+    "arbitrary SQL/live metric arithmetic",
+    "automatic daily ontology/Harness rebuilding",
+    "unrelated Runtime/Harness evolution",
+    "production database/SSH/performance load"
+  ],
+  "futureCandidate": "Business metric observation/computation/analysis deferred, parent coordination required; no implied acceptance",
+  "acceptance": "governance/acceptance-v090.json"
+}

@@ -1,0 +1,97 @@
+{
+  "schema": "evopilot-evolution-target/v1",
+  "id": "ontology-v090-independent",
+  "owner": "ontology",
+  "targetVersion": "0.9.0",
+  "sourceBase": "d8fb3da2f3fae6d8c3333ab9d2d6ff5c969f3462",
+  "publishedBase": "f491b40d5348bfe465e43d5be73a84114ed4f207",
+  "roadmapDigest": "sha256:bcfe96e91da1754bbca76ac65afff1a886fbda8b13591e8c01af0e14a9ded85e",
+  "planDigest": "sha256:b15f3d36d2a745248c3251ecd52217eae426a9ad5a5990c7cd3193a05ede6264",
+  "adrDigest": "sha256:8255fe2f6840fa67ca619ab54d37cf4189930cad2cd36e80c39f2e5af5ccb95d",
+  "acceptanceDigest": "sha256:b536bb5e63d2f4da02b9a8166a0f03dd3fdbe1181681e40cf7232a314972ffb8",
+  "implementationStatus": "AUTHORIZED",
+  "acceptanceStatus": "NOT_EVALUATED",
+  "releasePolicy": "User requested end-to-end plan execution; exact candidate acceptance, actual release review and post-release readback are mandatory; checker cannot authorize publication.",
+  "workScopes": {
+    "P0": [
+      "AGENTS.md",
+      "governance/",
+      "docs/",
+      "scripts/roadmap.mjs",
+      "tests/governance/",
+      "package.json",
+      "scripts/check.mjs"
+    ],
+    "P1": [
+      "src/standalone/",
+      "src/expert/",
+      "src/installation/",
+      "plugins/",
+      "scripts/",
+      "tests/",
+      "package.json",
+      "package-lock.json",
+      "tsconfig.json",
+      "docs/",
+      "governance/"
+    ],
+    "P2": [
+      "src/reasoning/",
+      "src/native-v2/",
+      "toolchains/",
+      "specifications/v2/",
+      "schemas/v2/",
+      "tests/",
+      "scripts/",
+      "docs/",
+      "governance/",
+      "package.json",
+      "package-lock.json"
+    ],
+    "P3": [
+      "src/expert/",
+      "src/standalone/",
+      "src/native-v2/",
+      "plugins/",
+      "tests/",
+      "docs/",
+      "governance/"
+    ],
+    "P4": [
+      "src/installation/",
+      "src/standalone/",
+      "src/native-v2/",
+      "tests/",
+      "docs/",
+      "governance/"
+    ],
+    "P5": [
+      ".github/",
+      "scripts/",
+      "package.json",
+      "package-lock.json",
+      "README.md",
+      "README_CN.md",
+      "CHANGELOG.md",
+      "NOTICE",
+      "docs/",
+      "governance/",
+      "tests/"
+    ],
+    "P6": [
+      "docs/",
+      "governance/"
+    ]
+  },
+  "preserve": [
+    "src/compat/",
+    "vendor/",
+    "specifications/v1/",
+    "original project source",
+    "credentials",
+    "independent audit",
+    "old releases"
+  ],
+  "scopePolicy": "New source APIs use new directories. Additional existing-owned implementation paths require reviewed scope extension bound to unchanged objective; no silent wildcard authority. Sibling/parent source changes use separate exact scopes. Daily mutations require P6 inventory and accepted installed candidate.",
+  "expertSourceDigest": "sha256:052a153b9c052fe057a54f46a515ba22574ef57c551a1e70a43eb194fa3be5d6"
+}
