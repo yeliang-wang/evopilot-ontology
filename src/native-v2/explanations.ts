@@ -9,13 +9,24 @@ import {exact,id,digest,hashBytes,hash} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
 
+const replayFields=['searchStrategy','replayVerified','candidateChecks','ineligibleCandidates','retainedDatatypeDefinitions'] as const;
+const count=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+
 /** Structural axiom provenance is produced by OWLAPI. Business-source links
  * are the author's document mappings, visibly separate from the formal proof. */
 export function explainEvidence(e:TaskEvidence,model:ModelAdmission,sources:SourceAdmission):Json {
   verifyTask(e,model,'dl');const {request,result}=dlEvidence(e);
   if(request.task.kind!=='explanation'||result.status!=='COMPLETED')fail('EXPLANATION_REQUIRED','A completed explanation task is required',409);
-  const data=result.result;exact(data,['target','method','allMinimalJustifications','support','replay'],['reasoningEngine','engineSelectionPolicy','unknownUnicodeBlocks']);
+  const data=result.result;exact(data,['target','method','allMinimalJustifications','support','replay'],['reasoningEngine','engineSelectionPolicy','unknownUnicodeBlocks',...replayFields]);
   if(data.target!==request.task.target||data.method!=='DELETION_REPLAY'||data.allMinimalJustifications!==false||!Array.isArray(data.support))fail('EXPLANATION_PROTOCOL','Native explanation scope differs',409);
+  let replayEvidence:Record<string,Json>={};
+  if(replayFields.some(field=>Object.hasOwn(data,field))){
+    const {searchStrategy,replayVerified,candidateChecks,ineligibleCandidates,retainedDatatypeDefinitions}=data;
+    if(!replayFields.every(field=>Object.hasOwn(data,field))||searchStrategy!=='BREADTH_FIRST_BLOCKS'||replayVerified!==true||
+      !count(candidateChecks)||candidateChecks>199999||!count(ineligibleCandidates)||ineligibleCandidates>candidateChecks||
+      !count(retainedDatatypeDefinitions)||retainedDatatypeDefinitions>data.support.length)fail('EXPLANATION_PROTOCOL','Replay verification metadata is incomplete or invalid',409);
+    replayEvidence={searchStrategy,replayVerified,candidateChecks,ineligibleCandidates,retainedDatatypeDefinitions};
+  }
   exact(data.replay,['format','content','digest']);
   if(data.replay.format!=='functional'||typeof data.replay.content!=='string'||hashBytes(data.replay.content)!==data.replay.digest)fail('EXPLANATION_PROTOCOL','Replay document identity differs',409);
   let sourceLinksComplete=true;const seen=new Set<string>();
@@ -36,7 +47,7 @@ export function explainEvidence(e:TaskEvidence,model:ModelAdmission,sources:Sour
     });
     return {axiom:entry.axiom,axiomDigest:entry.axiomDigest,documents};
   });
-  return {schema:'ontology-explanation-projection/v2',modelDigest:model.digest,sourceSetDigest:model.draft.sourceSetDigest,closureDigest:model.closureDigest,task:{...taskBinding(e)},target:request.task.target,query:request.task.query?{format:request.task.query.format,digest:request.task.query.digest}:null,method:'DELETION_REPLAY',support:support as unknown as Json,replay:data.replay as Json,sourceLinksComplete,sourceLinkPrecision:'DOCUMENT_MAPPING_NOT_AXIOM_BYTE_LOCATION',allMinimalJustifications:false,businessMeaningProven:false,authority:false};
+  return {schema:'ontology-explanation-projection/v2',modelDigest:model.digest,sourceSetDigest:model.draft.sourceSetDigest,closureDigest:model.closureDigest,task:{...taskBinding(e)},target:request.task.target,query:request.task.query?{format:request.task.query.format,digest:request.task.query.digest}:null,method:'DELETION_REPLAY',...replayEvidence,support:support as unknown as Json,replay:data.replay as Json,sourceLinksComplete,sourceLinkPrecision:'DOCUMENT_MAPPING_NOT_AXIOM_BYTE_LOCATION',allMinimalJustifications:false,businessMeaningProven:false,authority:false};
 }
 export function explanationRead(db:DatabaseSync,projectId:string,input:unknown,toolchainDigest:string|null):Json {
   exact(input,['assetId','modelDigest','taskId','offset','maxBytes']);id(input.assetId);digest(input.modelDigest);id(input.taskId);
