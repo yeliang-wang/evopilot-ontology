@@ -1,4 +1,4 @@
-import {mkdirSync,openSync,closeSync,writeFileSync,renameSync,fsyncSync,readdirSync,realpathSync,existsSync} from 'node:fs';
+import {mkdirSync,openSync,closeSync,writeFileSync,renameSync,fsyncSync,readdirSync,realpathSync,existsSync,lstatSync} from 'node:fs';
 import {dirname,isAbsolute,join,resolve,relative} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {privatePath,privateRead,privateLease} from '../standalone/workspace.js';
@@ -35,4 +35,15 @@ export function operatorLock(root:string):()=>void{
   if(!existsSync(path)){const fd=openSync(path,'wx',0o600);closeSync(fd);}privatePath(path);
   const db=privateLease(path,'INSTALLATION_BUSY','Another operator command owns this installation');
   return ()=>db.close();
+}
+/** Settle only the verified empty control store. SQLite owns rollback/journal
+ * removal; business journals and normal no-allocation lease paths stay intact. */
+export function settleOperatorJournal(root:string):void{
+  privatePath(root,true);if(!readdirSync(root).includes('operator.sqlite-journal'))return;
+  const path=join(root,'operator.sqlite'),journal=path+'-journal';privatePath(journal);privatePath(path);
+  if(lstatSync(journal).size>65536)fail('LEASE_EVIDENCE','Oversized operator lease journal was preserved',409);
+  const before=lstatSync(path),db=privateLease(path,'INSTALLATION_BUSY','The formal worker still owns its operator lease');
+  try{db.exec('PRAGMA user_version=1;COMMIT');}finally{db.close();}
+  const after=lstatSync(path);
+  if(after.dev!==before.dev||after.ino!==before.ino||existsSync(journal))fail('LEASE_EVIDENCE','Operator lease did not settle at its original location',409);
 }

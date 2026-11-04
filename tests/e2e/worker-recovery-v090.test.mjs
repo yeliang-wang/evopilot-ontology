@@ -1,14 +1,18 @@
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,realpathSync,readFileSync,mkdirSync,rmSync} from 'node:fs';
+import {mkdtempSync,realpathSync,readFileSync,mkdirSync,rmSync,renameSync,writeFileSync,existsSync,symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,dirname} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {execFile,spawn} from 'node:child_process';
 import {DatabaseSync} from 'node:sqlite';
 import {inspectRuntime} from '../../dist/installation/runtime.js';
+import {operatorLock,settleOperatorJournal} from '../../dist/installation/files.js';
 import {prepareInstallation,bindInstallationToolchains,startInstallation,stopInstallation} from '../../dist/installation/manager.js';
 import {inspectInstallationTaskRecovery,reconcileInstallationTask} from '../../dist/installation/task-recovery.js';
+import {inspectInstallationBackup,backupInstallation} from '../../dist/installation/backup.js';
+import {inspectRestoreStage,stageInstallationRestore} from '../../dist/installation/restore-stage.js';
+import {inspectLostRestore,activateLostRestore} from '../../dist/installation/restore-lost.js';
 import {taskWorkerReferences,readWorkerAttempt,sealWorkerNotStarted,recordWorkerEvidence} from '../../dist/installation/worker-journal.js';
 import {processPresent} from '../../dist/installation/control.js';
 import {readConnection,sendRequest} from '../../dist/standalone/client.js';
@@ -87,6 +91,28 @@ for(const kind of ['dl','shacl'])test('actual '+kind+' worker exits after manage
   const attemptCount=taskWorkerReferences(f.workRoot,taskId).length;assert.deepEqual(await f.http(started.request),started.receipt);assert.equal(taskWorkerReferences(f.workRoot,taskId).length,attemptCount);
   const next=await p.write('reasoning.start',{assetId:'services',modelDigest:p.modelDigest,task:{kind:'consistency'}},'explicit-new-task');
   const completed=await until(async()=>{const r=await f.http(f.request('reasoning.inspect',{taskId:next.receipt.result.taskId}));return r.state==='FINISHED'&&r;});assert.equal(completed.formalStatus,'COMPLETED');
+  if(kind==='dl'){
+    await stopInstallation(f.setup.root);for(const r of f.attempts.map(ref=>readWorkerAttempt(ref)))for(const pid of [r.worker?.pid,r.supervisor?.pid].filter(Boolean))await until(()=>processPresent(pid)===false);
+    const backupRoot=join(base,'recovered-task-backup'),report=inspectInstallationBackup(f.setup.root,backupRoot,'backup');
+    const backed=backupInstallation(f.setup.root,{backupRoot,requestId:'backup',expectedReportDigest:report.reportDigest}),stageInput={backupRoot,expectedManifestDigest:backed.receipt.manifestDigest,stageRoot:join(base,'recovered-task-stage'),requestId:'stage'},stageReport=inspectRestoreStage(stageInput),staged=stageInstallationRestore(stageInput,stageReport.reportDigest);
+    for(const path of [f.setup.root,f.setup.workspaceRoot])renameSync(path,path+'-lost');
+    const restore={snapshot:{root:stageInput.stageRoot,manifestDigest:staged.receipt.manifestDigest},recoveryRoot:join(base,'recovered-task-restore'),requestId:'restore',rekeyExpiresAt:new Date(Date.now()+86400000).toISOString()},inspected=inspectLostRestore(restore),restored=activateLostRestore(restore,inspected.reportDigest);
+    assert.deepEqual((await installedRecovery(f,input)).receipt,recovered.receipt);assert.throws(()=>reconcileInstallationTask(f.setup.root,{...input,requestId:'missing-before-restore'}),{code:'REQUEST_OUTCOME_UNKNOWN'});
+    assert.throws(()=>reconcileInstallationTask(f.setup.root,{...input,taskId:'task-not-in-snapshot',requestId:restored.receipt.requestIdPrefix+'new'}),{code:'NOT_FOUND'});
+    const freshRun=await f.start();assert.deepEqual(await f.http(f.request(operation,{taskId})),result);
+    const project=await f.http(f.request('project.inspect')),fresh=await f.http({...f.request('reasoning.start',{assetId:'services',modelDigest:p.modelDigest,task:{kind:'consistency'}}),requestId:restored.receipt.requestIdPrefix+'new-task',expectedRevision:project.revision}),freshTask=fresh.result.taskId,worker=await active(f,freshTask,'dl',true);await killOwner(f,freshRun,worker);
+    const inspection=inspectInstallationTaskRecovery(f.setup.root,'demo',freshTask),freshInput={projectId:'demo',taskId:freshTask,requestId:restored.receipt.requestIdPrefix+'new-reconcile',expectedReportDigest:inspection.reportDigest};assert.equal(inspection.report.ready,true);const closed=await installedRecovery(f,freshInput);assert.equal(closed.replayed,false);assert.deepEqual(reconcileInstallationTask(f.setup.root,freshInput).receipt,closed.receipt);
+  }
+});
+
+test('cold backup control cleanup preserves active, foreign, oversized and redirected lease evidence',()=>{
+  const fixture=name=>{const root=join(base,'lease-'+name);mkdirSync(root,{mode:0o700});operatorLock(root)();return {root,path:join(root,'operator.sqlite'),journal:join(root,'operator.sqlite-journal')};};
+  const busy=fixture('busy'),db=new DatabaseSync(busy.path);db.exec('BEGIN EXCLUSIVE;PRAGMA user_version=1');
+  try{const before=readFileSync(busy.journal);assert.throws(()=>settleOperatorJournal(busy.root),{code:'INSTALLATION_BUSY'});assert.deepEqual(readFileSync(busy.journal),before);}finally{db.exec('ROLLBACK');db.close();}
+  const foreign=fixture('foreign'),other=new DatabaseSync(foreign.path);other.exec('CREATE TABLE foreign_data(value TEXT)');other.close();writeFileSync(foreign.journal,Buffer.alloc(512),{mode:0o600});
+  const before=readFileSync(foreign.path),journal=readFileSync(foreign.journal);assert.throws(()=>settleOperatorJournal(foreign.root),{code:'LEASE_EVIDENCE'});assert.deepEqual(readFileSync(foreign.path),before);assert.deepEqual(readFileSync(foreign.journal),journal);
+  const large=fixture('large'),payload=Buffer.alloc(65537,83);writeFileSync(large.journal,payload,{mode:0o600});assert.throws(()=>settleOperatorJournal(large.root),{code:'LEASE_EVIDENCE'});assert.deepEqual(readFileSync(large.journal),payload);
+  const redirected=fixture('redirected'),absent=join(base,'absent-journal');symlinkSync(absent,redirected.journal);assert.throws(()=>settleOperatorJournal(redirected.root),{code:'UNSAFE_PATH'});assert.equal(existsSync(absent),false);
 });
 
 test('missing or changed exit proof and stale inspection cannot clear an interrupted task',async t=>{

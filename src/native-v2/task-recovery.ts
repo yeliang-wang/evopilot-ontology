@@ -1,6 +1,7 @@
 import type {WorkspaceStore} from '../standalone/workspace.js';
 import type {Json} from '../standalone/types.js';
 import {ServiceError,fail} from '../standalone/types.js';
+import {requireFreshRecoveryRequest} from '../standalone/recovery.js';
 import {hash,id,digest,canonical,exact} from '../standalone/validation.js';
 import {readWorkerAttempt,taskWorkerReferences,sealWorkerNotStarted,WORKER_PROTOCOL,ISOLATED_WORKER_PROTOCOL} from '../installation/worker-journal.js';
 import type {WorkerReference} from '../installation/worker-journal.js';
@@ -93,7 +94,7 @@ function append(store:WorkspaceStore,taskId:string,kind:string,detail:Json){
   store.db.prepare('INSERT INTO native_reasoning_events(task_id,event,document,digest,recorded_at) VALUES(?,?,?,?,?)').run(taskId,kind,canonical(document),sha(document),document.recordedAt);
 }
 export function reconcileTask(store:WorkspaceStore,input:{installationId:string;projectId:string;taskId:string;requestId:string;expectedReportDigest:string},roots:string[]):Json {
-  id(input.installationId);id(input.requestId);digest(input.expectedReportDigest);row(store,input.projectId,input.taskId);
+  id(input.installationId);id(input.requestId);id(input.projectId);id(input.taskId);digest(input.expectedReportDigest);
   const requestDigest=sha({installationId:input.installationId,workspaceId:store.identity.workspaceId,serviceId:store.identity.serviceId,projectId:input.projectId,taskId:input.taskId,expectedReportDigest:input.expectedReportDigest});
   store.db.exec('BEGIN IMMEDIATE');
   try{
@@ -108,6 +109,7 @@ export function reconcileTask(store:WorkspaceStore,input:{installationId:string;
       if(current.state!=='FINISHED'||current.result===null||sha(JSON.parse(String(current.result)))!==current.result_digest||current.result_digest!==receipt.resultDigest)fail('RECOVERY_EVIDENCE_INVALID','Recovered task differs from its retained receipt',409);
       store.db.exec('COMMIT');return {receipt,replayed:true,authority:false};
     }
+    requireFreshRecoveryRequest(store.identity,input.requestId);
     const r=row(store,input.projectId,input.taskId),report=reportFor(store,r,roots),reportDigest=sha(report);
     if(reportDigest!==input.expectedReportDigest)fail('RECOVERY_CONFLICT','Recovery evidence changed; inspect the exact original task again',409);
     if(!report.ready)fail('TASK_RECOVERY_REQUIRED','Worker exit evidence is incomplete; the task remains blocked',409);

@@ -2,12 +2,13 @@ import {mkdirSync,readdirSync,unlinkSync,openSync,closeSync,fsyncSync} from 'nod
 import {join,dirname,basename,resolve,isAbsolute} from 'node:path';
 import type {Json} from '../standalone/types.js';
 import {fail} from '../standalone/types.js';
+import {requireFreshRecoveryRequest} from '../standalone/recovery.js';
 import {exact,id,digest} from '../standalone/validation.js';
 import {openWorkspace,privatePath,privateRead,readMaintenanceBarrier,requireMaintenanceAvailable,MAINTENANCE_FILE} from '../standalone/workspace.js';
 import type {WorkspaceStore,MaintenanceBarrier,MaintenancePermit} from '../standalone/workspace.js';
 import {readInstallation,currentRun} from './manager.js';
 import type {Installation} from './manager.js';
-import {operatorLock,outsideSource,assertSeparate} from './files.js';
+import {operatorLock,outsideSource,assertSeparate,settleOperatorJournal} from './files.js';
 import {verifyRuntime} from './runtime.js';
 import {processPresent} from './control.js';
 import {readToolchainLedger} from './toolchains.js';
@@ -82,6 +83,7 @@ export function inspectStoppedOwnerBackupPlan(i:Installation,store:WorkspaceStor
     }
   }
   for(const t of tasks)completedTaskWorkerEvidence(store,String(t.project_id),String(t.id),roots);
+  for(const root of roots)settleOperatorJournal(root);
   store.guard();
   const plan:BackupPlan={schema:'ontology-backup-plan/v1',installation:i,backupRoot,targetParent:backupNode(dirname(backupRoot)),roots:{installation:backupNode(i.root),workspace:backupNode(i.workspaceRoot)},entries:backupInventory(i),priorBackups,toolchainBindingDigest:binding?.digest??null,formalTasks:tasks.length,workerAttempts,workerJournals};
   validateBackupPlan(plan);return plan;
@@ -116,11 +118,14 @@ export function inspectInstallationBackup(path:string,backupRoot:string,requestI
   try{
     const history=records(i),saved=history.find(r=>r.requestId===requestId);
     if(saved){if(saved.backupRoot!==backupRoot)fail('REQUEST_CONFLICT','Backup request binds another destination',409);return {status:saved.state,requestId,reportDigest:saved.reportDigest,receipt:saved.receipt as unknown as Json,authority:false};}
-    target(i,backupRoot);
-    if(history.some(r=>r.state==='PENDING'))fail('BACKUP_PENDING','Resolve the original backup first',409);
-    if(history.length>=BACKUP_LIMITS.requests)fail('BACKUP_LIMIT','Backup request history is full',409);
-    requireMaintenanceAvailable(i.root);stopped(i);if(workerFilePresent(backupRoot))fail('BACKUP_EXISTS','A new backup requires an absent destination',409);
-    const store=openWorkspace(i.workspaceRoot,i);try{const plan=inspectStoppedOwnerBackupPlan(i,store,backupRoot,history);return {status:'READY',requestId,report:plan as unknown as Json,reportDigest:backupHash(plan),authority:false};}finally{store.close();}
+    requireMaintenanceAvailable(i.root);stopped(i);const store=openWorkspace(i.workspaceRoot,i);
+    try{
+      requireFreshRecoveryRequest(store.identity,requestId);target(i,backupRoot);
+      if(history.some(r=>r.state==='PENDING'))fail('BACKUP_PENDING','Resolve the original backup first',409);
+      if(history.length>=BACKUP_LIMITS.requests)fail('BACKUP_LIMIT','Backup request history is full',409);
+      if(workerFilePresent(backupRoot))fail('BACKUP_EXISTS','A new backup requires an absent destination',409);
+      const plan=inspectStoppedOwnerBackupPlan(i,store,backupRoot,history);return {status:'READY',requestId,report:plan as unknown as Json,reportDigest:backupHash(plan),authority:false};
+    }finally{store.close();}
   }finally{unlock();}
 }
 export function backupInstallation(path:string,input:Request):Json {
@@ -139,6 +144,7 @@ export function backupInstallation(path:string,input:Request):Json {
     barriers(i,selected,'check');stopped(i);
     const permit:MaintenancePermit=selected,store=openWorkspace(i.workspaceRoot,i,permit);
     try{
+      if(!r)requireFreshRecoveryRequest(store.identity,input.requestId);
       let plan:BackupPlan;
       if(r&&workerFilePresent(join(r.backupRoot,'plan.json'))){plan=readBackupPlan(r.backupRoot);if(backupHash(plan)!==r.reportDigest)fail('BACKUP_EVIDENCE','Original backup plan differs',409);}
       else{
@@ -169,7 +175,8 @@ export function backupInstallation(path:string,input:Request):Json {
 export function abortInstallationBackup(path:string,requestId:string,expectedReportDigest:string):Json {
   id(requestId);digest(expectedReportDigest);const i=readInstallation(path),unlock=operatorLock(i.root);
   try{
-    const r=records(i).find(v=>v.requestId===requestId);if(!r)fail('BACKUP_MISSING','Original backup request is not retained',404);
+    const r=records(i).find(v=>v.requestId===requestId);
+    if(!r){const store=openWorkspace(i.workspaceRoot,i);try{requireFreshRecoveryRequest(store.identity,requestId);fail('BACKUP_MISSING','Original backup request is not retained',404);}finally{store.close();}}
     if(r.reportDigest!==expectedReportDigest)fail('REQUEST_CONFLICT','Backup report differs from original request',409);
     if(r.state==='COMPLETED')fail('BACKUP_COMPLETED','Completed backup cannot be aborted',409);
     if(r.state==='ABORTED'){clearTerminalBarriers(i,r);return {receipt:r.receipt as unknown as Json,replayed:true,authority:false};}

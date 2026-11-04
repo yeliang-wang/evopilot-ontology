@@ -4,6 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {exact,id,digest,hash} from '../standalone/validation.js';
 import type {Json} from '../standalone/types.js';
 import {fail} from '../standalone/types.js';
+import {requireFreshRecoveryRequest} from '../standalone/recovery.js';
 import type {WorkspaceStore} from '../standalone/workspace.js';
 import type {Installation} from './manager.js';
 import {withStoppedWorkerInstallation} from './worker-operator.js';
@@ -39,7 +40,7 @@ export async function inspectInstallationWorkerRotation(path:string,requestId?:s
   return withStoppedWorkerInstallation(path,async(i,store,root):Promise<Json>=>{
     const c=readArchiveCatalog(root),saved=requestId===undefined?c?.pending:[...(c?.archives??[]),...(c?.pending?[c.pending]:[])].find(r=>r.requestId===requestId);
     if(saved){owner(i,saved);verifyJournalImage(root,saved.plan.source);return {status:saved.receipt?'COMPLETED':'PENDING',requestId:saved.requestId,report:saved.plan as unknown as Json,reportDigest:saved.planDigest,receipt:saved.receipt as unknown as Json,authority:false};}
-    if(requestId!==undefined)fail('WORKER_ROTATION_MISSING','Exact rotation request is not retained',404);
+    if(requestId!==undefined){requireFreshRecoveryRequest(store.identity,requestId);fail('WORKER_ROTATION_MISSING','Exact rotation request is not retained',404);}
     if(!c&&!workerFilePresent(join(root,'worker-journal.sqlite')))return {status:'NOT_NEEDED',requestId:null,report:null,reportDigest:null,receipt:null,authority:false};
     const plan=makePlan(i,store,root);return {status:'READY',requestId:null,report:plan as unknown as Json,reportDigest:sha(plan),receipt:null,authority:false};
   });
@@ -53,6 +54,7 @@ export async function rotateInstallationWorkerJournal(path:string,input:Request)
       verifyJournalImage(root,saved.plan.source);
       if(saved.receipt)return {receipt:saved.receipt as unknown as Json,replayed:true,authority:false};
     }else{
+      requireFreshRecoveryRequest(store.identity,input.requestId);
       const plan=makePlan(i,store,root),planDigest=sha(plan);
       if(planDigest!==input.expectedReportDigest)fail('WORKER_ROTATION_CONFLICT','Inspected journal evidence changed',409);
       const journalId=randomUUID(),next={journalId,file:journalFilename(journalId)};

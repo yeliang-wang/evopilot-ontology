@@ -67,7 +67,7 @@ try{
       const c=readConnection(join(f.i.root,'connection.json'));assert.deepEqual(await sendRequest(c,request,true),first);assert.deepEqual(await sendRequest(c,f.read('validation.inspect',{taskId:first.result.taskId}),false),task);const project=await sendRequest(c,f.read('project.inspect'),false),next=await sendRequest(c,f.write('validation.start',{assetId:'services',modelDigest:model.modelDigest},done.receipt.requestIdPrefix+'fresh-validation',project.revision),true);freshTask=next.result.taskId;let result;
       for(let n=0;n<1600;n++){result=await sendRequest(c,f.read('validation.inspect',{taskId:freshTask}),false);if(result.state==='FINISHED')break;await delay(25);}assert.equal(result.formalStatus,'MATCHED');
     }finally{await stopInstallation(f.i.root);}
-    for(const [n,taskId] of [first.result.taskId,freshTask].entries()){const observed=await inspectInstallationWorkerMaintenance(f.i.root,'demo',taskId);await maintainInstallationWorkers(f.i.root,{projectId:'demo',taskId,requestId:'maintenance-'+n,expectedReportDigest:observed.reportDigest});}
+    for(const [n,taskId] of [first.result.taskId,freshTask].entries()){const observed=await inspectInstallationWorkerMaintenance(f.i.root,'demo',taskId);await maintainInstallationWorkers(f.i.root,{projectId:'demo',taskId,requestId:done.receipt.requestIdPrefix+'maintenance-'+n,expectedReportDigest:observed.reportDigest});}
     results.push({name:'actual-installed-activation-start-new-java-python-systemd-work-and-maintenance',status:'PASS',originalRequestReceiptPreserved:true,originalWorkerStoragePreserved:true,newFormalTaskMatched:true,systemdDigest:systemd.digest,receipt:done.receipt});clearCase(f);
   }
   assert.equal(inspectRuntime(o.runtime).digest,runtime.digest);

@@ -11,6 +11,7 @@ import {privatePath,privateRead,openWorkspace,requireMaintenanceAvailable} from 
 import {createStandaloneService} from '../standalone/service.js';
 import {exact,id,digest,hash,validateIdentity} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
+import {requireFreshRecoveryRequest} from '../standalone/recovery.js';
 import type {Json} from '../standalone/types.js';
 import {operatorRequest,processPresent,validateRun} from './control.js';
 import type {RunRecord} from './control.js';
@@ -108,6 +109,7 @@ export function bindInstallationToolchains(path:string,input:BindToolchainsInput
     if(run&&!['STOPPED','FAILED'].includes(run.state)&&processPresent(run.pid)!==false)fail('INSTALLATION_RUNNING','Stop or reconcile the exact managed service before changing toolchain binding',409);
     const workspace=openWorkspace(installation.workspaceRoot,installation);
     try{
+      requireFreshRecoveryRequest(workspace.identity,input.requestId);
       if(workspace.db.prepare("SELECT id FROM native_reasoning_tasks WHERE state!='FINISHED' LIMIT 1").get())fail('TASK_RECOVERY_REQUIRED','Unresolved formal work must be reconciled before replacing tools',409);
       const receipt=recordToolchainBinding(installation,input,ledger);
       return {receipt:receipt as unknown as Json,replayed:false,currentBindingDigest:receipt.digest,authority:false};

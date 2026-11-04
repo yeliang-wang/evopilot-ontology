@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import type {DatabaseSync} from 'node:sqlite';
 import type {Json} from '../standalone/types.js';
 import {fail} from '../standalone/types.js';
+import {requireFreshRecoveryRequest} from '../standalone/recovery.js';
 import {exact,id,digest,hash} from '../standalone/validation.js';
 import {privatePath} from '../standalone/workspace.js';
 import type {WorkspaceStore} from '../standalone/workspace.js';
@@ -147,9 +148,10 @@ function removeFiles(plan:Plan,e:Entry):void {
 }
 export async function maintainInstallationWorkers(path:string,input:Request):Promise<Json> {
   return withStoppedWorkerInstallation(path,async(i,store,root)=>{
-    const requested=requestDigest(i,input),task=completedTaskWorkerEvidence(store,input.projectId,input.taskId,[root]);
+    const requested=requestDigest(i,input),history=workerMaintenanceRecords(i,root,input);let record=history.find(r=>r.requestId===input.requestId);
+    if(!record)requireFreshRecoveryRequest(store.identity,input.requestId);
+    const task=completedTaskWorkerEvidence(store,input.projectId,input.taskId,[root]);
     if(!task.references.length)fail('WORKER_MAINTENANCE_EMPTY','This completed task has no worker resources to release',409);
-    const history=workerMaintenanceRecords(i,root,input);let record=history.find(r=>r.requestId===input.requestId);
     if(record){
       if(record.requestDigest!==requested)fail('REQUEST_CONFLICT','Maintenance request ID binds different parameters',409);
       if(sha(completedTaskWorkerEvidence(store,input.projectId,input.taskId,[root]))!==sha(record.plan.task))fail('WORKER_MAINTENANCE_EVIDENCE','Original completed task changed',409);

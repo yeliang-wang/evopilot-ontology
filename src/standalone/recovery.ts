@@ -12,5 +12,5 @@ export function requireFreshRecoveryRequest(identity:WorkspaceIdentity,requestId
 }
 export function recoveryContext(identity:WorkspaceIdentity):Json {
   if(identity.schema==='ontology-workspace/v1')return null;
-  return {...identity.recovery,requestIdPrefix:recoveryRequestPrefix(identity),missingOlderReceipts:'UNKNOWN',draftHeadPolicy:'SELECTED_SNAPSHOT',decisionHeadPolicy:'RETAINED_CURRENT',newRequestSuffixMaximum:62,automaticRedispatch:false,authority:false};
+  return {...identity.recovery,requestIdPrefix:recoveryRequestPrefix(identity),missingOlderReceipts:'UNKNOWN',draftHeadPolicy:'SELECTED_SNAPSHOT',decisionHeadPolicy:identity.recovery.retainedDigest===null?'SELECTED_SNAPSHOT_LATER_DECISIONS_UNKNOWN':'RETAINED_CURRENT',newRequestSuffixMaximum:62,automaticRedispatch:false,authority:false};
 }

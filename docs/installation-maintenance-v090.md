@@ -6,10 +6,20 @@ and protected restore candidate materialization are implemented. Internal inacti
 state preparation reconciles selected history and credentials and installs
 request-generation guards. Retained-current restoration now verifies the stopped
 owner, activates reconciled drafts at the original workspace path and preserves
-current installation/worker storage. Missing-owner activation, copied historical
-worker storage lineage, upgrade, customization merge and selected test-asset reset
-remain required work. A verified backup or prepared database alone does not
+current installation/worker storage. Missing-owner activation preserves copied
+historical worker storage through explicit lineage. Upgrade, customization merge,
+complete maintenance acceptance and selected test-asset reset remain required
+work. A verified backup or prepared database alone does not
 establish full restore capability.
+
+A killed formal worker may leave a journal for its empty `operator.sqlite`
+control lease. Cold-backup inspection first proves task completion and worker
+exit, validates the owned control store and acquires its exclusive SQLite lease,
+then commits the same header version so SQLite can settle that journal. This
+does not delete a journal directly or recover business results. Busy, foreign,
+oversized or redirected control evidence is refused. Business SQLite sidecars
+still block backup. Ordinary lease acquisition retains its allocation-free path
+for recovery on a full filesystem.
 
 ## Protected restore candidate
 
@@ -168,6 +178,22 @@ restore review authority. Old reviewer issuance files and business receipts stay
 retained; possession of an old credential or issuance file does not grant access.
 The fresh request namespace distinguishes new work from missing pre-recovery
 outcomes. This backup cannot recover later data that was never captured.
+The service context identifies its decision heads as
+`SELECTED_SNAPSHOT_LATER_DECISIONS_UNKNOWN`; snapshot review rows do not prove
+that no later decision existed. A retained-current recovery instead identifies
+the selected heads as `RETAINED_CURRENT`. These labels describe the retained
+source and do not add business or software-release authority.
+
+The recovery namespace also applies to new backup requests, toolchain bindings,
+worker rotation, worker cleanup and task reconciliation. Each command first
+checks its owning journal for the exact original request. Known matching receipts
+remain replayable, including receipts from earlier recovery generations. A missing
+older request returns `REQUEST_OUTCOME_UNKNOWN` before admitting work. Use the
+prefix returned by recovery only for genuinely new work; renaming an uncertain
+retry does not establish permission to execute it again. Exact inspections of
+unknown older backup/rotation requests also retain uncertainty. A missing request
+inside the current generation keeps the operation's normal not-found response.
+Ordinary workspaces without recovery metadata keep their existing request IDs.
 
 Installation files and customizations are copied byte-for-byte into a blocked
 candidate. Terminal backup control records projected by the snapshot, including
