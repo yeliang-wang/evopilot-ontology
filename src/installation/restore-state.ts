@@ -248,8 +248,8 @@ export function readPreparedRestoreLocation(root:string,expectedManifestDigest:s
   if(saved.manifestDigest!==expectedManifestDigest||backupHash(backupNode(root))!==backupHash(m.root)||backupHash(backupNode(workspaceRoot))!==backupHash(m.workspace)||backupHash(inventory(plan,workspaceRoot,true))!==backupHash(m.files)||privateRead(join(workspaceRoot,RESTORE_STAGE_BARRIER),65536)!==JSON.stringify(barrier(plan))+'\n')fail('RESTORE_STATE','Moved preparation differs from its exact retained state',409);
   return {plan,manifest:saved.manifest,manifestDigest:saved.manifestDigest,receipt:saved.receipt,barrier:barrier(plan)};
 }
-export function withPreparedRestoreState<T>(root:string,expectedManifestDigest:string,use:(store:{db:DatabaseSync;identity:WorkspaceIdentity;guard:()=>void})=>T):T {
-  const workspace=join(root,'workspace'),saved=readPreparedRestoreLocation(root,expectedManifestDigest,workspace),file=join(workspace,FILES.db),raw=privateRead(join(workspace,FILES.identity),4096),identity:unknown=JSON.parse(raw);validateIdentity(identity);
+export function withPreparedRestoreState<T>(root:string,expectedManifestDigest:string,use:(store:{db:DatabaseSync;identity:WorkspaceIdentity;guard:()=>void})=>T,workspace=join(root,'workspace')):T {
+  const saved=readPreparedRestoreLocation(root,expectedManifestDigest,workspace),file=join(workspace,FILES.db),raw=privateRead(join(workspace,FILES.identity),4096),identity:unknown=JSON.parse(raw);validateIdentity(identity);
   const stamp=()=>{const s=lstatSync(file,{bigint:true});return [s.dev,s.ino,s.size,s.mtimeNs,s.ctimeNs,s.mode].join(':');},before=stamp(),db=new DatabaseSync(file,{readOnly:true});
   const guard=()=>{privatePath(file);if(stamp()!==before||privateRead(join(workspace,FILES.identity),4096)!==raw)fail('RESTORE_STATE','Prepared read-only state changed',409);};
   try{db.exec('PRAGMA trusted_schema=OFF;BEGIN');guard();const result=use({db,identity,guard});guard();readPreparedRestoreLocation(root,saved.manifestDigest,workspace);return result;}finally{db.close();}

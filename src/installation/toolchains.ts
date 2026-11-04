@@ -34,10 +34,10 @@ export function toolchainRequestDigest(i:Installation,input:BindToolchainsInput)
   validateToolchainInput(input);
   return hash({installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,runtimeDigest:i.runtime.digest,previousBindingDigest:input.previousBindingDigest,dl:{...input.dl},shacl:{...input.shacl},...(input.systemd?{systemd:input.systemd as unknown as Json}:{})});
 }
-export function readToolchainLedger(i:Installation):Ledger {
-  const file=join(i.root,'toolchain-bindings.json');
+export function readToolchainLedger(i:Installation,storageRoot=i.root):Ledger {
+  const file=join(storageRoot,'toolchain-bindings.json');
   if(!existsSync(file)){
-    const work=join(i.root,'formal-work');
+    const work=join(storageRoot,'formal-work');
     if(existsSync(work)){privatePath(work,true);if(readdirSync(work).length)fail('TOOLCHAIN_BINDING_MISSING','Managed worker state exists but its binding history is missing; explicit recovery required',409);}
     return {schema:'ontology-managed-toolchain-ledger/v1',installationId:i.installationId,records:[]};
   }
@@ -73,7 +73,7 @@ function workDirectory(i:Installation,create:boolean):string {
   return root;
 }
 /** Verification never downloads, rebuilds, edits or substitutes an executor. */
-function verifySelections(i:Installation,input:Pick<BindToolchainsInput,'dl'|'shacl'|'systemd'>):void {
+export function verifySelections(i:Installation,input:Pick<BindToolchainsInput,'dl'|'shacl'|'systemd'>):void {
   if(input.systemd)verifySystemdBinding(input.systemd);
   for(const selected of [input.dl,input.shacl]){
     selection(selected);if(realpathSync(selected.toolchainFile)!==selected.toolchainFile)fail('UNSAFE_PATH','Canonical toolchain file path required');

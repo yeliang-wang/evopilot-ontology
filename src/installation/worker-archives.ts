@@ -6,6 +6,7 @@ import {privatePath,privateRead} from '../standalone/workspace.js';
 import {exact,id,digest,hash} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
+import {workerStorageImage} from './worker-storage.js';
 
 export const JOURNAL_BYTES=64*1024*1024;
 export const ARCHIVE_LIMIT=16;
@@ -55,14 +56,14 @@ export function writeArchiveCatalog(root:string,catalog:ArchiveCatalog,replace:b
   if(Buffer.byteLength(JSON.stringify(catalog)+'\n')+(catalog.pending?4096:0)>128*1024)fail('WORKER_ARCHIVE_LIMIT','Archive catalog capacity is insufficient; existing history remains unchanged',409);
   writePrivate(join(root,ARCHIVE_CATALOG),catalog,replace);
 }
-export function readArchiveCatalog(root:string):ArchiveCatalog|null {
+export function readArchiveCatalog(root:string,logicalRoot=root):ArchiveCatalog|null {
   privatePath(root,true);const file=join(root,ARCHIVE_CATALOG);
   if(!workerFilePresent(file)){if(readdirSync(root).some(n=>/^worker-journal-.+\.sqlite$/.test(n)))fail('WORKER_ARCHIVE_EVIDENCE','Archive catalog is missing while journal shards remain',409);return null;}
   const v:unknown=JSON.parse(privateRead(file,128*1024));exact(v,['schema','root','current','archives','pending']);head(v.current);
-  if(v.schema!=='ontology-worker-archives/v1'||v.root!==root||!Array.isArray(v.archives)||v.archives.length>ARCHIVE_LIMIT)fail('WORKER_ARCHIVE_EVIDENCE','Invalid archive catalog',409);
+  if(v.schema!=='ontology-worker-archives/v1'||v.root!==logicalRoot||!Array.isArray(v.archives)||v.archives.length>ARCHIVE_LIMIT)fail('WORKER_ARCHIVE_EVIDENCE','Invalid archive catalog',409);
   const requests=new Set<string>(),journals=new Set<string>();let previous:JournalHead|null=null;
   for(const [n,r] of [...v.archives,...(v.pending===null?[]:[v.pending])].entries()){
-    record(r,root);
+    record(r,logicalRoot);
     if(requests.has(r.requestId)||journals.has(r.plan.source.journalId)||r.plan.archives!==n||n===0&&r.plan.source.file!=='worker-journal.sqlite'||previous&&sha(previous)!==sha({journalId:r.plan.source.journalId,file:r.plan.source.file})||n<v.archives.length&&!r.receipt||n===v.archives.length&&r.receipt)fail('WORKER_ARCHIVE_EVIDENCE','Broken archive chain',409);
     requests.add(r.requestId);journals.add(r.plan.source.journalId);previous=r.next;
   }
@@ -92,7 +93,8 @@ export function journalImage(root:string,h:JournalHead):JournalImage {
   }finally{closeSync(fd);}
 }
 export function verifyJournalImage(root:string,expected:JournalImage):void {
-  if(sha(journalImage(root,{journalId:expected.journalId,file:expected.file}))!==sha(expected))fail('WORKER_ARCHIVE_EVIDENCE','Archived journal identity or bytes changed',409);
+  const physical=workerStorageImage(root,expected);
+  if(sha(journalImage(root,{journalId:expected.journalId,file:expected.file}))!==sha(physical))fail('WORKER_ARCHIVE_EVIDENCE','Archived journal identity or bytes changed',409);
 }
 export function requireNoRotation(root:string):void {
   if(readArchiveCatalog(root)?.pending)fail('WORKER_ROTATION_PENDING','Resume the original journal rotation before execution or maintenance',409);

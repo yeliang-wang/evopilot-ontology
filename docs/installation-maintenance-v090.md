@@ -140,10 +140,71 @@ stages. Neither replay nor verification removes a barrier.
 
 Retained-current activation keeps worker evidence newer than the selected
 snapshot at its original physical location, verifies external dependencies and
-safely switches the workspace. Missing-owner activation must additionally resolve
-copied physical journal storage through explicit lineage. Prepared database rows
+safely switches the workspace. Missing-owner activation resolves copied physical
+journal storage through the explicit lineage described below. Prepared database rows
 alone cannot establish those guarantees. All preparation receipts therefore
 retain `activation: BLOCKED`; MAINT-01 remains unevaluated.
+
+## Restore after both owner directories are lost
+
+Use `restore-lost` only when both original installation and workspace paths are
+absent. Mixed loss, an occupied destination (including an empty directory), a
+foreign partial recovery, or an unresolved launch on the current host is refused.
+The operator never deletes those paths or signals a PID to make them available.
+Prepare the selected backup with `restore-stage` first. Its original path strings,
+installed runtime and pinned Java/Python selections remain authoritative; this
+mode does not substitute another host, upgrade a package or download dependencies.
+The private recovery parent and both original parents must share a filesystem.
+
+```text
+evopilot-ontology restore-lost-inspect --snapshot ABS_STAGE --snapshot-manifest STAGE_SHA256 --recovery-root ABS_NEW_RECOVERY --request-id RESTORE_ID --rekey-expires-at UTC --json
+evopilot-ontology restore-lost-apply --snapshot ABS_STAGE --snapshot-manifest STAGE_SHA256 --recovery-root ABS_NEW_RECOVERY --request-id RESTORE_ID --rekey-expires-at UTC --expected-report REPORT_SHA256 --json
+```
+
+Credential expiry must be explicit and within the next 30 days at admission.
+The reconciled workspace retires/revokes old grants and generates one fresh,
+private read/write operator credential for the installation project. It does not
+restore review authority. Old reviewer issuance files and business receipts stay
+retained; possession of an old credential or issuance file does not grant access.
+The fresh request namespace distinguishes new work from missing pre-recovery
+outcomes. This backup cannot recover later data that was never captured.
+
+Installation files and customizations are copied byte-for-byte into a blocked
+candidate. Terminal backup control records projected by the snapshot, including
+the selected backup's own receipt, are reconstructed without inventing pending
+or failed requests. Original run records, tool bindings, worker catalogs,
+rotation receipts and task references remain unchanged. Archived journals retain
+their original immutable images in those catalogs. A separate bounded
+`worker-storage.json` chain binds each original image, its previous physical
+image, the restored inode and unchanged digest to the selected backup and this
+activation. Each subsequent restoration retains prior records. A later rotation
+of a mutable current journal captures its then-current physical identity.
+Copying arbitrary bytes, replacing a file with an identical-byte inode, or
+dropping a lineage generation is insufficient to pass archive verification.
+
+Preparation reserves 128 KiB of real completion space before copying. The durable
+switch intent binds both complete candidate inventories, and releases that reserve
+before the directory moves. Installation moves to its original path first, then
+task/worker closure is verified using the prepared database, and the workspace
+moves to its original path. Activation barriers prevent normal work throughout.
+The original receipt is committed before barrier release; the workspace's stage
+barrier is removed last. Completion returns `serviceStarted: false`. Use the
+normal explicit `start --installation ABS_INSTALLATION --json` command afterwards.
+
+Before switch admission, an explicit abort preserves the candidate and keeps both
+original destinations absent:
+
+```text
+evopilot-ontology restore-lost-abort --recovery-root ABS_RECOVERY --request-id RESTORE_ID --expected-report REPORT_SHA256 --json
+```
+
+After switch admission, only the exact forward continuation is supported. It
+checks the retained physical layout, bytes and barriers; unknown material is
+preserved. An admitted complete candidate can finish without its original stage.
+Exact terminal replay returns the retained receipt with `verification: NOT_RUN`;
+it does not revalidate a now-running owner. Keep the private recovery directory
+as operator evidence. None of these operations starts a service, rebuilds business
+assets, publishes a release or grants semantic approval.
 
 ## Restore with the current owner retained
 
@@ -419,3 +480,12 @@ followed by continuation without source stages. It also starts an installed
 restored service, executes new Java/Python work under systemd and maintains the
 original and new task evidence. Fault fixtures are synthetic private owners,
 not production workspaces or Codex Host acceptance.
+
+`restore-lost-v090.test.mjs` checks actual packed CLI activation, credential rekey,
+customization/receipt preservation, repeated recovery with intervening worker
+rotation, old and new Java/Python task readback, and actual SIGKILL during both
+candidate copies and directory moves. The separately owned 128 MiB Linux fixture
+in `restore-lost-faults.mjs` checks zero-free-space refusal/abort, post-rename
+continuation without the source stage, and an installed restarted service with
+archived, current and newly executed systemd-isolated formal tasks. These remain
+isolated product evidence, not actual Codex Host or complete MAINT-01 acceptance.
