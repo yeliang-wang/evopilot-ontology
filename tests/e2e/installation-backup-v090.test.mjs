@@ -88,10 +88,12 @@ test('installed backup preserves customization, private grants and exact source 
 
 test('SIGKILL during actual installed copying retains barriers and resumes the same request without overwriting the prefix',async()=>{
   const f=fixture('interrupted');large(f);const r=inspect(f),partial=await interrupt(f,r),prefixHash=hashBytes(readFileSync(partial.object));
+  const reserve=join(f.i.root,'backup-requests/backup.reserve');assert.ok(lstatSync(reserve).blocks*512>=128*1024);
   assert.equal(inspect(f).status,'PENDING');assert.throws(()=>openWorkspace(f.i.workspaceRoot,f.i),code('BACKUP_PENDING'));await assert.rejects(startInstallation(f.i.root),code('BACKUP_PENDING'));
   assert.throws(()=>inspect(f,'another'),code('BACKUP_PENDING'));
   const unrelated=fixture('unrelated'),store=openWorkspace(unrelated.i.workspaceRoot,unrelated.i);store.close();
   const result=await command(args(f,r));assert.equal(result.replayed,false);assert.equal(hashBytes(readFileSync(partial.object).subarray(0,partial.retained)),prefixHash);
+  assert.equal(existsSync(reserve),false);
   const reopened=openWorkspace(f.i.workspaceRoot,f.i);reopened.close();assert.equal(existsSync(join(f.i.root,'maintenance-barrier.json')),false);
   assert.equal(verifyBackup(f.backup,result.receipt.manifestDigest).receipt.manifestDigest,result.receipt.manifestDigest);
 });
@@ -140,6 +142,29 @@ test('protocol staging resumes exact partial metadata and a durable manifest com
   writeFileSync(record+'.pending',(JSON.stringify(saved)+'\n').slice(0,180),{mode:0o600});
   assert.throws(()=>abortInstallationBackup(f.i.root,'backup',r.reportDigest),code('BACKUP_COMPLETED_PENDING'));
   const done=await command(args(f,r));assert.deepEqual(done.receipt,result.receipt);assert.equal(existsSync(record+'.pending'),false);
+  assert.equal(done.verification,'NOT_RUN');assert.equal(done.completionReconciled,true);
   const path=join(base,'metadata.json'),value={private:'synthetic',ordinal:1},raw=JSON.stringify(value)+'\n';writeFileSync(path+'.pending',raw.slice(0,7),{mode:0o600});writeBackupJSON(path,value);assert.equal(readFileSync(path,'utf8'),raw);
   unlinkSync(path);writeFileSync(path+'.pending','foreign',{mode:0o600});assert.throws(()=>writeBackupJSON(path,value),code('BACKUP_EVIDENCE'));assert.equal(readFileSync(path+'.pending','utf8'),'foreign');
+});
+
+test('durable completion survives later payload corruption without claiming present integrity or changing source bytes',async()=>{
+  const f=fixture('corrupted-completion'),r=inspect(f),first=await command(args(f,r)),file=join(f.i.root,'backup-requests/backup.json'),saved=JSON.parse(readFileSync(file));
+  // Explicit post-manifest/pre-control-commit fixture, not a simulated success
+  // for the real ENOSPC/process-kill Linux collector.
+  writeFileSync(file,JSON.stringify({...saved,state:'PENDING',receipt:null})+'\n');
+  const source=hashBytes(readFileSync(join(f.i.workspaceRoot,'ontology.sqlite'))),e=r.report.entries.find(e=>e.path==='credentials.json'),object=join(f.backup,'objects',e.digest.slice(7)),bytes=readFileSync(object);bytes[bytes.length-1]^=1;writeFileSync(object,bytes);
+  assert.throws(()=>abortInstallationBackup(f.i.root,'backup',r.reportDigest),code('BACKUP_COMPLETED_PENDING'));
+  const completed=await command(args(f,r));assert.deepEqual(completed.receipt,first.receipt);assert.equal(completed.verification,'NOT_RUN');assert.equal(completed.completionReconciled,true);
+  assert.equal(hashBytes(readFileSync(object)),hashBytes(bytes));assert.equal(hashBytes(readFileSync(join(f.i.workspaceRoot,'ontology.sqlite'))),source);
+  assert.throws(()=>verifyBackup(f.backup,first.receipt.manifestDigest),code('BACKUP_EVIDENCE'));assert.equal(inspect(f).status,'COMPLETED');
+  const owner=openWorkspace(f.i.workspaceRoot,f.i);owner.close();
+});
+
+test('explicit abort preserves an unreadable manifest and incompatible partial completion metadata',async()=>{
+  const f=fixture('corrupted-manifest'),r=inspect(f);await command(args(f,r));
+  const file=join(f.i.root,'backup-requests/backup.json'),saved=JSON.parse(readFileSync(file)),partial=(JSON.stringify(saved)+'\n').slice(0,-10),manifest=join(f.backup,'manifest.json');
+  writeFileSync(file,JSON.stringify({...saved,state:'PENDING',receipt:null})+'\n');writeFileSync(file+'.pending',partial,{mode:0o600});writeFileSync(manifest,'corrupted retained manifest');
+  const result=await command(['backup-abort','--installation',f.i.root,'--request-id','backup','--expected-report',r.reportDigest,'--json']);assert.equal(result.receipt.partialCopyRetained,true);
+  assert.equal(readFileSync(file+'.pending','utf8'),partial);assert.equal(readFileSync(manifest,'utf8'),'corrupted retained manifest');assert.equal(inspect(f).status,'ABORTED');
+  const next={...f,backup:join(base,'after-corruption-backup')};assert.equal(inspect(next,'next').report.priorBackups[0].state,'ABORTED');
 });

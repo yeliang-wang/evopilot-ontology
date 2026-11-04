@@ -37,6 +37,22 @@ export function privateRead(path: string, max: number): string {
   }
   finally { closeSync(fd); }
 }
+/** A committed empty SQLite header lets later lease acquisition remain read-only,
+ * including when backup payloads have filled the filesystem. Initialization is
+ * serialized by the same exclusive lease and never touches business state. */
+export function privateLease(path:string,busyCode:string,busyMessage:string):DatabaseSync {
+  privatePath(path);const before=lstatSync(path);if(before.size>65536)fail('LEASE_EVIDENCE','Private lease store exceeds its fixed metadata budget',409);
+  const sidecar=path+'-journal';if(readdirSync(dirname(path)).includes(sidecar.slice(sidecar.lastIndexOf('/')+1)))privatePath(sidecar);
+  const db=new DatabaseSync(path,{timeout:0});
+  try{
+    try{db.exec('PRAGMA locking_mode=EXCLUSIVE;PRAGMA synchronous=FULL;BEGIN EXCLUSIVE');}catch{fail(busyCode,busyMessage,409);}
+    const after=lstatSync(path);if(after.dev!==before.dev||after.ino!==before.ino)fail('UNSAFE_PATH','Private lease file was replaced',409);
+    const version=Number(db.prepare('PRAGMA user_version').get()?.user_version);
+    if(![0,1].includes(version)||db.prepare("SELECT name FROM sqlite_master LIMIT 1").get()||db.prepare('PRAGMA journal_mode').get()?.journal_mode!=='delete')fail('LEASE_EVIDENCE','Foreign private lease store was preserved',409);
+    if(version===0)db.exec('PRAGMA user_version=1;COMMIT;BEGIN EXCLUSIVE');
+    return db;
+  }catch(e){db.close();throw e;}
+}
 export function workspacePath(path: string): string {
   if (!isAbsolute(path)) fail('UNSAFE_PATH', 'Absolute workspace path required');
   privatePath(path, true);
@@ -62,9 +78,7 @@ export function openWorkspace(path: string, expected: {workspaceId: string; serv
   const anchors = new Map([root, identityPath, dbPath, leasePath].map(p => { const s=lstatSync(p); return [p, {ino:s.ino, dev:s.dev}]; }));
   let lease: DatabaseSync | undefined, db: DatabaseSync | undefined, closed = false;
   try {
-    lease = new DatabaseSync(leasePath, {timeout:0});
-    try { lease.exec('PRAGMA locking_mode=EXCLUSIVE; BEGIN EXCLUSIVE;'); }
-    catch { fail('WORKSPACE_BUSY', 'Another writer owns this workspace', 409); }
+    lease = privateLease(leasePath,'WORKSPACE_BUSY','Another writer owns this workspace');
     db = new DatabaseSync(dbPath, {timeout:0});
     db.exec('PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL;');
     const version = db.prepare('PRAGMA user_version').get()?.user_version;

@@ -62,8 +62,8 @@ function writeAt(fd:number,buffer:Buffer,position:number):void {
 /** Deterministic protocol documents use a fixed private staging file. A crash
  * before rename resumes an exact byte prefix; unrelated material is retained.
  * No generated timestamps enter these content-addressed receipts. */
-export function writeBackupJSON(path:string,value:unknown,replace=false):void {
-  const root=dirname(path),anchor=backupNode(root),bytes=Buffer.from(JSON.stringify(value)+'\n'),temp=path+'.pending';
+export function writeBackupJSON(path:string,value:unknown,replace=false,stage:'pending'|'pending-COMPLETED'|'pending-ABORTED'='pending'):void {
+  const root=dirname(path),anchor=backupNode(root),bytes=Buffer.from(JSON.stringify(value)+'\n'),temp=path+'.'+stage;
   if(bytes.length>BACKUP_LIMITS.manifestBytes)fail('BACKUP_LIMIT','Backup protocol document exceeds its envelope',409);
   if(workerFilePresent(path)){
     const old=privateRead(path,BACKUP_LIMITS.manifestBytes);if(old===bytes.toString())return;
@@ -133,14 +133,22 @@ export function verifyBackupObjects(root:string,owner:BackupOwner,plan:BackupPla
 export function readBackupPlan(root:string):BackupPlan {
   const plan:unknown=JSON.parse(privateRead(join(root,'plan.json'),BACKUP_LIMITS.manifestBytes));validateBackupPlan(plan);return plan;
 }
-export function verifyBackup(root:string,expectedManifestDigest:string):BackupEnvelope & {objects:number;storedBytes:number} {
-  digest(expectedManifestDigest);privatePath(root,true);if(outsideSource(root)!==root)fail('UNSAFE_PATH','Canonical private backup root required');const anchor=backupNode(root);
+/** Completion metadata is independent of the present payload's health. This
+ * reader never claims object integrity or recovery readiness. */
+export function readBackupManifest(root:string,expectedManifestDigest?:string):BackupEnvelope {
+  if(expectedManifestDigest!==undefined)digest(expectedManifestDigest);privatePath(root,true);if(outsideSource(root)!==root)fail('UNSAFE_PATH','Canonical private backup root required');const anchor=backupNode(root);
   const value:unknown=JSON.parse(privateRead(join(root,'manifest.json'),BACKUP_LIMITS.manifestBytes));exact(value,['manifest','manifestDigest','receipt']);digest(value.manifestDigest);
   const manifest=value.manifest;exact(manifest,['schema','requestId','requestDigest','plan','reportDigest']);id(manifest.requestId);digest(manifest.requestDigest);digest(manifest.reportDigest);validateBackupPlan(manifest.plan);
-  if(manifest.schema!=='ontology-backup-manifest/v1'||value.manifestDigest!==expectedManifestDigest||backupHash(manifest)!==expectedManifestDigest||backupHash(manifest.plan)!==manifest.reportDigest||backupHash(readBackupPlan(root))!==manifest.reportDigest)fail('BACKUP_EVIDENCE','Backup manifest identity differs',409);
-  const owner:unknown=JSON.parse(privateRead(join(root,'owner.json'),65536));validateBackupOwner(owner,manifest.plan);
+  if(manifest.schema!=='ontology-backup-manifest/v1'||expectedManifestDigest!==undefined&&value.manifestDigest!==expectedManifestDigest||backupHash(manifest)!==value.manifestDigest||backupHash(manifest.plan)!==manifest.reportDigest)fail('BACKUP_EVIDENCE','Backup manifest identity differs',409);
   const receipt=backupReceipt(manifest as unknown as BackupManifest);
-  if(owner.requestId!==manifest.requestId||owner.requestDigest!==manifest.requestDigest||backupHash(value.receipt)!==backupHash(receipt))fail('BACKUP_EVIDENCE','Backup completion receipt differs',409);
+  if(manifest.requestDigest!==receipt.requestDigest||backupHash(value.receipt)!==backupHash(receipt)||backupHash(backupNode(root))!==backupHash(anchor))fail('BACKUP_EVIDENCE','Backup completion receipt differs',409);
+  return value as unknown as BackupEnvelope;
+}
+export function verifyBackup(root:string,expectedManifestDigest:string):BackupEnvelope & {objects:number;storedBytes:number} {
+  digest(expectedManifestDigest);const anchor=backupNode(root),value=readBackupManifest(root,expectedManifestDigest),manifest=value.manifest;
+  if(backupHash(readBackupPlan(root))!==manifest.reportDigest)fail('BACKUP_EVIDENCE','Backup plan differs',409);
+  const owner:unknown=JSON.parse(privateRead(join(root,'owner.json'),65536));validateBackupOwner(owner,manifest.plan);
+  if(owner.requestId!==manifest.requestId||owner.requestDigest!==manifest.requestDigest)fail('BACKUP_EVIDENCE','Backup owner differs',409);
   const names=readdirSync(root).sort();if(backupHash(names)!==backupHash(['manifest.json','objects','owner.json','plan.json']))fail('BACKUP_EVIDENCE','Unselected backup root material was preserved',409);
   const verified=verifyBackupObjects(root,owner,manifest.plan);if(backupHash(backupNode(root))!==backupHash(anchor))fail('BACKUP_EVIDENCE','Backup root changed during verification',409);
   return {...value as unknown as BackupEnvelope,...verified};

@@ -1,8 +1,7 @@
-import {mkdirSync,openSync,closeSync,writeFileSync,renameSync,fsyncSync,lstatSync,readdirSync,realpathSync,existsSync} from 'node:fs';
+import {mkdirSync,openSync,closeSync,writeFileSync,renameSync,fsyncSync,readdirSync,realpathSync,existsSync} from 'node:fs';
 import {dirname,isAbsolute,join,resolve,relative} from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {DatabaseSync} from 'node:sqlite';
-import {privatePath,privateRead} from '../standalone/workspace.js';
+import {privatePath,privateRead,privateLease} from '../standalone/workspace.js';
 import {fail} from '../standalone/types.js';
 
 export function outsideSource(path:string):string{
@@ -34,8 +33,6 @@ export function readPrivate(path:string,max=65536):unknown{return JSON.parse(pri
 export function operatorLock(root:string):()=>void{
   privatePath(root,true);const path=join(root,'operator.sqlite');
   if(!existsSync(path)){const fd=openSync(path,'wx',0o600);closeSync(fd);}privatePath(path);
-  const before=lstatSync(path),db=new DatabaseSync(path,{timeout:0});
-  try{db.exec('PRAGMA locking_mode=EXCLUSIVE; BEGIN EXCLUSIVE');const after=lstatSync(path);if(before.ino!==after.ino||before.dev!==after.dev)fail('UNSAFE_PATH','Operator lock replaced');}
-  catch{db.close();fail('INSTALLATION_BUSY','Another operator command owns this installation',409);}
+  const db=privateLease(path,'INSTALLATION_BUSY','Another operator command owns this installation');
   return ()=>db.close();
 }

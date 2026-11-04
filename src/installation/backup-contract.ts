@@ -4,7 +4,7 @@ import {exact,id,digest,hash,text} from '../standalone/validation.js';
 import type {Json} from '../standalone/types.js';
 import {fail} from '../standalone/types.js';
 
-export const BACKUP_LIMITS={entries:10000,depth:16,fileBytes:64*1024*1024,totalBytes:2*1024*1024*1024,manifestBytes:8*1024*1024,requests:128} as const;
+export const BACKUP_LIMITS={entries:10000,depth:16,fileBytes:64*1024*1024,totalBytes:2*1024*1024*1024,manifestBytes:8*1024*1024,requests:128,completionReserveBytes:128*1024} as const;
 export const BACKUP_RECORDS='backup-requests';
 export interface NodeIdentity {device:string;inode:string;mode:number;}
 export interface BackupEntry extends NodeIdentity {scope:'installation'|'workspace';path:string;kind:'file'|'directory';bytes:number;digest:string|null;}

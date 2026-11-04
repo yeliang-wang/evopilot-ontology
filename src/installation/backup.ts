@@ -1,4 +1,4 @@
-import {mkdirSync,lstatSync,readdirSync,unlinkSync,openSync,closeSync,fsyncSync} from 'node:fs';
+import {mkdirSync,readdirSync,unlinkSync,openSync,closeSync,fsyncSync} from 'node:fs';
 import {join,dirname,basename,resolve,isAbsolute} from 'node:path';
 import type {Json} from '../standalone/types.js';
 import {fail} from '../standalone/types.js';
@@ -16,29 +16,15 @@ import {readSHACLToolchain} from '../native-v2/shacl-toolchain.js';
 import {completedTaskWorkerEvidence} from '../native-v2/task-recovery.js';
 import {requireWorkerMaintenanceComplete,currentWorkerAttempts,withWorkerJournalHistory} from './worker-journal.js';
 import {workerFilePresent} from './worker-archives.js';
-import {BACKUP_LIMITS,BACKUP_RECORDS,backupHash,backupRequestDigest,backupReceipt,validateBackupRecord,validateBackupPlan,validateBackupOwner} from './backup-contract.js';
+import {BACKUP_LIMITS,backupHash,backupRequestDigest,backupReceipt,validateBackupPlan,validateBackupOwner} from './backup-contract.js';
 import type {BackupPlan,BackupOwner,BackupRecord,BackupEnvelope,AbortReceipt} from './backup-contract.js';
 import {backupNode,backupInventory,readBackupPlan,copyBackupObject,verifyBackupObjects,verifyBackup,writeBackupJSON} from './backup-files.js';
+
+import {backupControlRecords as records,saveBackupControl as save,pendingBackupCompletion} from './backup-control.js';
 
 interface Request {backupRoot:string;requestId:string;expectedReportDigest:string;}
 const equal=(a:unknown,b:unknown)=>backupHash(a)===backupHash(b);
 const syncDirectory=(root:string)=>{const fd=openSync(root,'r');try{fsyncSync(fd);}finally{closeSync(fd);}};
-function records(i:Installation):BackupRecord[] {
-  const root=join(i.root,BACKUP_RECORDS);if(!workerFilePresent(root))return [];privatePath(root,true);
-  const names=readdirSync(root).sort();if(names.length>2*BACKUP_LIMITS.requests)fail('BACKUP_LIMIT','Backup control material exceeds its budget; no records were pruned',409);
-  for(const name of names.filter(n=>n.endsWith('.json.pending'))){id(name.slice(0,-13));privatePath(join(root,name));if(lstatSync(join(root,name)).size>65536)fail('BACKUP_LIMIT','Staged backup control record exceeds its budget',409);}
-  const committed=names.filter(n=>!n.endsWith('.json.pending'));if(committed.length>BACKUP_LIMITS.requests)fail('BACKUP_LIMIT','Backup request history exceeds its budget',409);
-  return committed.map(name=>{
-    if(!name.endsWith('.json'))fail('BACKUP_EVIDENCE','Unresolved backup control material was preserved',409);
-    const value:unknown=JSON.parse(privateRead(join(root,name),65536));validateBackupRecord(value,i);
-    if(name!==value.requestId+'.json')fail('BACKUP_EVIDENCE','Backup record name differs from request',409);return value;
-  });
-}
-function save(i:Installation,r:BackupRecord,replace=false):void {
-  validateBackupRecord(r,i);const root=join(i.root,BACKUP_RECORDS);
-  if(!workerFilePresent(root)){mkdirSync(root,{mode:0o700});syncDirectory(i.root);}privatePath(root,true);
-  writeBackupJSON(join(root,r.requestId+'.json'),r,replace);
-}
 function target(i:Installation,path:string):string {
   if(!isAbsolute(path)||resolve(path)!==path)fail('UNSAFE_PATH','Canonical absolute backup destination required');
   const parent=dirname(path);privatePath(parent,true);if(outsideSource(parent)!==parent)fail('UNSAFE_PATH','Canonical private backup parent required');
@@ -142,6 +128,10 @@ export function backupInstallation(path:string,input:Request):Json {
     if(r&&r.requestDigest!==selected.requestDigest)fail('REQUEST_CONFLICT','Backup request ID binds different parameters',409);
     if(r?.state==='ABORTED')fail('BACKUP_ABORTED','Original backup was aborted; inspect its retained receipt',409);
     if(r?.state==='COMPLETED'){clearTerminalBarriers(i,r);return {receipt:r.receipt as unknown as Json,replayed:true,verification:'NOT_RUN',authority:false};}
+    if(r){
+      const completed=pendingBackupCompletion(r);
+      if(completed){barriers(i,r,'check');save(i,{...r,state:'COMPLETED',receipt:completed.receipt},true);clearTerminalBarriers(i,r);return {receipt:completed.receipt as unknown as Json,replayed:false,verification:'NOT_RUN',completionReconciled:true,authority:false};}
+    }
     target(i,input.backupRoot);
     if(history.some(v=>v.state==='PENDING'&&v.requestId!==input.requestId))fail('BACKUP_PENDING','Another backup request is unfinished',409);
     barriers(i,selected,'check');stopped(i);
@@ -181,7 +171,11 @@ export function abortInstallationBackup(path:string,requestId:string,expectedRep
     if(r.reportDigest!==expectedReportDigest)fail('REQUEST_CONFLICT','Backup report differs from original request',409);
     if(r.state==='COMPLETED')fail('BACKUP_COMPLETED','Completed backup cannot be aborted',409);
     if(r.state==='ABORTED'){clearTerminalBarriers(i,r);return {receipt:r.receipt as unknown as Json,replayed:true,authority:false};}
-    if(r.state==='PENDING'&&workerFilePresent(join(r.backupRoot,'manifest.json')))fail('BACKUP_COMPLETED_PENDING','A durable manifest exists; resume backup-apply to verify and retain its completion receipt',409);
+    let completed:BackupEnvelope|null=null;
+    // An explicit abort depends on the retained owner request, not on a healthy
+    // destination. Unreadable/foreign completion bytes remain untouched.
+    try{completed=pendingBackupCompletion(r);}catch{}
+    if(completed)fail('BACKUP_COMPLETED_PENDING','A matching durable manifest exists; resume backup-apply to retain its original receipt and verify payload health separately',409);
     barriers(i,r,'check');stopped(i);
     const store=openWorkspace(i.workspaceRoot,i,r);
     try{
