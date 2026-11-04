@@ -60,6 +60,7 @@ public final class LocatedTurtleParser {
         Objects.requireNonNull(documentIri);
         Objects.requireNonNull(semanticSink);
         Objects.requireNonNull(observer);
+        RDFIRI.validateAbsolute(documentIri.toString());
         if (maximumOccurrences < 1 || maximumOccurrences > 200000)
             throw new IllegalArgumentException("Occurrence limit must be 1..200000");
         Collector collector = new Collector(content.length(), documentIri, observer, maximumOccurrences);
@@ -79,6 +80,7 @@ public final class LocatedTurtleParser {
         Objects.requireNonNull(content);
         Objects.requireNonNull(documentIri);
         Objects.requireNonNull(semanticSink);
+        RDFIRI.validateAbsolute(documentIri.toString());
         LocatedTurtleSyntaxParser parser = new LocatedTurtleSyntaxParser(
                 new StringReader(content), semanticSink, documentIri);
         parser.sourceContent = content;
@@ -127,35 +129,13 @@ public final class LocatedTurtleParser {
             }
         }
         String iri = decoded.toString();
-        validateIriCharacters(iri);
+        RDFIRI.validateReference(iri);
         return iri;
     }
 
-    /** RFC 3987 section 2.2 character classes, without URI normalization or a
-     * java.net.URI conversion (which rejects some legal Unicode ucschar values).
-     * This is a character/escape correction, not a new relative-IRI resolver. */
-    private static void validateIriCharacters(String iri) throws ParseException {
-        boolean query = false, fragment = false;
-        for (int i = 0; i < iri.length();) {
-            int cp = iri.codePointAt(i); i += Character.charCount(cp);
-            if (cp == '#') { fragment = true; query = false; }
-            else if (cp == '?' && !fragment) query = true;
-            if (cp < 0x80) {
-                if (cp <= 0x20 || cp == 0x7F || "\\<>\"{}|^`".indexOf(cp) >= 0)
-                    throw new ParseException("Illegal character in decoded Turtle IRI");
-                continue;
-            }
-            boolean ucschar = cp >= 0xA0 && cp <= 0xD7FF
-                    || cp >= 0xF900 && cp <= 0xFDCF
-                    || cp >= 0xFDF0 && cp <= 0xFFEF
-                    || cp >= 0x10000 && cp <= 0xDFFFD && (cp & 0xFFFF) <= 0xFFFD
-                    || cp >= 0xE1000 && cp <= 0xEFFFD;
-            boolean privateChar = cp >= 0xE000 && cp <= 0xF8FF
-                    || cp >= 0xF0000 && cp <= 0xFFFFD
-                    || cp >= 0x100000 && cp <= 0x10FFFD;
-            if (!ucschar && !(query && privateChar))
-                throw new ParseException("Illegal Unicode character in decoded Turtle IRI");
-        }
+    static IRI validatedTerm(IRI value) {
+        RDFIRI.validateAbsolute(value.toString());
+        return value;
     }
 
     /** Uses original token identity/kind/image; offsets include the raw escape spelling. */
@@ -256,9 +236,10 @@ public final class LocatedTurtleParser {
                     : List.of(id);
             last = range(token, token, "TOKEN", deps); return value;
         }
-        void rememberIri(String key, boolean created) {
-            if (created) iriContexts.put(key, IRI.create(key).isAbsolute() ? List.of() : List.of(baseContext));
-            else iriContexts.putIfAbsent(key, List.of());
+        void rememberIri(String key) {
+            // Resolution happens for each occurrence, even when its resulting
+            // absolute IRI object is cached. Dependencies follow the current base.
+            iriContexts.put(key, RDFIRI.hasScheme(key) ? List.of() : List.of(baseContext));
         }
         int context(String kind, String name, IRI value, int source, List<Integer> deps) {
             int id = contexts.size() + 1; contexts.add(new Context(id, kind, name, value, source, deps)); return id;
@@ -267,9 +248,10 @@ public final class LocatedTurtleParser {
             if (++explicitContexts > 10000) throw new LimitException("Turtle directive budget exceeded");
             prefixes.put(name, context("PREFIX", name, value, source, last.contextIds())); directive = source;
         }
-        void base(int source, IRI value) {
+        void base(int source, IRI value, String reference) {
             if (++explicitContexts > 10000) throw new LimitException("Turtle directive budget exceeded");
-            baseContext = context("BASE", null, value, source, List.of()); directive = source;
+            List<Integer> dependencies = RDFIRI.hasScheme(reference) ? List.of() : List.of(baseContext);
+            baseContext = context("BASE", null, value, source, dependencies); directive = source;
         }
         void closeDirective(Token token) {
             if (directive < 0) throw new IllegalStateException("Turtle directive has no source");

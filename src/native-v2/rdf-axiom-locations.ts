@@ -7,6 +7,36 @@ import {axiomLocationValidator,AXIOM_LOCATION_LIMIT} from './axiom-locations.js'
 import type {AxiomSourceFragment,AxiomSourceLocation} from './axiom-locations.js';
 
 export const RDF_LOCATION_LIMITS=Object.freeze({records:200000,references:1000000,hashBytes:64*1024*1024});
+export interface RDFLocationBudget {
+  record(amount?:number):void;
+  reference(amount?:number):void;
+  original(document:DLDocument,byteLength:number):void;
+  range(documentId:string,start:number,end:number):void;
+}
+/** One explanation budget shared by all format validators. It reserves range
+ * work before hashing; reservation never establishes that a hash is verified. */
+export function rdfLocationBudget():RDFLocationBudget {
+  let records=0,references=0,hashedBytes=0,originalBytes=0;
+  const documents=new Map<string,{digest:string;format:DLDocument['format'];byteLength:number;ranges:Set<string>}>();
+  function amount(n:number){if(!integer(n))invalid('Invalid source budget reservation');}
+  return {
+    record(n=1){amount(n);if((records+=n)>RDF_LOCATION_LIMITS.records)invalid('Source location record budget exceeded');},
+    reference(n=1){amount(n);if((references+=n)>RDF_LOCATION_LIMITS.references)invalid('Source location reference budget exceeded');},
+    original(document,byteLength){
+      amount(byteLength);const previous=documents.get(document.id);
+      if(previous){if(previous.digest!==document.digest||previous.format!==document.format||previous.byteLength!==byteLength)invalid('Source budget document identity differs');return;}
+      if(byteLength>DL_LIMITS.documentBytes||documents.size>=DL_LIMITS.documents||(originalBytes+=byteLength)>DL_LIMITS.closureBytes)invalid('Source location document byte budget exceeded');
+      documents.set(document.id,{digest:document.digest,format:document.format,byteLength,ranges:new Set()});
+    },
+    range(documentId,start,end){
+      const document=documents.get(documentId);
+      if(!document||!integer(start)||!integer(end)||start>=end||end>document.byteLength)invalid('Invalid source range budget reservation');
+      const key=start+':'+end;if(document.ranges.has(key))return;
+      if((hashedBytes+=end-start)>RDF_LOCATION_LIMITS.hashBytes)invalid('Source range hashing budget exceeded');
+      document.ranges.add(key);
+    },
+  };
+}
 type SourceKind='TOKEN'|'PROPERTY_LIST'|'COLLECTION'|'ITEM'|'PREFIX'|'BASE';
 type GeneratedKind=null|'BLANK_PROPERTY_LIST'|'COLLECTION_FIRST'|'COLLECTION_REST'|'COLLECTION_TYPE';
 export interface RDFSource extends AxiomSourceFragment {id:number;kind:SourceKind;}
@@ -33,22 +63,23 @@ function scalar(v:unknown,empty=false):asserts v is string {
 
 /** Verifies byte integrity and the closed reference graph of the retained worker
  * result. It does not independently reconstruct RDF parsing or OWL attribution. */
-export function rdfAxiomLocationValidator(documents:readonly DLDocument[],input:unknown){
+export function rdfAxiomLocationValidator(documents:readonly DLDocument[],input:unknown,budget:RDFLocationBudget=rdfLocationBudget()){
   boundedJSON(input,DL_LIMITS.outputBytes);
   if(!Array.isArray(input)||input.length>DL_LIMITS.documents)invalid('Bounded RDF source document tables required');
   const originals=new Map<string,DLDocument>();
   for(const d of documents){if(originals.has(d.id))invalid('Duplicate source document identity');originals.set(d.id,d);}
   const bytes=new Map<string,Bytes>(),tables=new Map<string,Table>(),functional=axiomLocationValidator();
-  let records=0,references=0,hashedBytes=0,originalBytes=0,finished=false;
+  let finished=false;
   function active(){if(finished)invalid('Source location validation is already finished');}
-  function record(n=1){records+=n;if(records>RDF_LOCATION_LIMITS.records)invalid('Source location record budget exceeded');}
-  function reference(n=1){references+=n;if(references>RDF_LOCATION_LIMITS.references)invalid('Source location reference budget exceeded');}
+  const record=(n=1)=>budget.record(n),reference=(n=1)=>budget.reference(n);
   function original(document:DLDocument):Bytes {
     const d=originals.get(document.id);
     if(!d||d.digest!==document.digest||d.format!==document.format||d.documentIri!==document.documentIri||d.content!==document.content)invalid('Source document differs from the exact closure');
     let state=bytes.get(d.id);if(state)return state;
     const raw=Buffer.from(d.content,'utf8');
-    if(raw.toString('utf8')!==d.content||raw.length>DL_LIMITS.documentBytes||(originalBytes+=raw.length)>DL_LIMITS.closureBytes||hashBytes(raw)!==d.digest)invalid('Source document byte identity or budget differs');
+    if(raw.toString('utf8')!==d.content)invalid('Source document byte identity or budget differs');
+    budget.original(d,raw.length);
+    if(hashBytes(raw)!==d.digest)invalid('Source document byte identity or budget differs');
     state={document:d,raw,ranges:new Map(),chargedRanges:new Set(),functionalOccurrences:new Set(),lineChecks:new Map()};bytes.set(d.id,state);return state;
   }
   function range(v:Record<string,unknown>,state:Bytes):{start:number;end:number;key:string}{
@@ -59,7 +90,7 @@ export function rdfAxiomLocationValidator(documents:readonly DLDocument[],input:
   }
   function chargeRange(state:Bytes,r:{start:number;end:number;key:string}){
     if(state.chargedRanges.has(r.key))return;
-    hashedBytes+=r.end-r.start;if(hashedBytes>RDF_LOCATION_LIMITS.hashBytes)invalid('Source range hashing budget exceeded');
+    budget.range(state.document.id,r.start,r.end);
     state.chargedRanges.add(r.key);
   }
   function span(v:Record<string,unknown>,state:Bytes):AxiomSourceFragment {

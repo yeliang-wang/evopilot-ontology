@@ -14,6 +14,7 @@ package io.evopilot.ontology;
 import java.nio.file.*;
 import java.io.StringReader;
 import java.util.*;
+import java.util.stream.Collectors;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.*;
 import org.semanticweb.owlapi.model.*;
@@ -35,8 +36,11 @@ public final class RDFProvenanceProbe {
     return d.getOWLAnnotation(d.getOWLAnnotationProperty(iri(q.path("annotationProperty").asText())),value,Set.of(nested));
   }
   static OWLAxiom target(OWLDataFactory d,JsonNode q){
-    if(q.path("kind").asText().equals("declaration"))return d.getOWLDeclarationAxiom(q.path("entityKind").asText().equals("objectProperty")
-      ?d.getOWLObjectProperty(iri(q.path("iri").asText())):d.getOWLClass(iri(q.path("iri").asText())));
+    if(q.path("kind").asText().equals("declaration"))return d.getOWLDeclarationAxiom(switch(q.path("entityKind").asText()){
+      case "objectProperty" -> d.getOWLObjectProperty(iri(q.path("iri").asText()));
+      case "annotationProperty" -> d.getOWLAnnotationProperty(iri(q.path("iri").asText()));
+      default -> d.getOWLClass(iri(q.path("iri").asText()));
+    });
     var sub=d.getOWLClass(iri(q.path("sub").asText()));
     return switch(q.path("kind").asText()){
       case "subSome","subSomeInverse" -> {
@@ -73,6 +77,32 @@ public final class RDFProvenanceProbe {
         "org.semanticweb.owlapi.rdf.rdfxml.parser.TripleHandlers$TPIntersectionOfHandler",
         "org.semanticweb.owlapi.rdf.rdfxml.parser.TripleHandlers$TPUnionOfHandler").contains(f.getClassName()));
   }
+  // Historical upstream-baseline tolerance only; never used by the product.
+  static boolean legacyAnnotationResidualsMapped(OWLOntology o,List<RDFTriple> triples){
+    if(triples.isEmpty())return true;
+    // OWLAPI 5.5.1 mapAnnotation retains these three reification triples even
+    // after creating a nested ontology annotation. Accept only a complete group
+    // whose source/property/value is independently present in that parsed result.
+    // Other residuals, dangling groups and mismatched annotation targets still fail.
+    var ontology=o.getOntologyID().getOntologyIRI();if(ontology.isEmpty())return false;
+    String ns="http://www.w3.org/2002/07/owl#";
+    var groups=triples.stream().collect(Collectors.groupingBy(RDFTriple::getSubject));
+    for(var entry:groups.entrySet()){
+      if(!entry.getKey().isAnonymous()||entry.getValue().size()!=3)return false;
+      var fields=new HashMap<String,RDFNode>();
+      for(var triple:entry.getValue())if(fields.put(triple.getPredicate().getIRI().toString(),triple.getObject())!=null)return false;
+      if(!fields.keySet().equals(Set.of(ns+"annotatedSource",ns+"annotatedProperty",ns+"annotatedTarget")))return false;
+      if(!new RDFResourceIRI(ontology.get()).equals(fields.get(ns+"annotatedSource")))return false;
+      RDFNode property=fields.get(ns+"annotatedProperty"),target=fields.get(ns+"annotatedTarget");
+      boolean mapped=o.annotations().anyMatch(a->{
+        if(!a.annotations().findAny().isPresent()||!new RDFResourceIRI(a.getProperty().getIRI()).equals(property))return false;
+        OWLAnnotationValue value=a.getValue();
+        return value instanceof OWLLiteral literal?new RDFLiteral(literal).equals(target):value instanceof IRI iri&&new RDFResourceIRI(iri).equals(target);
+      });
+      if(!mapped)return false;
+    }
+    return true;
+  }
   static OWLOntology original(String content,String formatName,List<String> imports)throws Exception{
     var manager=Worker.manager();var ontology=manager.createOntology(new OWLOntologyID());manager.setOntologyDocumentIRI(ontology,BASE);
     var format=(RDFDocumentFormat)Worker.format(formatName);var consumer=new Worker.MappingConsumer(ontology,Worker.loader(imports));consumer.setOntologyFormat(format);
@@ -82,7 +112,7 @@ public final class RDFProvenanceProbe {
     }else{consumer.startModel(BASE);new TurtleParser(new StringReader(content),consumer,BASE).parseDocument();}
     manager.setOntologyFormat(ontology,format);var metadata=format.getOntologyLoaderMetaData();
     if(metadata.isPresent()&&metadata.get() instanceof RDFParserMetaData rdf
-      &&!Worker.annotationResidualsMapped(ontology,rdf.getUnparsedTriples().toList()))throw new IllegalStateException("Original parser retained unmapped RDF");
+      &&!legacyAnnotationResidualsMapped(ontology,rdf.getUnparsedTriples().toList()))throw new IllegalStateException("Original parser retained unmapped RDF");
     Worker.normalizeRDFClassExpressions(ontology);return ontology;
   }
   static boolean sameMetadata(OWLOntology a,OWLOntology b){return a.getAnnotations().equals(b.getAnnotations())
@@ -176,6 +206,7 @@ public final class RDFProvenanceProbe {
       var manager=Worker.manager();var ontology=manager.createOntology(new OWLOntologyID());manager.setOntologyDocumentIRI(ontology,BASE);
       var budget=new RDFProvenance.Budget(input.path("mode").asText().equals("deadline")?System.nanoTime()-1:System.nanoTime()+20_000_000_000L);
       var p=new RDFProvenance(budget);var consumer=new Worker.LocatedMappingConsumer(ontology,Worker.loader(imports),p);
+      consumer.configureDeadline(budget.deadlineNanos());
       var format=new TurtleDocumentFormat();consumer.setOntologyFormat(format);consumer.startModel(BASE);
       boolean unbound=input.path("mode").asText().equals("unbound");
       var raw=LocatedTurtleParser.parse(content,BASE,consumer,new LocatedTurtleParser.OccurrenceObserver(){
@@ -185,7 +216,7 @@ public final class RDFProvenanceProbe {
       manager.setOntologyFormat(ontology,format);
       var metadata=format.getOntologyLoaderMetaData();
       boolean residuals=metadata.isEmpty()||!(metadata.get() instanceof RDFParserMetaData rdf)
-        ||Worker.annotationResidualsMapped(ontology,rdf.getUnparsedTriples().toList());
+        ||rdf.getUnparsedTriples().findAny().isEmpty();
       out.put("unparsedTriplesAccepted",residuals);
       out.put("preNormalizationAxiomCount",ontology.getAxiomCount());
       Worker.normalizeRDFClassExpressions(ontology,p);
@@ -276,12 +307,13 @@ const declaration=(name,entityKind='class')=>({kind:'declaration',iri:ns+name,en
 function ordinary(result,input){
   assert.equal(result.ordinaryStatus,'PARSED',JSON.stringify(result));assert.equal(result.expectedSyntaxPresent,true);
   if(input.legacyEmpty){assert.equal(result.originalStatus,'ERROR',JSON.stringify(result));assert.equal(result.knownLegacyEmptyFailure,true,result.originalErrorStack);}
+  else if(input.legacyNested){assert.equal(result.originalStatus,'ERROR',JSON.stringify(result));assert.match(result.originalError,/Original parser retained unmapped RDF/);}
   else{assert.equal(result.originalStatus,'PARSED',JSON.stringify(result));assert.equal(result.ordinaryOriginalAxiomParity,true,JSON.stringify(result));assert.equal(result.ordinaryOriginalMetadataParity,true);}
   if(input.expectedAxioms)assert.equal(result.ordinaryExpectedAxiomParity,true,JSON.stringify(result));
 }
 function mapped(result,input){
   ordinary(result,input);assert.equal(result.status,'MAPPED',JSON.stringify(result));assert.equal(result.indexReturned,true);
-  if(!input.legacyEmpty){assert.equal(result.axiomParity,true,JSON.stringify(result));assert.equal(result.metadataParity,true);}
+  if(!input.legacyEmpty&&!input.legacyNested){assert.equal(result.axiomParity,true,JSON.stringify(result));assert.equal(result.metadataParity,true);}
   for(const key of ['ordinaryAxiomParity','ordinaryMetadataParity','unparsedTriplesAccepted','indexMatchesFinalAxioms','outsideAxiomRefused','resealRefused'])assert.equal(result[key],true,key+' '+JSON.stringify(result));
   if(input.expectedAxioms)assert.equal(result.expectedAxiomParity,true,JSON.stringify(result));
   assert.equal(result.occurrenceCount,input.lines.length);assert.deepEqual(result.events.map(e=>e.id),input.lines.map(l=>l.id));
@@ -411,22 +443,20 @@ test('streaming allValuesFrom probe may populate a cache without making its intr
   roleSources(r,'A','parserContext',[4,7],[9,10,11]);roleSources(r,'B','parserContext',[4,7],[8,10,11]);
 });
 
-test('known native gap: original and ordinary residual guards currently refuse nested axiom annotation reification',async()=>{
+test('nested axiom annotations consume both actually attached complete reifications, preserving the original-parser refusal as history',async()=>{
   const inputs=[false,true].map(resource=>{
     const value=resource?':chosen':'"chosen"';
+    const target={name:'nested',kind:'nestedAnnotatedSubClass',sub:ns+'A',sup:ns+'B',annotationProperty:ns+'note',annotationValue:resource?ns+'chosen':'chosen',annotationResource:resource,nestedProperty:ns+'mark',nestedValue:'selected'};
     return fixture([[1,':A a owl:Class .'],[2,':B a owl:Class .'],[3,':note a owl:AnnotationProperty .'],[4,':mark a owl:AnnotationProperty .'],[5,':A rdfs:subClassOf :B .'],[6,'_:ax a owl:Axiom .'],[7,'_:ax owl:annotatedSource :A .'],[8,'_:ax owl:annotatedProperty rdfs:subClassOf .'],[9,'_:ax owl:annotatedTarget :B .'],[10,`_:ax :note ${value} .`],
       [11,'_:first a owl:Annotation .'],[12,'_:first owl:annotatedSource _:ax .'],[13,'_:first owl:annotatedProperty :note .'],[14,`_:first owl:annotatedTarget ${value} .`],[15,'_:first :mark "selected" .'],
       [16,'_:second a owl:Annotation .'],[17,'_:second owl:annotatedSource _:ax .'],[18,'_:second owl:annotatedProperty :note .'],[19,`_:second owl:annotatedTarget ${value} .`],[20,'_:second :mark "selected" .'],
       [21,':Unrelated a owl:Class .'],[22,':Unrelated rdfs:subClassOf :B .']],
-    [{name:'nested',kind:'nestedAnnotatedSubClass',sub:ns+'A',sup:ns+'B',annotationProperty:ns+'note',annotationValue:resource?ns+'chosen':'chosen',annotationResource:resource,nestedProperty:ns+'mark',nestedValue:'selected'}],{ordinaryOnly:true});
+    [target],{legacyNested:true,expectedAxioms:[declaration('A'),declaration('B'),declaration('note','annotationProperty'),declaration('mark','annotationProperty'),declaration('Unrelated'),sub('unrelated','Unrelated','B'),target]});
   });
   const results=await inspect(...inputs);
-  for(const r of results){
-    // This preserves an observed native acceptance limitation. It does not
-    // label nested annotations illegal OWL RDF or prove full conformance.
-    assert.equal(r.originalStatus,'ERROR',JSON.stringify(r));assert.match(r.originalError,/Original parser retained unmapped RDF/);
-    assert.equal(r.ordinaryStatus,'ERROR',JSON.stringify(r));assert.match(r.ordinaryError,/RDF triples were not mapped to OWL axioms/);
-    assert.equal(r.indexReturned,false);assert.equal(r.targets,undefined);
+  for(const [i,r] of results.entries()){
+    mapped(r,inputs[i]);sources(r,'nested',Array.from({length:16},(_,i)=>i+5),[21,22]);
+    roleSources(r,'nested','construction',Array.from({length:16},(_,i)=>i+5),[1,2,3,4,21,22]);
   }
 });
 

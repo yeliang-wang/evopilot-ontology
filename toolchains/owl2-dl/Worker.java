@@ -33,6 +33,7 @@ import org.semanticweb.owlapi.rdf.rdfxml.parser.LocatedRDFConsumerAdapter;
 import org.semanticweb.owlapi.rdf.turtle.parser.TurtleOntologyParserFactory;
 import org.semanticweb.owlapi.rdf.turtle.parser.OWLRDFConsumerAdapter;
 import org.semanticweb.owlapi.rdf.turtle.parser.LocatedTurtleParser;
+import org.semanticweb.owlapi.rdf.turtle.parser.RDFIRI;
 import org.semanticweb.HermiT.Configuration;
 import org.semanticweb.HermiT.ReasonerFactory;
 
@@ -139,31 +140,6 @@ public final class Worker {
       super.endModel();
     }
   }
-  static boolean annotationResidualsMapped(OWLOntology o,List<RDFTriple> triples){
-    if(triples.isEmpty())return true;
-    // OWLAPI 5.5.1 mapAnnotation retains these three reification triples even
-    // after creating a nested ontology annotation. Accept only a complete group
-    // whose source/property/value is independently present in that parsed result.
-    // Other residuals, dangling groups and mismatched annotation targets still fail.
-    var ontology=o.getOntologyID().getOntologyIRI();if(ontology.isEmpty())return false;
-    String ns="http://www.w3.org/2002/07/owl#";
-    var groups=triples.stream().collect(Collectors.groupingBy(RDFTriple::getSubject));
-    for(var entry:groups.entrySet()){
-      if(!entry.getKey().isAnonymous()||entry.getValue().size()!=3)return false;
-      var fields=new HashMap<String,RDFNode>();
-      for(var triple:entry.getValue())if(fields.put(triple.getPredicate().getIRI().toString(),triple.getObject())!=null)return false;
-      if(!fields.keySet().equals(Set.of(ns+"annotatedSource",ns+"annotatedProperty",ns+"annotatedTarget")))return false;
-      if(!new RDFResourceIRI(ontology.get()).equals(fields.get(ns+"annotatedSource")))return false;
-      RDFNode property=fields.get(ns+"annotatedProperty"),target=fields.get(ns+"annotatedTarget");
-      boolean mapped=o.annotations().anyMatch(a->{
-        if(!a.annotations().findAny().isPresent()||!new RDFResourceIRI(a.getProperty().getIRI()).equals(property))return false;
-        OWLAnnotationValue value=a.getValue();
-        return value instanceof OWLLiteral literal?new RDFLiteral(literal).equals(target):value instanceof IRI iri&&new RDFResourceIRI(iri).equals(target);
-      });
-      if(!mapped)return false;
-    }
-    return true;
-  }
   @SuppressWarnings("unchecked")
   static void normalizeRDFClassExpressions(OWLOntology o){
     normalizeRDFClassExpressions(o,null);
@@ -209,7 +185,9 @@ public final class Worker {
   record RDFLocations(LocatedTurtleParser.Result syntax,RDFProvenance.Index mapping){}
   record Parsed(OWLOntology ontology,Set<OWLAxiom> syntaxAxioms,LocatedFunctionalParser.Result locations,RDFLocations rdfLocations){}
   static Parsed parse(OWLOntologyManager m,JsonNode doc,String base,Collection<String> imports)throws Exception {
-    return parse(m,doc,base,imports,false,null);
+    // Package-local compatibility for independent parser probes. Production
+    // callers below always supply the original task deadline.
+    return parse(m,doc,base,imports,false,new RDFProvenance.Budget(System.nanoTime()+30000000000L));
   }
   static Parsed parse(OWLOntologyManager m,JsonNode doc,String base,Collection<String> imports,boolean locate,RDFProvenance.Budget locationBudget)throws Exception {
     String content=str(doc,"content"),f=str(doc,"format");require(content.getBytes(StandardCharsets.UTF_8).length<=8*1024*1024,"INPUT_LIMIT","Document byte budget");
@@ -234,7 +212,7 @@ public final class Worker {
       // Located RDF documents share the task's original deadline and budget.
       // Ordinary parsing does not collect or claim source-location evidence.
       provenance=locate&&f.equals("turtle")?new RDFProvenance(Objects.requireNonNull(locationBudget)):RDFProvenance.disabled();
-      var rdfFormat=format(f);var consumer=new LocatedMappingConsumer(result,loader(imports),provenance);consumer.setOntologyFormat((RDFDocumentFormat)rdfFormat);
+      var rdfFormat=format(f);var consumer=new LocatedMappingConsumer(result,loader(imports),provenance);consumer.configureDeadline(Objects.requireNonNull(locationBudget).deadlineNanos());consumer.setOntologyFormat((RDFDocumentFormat)rdfFormat);
       if(f.equals("rdfxml")){
         var parser=new RDFParser();consumer.useParser(parser);
         var input=new InputSource(new StringReader(content));input.setSystemId(base);parser.parse(input,consumer);
@@ -252,7 +230,7 @@ public final class Worker {
     }
     require(m.getOntologyFormat(result).getKey().equals(format(f).getKey()),"FORMAT_MISMATCH","Parsed format differs from declared format");
     var metadata=m.getOntologyFormat(result).getOntologyLoaderMetaData();
-    if(metadata.isPresent()&&metadata.get() instanceof RDFParserMetaData rdf)require(annotationResidualsMapped(result,rdf.getUnparsedTriples().toList()),"UNPARSED_RDF","RDF triples were not mapped to OWL axioms");
+    if(metadata.isPresent()&&metadata.get() instanceof RDFParserMetaData rdf)require(rdf.getUnparsedTriples().findAny().isEmpty(),"UNPARSED_RDF","RDF triples were not mapped to OWL axioms");
     if(!f.equals("functional")){
       normalizeRDFClassExpressions(result,provenance!=null&&provenance.enabled()?provenance:null);
       var syntax=anonymous(m,syntaxAxioms);normalizeRDFClassExpressions(syntax);
@@ -271,7 +249,7 @@ public final class Worker {
     JsonNode docs=closure.get("documents"),edges=closure.get("imports");
     require(docs!=null&&docs.isArray()&&docs.size()>0&&docs.size()<=64&&edges!=null&&edges.isArray()&&edges.size()<=512,"INPUT_LIMIT","Bounded closure required");
     var m=manager();var origins=new HashMap<OWLAxiom,List<Origin>>();var byId=new HashMap<String,JsonNode>();var syntaxAxioms=new HashSet<OWLAxiom>();int locationCount=0;
-    var locationBudget=locate?new RDFProvenance.Budget(end):null;
+    var locationBudget=new RDFProvenance.Budget(end);
     var expected=new HashMap<String,Map<String,String>>();var alias=new HashMap<String,String>();int bytes=0;
     for(JsonNode d:docs){String id=str(d,"id");require(byId.put(id,d)==null,"IMPORT_CONFLICT","Duplicate document identity");bytes+=str(d,"content").getBytes(StandardCharsets.UTF_8).length;
       for(String key:List.of("documentIri","ontologyIri","versionIri")){JsonNode a=d.get(key);require(a!=null,"INVALID_ENVELOPE","Missing document identity");if(a.isNull())continue;String old=alias.put(a.asText(),id);require(old==null||old.equals(id),"IMPORT_CONFLICT","Conflicting ontology identity");}
@@ -331,9 +309,9 @@ public final class Worker {
     }});
     return violations;
   }
-  static List<OWLAxiom> queries(JsonNode task)throws Exception {
+  static List<OWLAxiom> queries(JsonNode task,long end)throws Exception {
     JsonNode q=task.get("query");require(q!=null&&q.isObject(),"INVALID_QUERY","Query ontology required");
-    var parsed=parse(manager(),q,"urn:evopilot:ontology:query",List.of());OWLOntology o=parsed.ontology();
+    var parsed=parse(manager(),q,"urn:evopilot:ontology:query",List.of(),false,new RDFProvenance.Budget(end));OWLOntology o=parsed.ontology();
     require(o.importsDeclarations().findAny().isEmpty(),"INVALID_QUERY","Query cannot import documents");
     // Query fragments may omit declarations, which have no Direct Semantics meaning.
     // Supply declarations only in this separate profile-check projection, never as premises.
@@ -390,7 +368,7 @@ public final class Worker {
       result.put("violationsComplete",profile.size()<=1000);out.putObject("error").put("code","OWL2_DL_PROFILE").put("message","Ontology violates OWL 2 DL restrictions");return out;
     }
     result.put("legal",true);engineEvidence(result);if(kind.equals("legality"))return out;
-    List<OWLAxiom> q=List.of();if(List.of("entailment","satisfiability").contains(kind)||kind.equals("explanation")&&str(task,"target").equals("entailment"))q=queries(task);
+    List<OWLAxiom> q=List.of();if(List.of("entailment","satisfiability").contains(kind)||kind.equals("explanation")&&str(task,"target").equals("entailment"))q=queries(task,end);
     OWLReasoner r=selectReasoner(o,q,kind,end);engineEvidence(result);
     try{
       boolean consistent=r.isConsistent();result.put("consistent",consistent);
@@ -585,7 +563,7 @@ public final class Worker {
     m.saveOntology(ontology,new FunctionalSyntaxDocumentFormat(),target);String replayText=target.toString();m.removeOntology(ontology);deadline(end);
     if(replayText.getBytes(StandardCharsets.UTF_8).length>8*1024*1024)throw new Refusal("FAILED","OUTPUT_LIMIT","Explanation replay exceeds the document/output budget");
     String replayDigest=sha(replayText);var replayDocument=JSON.createObjectNode();replayDocument.put("format","functional");replayDocument.put("content",replayText);replayDocument.put("digest",replayDigest);
-    var rm=manager();var parsed=parse(rm,replayDocument,"urn:evopilot:explanation:replay",List.of());var ro=parsed.ontology();
+    var rm=manager();var parsed=parse(rm,replayDocument,"urn:evopilot:explanation:replay",List.of(),false,new RDFProvenance.Budget(end));var ro=parsed.ontology();
     try{
       deadline(end);if(!profileViolations(ro).isEmpty())throw new Refusal("FAILED","EXPLANATION_REPLAY","Serialized explanation is not legal OWL 2 DL");
       var rr=reasoner(ro,end);
@@ -622,6 +600,8 @@ public final class Worker {
     for(Throwable e=error;e!=null;e=e.getCause()){
       if(e instanceof UnloadableImportException||e instanceof OWLOntologyFactoryNotFoundException)return new Refusal("MISSING_IMPORT","MISSING_IMPORT","An import has no admitted offline document");
       if(e instanceof XmlSchemaAutomata.Syntax)return invalid("XSD_REGEX",e.getMessage());
+      if(e instanceof RDFIRI.Syntax)return invalid("ONTOLOGY_PARSE",e.getMessage());
+      if(e instanceof LocatedRDFConsumerAdapter.SemanticException)return invalid("UNPARSED_RDF",e.getMessage());
       if(e instanceof XmlSchemaAutomata.ResourceLimit)return new Refusal("FAILED","REGEX_RESOURCE_LIMIT",e.getMessage());
       if(e instanceof LocatedFunctionalParser.LimitException)return new Refusal("FAILED","SOURCE_LOCATION_LIMIT",e.getMessage());
       if(e instanceof LocatedTurtleParser.LimitException)return new Refusal("FAILED","SOURCE_LOCATION_LIMIT",e.getMessage());

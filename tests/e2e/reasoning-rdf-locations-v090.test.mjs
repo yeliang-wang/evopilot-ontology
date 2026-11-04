@@ -104,6 +104,37 @@ function role(location,name,required,excluded){const actual=location[name];for(c
 const subSome=name=>'SubClassOf(<'+NS+name+'> ObjectSomeValuesFrom(<'+NS+'p> <'+NS+'C>))';
 const text=rows=>prefix+rows.join('\n')+'\n';
 
+test('actual native explanation resolves relative BASE chains and records the current lexical dependency instead of a stale cached IRI',async()=>{
+  const content='@prefix owl: <'+OWL+'> .\n'+String.raw`@base <https://iri.example/a/b/> .
+<Thing> a owl:Class . <item> a owl:NamedIndividual . <item> a <Thing> .
+@base <../second/> .
+<Thing> a owl:Class . <item> a owl:NamedIndividual . <\u0069tem> a <Thing> .`;
+  const target='ClassAssertion(<https://iri.example/a/second/Thing> <https://iri.example/a/second/item>)';
+  const {data,table}=await explain(content,query(target));
+  const location=axiom(data,target);assert.ok(location.constructionOccurrenceIds.length);
+  const assertion=table.occurrences.find(o=>o.triple.subject==='https://iri.example/a/second/item'&&o.triple.object.kind==='RESOURCE'&&o.triple.object.value==='https://iri.example/a/second/Thing');
+  assert.ok(assertion);assert.ok(location.constructionOccurrenceIds.includes(assertion.id));
+  const contexts=new Map(table.contexts.map(c=>[c.id,c])),sources=new Map(table.sources.map(s=>[s.id,s]));
+  const subjectContexts=assertion.subject.contextIds.map(id=>contexts.get(id));
+  assert.deepEqual(subjectContexts.map(c=>c.resolved),['https://iri.example/a/second/']);
+  const active=subjectContexts[0];assert.equal(active.kind,'BASE');assert.equal(active.dependencyContextIds.length,1);
+  assert.equal(contexts.get(active.dependencyContextIds[0]).resolved,'https://iri.example/a/b/');
+  assert.equal(originalSlice(content,sources.get(active.sourceId)),'@base <../second/> .');
+  assert.equal(originalSlice(content,sources.get(assertion.subject.sourceId)),String.raw`<\u0069tem>`);
+});
+
+test('native ordinary and explanation parsing reject structural IRI errors without claiming completed source evidence',async()=>{
+  const target=query('ClassAssertion(:A :a)');
+  for(const invalid of ['urn:bad%GG','https://[not-ip]/x','1:relative','urn:x#a#b']){
+    const content=prefix+':A a owl:Class . :a a owl:NamedIndividual . :a a :A . <'+invalid+'> a owl:Class .';
+    for(const task of [{kind:'legality'},{kind:'explanation',target:'entailment',query:target}]){
+      const input=request(document(content),target);input.task=task;
+      const result=await runner.run(input);assert.equal(result.status,'INVALID_INPUT',JSON.stringify(result));
+      assert.equal(result.error.code,'ONTOLOGY_PARSE');assert.equal(result.complete,false);assert.equal(result.result.sourceLocationVersion,undefined);assert.equal(result.result.sourceLocationDocuments,undefined);
+    }
+  }
+});
+
 test('actual explanation preserves shared restriction definitions for first and cached callers in either source order',async()=>{
   const declarations=[':A a owl:Class .',':B a owl:Class .',':C a owl:Class .',':p a owl:ObjectProperty .'];
   const definitions=['_:r a owl:Restriction .','_:r owl:onProperty :p .','_:r owl:someValuesFrom :C .'];
@@ -149,14 +180,22 @@ test('duplicate RDF events keep original non-BMP and escaped UTF-8 tokens, hashe
   assert.equal(input.closure.documents[0].digest,hashBytes(content));
 });
 
-test('retained lexical contexts follow actual base-cache hits and prefix redefinitions rather than nearest directives',async()=>{
+test('retained lexical contexts bind each relative occurrence to its current BASE while prefix bindings retain their declaration context',async()=>{
   const content='@base <https://first.example/> .\n@prefix ex: <relative/> .\n<subject> a owl:NamedIndividual .\n<object> a owl:NamedIndividual .\nex:p a owl:ObjectProperty .\n<subject> ex:p <object> .\n@base <https://second.example/> .\n<subject> ex:p <object> .\n@prefix ex: <https://changed.example/> .\nex:p a owl:ObjectProperty .\n<new> a owl:NamedIndividual .\n<fresh> a owl:NamedIndividual .\n<new> ex:p <fresh> .\n@prefix unused: <https://unrelated.example/> .\n';
-  const target=query('ObjectPropertyAssertion(<https://first.example/relative/p> <https://first.example/subject> <https://first.example/object>) ObjectPropertyAssertion(<https://changed.example/p> <https://second.example/new> <https://second.example/fresh>)');
-  const {data,table}=await explain(content,target);assert.equal(data.support.length,2);
+  const target=query('ObjectPropertyAssertion(<https://first.example/relative/p> <https://first.example/subject> <https://first.example/object>) ObjectPropertyAssertion(<https://first.example/relative/p> <https://second.example/subject> <https://second.example/object>) ObjectPropertyAssertion(<https://changed.example/p> <https://second.example/new> <https://second.example/fresh>)');
+  const {data,table}=await explain(content,target);assert.equal(data.support.length,3);
   const byId=new Map(table.occurrences.map(o=>[o.id,o])),contexts=new Map(table.contexts.map(c=>[c.id,c]));
-  assert.deepEqual(byId.get(4).triple,byId.get(5).triple);assert.equal(byId.get(9).triple.predicate,'https://changed.example/p');
+  // Fixed source-event positions and RFC-derived identifiers are the oracle.
+  // The old cross-BASE cache defect is retained only in the upstream parser test.
+  assert.deepEqual([4,5,9].map(id=>byId.get(id).triple),[
+    {subject:'https://first.example/subject',predicate:'https://first.example/relative/p',object:{kind:'RESOURCE',value:'https://first.example/object'}},
+    {subject:'https://second.example/subject',predicate:'https://first.example/relative/p',object:{kind:'RESOURCE',value:'https://second.example/object'}},
+    {subject:'https://second.example/new',predicate:'https://changed.example/p',object:{kind:'RESOURCE',value:'https://second.example/fresh'}}
+  ]);
   const expand=id=>{const c=contexts.get(id);return [c,...c.dependencyContextIds.flatMap(expand)];};const forTerm=t=>t.contextIds.flatMap(expand);
-  const cached=forTerm(byId.get(5).subject);assert.ok(cached.some(c=>c.kind==='BASE'&&c.resolved==='https://first.example/'));assert.ok(!cached.some(c=>c.resolved==='https://second.example/'));
+  const first=forTerm(byId.get(4).subject),current=forTerm(byId.get(5).subject);
+  assert.ok(first.some(c=>c.kind==='BASE'&&c.resolved==='https://first.example/'));assert.ok(!first.some(c=>c.resolved==='https://second.example/'));
+  assert.ok(current.some(c=>c.kind==='BASE'&&c.resolved==='https://second.example/'));assert.ok(!current.some(c=>c.resolved==='https://first.example/'));
   assert.ok(forTerm(byId.get(5).predicate).some(c=>c.kind==='PREFIX'&&c.resolved==='https://first.example/relative/'));
   assert.ok(forTerm(byId.get(9).predicate).some(c=>c.kind==='PREFIX'&&c.resolved==='https://changed.example/'));
   assert.ok(forTerm(byId.get(9).subject).some(c=>c.kind==='BASE'&&c.resolved==='https://second.example/'));assert.ok(!table.contexts.some(c=>c.prefixName==='unused:'));

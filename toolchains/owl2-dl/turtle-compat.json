@@ -33,13 +33,13 @@
           "occurrences": 5
         },
         {
-          "find": "IRI iri = string2IRI.get(s);\n        if(iri == null)",
-          "replace": "IRI iri = string2IRI.get(s);\n        boolean locatedCreated = iri == null;\n        if(iri == null)",
+          "find": "    public IRI getIRI(String s) {\n         if(s.charAt(0) == '<') {\n            s = s.substring(1, s.length() - 1);\n        }\n        IRI iri = string2IRI.get(s);\n        if(iri == null) {\n            iri = IRI.create(s);\n            if (!iri.isAbsolute()) {\n                iri = IRI.create(base.getNamespace().substring(0, base.getNamespace().lastIndexOf('/')+1), s);\n            }\n            string2IRI.put(s, iri);\n        }\n        return iri;\n    }",
+          "replace": "    public IRI getIRI(String s) {\n        if (s.startsWith(\"<\")) s = s.substring(1, s.length() - 1);\n        String absolute = RDFIRI.resolve(s, base.toString());\n        IRI iri = string2IRI.get(absolute);\n        if (iri == null) {\n            iri = IRI.create(absolute);\n            string2IRI.put(absolute, iri);\n        }\n        if (locations != null) locations.rememberIri(s);\n        return iri;\n    }",
           "occurrences": 1
         },
         {
-          "find": "            string2IRI.put(s, iri);\n        }\n        return iri;",
-          "replace": "            string2IRI.put(s, iri);\n        }\n        if (locations != null) locations.rememberIri(s, locatedCreated);\n        return iri;",
+          "find": "return pm.getIRI(qname);",
+          "replace": "return LocatedTurtleParser.validatedTerm(pm.getIRI(qname));",
           "occurrences": 1
         },
         {
@@ -64,7 +64,7 @@
         },
         {
           "find": "base = IRI.create(t.image.substring(1, t.image.length() - 1));",
-          "replace": "base = IRI.create(LocatedTurtleParser.decodeIri(sourceContent, t));\nif (locations != null) locations.base(locatedDirective, base);",
+          "replace": "String locatedBaseReference = LocatedTurtleParser.decodeIri(sourceContent, t);\nbase = IRI.create(RDFIRI.resolve(locatedBaseReference, base.toString()));\nif (locations != null) locations.base(locatedDirective, base, locatedBaseReference);",
           "occurrences": 1
         },
         {
@@ -243,7 +243,7 @@
           "occurrences": 1
         }
       ],
-      "patchedSourceSHA256": "e83a2c1f7de50bc87d59cb0e1d8629c83a037cf8c38f176de82ae6f8f7c98d9c"
+      "patchedSourceSHA256": "6c72ced5aded699bf398c43aa69bb76a1e61af1345c0dc3d79e7cda7b8ca1d37"
     },
     {
       "sourceEntry": "org/semanticweb/owlapi/rdf/turtle/parser/JavaCharStream.java",
@@ -340,11 +340,15 @@
   "ownedSources": [
     {
       "file": "LocatedTurtleParser.java",
-      "sha256": "46128e35939f7ea770fa69954fe21dcdbeb4dbd791fa394b734b27be9863279d"
+      "sha256": "0ecf4e5f2a108a6eff989ce596af0f5e886c107f30bc6dac1d5005fe51092ce1"
+    },
+    {
+      "file": "RDFIRI.java",
+      "sha256": "dfdc59954d4c97dbe5af556d9ece028786222657c4d209750a774012f38c4282"
     }
   ],
-  "notice": "EvoPilot identified modifications of OWLAPI 5.5.1 TurtleParser, JavaCharStream and TurtleParserTokenManager: separately rename derived classes; instrument existing semantic actions with optional raw UTF-16 source handles; decode IRIREF UCHAR escapes once from original input, rejecting malformed escapes, non-scalar values and illegal decoded RFC 3987 character classes. This focused character/escape correction is not a complete RFC 3987 structural validator; no host, port, scheme or normalization policy is added. Source-disabled parsing invokes the same corrected semantic actions without a collector or location budgets. Original callback order, lexer DFA, token images, relative IRI/base resolution and QName semantics are otherwise preserved. Original class files and factories are not replaced. Source comments/notices outside these exact modifications remain unchanged. Retain the exact archive, recipe and generated sources with source/license evidence; this is neither an unmodified upstream release nor completed license acceptance.",
-  "reason": "Capture exact Turtle event sources and actual lexical dependencies, and correct the evidenced upstream IRIREF Unicode escape omission without decoding token.image twice. BASE and PREFIX IRIREFs use the same correction; existing relative/base/cache and QName policies are not rewritten. Located occurrence records alone do not establish complete RDF-to-OWL axiom provenance. Preserve legal Unicode ucschar values including NBSP and U+2028/U+2029; private-use characters are permitted only within query. General IRI-reference structural conformance remains separate from this correction.",
+  "notice": "EvoPilot identified modifications of OWLAPI 5.5.1 TurtleParser, JavaCharStream and TurtleParserTokenManager: separately rename derived classes; instrument existing semantic actions with optional raw UTF-16 source handles; decode IRIREF UCHAR escapes once from original input; validate generic RFC 3987 IRI-reference grammar and apply strict RFC 3986 section 5.2 base resolution through owned RDFIRI. Cache by resolved absolute identifier so successive BASE directives cannot reuse earlier relative resolutions; retain current BASE dependencies, including relative BASE chains. Validate QName-generated absolute identifiers without applying IRIREF resolution to prefixed-name concatenation. No percent decoding, syntax/scheme normalization, identifier repair, DNS/TLD or numeric port policy. Source-disabled parsing uses the same corrections without a collector or location budgets. Original classes and factories are not replaced. Unchanged source comments/notices are retained. Retain exact archive, recipe, derived and owned sources with source/license evidence; this is neither an unmodified upstream release nor license acceptance.",
+  "reason": "Correct evidenced IRI-reference grammar, relative/base resolution and cross-BASE cache defects against independent RFC3986/3987 and W3C Turtle oracles; do not preserve an upstream defect merely to retain parity. Keep exact original source spans, actual lexical dependencies and one-pass escape decoding. Source occurrence records alone do not establish complete RDF-to-OWL provenance. Preserve Unicode, percent spelling, case and empty components; syntax does not authorize network access.",
   "acceptance": "Actual parser event/ontology parity, exact Unicode offsets, resource limits, source-set mapper integration and formal source-fragment acceptance remain required.",
   "upstreamLicenseDeclarations": [
     {

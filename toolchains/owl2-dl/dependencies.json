@@ -513,10 +513,10 @@
   },
   "turtlePatch": {
     "file": "turtle-compat.json",
-    "sha256": "1817fac425a1b88d30f3e2dfaf06f217ec23eed3606f155dc16be7b7f7b6b20d"
+    "sha256": "db6e9850be2dd6a2396acccd0a06fab04fa01b1b1e00aad32bcd69c3da01f7ff"
   },
   "rdfMappingPatch": {
     "file": "rdf-mapping-compat.json",
-    "sha256": "3bb4d07064929df05ef05f6448c00c179c00720768f531a8135b4e93dfc32ee4"
+    "sha256": "12110164611729580fe6c9102855c6d0ae0dd566098f9fbc0fce46af6cf049d6"
   }
 }

@@ -160,7 +160,7 @@ export async function checkSource() {
         ['TurtleParser.java','LocatedTurtleSyntaxParser.java','3a1d6dc6f2b02fe8963fc65f22faa3b2c8a5234b90471691942eee33e019a8fd'],
         ['JavaCharStream.java','LocatedTurtleCharStream.java','ddd395b54f835a6d5c8ca31c9c7141c8ddc3ca6db6b0ee54bdfe79f607918fc6'],
         ['TurtleParserTokenManager.java','LocatedTurtleTokenManager.java','190b0a01242d12aaa42e77b059dfc4b555e6a666f5dad212a25a23de4178e7d6'],
-      ],owned:['LocatedTurtleParser.java']},
+      ],owned:['LocatedTurtleParser.java','RDFIRI.java']},
     {key:'rdfMappingPatch',file:'rdf-mapping-compat.json',parserId:'owlapi-rdf-mapping-provenance:1',package:'org/semanticweb/owlapi/rdf/rdfxml/parser/',
       files:[
         ['OWLRDFConsumer.java','LocatedRDFConsumer.java','cff71d016eab2e7b3f27920d83204f26e7fb6bfdcddc82ccdd06da7fc010567b'],

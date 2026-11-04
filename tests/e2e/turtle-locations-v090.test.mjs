@@ -155,16 +155,22 @@ test('raw source coordinates survive Unicode escapes, supplementary characters, 
   assert.ok(r.sources.some(s=>s.text.includes('\\u0041')),'The original escape spelling must not be replaced with the decoded IRI');
 });
 
-test('base and prefix contexts preserve the original parser cache choices across redefinitions',async()=>{
+test('BASE redefinitions resolve each occurrence against its current base while prefix bindings retain their declaration base',async()=>{
   const content='@base <https://first.example/> .\n@prefix ex: <relative/> .\n<subject> ex:p <object> .\n@base <https://second.example/> .\n<subject> ex:p <object> .\n@prefix ex: <https://changed.example/> .\n<new> ex:p <fresh> .';
-  const [r]=await inspect({content});parity(r,content);assert.equal(r.occurrences.length,3);
-  assert.deepEqual(r.occurrences[1].triple,r.occurrences[0].triple,'Repeated IRI spelling preserves the actual upstream cache behavior');
+  const [r]=await inspect({content});assert.equal(r.locatedStatus,'PARSED',JSON.stringify(r));assert.equal(r.unlocatedStatus,'PARSED');assert.equal(r.originalStatus,'PARSED');assert.deepEqual(r.unlocatedEvents,r.locatedEvents);assert.equal(r.occurrences.length,3);
+  // Independently retain the old defect as evidence, never as the new oracle.
+  const old=r.originalEvents.filter(t=>t.kind==='RESOURCE');assert.equal(old[1].subject,old[0].subject);
+  assert.deepEqual(triples(r).map(t=>[t.subject,t.predicate,t.resource]),[
+    ['https://first.example/subject','https://first.example/relative/p','https://first.example/object'],
+    ['https://second.example/subject','https://first.example/relative/p','https://second.example/object'],
+    ['https://second.example/new','https://changed.example/p','https://second.example/fresh']
+  ]);
   const contexts=new Map(r.contexts.map(c=>[c.id,c]));
   const dependencies=id=>{const c=contexts.get(id);return [c,...c.dependencies.flatMap(dependencies)];};
   const contextFor=term=>term.contextIds.flatMap(dependencies);
-  assert.ok(contextFor(r.occurrences[1].subject).some(c=>c.resolved==='https://first.example/'));
-  assert.ok(!contextFor(r.occurrences[1].subject).some(c=>c.resolved==='https://second.example/'));
-  assert.equal(r.occurrences[2].triple.predicate,'https://changed.example/p');
+  assert.ok(contextFor(r.occurrences[1].subject).some(c=>c.resolved==='https://second.example/'));
+  assert.ok(!contextFor(r.occurrences[1].subject).some(c=>c.resolved==='https://first.example/'));
+  assert.ok(contextFor(r.occurrences[1].predicate).some(c=>c.resolved==='https://first.example/'));
 });
 
 test('IRIREF UCHAR correction decodes original escapes once in IRI, BASE and PREFIX without replacing raw spans',async()=>{
@@ -184,16 +190,16 @@ test('IRIREF UCHAR correction decodes original escapes once in IRI, BASE and PRE
   assert.ok(b.sources.some(s=>s.kind==='BASE'&&s.text===String.raw`@base <https://example.test/\u0041\U0001F600/> .`));
 });
 
-test('equivalent escaped and literal relative IRI spellings share the actual cache context without losing their original handles',async()=>{
+test('equivalent escaped and literal relative spellings preserve raw handles and use each occurrence base',async()=>{
   const content=String.raw`@base <https://first.example/> .
 <\U00000073> <urn:located:p> <urn:located:o> .
 @base <https://second.example/> .
 <s> <urn:located:p> <urn:located:o> .`;
   const [r]=await inspect({content});assert.equal(r.locatedStatus,'PARSED',JSON.stringify(r));assert.equal(r.unlocatedStatus,'PARSED');assert.deepEqual(r.unlocatedEvents,r.locatedEvents);
-  assert.deepEqual(triples(r).map(t=>t.subject),['https://first.example/s','https://first.example/s']);
+  assert.deepEqual(triples(r).map(t=>t.subject),['https://first.example/s','https://second.example/s']);
   assert.deepEqual(r.occurrences.map(o=>r.sources.find(s=>s.id===o.subject.sourceId).text),[String.raw`<\U00000073>`,'<s>']);
   const contexts=new Map(r.contexts.map(c=>[c.id,c]));
-  for(const o of r.occurrences){const deps=o.subject.contextIds.map(id=>contexts.get(id));assert.ok(deps.some(c=>c.resolved==='https://first.example/'));assert.ok(!deps.some(c=>c.resolved==='https://second.example/'));}
+  for(const [i,o] of r.occurrences.entries()){const deps=o.subject.contextIds.map(id=>contexts.get(id));assert.deepEqual(deps.map(c=>c.resolved),[i===0?'https://first.example/':'https://second.example/']);}
 });
 
 test('malformed IRI escapes, non-scalars and escaped illegal IRI characters fail in both corrected parser modes',async()=>{

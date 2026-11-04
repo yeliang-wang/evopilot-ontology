@@ -501,9 +501,34 @@
           "find": "private IRI getSubjectForAnnotatedPropertyAndObject(IRI n, IRI p, IRI v) {\n        return getAnnotatedSourceAnnotationMainNodes(n).stream()\n            .filter(i -> p.equals(getResourceObject(i, OWL_ANNOTATED_PROPERTY, false))\n                && v.equals(getResourceObject(i, OWL_ANNOTATED_TARGET, false)))\n            .findAny().orElse(null);\n    }",
           "replace": "private IRI getSubjectForAnnotatedPropertyAndObject(IRI n, IRI p, IRI v) {\n        try (RDFProvenance.AnnotationSelection selection = provenance.annotationSelection(n)) {\n            IRI selected = getAnnotatedSourceAnnotationMainNodes(n).stream()\n                .filter(i -> selection.test(i, () -> p.equals(getResourceObject(i, OWL_ANNOTATED_PROPERTY, false))\n                    && v.equals(getResourceObject(i, OWL_ANNOTATED_TARGET, false))))\n                .findAny().orElse(null);\n            selection.select(selected);\n            return selected;\n        }\n    }",
           "occurrences": 1
+        },
+        {
+          "find": "    final RDFProvenance provenance;",
+          "replace": "    final RDFProvenance provenance;\n    protected static class AnnotationDispatchScope implements AutoCloseable {\n        @Override public void close() {}\n    }\n    protected AnnotationDispatchScope annotationDispatch() { return new AnnotationDispatchScope(); }\n    protected void semanticInput(RDFProvenance.FactKey fact) {}",
+          "occurrences": 1
+        },
+        {
+          "find": "        try (RDFProvenance.Scope _evInput = provenance.input(RDFProvenance.FactKey.literal(subjectIRI, predicateIRI, getOWLLiteral(object, actualDatatype, language)))) {",
+          "replace": "        try (RDFProvenance.Scope _evInput = provenance.input(RDFProvenance.FactKey.literal(subjectIRI, predicateIRI, getOWLLiteral(object, actualDatatype, language)))) {\n            semanticInput(RDFProvenance.FactKey.literal(subjectIRI, predicateIRI, getOWLLiteral(object, actualDatatype, language)));",
+          "occurrences": 1
+        },
+        {
+          "find": "        try (RDFProvenance.Scope _evInput = provenance.input(RDFProvenance.FactKey.literal(subject, actualPredicate, getOWLLiteral(object, datatype, language)))) {",
+          "replace": "        try (RDFProvenance.Scope _evInput = provenance.input(RDFProvenance.FactKey.literal(subject, actualPredicate, getOWLLiteral(object, datatype, language)))) {\n            semanticInput(RDFProvenance.FactKey.literal(subject, actualPredicate, getOWLLiteral(object, datatype, language)));",
+          "occurrences": 1
+        },
+        {
+          "find": "        try (RDFProvenance.Scope _evInput = provenance.input(RDFProvenance.FactKey.resource(subjectIRI, predicateIRI, objectIRI))) {",
+          "replace": "        try (RDFProvenance.Scope _evInput = provenance.input(RDFProvenance.FactKey.resource(subjectIRI, predicateIRI, objectIRI))) {\n            semanticInput(RDFProvenance.FactKey.resource(subjectIRI, predicateIRI, objectIRI));",
+          "occurrences": 1
+        },
+        {
+          "find": "        try (RDFProvenance.Scope _evInput = provenance.input(RDFProvenance.FactKey.resource(subject, actualPredicate, actualObject))) {",
+          "replace": "        try (RDFProvenance.Scope _evInput = provenance.input(RDFProvenance.FactKey.resource(subject, actualPredicate, actualObject))) {\n            semanticInput(RDFProvenance.FactKey.resource(subject, actualPredicate, actualObject));",
+          "occurrences": 1
         }
       ],
-      "patchedSourceSHA256": "1593a850b8f78d8d61abc8f430596ccbcfde68576f19b91e02f9256ce25ea821"
+      "patchedSourceSHA256": "562fe1c9d6e4d39a6814a1c115434be9a4f9cbcf856f7c8b439cedad80d6eb29"
     },
     {
       "sourceEntry": "org/semanticweb/owlapi/rdf/rdfxml/parser/Translators.java",
@@ -1487,9 +1512,54 @@
           "find": "public Set<RDFTriple> mopUp() {\n            // We need to mop up all remaining triples. These triples will be in\n            // the triples by subject map. Other triples which reside in the\n            // triples by predicate (single valued) triple aren't \"root\" triples\n            // for axioms. First we translate all system triples, starting with\n            // property ranges, then go for triples whose predicates are not\n            // system/reserved vocabulary IRIs to translate these into ABox\n            // assertions or annotationIRIs\n            TriplePredicateHandler propertyRangeHandler = predicates.get(RDFS_RANGE.getIRI());\n            consumer.iterateResources((s, p, o) -> {\n                try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"rangeMopUp\", RDFProvenance.FactKey.resource(s, p, o))) {\n                    if (propertyRangeHandler.canHandle(s, p, o)) {\n                        propertyRangeHandler.handleTriple(s, p, o);\n                    }\n                }\n            });\n            // Now handle non-reserved predicate triples\n            consumeNonReservedPredicateTriples();\n            // Now axiom annotations\n            consumeAnnotatedAxioms();\n            consumer.iterateResources(this::handle);\n            consumer.iterateLiterals(this::handle);\n            // Inverse property axioms\n            inverseOf.setAxiomParsingMode(true);\n            consumer.iterateResources((s, p, o) -> {\n                try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"inverseMopUp\", RDFProvenance.FactKey.resource(s, p, o))) {\n                    if (inverseOf.canHandle(s, p, o)) {\n                        inverseOf.handleTriple(s, p, o);\n                    }\n                }\n            });\n            return getRemainingTriples();\n        }",
           "replace": "public Set<RDFTriple> mopUp() {\n            // We need to mop up all remaining triples. These triples will be in\n            // the triples by subject map. Other triples which reside in the\n            // triples by predicate (single valued) triple aren't \"root\" triples\n            // for axioms. First we translate all system triples, starting with\n            // property ranges, then go for triples whose predicates are not\n            // system/reserved vocabulary IRIs to translate these into ABox\n            // assertions or annotationIRIs\n            TriplePredicateHandler propertyRangeHandler = predicates.get(RDFS_RANGE.getIRI());\n            consumer.iterateResources((s, p, o) -> {\n                try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"rangeMopUp\", RDFProvenance.FactKey.resource(s, p, o))) {\n                    if (consumer.provenance.probe(RDFProvenance.FactKey.resource(s, p, o), () -> propertyRangeHandler.canHandle(s, p, o))) {\n                        propertyRangeHandler.handleTriple(s, p, o);\n                    }\n                }\n            });\n            // Now handle non-reserved predicate triples\n            consumeNonReservedPredicateTriples();\n            // Now axiom annotations\n            consumeAnnotatedAxioms();\n            consumer.iterateResources(this::handle);\n            consumer.iterateLiterals(this::handle);\n            // Inverse property axioms\n            inverseOf.setAxiomParsingMode(true);\n            consumer.iterateResources((s, p, o) -> {\n                try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"inverseMopUp\", RDFProvenance.FactKey.resource(s, p, o))) {\n                    if (consumer.provenance.probe(RDFProvenance.FactKey.resource(s, p, o), () -> inverseOf.canHandle(s, p, o))) {\n                        inverseOf.handleTriple(s, p, o);\n                    }\n                }\n            });\n            return getRemainingTriples();\n        }",
           "occurrences": 1
+        },
+        {
+          "find": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"apply\", RDFProvenance.FactKey.literal(s, p, o))) {",
+          "replace": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"apply\", RDFProvenance.FactKey.literal(s, p, o)); LocatedRDFConsumer.AnnotationDispatchScope _evAnnotationScope = consumer.annotationDispatch()) {",
+          "occurrences": 1
+        },
+        {
+          "find": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"apply\", RDFProvenance.FactKey.resource(s, p, o))) {",
+          "replace": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"apply\", RDFProvenance.FactKey.resource(s, p, o)); LocatedRDFConsumer.AnnotationDispatchScope _evAnnotationScope = consumer.annotationDispatch()) {",
+          "occurrences": 1
+        },
+        {
+          "find": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"applyAnns\", RDFProvenance.FactKey.resource(s, p, o))) {",
+          "replace": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"applyAnns\", RDFProvenance.FactKey.resource(s, p, o)); LocatedRDFConsumer.AnnotationDispatchScope _evAnnotationScope = consumer.annotationDispatch()) {",
+          "occurrences": 1
+        },
+        {
+          "find": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"stream\", RDFProvenance.FactKey.resource(s, p, o))) {",
+          "replace": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"stream\", RDFProvenance.FactKey.resource(s, p, o)); LocatedRDFConsumer.AnnotationDispatchScope _evAnnotationScope = consumer.annotationDispatch()) {",
+          "occurrences": 1
+        },
+        {
+          "find": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"stream\", RDFProvenance.FactKey.literal(s, p, con))) {",
+          "replace": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"stream\", RDFProvenance.FactKey.literal(s, p, con)); LocatedRDFConsumer.AnnotationDispatchScope _evAnnotationScope = consumer.annotationDispatch()) {",
+          "occurrences": 1
+        },
+        {
+          "find": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"handle\", RDFProvenance.FactKey.resource(s, p, o))) {",
+          "replace": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"handle\", RDFProvenance.FactKey.resource(s, p, o)); LocatedRDFConsumer.AnnotationDispatchScope _evAnnotationScope = consumer.annotationDispatch()) {",
+          "occurrences": 1
+        },
+        {
+          "find": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"handle\", RDFProvenance.FactKey.literal(s, p, o))) {",
+          "replace": "        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"handle\", RDFProvenance.FactKey.literal(s, p, o)); LocatedRDFConsumer.AnnotationDispatchScope _evAnnotationScope = consumer.annotationDispatch()) {",
+          "occurrences": 1
+        },
+        {
+          "find": "                try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"rangeMopUp\", RDFProvenance.FactKey.resource(s, p, o))) {",
+          "replace": "                try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"rangeMopUp\", RDFProvenance.FactKey.resource(s, p, o)); LocatedRDFConsumer.AnnotationDispatchScope _evAnnotationScope = consumer.annotationDispatch()) {",
+          "occurrences": 1
+        },
+        {
+          "find": "                try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"inverseMopUp\", RDFProvenance.FactKey.resource(s, p, o))) {",
+          "replace": "                try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"inverseMopUp\", RDFProvenance.FactKey.resource(s, p, o)); LocatedRDFConsumer.AnnotationDispatchScope _evAnnotationScope = consumer.annotationDispatch()) {",
+          "occurrences": 1
         }
       ],
-      "patchedSourceSHA256": "153bc11f529ce5c24ec08aef68c9f365133df1cd0921fcb826eb9f2cdc9053cf"
+      "patchedSourceSHA256": "3ab934b7ac97dc3bcc542359063a90fb6bab586122bfe4120fd464001f76907f"
     },
     {
       "sourceEntry": "org/semanticweb/owlapi/rdf/rdfxml/parser/OptimisedListTranslator.java",
@@ -1538,15 +1608,15 @@
   "ownedSources": [
     {
       "file": "LocatedRDFConsumerAdapter.java",
-      "sha256": "a6ba0f559683235b6bdfa1034304af5caa3603ddb1314279da5d18965b44dec4"
+      "sha256": "c6c2936bce3372a125a1558d759e1de45dddf45035d77542fb424af11a827c10"
     },
     {
       "file": "RDFProvenance.java",
-      "sha256": "e10efddd28eecdd6ffd84d90b3975a7d699c17c19763faf112511dab2a548e02"
+      "sha256": "7c065067bcc5d2abd97c806e6ffb5fafaeb2545fb0c128d6adc35bf1561d719b"
     }
   ],
-  "notice": "Identified EvoPilot modification of four OWLAPI 5.5.1 RDF mapping source files: rename the coupled consumer, translators, handlers and list translator; retain original package access and original dependency classes; add bounded actual mapping-input provenance for syntax events, selected facts, classification, cached translations, annotations, dispatch and deferred axiom construction. Original parser classes are not replaced. Keep upstream sources, exact transformation recipe and generated sources with the worker. Mapping-input sources include positive typing/parser-decision context, not minimal semantic support. No original source span is fabricated by this layer. Additional identified compatibility correction: for actual rdf:nil class-list roots only, anonymous ObjectIntersectionOf/ObjectUnionOf translators and their existing named-class shorthand handlers produce owl:Thing/owl:Nothing before the upstream nonempty-operand factory rejects them. Non-nil lists retain their original construction/error path; no arbitrary empty set is repaired. Additional identified provenance-role instrumentation: classify positive handler/matcher probes and annotation candidate enumeration as parser context through use-site edges; preserve the intrinsic roles of translation caches and selected annotation values/reification links. The two source roles may overlap and neither is a minimal logical justification. No parser branch or candidate iteration order is changed.",
-  "reason": "Preserve original RDF-to-OWL mapping decisions while carrying occurrence references across destructive reads, deduplication, cached/shared structures and axiom construction; fail explicitly on missing provenance, budget or deadline rather than substitute whole-document attribution. Worker normalization must transfer the references before finish. Exact Turtle/RDFXML lexical instrumentation and public location projection are separate capabilities. The four exact-rdf:nil branches implement the already-supported OWL 2 RDF Mapping Table 15 empty class-expression rules before factory construction; ObjectOneOf keeps its upstream empty-capable construction and existing Worker post-normalization. Construction and positive parser-context roles are propagated from actual execution sites, including streaming probes which populate caches, rather than inferred from final OWL axioms or RDF predicates. Unknown dynamic classification without a local source witness fails instead of borrowing an arbitrary caller frame.",
+  "notice": "Identified EvoPilot modification of four OWLAPI 5.5.1 RDF mapping source files: rename the coupled consumer, translators, handlers and list translator; retain original package access and original dependency classes; add bounded actual mapping-input provenance for syntax events, selected facts, classification, cached translations, annotations, dispatch and deferred axiom construction. Original parser classes are not replaced. Keep upstream sources, exact transformation recipe and generated sources with the worker. Mapping-input sources include positive typing/parser-decision context, not minimal semantic support. No original source span is fabricated by this layer. Additional identified compatibility correction: for actual rdf:nil class-list roots only, anonymous ObjectIntersectionOf/ObjectUnionOf translators and their existing named-class shorthand handlers produce owl:Thing/owl:Nothing before the upstream nonempty-operand factory rejects them. Non-nil lists retain their original construction/error path; no arbitrary empty set is repaired. Additional identified provenance-role instrumentation: classify positive handler/matcher probes and annotation candidate enumeration as parser context through use-site edges; preserve the intrinsic roles of translation caches and selected annotation values/reification links. The two source roles may overlap and neither is a minimal logical justification. No parser branch or candidate iteration order is changed.\nThe owned adapter now corrects nested annotation mapping: each complete matched reification retains a complete structural Annotation; exact current-dispatch attachment receipts authorize consumption. Ordinary and located parsing use the same bounded semantic validation. The original upstream classes remain unchanged.",
+  "reason": "Preserve original RDF-to-OWL mapping decisions while carrying occurrence references across destructive reads, deduplication, cached/shared structures and axiom construction; fail explicitly on missing provenance, budget or deadline rather than substitute whole-document attribution. Worker normalization must transfer the references before finish. Exact Turtle/RDFXML lexical instrumentation and public location projection are separate capabilities. The four exact-rdf:nil branches implement the already-supported OWL 2 RDF Mapping Table 15 empty class-expression rules before factory construction; ObjectOneOf keeps its upstream empty-capable construction and existing Worker post-normalization. Construction and positive parser-context roles are propagated from actual execution sites, including streaming probes which populate caches, rather than inferred from final OWL axioms or RDF predicates. Unknown dynamic classification without a local source witness fails instead of borrowing an arbitrary caller frame. Nested annotations use exact attached reification receipts, with multi-candidate structural preservation and strict unmatched-group rejection rather than whole-ontology value matching.",
   "acceptance": "Static recipe replay only at author freeze; actual compilation, original-parser parity, malformed inputs, source-set completeness, resource limits and formal acceptance remain required.",
   "upstreamLicenseDeclarations": [
     {

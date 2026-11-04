@@ -44,7 +44,24 @@ public final class RDFProvenance {
         public static final int MAX_RESOLUTION = 2_000_000;
         private final long deadline;
         private int occurrences, facts, nodes, edges, axioms, scopes, resolution, ticks;
+        private int sourceRecordCount, sourceReferenceCount;
         public Budget(long deadlineNanos) { deadline = deadlineNanos; }
+        public long deadlineNanos() { return deadline; }
+        /** Internal syntax indexes, shared across documents; not public-output limits. */
+        public void sourceRecords(int amount) {
+            check();
+            if (amount < 0) throw new MappingException("Negative source record charge");
+            long next = (long) sourceRecordCount + amount;
+            if (next > 1_600_000L) throw new LimitException("RDF syntax source record budget exceeded");
+            sourceRecordCount = (int) next;
+        }
+        public void sourceReferences(int amount) {
+            check();
+            if (amount < 0) throw new MappingException("Negative source reference charge");
+            long next = (long) sourceReferenceCount + amount;
+            if (next > 4_000_000L) throw new LimitException("RDF syntax source reference budget exceeded");
+            sourceReferenceCount = (int) next;
+        }
         public void check() {
             if (System.nanoTime() - deadline >= 0) {
                 throw new TimeoutException("RDF provenance exceeded the request deadline");
@@ -458,17 +475,24 @@ public final class RDFProvenance {
             }
         }
         public void select(IRI candidate) {
+            selectAll(candidate == null ? List.of() : List.of(candidate));
+        }
+        /** Each complete selected annotation remains a distinct structural value. */
+        public void selectAll(Collection<IRI> candidates) {
             if (!enabled()) return;
             if (selected || current != scope) throw new MappingException("Annotation selection already completed");
             selected = true; unfinishedSelections--;
-            if (candidate == null) return;
-            Node chosen = matching.get(candidate);
-            Set<Node> links = relations.get(new RelationKey("ANNOTATED_SOURCE", source, candidate));
-            if (chosen == null || !chosen.closed || links == null || scope.parent == null) {
-                throw new MappingException("Selected annotation relation has no actual matching observation");
+            Set<IRI> unique = new HashSet<>();
+            for (IRI candidate : candidates) {
+                if (candidate == null || !unique.add(candidate)) throw new MappingException("Duplicate selected annotation relation");
+                Node chosen = matching.get(candidate);
+                Set<Node> links = relations.get(new RelationKey("ANNOTATED_SOURCE", source, candidate));
+                if (chosen == null || !chosen.closed || links == null || scope.parent == null) {
+                    throw new MappingException("Selected annotation relation has no actual matching observation");
+                }
+                edge(scope.parent.node, chosen, PRESERVE);
+                for (Node link : links) edge(scope.parent.node, link, PRESERVE);
             }
-            edge(scope.parent.node, chosen, PRESERVE);
-            for (Node link : links) edge(scope.parent.node, link, PRESERVE);
         }
         @Override public void close() { scope.close(); }
     }
