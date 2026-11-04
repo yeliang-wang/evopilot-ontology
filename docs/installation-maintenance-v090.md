@@ -102,7 +102,9 @@ conflicts, conflicting published asset/version identities, unknown schemas and
 unfinished tasks are refused. Current project identities remain intact, and each
 project revision advances once beyond the maximum retained revision. Selected
 snapshot intent/source/model/expectation heads become the editable draft heads;
-retained review and delivery heads remain selected. Restoring an older draft
+retained review and delivery heads remain selected, including their absence.
+Snapshot-only heads are never inserted into an authoritative retained selection;
+their immutable review/delivery records remain available as history. Restoring an older draft
 therefore cannot restore an approval superseded by a later rejection. Projects
 created only after the selected snapshot retain their history with no selected
 draft intent. No receipt, audit sequence or published document is rewritten to
@@ -183,6 +185,38 @@ The service context identifies its decision heads as
 that no later decision existed. A retained-current recovery instead identifies
 the selected heads as `RETAINED_CURRENT`. These labels describe the retained
 source and do not add business or software-release authority.
+
+Newly prepared recovery identities also bind `decisionAuditFloor`. Lost-owner
+recovery sets it to the highest audit sequence in the selected snapshot. A new
+delivery must have an explicit reviewer decision whose original receipt and
+audit entry match its exact owner, project, principal, candidate, input, result,
+revision and hashes, at a sequence above that floor. Replaying an old approval
+receipt cannot satisfy this requirement. Missing, duplicate or mismatched proof
+leaves the decision unconfirmed and `delivery.record` refuses it with
+`REVIEW_RECOVERY_REQUIRED`. The operator credential still cannot submit reviews.
+
+A retained-current restore carries the existing floor forward. A reviewer
+decision that was confirmed after the earlier loss therefore remains usable
+across that restore, even though the request prefix changes. Another lost-owner
+restore establishes a new floor and requires new explicit review for subsequent
+delivery. Restoring authoritative ordinary v1 state uses a null floor and adds
+no loss-related review requirement. Revoking a reviewer's credential prevents
+future authenticated actions; it does not revoke a recorded business decision.
+
+Legacy completed v2 recovery identities without a floor remain readable. Their
+new deliveries require an exact review receipt/audit in the current recovery
+generation. A subsequent restore preserves their history and binds the highest
+retained audit sequence as a conservative new floor; it does not guess the old
+loss boundary. Incompatible unfinished preparation state is preserved and
+refused rather than rewritten. Completed historical receipts are unchanged.
+
+`review.inspect` reports `REVIEW_REQUIRED_AFTER_RECOVERY` for an unconfirmed
+snapshot decision. Review-report pages, delivery inspection and export pages
+expose `reviewRecovery` alongside the original content. This metadata describes
+the recovery proof for that exact review, not full candidate readiness or a
+software-release decision. Existing delivery receipts still replay, and exported
+bundle bytes remain identical; recovery does not retroactively rewrite or
+invalidate an immutable historical delivery.
 
 The recovery namespace also applies to new backup requests, toolchain bindings,
 worker rotation, worker cleanup and task reconciliation. Each command first

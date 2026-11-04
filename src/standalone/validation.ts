@@ -50,8 +50,9 @@ export function validateIdentity(value: unknown): asserts value is WorkspaceIden
   exact(value, ['schema','workspaceId','serviceId','stateVersion','createdAt',...(value.schema==='ontology-workspace/v2'?['recovery']:[])]);
   id(value.workspaceId); id(value.serviceId); timestamp(value.createdAt);
   if(value.schema==='ontology-workspace/v2'){
-    const r=value.recovery;exact(r,['schema','generation','requestId','planDigest','snapshotDigest','retainedDigest','credentialPolicy']);id(r.requestId);digest(r.planDigest);digest(r.snapshotDigest);if(r.retainedDigest!==null)digest(r.retainedDigest);
+    const r=value.recovery;exact(r,['schema','generation','requestId','planDigest','snapshotDigest','retainedDigest','credentialPolicy'],['decisionAuditFloor']);id(r.requestId);digest(r.planDigest);digest(r.snapshotDigest);if(r.retainedDigest!==null)digest(r.retainedDigest);
     if(r.schema!=='ontology-workspace-recovery/v1'||typeof r.generation!=='string'||!/^[a-f0-9]{32}$/.test(r.generation)||r.credentialPolicy!==(r.retainedDigest===null?'REKEY_LOST_OWNER':'CURRENT'))fail('INVALID_INPUT','Invalid owner recovery identity');
+    if(Object.hasOwn(r,'decisionAuditFloor')&&(r.decisionAuditFloor===null?r.retainedDigest===null:!Number.isSafeInteger(r.decisionAuditFloor)||(r.decisionAuditFloor as number)<0))fail('INVALID_INPUT','Invalid recovery decision audit floor');
   }
 }
 export function timestamp(value: unknown): asserts value is string {

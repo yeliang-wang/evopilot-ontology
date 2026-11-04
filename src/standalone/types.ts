@@ -6,6 +6,7 @@ interface WorkspaceBase {
 export type WorkspaceRecovery = {
   schema:'ontology-workspace-recovery/v1';generation:string;requestId:string;planDigest:string;
   snapshotDigest:string;retainedDigest:string|null;credentialPolicy:'CURRENT'|'REKEY_LOST_OWNER';
+  decisionAuditFloor?:number|null;
 };
 export type WorkspaceIdentity = WorkspaceBase & ({schema:'ontology-workspace/v1'}|{schema:'ontology-workspace/v2';recovery:WorkspaceRecovery});
 export interface Grant {

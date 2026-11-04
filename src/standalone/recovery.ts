@@ -12,5 +12,6 @@ export function requireFreshRecoveryRequest(identity:WorkspaceIdentity,requestId
 }
 export function recoveryContext(identity:WorkspaceIdentity):Json {
   if(identity.schema==='ontology-workspace/v1')return null;
-  return {...identity.recovery,requestIdPrefix:recoveryRequestPrefix(identity),missingOlderReceipts:'UNKNOWN',draftHeadPolicy:'SELECTED_SNAPSHOT',decisionHeadPolicy:identity.recovery.retainedDigest===null?'SELECTED_SNAPSHOT_LATER_DECISIONS_UNKNOWN':'RETAINED_CURRENT',newRequestSuffixMaximum:62,automaticRedispatch:false,authority:false};
+  const floor=identity.recovery.decisionAuditFloor;
+  return {...identity.recovery,requestIdPrefix:recoveryRequestPrefix(identity),missingOlderReceipts:'UNKNOWN',draftHeadPolicy:'SELECTED_SNAPSHOT',decisionHeadPolicy:identity.recovery.retainedDigest===null?'SELECTED_SNAPSHOT_LATER_DECISIONS_UNKNOWN':'RETAINED_CURRENT',decisionFreshnessPolicy:floor===null?'NO_LOSS_RESTRICTION':floor===undefined?'CURRENT_RECOVERY_REVIEW_REQUIRED':'REVIEW_AFTER_RETAINED_AUDIT',newRequestSuffixMaximum:62,automaticRedispatch:false,authority:false};
 }

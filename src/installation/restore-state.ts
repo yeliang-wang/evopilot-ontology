@@ -76,6 +76,7 @@ function sources<T>(input:RestoreStateInput,use:(snapshot:Source,retained:Source
  * deliveries remain selected, so restoring drafts cannot resurrect approval. */
 function* expectedRows(l:Layout,a:Source,b:Source|null):Generator<Row> {
   if(DRAFT_HEADS.has(l.name)){yield* rows(a.db,l);return;}
+  if(DECISION_HEADS.has(l.name)){yield* rows((b??a).db,l);return;}
   if(l.name==='project_heads'){
     const projects:Layout={name:'projects',columns:['id','label','revision','created_at'],keys:['id']};
     for(const p of expectedRows(projects,a,b)){const head=a.db.prepare('SELECT * FROM project_heads WHERE project_id=?').get(p.id as string);yield head??{project_id:p.id,intent_digest:null};}return;
@@ -86,8 +87,7 @@ function* expectedRows(l:Layout,a:Source,b:Source|null):Generator<Row> {
     if(l.name==='projects'){
       if(current&&(current.label!==old.label||current.created_at!==old.created_at))fail('RESTORE_HISTORY_CONFLICT','Project identity has conflicting immutable history',409);
       const revision=Math.max(Number(old.revision),Number(current?.revision??0))+1;if(!Number.isSafeInteger(revision)||revision<1)fail('STATE_LIMIT','Recovery revision exhausted',409);yield {...old,revision};
-    }else if(DECISION_HEADS.has(l.name))yield current??old;
-    else{if(current&&!same(old,current))fail('RESTORE_HISTORY_CONFLICT','Conflicting immutable rows in '+l.name+' were preserved',409);yield old;}
+    }else{if(current&&!same(old,current))fail('RESTORE_HISTORY_CONFLICT','Conflicting immutable rows in '+l.name+' were preserved',409);yield old;}
   }
   if(b)for(const current of rows(b.db,l))if(!lookup(a.db,l,current)){
     if(l.name==='projects'){const revision=Number(current.revision)+1;if(!Number.isSafeInteger(revision)||revision<1)fail('STATE_LIMIT','Recovery revision exhausted',409);yield {...current,revision};}
@@ -103,6 +103,7 @@ function selectedCredentials(s:Source):{raw:string;credentials:Credentials;opera
 }
 function planFor(input:RestoreStateInput,a:Source,b:Source|null,layout:Layout[]):StatePlan {
   const parent=outsideSource(dirname(input.root));if(parent!==dirname(input.root))fail('UNSAFE_PATH','Canonical private preparation parent required');
+  decisionFloor(a,b);
   const counts:Record<string,number>={};let count=0;
   for(const l of layout){let n=0;for(const row of expectedRows(l,a,b)){values(row,l.columns);n++;if(++count>MAX_ROWS)fail('RESTORE_LIMIT','Merged state exceeds its row budget',409);}counts[l.name]=n;}
   if(counts.projects>LIMITS.projects||counts.receipts>LIMITS.receipts||counts.native_reasoning_tasks>4096)fail('RESTORE_LIMIT','Merged owner exceeds its project, receipt or formal-task budget',409);
@@ -119,7 +120,19 @@ function readPlan(root:string):StatePlan {
   if(p.schema!=='ontology-restore-state-plan/v1'||p.root!==root||n!==p.rows||n>MAX_ROWS||p.credentialPolicy!==(p.retained===null?'REKEY_LOST_OWNER':'CURRENT'))fail('RESTORE_STATE','Invalid preparation plan',409);return p as unknown as StatePlan;
 }
 const barrier=(p:StatePlan)=>({schema:'ontology-restore-state-barrier/v1',requestId:p.requestId,reportDigest:backupHash(p),root:p.root,activation:'BLOCKED'});
-function identityFor(p:StatePlan,a:Source):WorkspaceIdentity {return {schema:'ontology-workspace/v2',workspaceId:p.workspaceId,serviceId:p.serviceId,stateVersion:14,createdAt:a.identity.createdAt,recovery:{schema:'ontology-workspace-recovery/v1',generation:p.generation,requestId:p.requestId,planDigest:backupHash(p),snapshotDigest:p.snapshot.manifestDigest,retainedDigest:p.retained?.manifestDigest??null,credentialPolicy:p.credentialPolicy}};}
+function decisionFloor(a:Source,b:Source|null):number|null {
+  const current=b??a,max=Number(current.db.prepare('SELECT coalesce(max(sequence),0) AS n FROM audit').get()!.n);
+  if(!Number.isSafeInteger(max)||max<0)fail('RESTORE_STATE','Invalid retained audit sequence',409);
+  const prior=current.identity.schema==='ontology-workspace/v2'?current.identity.recovery.decisionAuditFloor:null;
+  if(typeof prior==='number'&&prior>max)fail('RESTORE_STATE','Recovery decision floor exceeds retained audit history',409);
+  if(!b)return max;
+  if(b.identity.schema==='ontology-workspace/v1')return null;
+  const floor=b.identity.recovery.decisionAuditFloor;
+  // A legacy recovered identity did not bind its original loss boundary.
+  // Preserve its history and require a new explicit review, never guess it.
+  return floor===undefined?max:floor;
+}
+function identityFor(p:StatePlan,a:Source,b:Source|null):WorkspaceIdentity {return {schema:'ontology-workspace/v2',workspaceId:p.workspaceId,serviceId:p.serviceId,stateVersion:14,createdAt:a.identity.createdAt,recovery:{schema:'ontology-workspace-recovery/v1',generation:p.generation,requestId:p.requestId,planDigest:backupHash(p),snapshotDigest:p.snapshot.manifestDigest,retainedDigest:p.retained?.manifestDigest??null,credentialPolicy:p.credentialPolicy,decisionAuditFloor:decisionFloor(a,b)}};}
 function createEmpty(file:string):void {if(!workerFilePresent(file)){const fd=openSync(file,'wx',0o600);try{fsyncSync(fd);}finally{closeSync(fd);}syncRestoreDirectory(dirname(file));}privatePath(file);}
 function compareRows(db:DatabaseSync,a:Source,b:Source|null,layout:Layout[],p:StatePlan):void {
   for(const l of layout){if(Number(db.prepare('SELECT count(*) AS n FROM '+l.name).get()!.n)!==p.counts[l.name])fail('RESTORE_STATE_CONFLICT','Prepared row count differs',409);for(const row of expectedRows(l,a,b)){const saved=lookup(db,l,row);if(!saved||!same(saved,row))fail('RESTORE_STATE_CONFLICT','Prepared history or selector differs',409);}}
@@ -226,7 +239,7 @@ export function prepareRestoreState(input:RestoreStateInput,expectedReportDigest
       if(workerFilePresent(join(p.root,'manifest.json')))return {receipt:completion(p).receipt,replayed:true,verification:'NOT_RUN',activation:'BLOCKED',authority:false};
       checkLayout(p,b??a,false);
       const root=join(p.root,'workspace');if(!workerFilePresent(root)){mkdirSync(root,{mode:0o700});syncRestoreDirectory(p.root);}privatePath(root,true);writeBackupJSON(join(root,RESTORE_STAGE_BARRIER),barrier(p));
-      const identity=identityFor(p,a);validateIdentity(identity);prepareDatabase(join(root,FILES.db),a,b,layout,p,identity,reference);copyWorkspaceFiles(p,a,b,identity);
+      const identity=identityFor(p,a,b);validateIdentity(identity);prepareDatabase(join(root,FILES.db),a,b,layout,p,identity,reference);copyWorkspaceFiles(p,a,b,identity);
       createEmpty(join(root,FILES.lease));const lease=privateLease(join(root,FILES.lease),'WORKSPACE_BUSY','Another preparation owns the candidate');lease.close();
       for(const s of [a,...(b?[b]:[])])readVerifiedRestoreStage(s.selection.root,s.selection.manifestDigest);
       checkLayout(p,b??a,true);

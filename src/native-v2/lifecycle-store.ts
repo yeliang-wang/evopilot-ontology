@@ -14,6 +14,7 @@ import {LIFECYCLE_SCHEMA_DIGEST,checkCandidate,checkDecision,checkBundle} from '
 import {makeCandidate,reviewReport,verifyDecision,makeBundle,verifyDeliveryBundle} from './delivery-bundle.js';
 import type {CandidateMaterial} from './delivery-bundle.js';
 import type {ValidationPlan} from './validation-runner.js';
+import {reviewRecovery} from './review-recovery.js';
 
 export const LIFECYCLE_TABLES=`
  CREATE TABLE native_review_candidates(project_id TEXT NOT NULL,asset_id TEXT NOT NULL,digest TEXT NOT NULL,schema_digest TEXT NOT NULL,document TEXT NOT NULL,revision INTEGER NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(project_id,asset_id,digest));
@@ -83,7 +84,8 @@ export function lifecycleStore(db:DatabaseSync,identity:WorkspaceIdentity,tools:
   function inspect(projectId:string,input:unknown):Json {
     exact(input,['assetId','candidateDigest']);id(input.assetId);digest(input.candidateDigest);const {candidate,material:m}=loadCandidate(projectId,input.assetId,input.candidateDigest),head=decisionHead(projectId,input.assetId,input.candidateDigest),decision=head?loadDecision(projectId,input.assetId,head):null;
     if(decision)verifyDecision(decision,candidate,m);
-    return {candidate:candidate as unknown as Json,candidateDigest:input.candidateDigest,reportDigest:hash(reviewReport(candidate,m)),current:current(projectId,candidate,m),reviewDigest:head,decision:decision as unknown as Json,status:decision?decision.decision==='APPROVE'?'APPROVED':'REJECTED':'AWAITING_DECISION',softwareReleaseAuthority:false};
+    const recovery=reviewRecovery(db,identity,projectId,input.assetId,head);
+    return {candidate:candidate as unknown as Json,candidateDigest:input.candidateDigest,reportDigest:hash(reviewReport(candidate,m)),current:current(projectId,candidate,m),reviewDigest:head,decision:decision as unknown as Json,reviewRecovery:recovery,status:decision?recovery.reviewRequired?'REVIEW_REQUIRED_AFTER_RECOVERY':decision.decision==='APPROVE'?'APPROVED':'REJECTED':'AWAITING_DECISION',softwareReleaseAuthority:false};
   }
   function page(content:string,input:Record<string,unknown>,metadata:Json):Json {
     if(!Number.isSafeInteger(input.offset)||(input.offset as number)<0||!Number.isSafeInteger(input.maxBytes)||(input.maxBytes as number)<4||(input.maxBytes as number)>65536)fail('INVALID_INPUT','Bounded UTF-8 page required');
@@ -93,11 +95,12 @@ export function lifecycleStore(db:DatabaseSync,identity:WorkspaceIdentity,tools:
   }
   function reportRead(projectId:string,input:unknown):Json {
     exact(input,['assetId','candidateDigest','offset','maxBytes']);id(input.assetId);digest(input.candidateDigest);const {candidate,material:m}=loadCandidate(projectId,input.assetId,input.candidateDigest),report=reviewReport(candidate,m);
-    return page(canonical(report),input,{candidateDigest:input.candidateDigest,reportDigest:hash(report),current:current(projectId,candidate,m)});
+    return page(canonical(report),input,{candidateDigest:input.candidateDigest,reportDigest:hash(report),current:current(projectId,candidate,m),reviewRecovery:reviewRecovery(db,identity,projectId,input.assetId,decisionHead(projectId,input.assetId,input.candidateDigest))});
   }
   function deliver(projectId:string,principalId:string,input:unknown,revision:number,recordedAt:string):Json {
     tx();exact(input,['assetId','candidateDigest','reviewDigest']);id(input.assetId);digest(input.candidateDigest);digest(input.reviewDigest);const {candidate,material:m}=loadCandidate(projectId,input.assetId,input.candidateDigest);requireCurrent(projectId,candidate,m);
     if(decisionHead(projectId,input.assetId,input.candidateDigest)!==input.reviewDigest)fail('STALE_REVIEW','Delivery requires the current decision for this candidate',409);
+    if(reviewRecovery(db,identity,projectId,input.assetId,input.reviewDigest).reviewRequired)fail('REVIEW_RECOVERY_REQUIRED','Retained review cannot prove the latest decision after recovery; an explicit new reviewer decision for this exact candidate is required',409);
     const decision=loadDecision(projectId,input.assetId,input.reviewDigest),bundle=makeBundle(candidate,decision,m,principalId,recordedAt),deliveryDigest=hash(bundle as unknown as Json);
     if(db.prepare('SELECT digest FROM native_deliveries WHERE project_id=? AND asset_id=? AND version=?').get(projectId,input.assetId,candidate.identity.version))fail('VERSION_EXISTS','Asset version is already delivered',409);
     db.prepare('INSERT INTO native_deliveries VALUES(?,?,?,?,?,?,?,?)').run(projectId,input.assetId,candidate.identity.version,deliveryDigest,LIFECYCLE_SCHEMA_DIGEST,canonical(bundle as unknown as Json),revision,recordedAt);
@@ -113,11 +116,11 @@ export function lifecycleStore(db:DatabaseSync,identity:WorkspaceIdentity,tools:
   function deliveryInspect(projectId:string,input:unknown):Json {
     exact(input,['assetId','deliveryDigest']);id(input.assetId);digest(input.deliveryDigest);const bundle=loadDelivery(projectId,input.assetId,input.deliveryDigest),{parts,...metadata}=bundle;
     const candidate=JSON.parse(parts.find(p=>p.kind==='candidate')!.content) as ReviewCandidate,model=models.load(projectId,input.assetId,candidate.modelDigest);
-    return {...metadata,deliveryDigest:input.deliveryDigest,isLatestDelivery:deliveryHead(projectId,input.assetId)===input.deliveryDigest,currentModelBinding:models.current(projectId,model),parts:parts.map(({content,...p})=>({...p,bytes:Buffer.byteLength(content)})),currentDecisionMatches:decisionHead(projectId,input.assetId,bundle.candidateDigest)===bundle.reviewDigest,authority:false} as unknown as Json;
+    return {...metadata,deliveryDigest:input.deliveryDigest,isLatestDelivery:deliveryHead(projectId,input.assetId)===input.deliveryDigest,currentModelBinding:models.current(projectId,model),parts:parts.map(({content,...p})=>({...p,bytes:Buffer.byteLength(content)})),currentDecisionMatches:decisionHead(projectId,input.assetId,bundle.candidateDigest)===bundle.reviewDigest,reviewRecovery:reviewRecovery(db,identity,projectId,input.assetId,bundle.reviewDigest),authority:false} as unknown as Json;
   }
   function exportRead(projectId:string,input:unknown):Json {
     exact(input,['assetId','deliveryDigest','offset','maxBytes']);id(input.assetId);digest(input.deliveryDigest);const bundle=loadDelivery(projectId,input.assetId,input.deliveryDigest);
-    return page(canonical(bundle as unknown as Json),input,{deliveryDigest:input.deliveryDigest,identity:{...bundle.identity},visibility:'private'});
+    return page(canonical(bundle as unknown as Json),input,{deliveryDigest:input.deliveryDigest,identity:{...bundle.identity},visibility:'private',reviewRecovery:reviewRecovery(db,identity,projectId,input.assetId,bundle.reviewDigest)});
   }
   function list(projectId:string,input:unknown,kind:'review'|'delivery'):Json {
     tx();exact(input,['assetId','afterDigest','limit']);id(input.assetId);if(input.afterDigest!==null)digest(input.afterDigest);if(!Number.isSafeInteger(input.limit)||(input.limit as number)<1||(input.limit as number)>100)fail('INVALID_INPUT','Page limit must be 1–100');
