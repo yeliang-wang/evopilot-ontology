@@ -45,9 +45,14 @@ export function canonical(value: Json): string {
 export function hashBytes(value: string | Buffer): string { return 'sha256:' + createHash('sha256').update(value).digest('hex'); }
 export function hash(value: Json): string { return hashBytes(canonical(value)); }
 export function validateIdentity(value: unknown): asserts value is WorkspaceIdentity {
-  exact(value, ['schema','workspaceId','serviceId','stateVersion','createdAt']);
-  if (value.schema !== 'ontology-workspace/v1' || value.stateVersion !== 14) fail('UNSUPPORTED_STATE', 'Independent Ontology state v14 required');
+  object(value);
+  if(!['ontology-workspace/v1','ontology-workspace/v2'].includes(String(value.schema))||value.stateVersion!==14)fail('UNSUPPORTED_STATE','Independent Ontology state v14 and a known workspace identity required');
+  exact(value, ['schema','workspaceId','serviceId','stateVersion','createdAt',...(value.schema==='ontology-workspace/v2'?['recovery']:[])]);
   id(value.workspaceId); id(value.serviceId); timestamp(value.createdAt);
+  if(value.schema==='ontology-workspace/v2'){
+    const r=value.recovery;exact(r,['schema','generation','requestId','planDigest','snapshotDigest','retainedDigest','credentialPolicy']);id(r.requestId);digest(r.planDigest);digest(r.snapshotDigest);if(r.retainedDigest!==null)digest(r.retainedDigest);
+    if(r.schema!=='ontology-workspace-recovery/v1'||typeof r.generation!=='string'||!/^[a-f0-9]{32}$/.test(r.generation)||r.credentialPolicy!==(r.retainedDigest===null?'REKEY_LOST_OWNER':'CURRENT'))fail('INVALID_INPUT','Invalid owner recovery identity');
+  }
 }
 export function timestamp(value: unknown): asserts value is string {
   text(value, 32);

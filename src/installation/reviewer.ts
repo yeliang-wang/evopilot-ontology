@@ -5,6 +5,7 @@ import {openWorkspace,privateRead,FILES} from '../standalone/workspace.js';
 import {writePrivate,readPrivate} from './files.js';
 import {id,timestamp,hashBytes,exact,hash,validateCredentials} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
+import {requireFreshRecoveryRequest} from '../standalone/recovery.js';
 import type {Grant,Json} from '../standalone/types.js';
 
 /** Local operator only. Requires the owner to be stopped; never reachable by
@@ -14,6 +15,7 @@ export function grantReviewer(input:{root:string;workspaceId:string;serviceId:st
   const store=openWorkspace(input.root,input);
   try{
     const credentials=store.credentials(),grantFile=join(store.root,'reviewer-grant-'+input.grantId+'.json'),credentialFile=join(store.root,'reviewer-token-'+input.grantId);
+    if(!credentials.grants.some(g=>g.id===input.grantId))requireFreshRecoveryRequest(store.identity,input.grantId);
     const requested={workspaceId:input.workspaceId,serviceId:input.serviceId,projectId:input.projectId,principalId:input.principalId,grantId:input.grantId,expiresAt:input.expiresAt};
     if(!existsSync(grantFile)){
       if(Date.parse(input.expiresAt)<=Date.now()||Date.parse(input.expiresAt)>Date.now()+30*86400000)fail('INVALID_INPUT','Reviewer grant expiry must be within the next 30 days');

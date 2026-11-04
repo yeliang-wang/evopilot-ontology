@@ -2,10 +2,12 @@
 
 This is P4 development behavior, not a release, actual Host acceptance or a
 completed MAINT-01 result. Consistent stopped-owner **backup and byte verification**
-and protected restore candidate materialization are implemented. Restore activation,
-upgrade, customization merge, credential reconciliation,
-post-restore unknown-request protection and selected test-asset reset remain
-required work. A verified backup alone does not establish restore capability.
+and protected restore candidate materialization are implemented. Internal inactive
+state preparation now reconciles selected history and credentials and installs
+request-generation guards. Owner activation, current-owner freshness verification,
+historical worker storage activation, upgrade, customization merge and selected
+test-asset reset remain required work. A verified backup or prepared database
+alone does not establish restore capability.
 
 ## Protected restore candidate
 
@@ -70,6 +72,75 @@ or restore abort that deletes partial files. Missing post-backup receipts, newer
 immutable history and current credential revocations/rotations must be reconciled
 before a future activation command can permit new work. Staging does not satisfy
 those obligations, full restore/upgrade acceptance or MAINT-01.
+
+## Inactive state reconciliation
+
+The internal operator module `dist/installation/restore-state.js` prepares a
+separate, blocked workspace from a verified selected stage and, where available,
+a verified retained-current stage of the same owner and original locations. Its
+`inspectRestoreState`, `prepareRestoreState` and `verifyPreparedRestoreState`
+functions are preparation primitives; there is no public activation command yet.
+The future activation workflow must stop the current owner, bind its latest
+state and credentials, and prove that the retained stage still represents that
+owner. Merely supplying a stage as `retained` is not proof of freshness.
+
+Preparation preserves the exact original receipt, audit, intent, model, source,
+formal-task, review and immutable delivery rows from both sources. Same-key
+conflicts, conflicting published asset/version identities, unknown schemas and
+unfinished tasks are refused. Current project identities remain intact, and each
+project revision advances once beyond the maximum retained revision. Selected
+snapshot intent/source/model/expectation heads become the editable draft heads;
+retained review and delivery heads remain selected. Restoring an older draft
+therefore cannot restore an approval superseded by a later rejection. Projects
+created only after the selected snapshot retain their history with no selected
+draft intent. No receipt, audit sequence or published document is rewritten to
+match the recovery revision.
+
+With a retained-current stage, credential, token and reviewer issuance bytes are
+copied exactly, including revocations and expired credentials. In explicit
+lost-owner preparation, old grants are retired or revoked; one new operator grant
+has only read/write access to the installation project, never review authority.
+It requires an explicit expiry within 30 days when admitted. Private token writes
+resume an existing random prefix and never return token material in reports.
+Historical reviewer issuance files do not authorize missing grants to be reissued.
+
+A prepared workspace uses `ontology-workspace/v2` identity metadata while keeping
+the physical business database at state version 14. The identity records the
+selected/retained digests, credential policy, preparation request and a fresh
+128-bit generation. The operator admission layer must generate and durably bind
+that generation once; exact retries reuse it. A generation already present in
+either source identity or its receipts is refused. Old readers that accept only
+identity v1 cannot silently open recovered state.
+
+Authenticated discovery exposes the current request prefix `r<generation>.`.
+Known original business requests still replay their exact receipts after current
+authorization checks. Missing requests outside the current generation return
+`REQUEST_OUTCOME_UNKNOWN`; they are never interpreted as unexecuted work. Truly
+new requests use the advertised prefix plus a nonempty suffix, at most 62
+characters. Do not rename an uncertain old request into the new generation.
+The same guard applies to new reviewer grant IDs, preventing an old partially
+written issuance file from reviving authority. A second recovery preserves known
+earlier-generation receipts and fences missing outcomes from both older periods.
+The prefix supplies no authentication, permission, business decision or automatic
+redispatch authority.
+
+Database reconciliation is one full-synchronous SQLite transaction. It accepts
+only the canonical state-14 schema, at most 500,000 aggregate table rows, the
+existing project/receipt/task limits, and a 64 MiB result database. An interrupted
+empty transaction can resume; a committed result must match every expected row
+and the exact recovery identity before retry continues. Unknown or corrupt
+partial state is preserved, not reset. File copying resumes exact prefixes.
+Durable barriers precede candidate content and remain after preparation. A
+manifest binds the result bytes, modes and new physical file identities; exact
+completion replay returns the original receipt with `verification: NOT_RUN`.
+Independent verification checks the full prepared inventory without its source
+stages. Neither replay nor verification removes a barrier.
+
+Final activation must also retain worker evidence newer than the selected
+snapshot, resolve physical journal storage through explicit lineage, verify
+external dependencies and safely switch installation/workspace locations.
+Prepared database rows alone cannot establish those guarantees. All preparation
+receipts therefore retain `activation: BLOCKED`; MAINT-01 remains unevaluated.
 
 ## Cold backup workflow
 
@@ -232,3 +303,16 @@ space release and resume, rejection of a backup corrupted after a disk-full
 failure, and actual installed-CLI SIGKILL. It checks that the original owner stays
 unchanged and the candidate stays inactive; it does not test activation or claim
 that missing historical outcomes have been resolved.
+
+State-reconciliation tests cover current revocations/expiry, lost-owner rekey,
+exact old receipts, newer model/review/delivery history, repeated recovery and
+unknown-request refusal. Isolated service tests explicitly remove a fixture
+barrier to exercise those guards; that test-only step is not product activation.
+They distinguish synthetic metadata interruptions from actual process death
+after database commit. The Linux `tests/acceptance/v090/restore-state-faults.mjs`
+collector uses a separately owned 128 MiB tmpfs fixture to check actual SQLite
+disk-full rollback, exact recovery after fixture space release, and SIGKILL
+during post-commit copying. Corrupt prefixes must remain unchanged and fail;
+only explicit fixture repair permits that test to resume. These checks leave
+the original owner unchanged and the candidate inactive, and do not establish
+current-owner freshness, activation, actual Codex Host acceptance or MAINT-01.

@@ -1,8 +1,13 @@
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
-export interface WorkspaceIdentity {
-  schema: 'ontology-workspace/v1'; workspaceId: string; serviceId: string;
+interface WorkspaceBase {
+  workspaceId: string; serviceId: string;
   stateVersion: 14; createdAt: string;
 }
+export type WorkspaceRecovery = {
+  schema:'ontology-workspace-recovery/v1';generation:string;requestId:string;planDigest:string;
+  snapshotDigest:string;retainedDigest:string|null;credentialPolicy:'CURRENT'|'REKEY_LOST_OWNER';
+};
+export type WorkspaceIdentity = WorkspaceBase & ({schema:'ontology-workspace/v1'}|{schema:'ontology-workspace/v2';recovery:WorkspaceRecovery});
 export interface Grant {
   id: string; principalId: string; tokenHash: string; projectIds: string[];
   permissions: ('read' | 'write' | 'review')[]; expiresAt: string; revoked: boolean;

@@ -13,6 +13,22 @@ import { LIFECYCLE_TABLES } from '../native-v2/lifecycle-store.js';
 import { VIEW_TABLES } from '../native-v2/view-store.js';
 import { TASK_TABLES } from '../native-v2/tasks.js';
 
+/** Canonical state-v14 DDL shared by initialization and explicit recovery. */
+export const WORKSPACE_TABLES=`
+      CREATE TABLE workspace(singleton INTEGER PRIMARY KEY CHECK(singleton=1),identity TEXT NOT NULL);
+      CREATE TABLE projects(id TEXT PRIMARY KEY,label TEXT NOT NULL,revision INTEGER NOT NULL,created_at TEXT NOT NULL);
+      CREATE TABLE intents(project_id TEXT NOT NULL,digest TEXT NOT NULL,revision INTEGER NOT NULL,document TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(project_id,digest),FOREIGN KEY(project_id) REFERENCES projects(id));
+      CREATE TABLE project_heads(project_id TEXT PRIMARY KEY,intent_digest TEXT,FOREIGN KEY(project_id) REFERENCES projects(id));
+      CREATE TABLE receipts(project_id TEXT NOT NULL,principal_id TEXT NOT NULL,request_id TEXT NOT NULL,digest TEXT NOT NULL,receipt TEXT NOT NULL,PRIMARY KEY(project_id,principal_id,request_id));
+      CREATE TABLE audit(sequence INTEGER PRIMARY KEY,project_id TEXT NOT NULL,principal_id TEXT NOT NULL,request_id TEXT NOT NULL,operation TEXT NOT NULL,request_digest TEXT NOT NULL,receipt_digest TEXT NOT NULL,recorded_at TEXT NOT NULL);
+      ${SOURCE_TABLES}
+      ${EXPECTATION_TABLES}
+      ${MODEL_TABLES}
+      ${TASK_TABLES}
+      ${VIEW_TABLES}
+      ${LIFECYCLE_TABLES}
+`;
+
 /** Local operator only: never imported by the domain service or HTTP dispatcher. */
 export function initializeWorkspace(input: {root: string; workspaceId: string; projectId: string; principalId: string; serviceId?:string}) {
   id(input.workspaceId); id(input.projectId); id(input.principalId);
@@ -31,18 +47,7 @@ export function initializeWorkspace(input: {root: string; workspaceId: string; p
   const db=new DatabaseSync(join(root,FILES.db));
   try {
     db.exec(`PRAGMA synchronous=FULL; BEGIN IMMEDIATE;
-      CREATE TABLE workspace(singleton INTEGER PRIMARY KEY CHECK(singleton=1),identity TEXT NOT NULL);
-      CREATE TABLE projects(id TEXT PRIMARY KEY,label TEXT NOT NULL,revision INTEGER NOT NULL,created_at TEXT NOT NULL);
-      CREATE TABLE intents(project_id TEXT NOT NULL,digest TEXT NOT NULL,revision INTEGER NOT NULL,document TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(project_id,digest),FOREIGN KEY(project_id) REFERENCES projects(id));
-      CREATE TABLE project_heads(project_id TEXT PRIMARY KEY,intent_digest TEXT,FOREIGN KEY(project_id) REFERENCES projects(id));
-      CREATE TABLE receipts(project_id TEXT NOT NULL,principal_id TEXT NOT NULL,request_id TEXT NOT NULL,digest TEXT NOT NULL,receipt TEXT NOT NULL,PRIMARY KEY(project_id,principal_id,request_id));
-      CREATE TABLE audit(sequence INTEGER PRIMARY KEY,project_id TEXT NOT NULL,principal_id TEXT NOT NULL,request_id TEXT NOT NULL,operation TEXT NOT NULL,request_digest TEXT NOT NULL,receipt_digest TEXT NOT NULL,recorded_at TEXT NOT NULL);
-      ${SOURCE_TABLES}
-      ${EXPECTATION_TABLES}
-      ${MODEL_TABLES}
-      ${TASK_TABLES}
-      ${VIEW_TABLES}
-      ${LIFECYCLE_TABLES}
+      ${WORKSPACE_TABLES}
       PRAGMA user_version=${STATE_VERSION};`);
     db.prepare('INSERT INTO workspace VALUES(1,?)').run(raw); db.exec('COMMIT');
   } finally {db.close();}

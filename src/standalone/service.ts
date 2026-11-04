@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { assertSeparate } from '../installation/files.js';
 import { openWorkspace } from './workspace.js';
+import {requireFreshRecoveryRequest,recoveryContext} from './recovery.js';
 import { expertGuide } from '../expert/guide.js';
 import { sourceStore } from '../native-v2/store.js';
 import { expectationStore } from '../native-v2/expectations-store.js';
@@ -60,6 +61,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
     if (!grant.permissions.includes('read')) fail('FORBIDDEN','Read permission required for service discovery',403);
     return {product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P3_IMPLEMENTATION',
       workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,
+      ...(identity.schema==='ontology-workspace/v2'?{recovery:recoveryContext(identity)}:{}),
       principalId:grant.principalId,projectIds:[...grant.projectIds],permissions:[...grant.permissions],
       readOperations:[...READ_OPERATIONS],writeOperations:allowedWrites(grant),
       reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
@@ -84,13 +86,14 @@ export function createStandaloneService(options: {root: string; workspaceId: str
           if (old.digest!==requestDigest) fail('REQUEST_CONFLICT','Request ID already binds different content',409);
           const receipt: Json=JSON.parse(String(old.receipt)); db.exec('COMMIT'); return receipt;
         }
+        requireFreshRecoveryRequest(identity,value.requestId!);
       }
       const current=project(projectId);
       if (write && (current?.revision??0)!==value.expectedRevision) fail('REVISION_CONFLICT','Project revision changed',409);
       let result: Json;let afterCommit:(()=>void)|undefined;
       if (operation==='service.inspect') {
         exact(input,[]);
-        result={product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P3_IMPLEMENTATION',workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,project:current as unknown as Json,readOperations:[...READ_OPERATIONS],writeOperations:allowedWrites(grant),reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
+        result={product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P3_IMPLEMENTATION',workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,...(identity.schema==='ontology-workspace/v2'?{recovery:recoveryContext(identity)}:{}),project:current as unknown as Json,readOperations:[...READ_OPERATIONS],writeOperations:allowedWrites(grant),reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
       } else if (operation==='guide.read') {
         exact(input,['topic']);text(input.topic,96);result=expertGuide(input.topic);
       } else if (operation==='project.list') {
@@ -180,7 +183,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
       } else {
         exact(input,['requestId']); id(input.requestId);
         const row=db.prepare('SELECT receipt FROM receipts WHERE project_id=? AND principal_id=? AND request_id=?').get(projectId,grant.principalId,input.requestId);
-        if (!row) fail('NOT_FOUND','Original request receipt not found in scope',404);
+        if (!row) {requireFreshRecoveryRequest(identity,input.requestId);fail('NOT_FOUND','Original request receipt not found in scope',404);}
         result=JSON.parse(String(row.receipt));
       }
       if (write) {
@@ -208,5 +211,5 @@ export function createStandaloneService(options: {root: string; workspaceId: str
     if(closing)return closed;closing=true;
     try{const wait=tasks.shutdown();if(wait){closed=wait.finally(()=>store.close());return closed;}}
     catch(e){store.close();throw e;}store.close();return undefined;
-  },identity:()=>({...identity})};
+  },identity:()=>structuredClone(identity)};
 }

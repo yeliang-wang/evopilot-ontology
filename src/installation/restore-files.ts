@@ -25,8 +25,18 @@ export function syncRestoreDirectory(path:string):void {privatePath(path,true);c
  * append-only over an exact payload prefix; copied historical metadata is opaque. */
 export function restoreBackupFile(backupRoot:string,backup:BackupEnvelope,e:BackupEntry,target:string):void {
   if(e.kind!=='file'||!e.digest)fail('RESTORE_EVIDENCE','Restore file required',409);
-  const object=join(backupRoot,'objects',e.digest.slice(7)),parent=dirname(target),anchor=backupNode(parent),prefix=Buffer.from(JSON.stringify({schema:'ontology-backup-object/v1',requestDigest:backup.manifest.requestDigest,digest:e.digest,bytes:e.bytes})+'\n');
+  const object=join(backupRoot,'objects',e.digest.slice(7)),prefix=Buffer.from(JSON.stringify({schema:'ontology-backup-object/v1',requestDigest:backup.manifest.requestDigest,digest:e.digest,bytes:e.bytes})+'\n');
   const sourceRoot=backupNode(backupRoot),objectsRoot=backupNode(join(backupRoot,'objects'));
+  copyPayload(object,e,target,prefix);
+  if(backupHash(backupNode(backupRoot))!==backupHash(sourceRoot)||backupHash(backupNode(join(backupRoot,'objects')))!==backupHash(objectsRoot))fail('RESTORE_EVIDENCE','Backup source directory changed',409);
+}
+export function restoreStagedFile(source:string,e:BackupEntry,target:string):void {
+  const parent=dirname(source),anchor=backupNode(parent);copyPayload(source,e,target,Buffer.alloc(0));
+  if(backupHash(backupNode(parent))!==backupHash(anchor))fail('RESTORE_EVIDENCE','Staged source directory changed',409);
+}
+function copyPayload(object:string,e:BackupEntry,target:string,prefix:Buffer):void {
+  if(e.kind!=='file'||!e.digest)fail('RESTORE_EVIDENCE','Restore file required',409);
+  const parent=dirname(target),anchor=backupNode(parent);
   privatePath(object);const input=openSync(object,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);let output:number|undefined;
   try{
     const source=heldFile(input);if(source.size!==BigInt(prefix.length+e.bytes))fail('RESTORE_EVIDENCE','Backup object length differs',409);
@@ -44,7 +54,7 @@ export function restoreBackupFile(backupRoot:string,backup:BackupEnvelope,e:Back
       if(retained<n)writeAt(output,buffer.subarray(retained,n),offset+retained);offset+=n;
     }
     const after=lstatSync(target,{bigint:true});
-    if('sha256:'+h.digest('hex')!==e.digest||stamp(heldFile(input))!==stamp(source)||stamp(lstatSync(object,{bigint:true}))!==stamp(source)||after.dev!==dest.dev||after.ino!==dest.ino||heldFile(output).size!==BigInt(e.bytes)||backupHash(backupNode(parent))!==backupHash(anchor)||backupHash(backupNode(backupRoot))!==backupHash(sourceRoot)||backupHash(backupNode(join(backupRoot,'objects')))!==backupHash(objectsRoot))fail('RESTORE_EVIDENCE','Restore source or destination changed',409);
+    if('sha256:'+h.digest('hex')!==e.digest||stamp(heldFile(input))!==stamp(source)||stamp(lstatSync(object,{bigint:true}))!==stamp(source)||after.dev!==dest.dev||after.ino!==dest.ino||heldFile(output).size!==BigInt(e.bytes)||backupHash(backupNode(parent))!==backupHash(anchor))fail('RESTORE_EVIDENCE','Restore source or destination changed',409);
     if(!finished){fchmodSync(output,e.mode);fsyncSync(output);}syncRestoreDirectory(parent);
   }finally{closeSync(input);if(output!==undefined)closeSync(output);}
 }

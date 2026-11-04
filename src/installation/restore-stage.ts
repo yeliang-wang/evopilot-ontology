@@ -153,3 +153,8 @@ export function verifyRestoreStage(root:string,expectedManifestDigest:string):Js
   if(backupHash(images(p))!==saved.manifestDigest)fail('RESTORE_EVIDENCE','Restored physical storage or content differs from its completion record',409);
   return {status:'VERIFIED',receipt:saved.receipt as unknown as Json,sourceBackupManifestDigest:p.expectedManifestDigest,activation:'BLOCKED',credentials:'SNAPSHOT_ONLY',runtimeDependencies:'NOT_VERIFIED',authority:false};
 }
+/** Operator recovery only. Domain service and untrusted API input cannot opt
+ * out of candidate barriers by requesting this verified immutable readback. */
+export function readVerifiedRestoreStage(root:string,expectedManifestDigest:string):{plan:RestoreStagePlan;completion:StageEnvelope} {
+  verifyRestoreStage(root,expectedManifestDigest);const plan=readPlan(root),completion=readCompletion(plan,expectedManifestDigest);return {plan,completion};
+}
