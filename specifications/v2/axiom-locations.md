@@ -1,8 +1,8 @@
 # Optional exact axiom source locations
 
-This development addition identifies original Functional Syntax axiom occurrences. It does not establish source-location support for Turtle or RDF/XML, complete EXPLAIN-03 acceptance, business-source interpretation or a semantic decision. The existing explanation method, replay obligation, task deadlines and output budgets remain unchanged.
+Version 1 identifies original Functional Syntax axiom occurrences. Version 2 adds shared Turtle source tables and distinguishes actual RDF construction inputs from parser-selection context. Neither version establishes RDF/XML source-location support, complete EXPLAIN-03 acceptance, business-source interpretation or a semantic decision. The existing explanation method, replay obligation, task deadlines and output budgets remain unchanged. RDF/XML instrumentation remains a required later part of the all-format delivery; the current implementation does not remove that obligation.
 
-Functional Syntax is available in the internal DL request protocol, structural queries, replay documents and fixtures. Native business model authoring remains limited to Turtle and RDF/XML by the unchanged model schema. Consequently, a current native business explanation with supporting premises reports location coverage `UNAVAILABLE`; a premise-free explanation reports `NOT_APPLICABLE`. Complete or partial location projection fixtures exercise the shared DL result protocol, not successful admission of a Functional business model. Exact native business-asset locations still require instrumentation of its admitted formats.
+Functional Syntax is available in the internal DL request protocol, structural queries, replay documents and fixtures. Native business model authoring remains limited to Turtle and RDF/XML by the unchanged model schema. A version-1 native business explanation with supporting premises reports location coverage `UNAVAILABLE`; a premise-free explanation reports `NOT_APPLICABLE`. Functional location fixtures exercise the shared DL result protocol, not admission of a Functional business model. Version-2 native Turtle explanations can establish exact original-source sets under the additional rules below.
 
 An internal DL explanation result can contain `sourceLocationVersion: 1`. When that field is present, every Functional Syntax origin in `support[].sources[]` must contain the following complete `sourceLocation` group. Other formats must omit that group. A version-1 worker that cannot establish a required Functional location must return an incomplete task rather than inventing a range or omitting that origin.
 
@@ -45,3 +45,60 @@ For version-1 evidence, each projected support document adds `axiomSourceLocatio
 Coverage describes locations in the supporting model documents, not all OWL formats or business-source coverage. Existing `sourceLinksComplete`, `sourceLinkPrecision: DOCUMENT_MAPPING_NOT_AXIOM_BYTE_LOCATION`, mapping-level `axiomByteSpanEstablished:false`, and `businessMeaningProven:false` keep their meaning: the business links remain author-declared document mappings. Exact formal-axiom coordinates do not upgrade those interpretations to proof.
 
 Historical evidence without `sourceLocationVersion` must not contain `sourceLocation` on an origin. It follows the original projection path with no new fields, including no synthetic `UNAVAILABLE` value. Existing projection key order, serialized bytes and digests remain unchanged for the same retained evidence. New evidence has its own result/projection identity; it never rewrites an earlier review report or delivery.
+
+## Version 2: shared Turtle source sets
+
+`sourceLocationVersion: 2` requires a top-level `sourceLocationDocuments` array in the worker result and owner projection. The array is present even when empty. It is forbidden for historical unversioned and version-1 results. The owner preserves the shared tables once at projection level; it does not expand them into every supporting axiom.
+
+A Functional origin retains exactly the version-1 group and all version-1 validation rules. A Turtle origin requires this exact group:
+
+```text
+{
+  schema: "ontology-axiom-source-location/v2",
+  kind: "RDF_CONSTRUCTION",
+  constructionOccurrenceIds: [ positiveInteger, ... ],
+  parserContextOccurrenceIds: [ positiveInteger, ... ]
+}
+```
+
+Both arrays are unique and numerically ascending. Construction references are nonempty; parser-context references can be empty. An occurrence can appear in both arrays. Removing it from one role merely because it appears in the other loses evidence. These IDs resolve only in the table for the enclosing origin's exact `documentId` and `documentDigest`.
+
+`constructionOccurrenceIds` identifies the actual RDF inputs used to build the structural axiom, including its arguments and annotations. `parserContextOccurrenceIds` identifies actual classification, matching and selection dependencies observed by the mapper. Parser context is not a second logical justification, nor does its presence establish that each referenced fact is logically necessary. The worker's independently replayed structural support remains the explanation. The owner verifies the retained task and byte/reference integrity; it does not independently re-execute RDF-to-OWL mapping or infer these roles from the raw terms.
+
+Each shared table has exactly these fields:
+
+```text
+{
+  schema: "ontology-rdf-source-document/v1",
+  documentId, documentDigest,
+  format: "turtle",
+  parserId: "owlapi-turtle-occurrences:1",
+  sources: [
+    { id, kind, start, end, fragmentDigest, startLine, endLine }
+  ],
+  contexts: [
+    { id, kind, prefixName, resolved, sourceId, dependencyContextIds }
+  ],
+  occurrences: [
+    { id, triple, subject, predicate, object, generatedKind }
+  ]
+}
+```
+
+Tables are unique and ordered by `documentId`. Each of the three tables within a document has unique ascending positive safe-integer IDs. IDs retain the parser's document-local identity; pruning unused entries can leave gaps. An ID can exceed the number of retained records. An identical numeric ID in another document is a different identity and cannot satisfy a reference.
+
+- A source `kind` is `TOKEN`, `PROPERTY_LIST`, `COLLECTION`, `ITEM`, `PREFIX` or `BASE`. Its five fragment fields use the exact original UTF-8, digest and line rules described for version 1. Original spelling, escapes, BOM and line endings remain intact. Unlike Functional axiom ranges, RDF ranges may nest, overlap or recur in several axioms. A collection or property-list range is a generating construct, not a claim that one contiguous substring is the complete OWL axiom. Shared ranges are hashed once per original document/start/end; each declaration must still agree with the original bytes and line numbers.
+- `subject`, `predicate` and `object` beside `triple` are each exactly `{sourceId, inherited, generated, contextIds}`. `sourceId` is positive and references an original token or construct. `inherited` and `generated` are booleans. Context IDs are unique, ascending and resolve in the same document. Generated terms require a `PROPERTY_LIST`, `COLLECTION` or `ITEM` source, rather than an invented zero-length span. Inherited terms preserve the original source handle across Turtle shorthand.
+- `triple` is exactly `{subject, predicate, object}`. Its subject and predicate are the actual callback IRI strings. Its object is either `{kind:"RESOURCE", value}` or `{kind:"LITERAL", lexical, language, datatype}`. Literal language and datatype are nullable and mutually exclusive for this Turtle callback protocol; an empty lexical value is legal. Semantic strings are subject to the existing aggregate byte/node budgets, not an invented per-IRI length restriction. These callback values are evidence from the bound parser, not an owner-side lexical reconstruction.
+- `generatedKind` is `null`, `BLANK_PROPERTY_LIST`, `COLLECTION_FIRST`, `COLLECTION_REST` or `COLLECTION_TYPE`. A non-null value requires a generated term. Generated triples remain tied to the actual source construct and are never represented as separately written triples.
+- Context `kind` is `DOCUMENT`, `BUILTIN`, `PREFIX` or `BASE`. `prefixName` is `null` for document/base context and includes its trailing colon for prefix/builtin context. `resolved` is the actual parser context IRI. Context dependency IDs are unique, ascending and strictly earlier than the context ID, forming a closed acyclic graph. An explicit prefix/base context references a source of the corresponding kind.
+
+Only implicit `DOCUMENT` and `BUILTIN` contexts use `sourceId: 0`; they have no source fragment and no dependency contexts. Document context must match the original `documentIri`. Builtins are exactly the pinned parser's defaults: `owl:` → `http://www.w3.org/2002/07/owl#`, `rdfs:` → `http://www.w3.org/2000/01/rdf-schema#`, `rdf:` → `http://www.w3.org/1999/02/22-rdf-syntax-ns#`, `xsd:` → `http://www.w3.org/2001/XMLSchema#`, `xml:` → `http://www.w3.org/XML/1998/namespace`, and `:` → `http://www.semanticweb.org/owl/owlapi/turtle#`. An explicit redeclaration is a separate context with its own original directive range. Implicit context is not fabricated original text.
+
+The lexical context table explains term resolution; it is a separate dimension from the mapper's `parserContextOccurrenceIds`. For example, a prefix declaration explains a QName's IRI, while a positive type check explains why a mapper selected a particular interpretation. Neither context replaces the actual construction inputs.
+
+Every table contains exactly the dependency closure reached from the supporting origins' two role arrays: occurrence → term source/context → context source/dependencies. Absent references, conflicting IDs, unused records, unrelated document tables, unknown keys and unknown kinds are rejected. The outer retained result digest binds the whole table and its references; no independently asserted table digest substitutes for that retained execution binding.
+
+Version-2 validation shares a 200,000-record ceiling across RDF source/context/occurrence records and Functional fragment/context records. It also bounds all reference-list entries and source edges to 1,000,000, counting repeated origin references, and caps hashing of distinct source ranges at 64 MiB across the explanation. Nested spans therefore cannot cause unbounded repeated hashing. These are defensive ceilings, not a claim that every combination fits the output: the existing 30,000 JSON-node/depth-24 structure budget and 8 MiB DL result budget still apply first. The original 8 MiB document, 32 MiB closure, task deadline, 32 MiB review/delivery and 64 KiB page limits remain unchanged. Exhaustion yields an incomplete/failed result or rejects malformed retained metadata; it never silently removes records while claiming complete coverage.
+
+For version 2, coverage `COMPLETE` means every supporting origin has a validated Functional group or Turtle source set. `PARTIAL` means instrumented origins coexist with RDF/XML origins, which still project `{status:"UNAVAILABLE", reason:"FORMAT_NOT_INSTRUMENTED"}`. RDF/XML-only support is `UNAVAILABLE`; empty support is `NOT_APPLICABLE` and requires empty shared tables. Version 1 keeps its original Functional-only coverage semantics. The new formal-source evidence does not change author-declared business mappings, review authority, semantic approval or software-release authority.

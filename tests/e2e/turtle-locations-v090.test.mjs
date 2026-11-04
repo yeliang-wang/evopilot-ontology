@@ -40,9 +40,34 @@ public final class TurtleLocationsProbe {
   static ObjectNode term(LocatedTurtleParser.TermSource term){
     var out=JSON.createObjectNode();out.put("sourceId",term.sourceId());out.put("inherited",term.inherited());out.put("generated",term.generated());out.set("contextIds",JSON.valueToTree(term.contextIds()));return out;
   }
+  static final class Counter implements TripleHandler {
+    int resources,plain,languages,datatypes,prefixes,bases,ends;
+    public void handleTriple(IRI s,IRI p,IRI o){resources++;}
+    public void handleTriple(IRI s,IRI p,String o){plain++;}
+    public void handleTriple(IRI s,IRI p,String o,String lang){languages++;}
+    public void handleTriple(IRI s,IRI p,String o,IRI datatype){datatypes++;}
+    public void handlePrefixDirective(String name,String iri){prefixes++;}
+    public void handleBaseDirective(IRI iri){bases++;}
+    public void handleComment(String comment){}
+    public void handleEnd(){ends++;}
+    ObjectNode json(){var v=JSON.createObjectNode();v.put("resources",resources);v.put("plain",plain);v.put("languages",languages);v.put("datatypes",datatypes);v.put("prefixes",prefixes);v.put("bases",bases);v.put("ends",ends);return v;}
+  }
+  static void fatal(Throwable error){
+    if(error instanceof VirtualMachineError value)throw value;
+    if(error instanceof ThreadDeath value)throw value;
+  }
   static ObjectNode run(JsonNode input)throws Exception {
     String content=input.path("content").asText();var out=JSON.createObjectNode();var original=new Recorder();var located=new Recorder();
-    try{new TurtleParser(new StringReader(content),original,BASE).parseDocument();out.put("originalStatus","PARSED");}catch(Exception e){out.put("originalStatus","PARSE_ERROR");}
+    if(input.path("countOnly").asBoolean(false)){
+      var oldCounter=new Counter();var newCounter=new Counter();
+      new TurtleParser(new StringReader(content),oldCounter,BASE).parseDocument();
+      LocatedTurtleParser.parseUnlocated(content,BASE,newCounter);
+      out.set("originalCounts",oldCounter.json());out.set("unlocatedCounts",newCounter.json());return out;
+    }
+    try{new TurtleParser(new StringReader(content),original,BASE).parseDocument();out.put("originalStatus","PARSED");}catch(Throwable e){fatal(e);out.put("originalStatus","PARSE_ERROR");out.put("originalError",e.toString());}
+    var unlocated=new Recorder();
+    try{LocatedTurtleParser.parseUnlocated(content,BASE,unlocated);out.put("unlocatedStatus","PARSED");}catch(Throwable e){fatal(e);out.put("unlocatedStatus","PARSE_ERROR");out.put("unlocatedError",e.toString());}
+    out.set("unlocatedEvents",unlocated.events);
     out.set("originalEvents",original.events);var observed=new ArrayList<Integer>();int[] active={0};
     LocatedTurtleParser.Result result=null;
     try{
@@ -50,7 +75,7 @@ public final class TurtleLocationsProbe {
         public void beforeTriple(int id){if(id<1||active[0]!=0)throw new IllegalStateException("Occurrence observer nesting");active[0]=id;observed.add(id);}
         public void afterTriple(){if(active[0]==0)throw new IllegalStateException("Missing observer entry");active[0]=0;}
       },input.path("limit").asInt(200000));out.put("locatedStatus","PARSED");
-    }catch(LocatedTurtleParser.LimitException e){out.put("locatedStatus","LIMIT");}catch(Exception e){out.put("locatedStatus","PARSE_ERROR");out.put("error",e.toString());}
+    }catch(LocatedTurtleParser.LimitException e){out.put("locatedStatus","LIMIT");}catch(Throwable e){fatal(e);out.put("locatedStatus","PARSE_ERROR");out.put("error",e.toString());}
     out.put("returned",result!=null);out.put("observerActive",active[0]);out.set("observedIds",JSON.valueToTree(observed));out.set("locatedEvents",located.events);
     if(result!=null){
       ArrayNode sources=out.putArray("sources");for(var s:result.sources()){var r=sources.addObject();r.put("id",s.id());r.put("kind",String.valueOf(s.kind()));r.put("start",s.span().start());r.put("end",s.span().end());r.put("text",content.substring(s.span().start(),s.span().end()));}
@@ -88,7 +113,7 @@ async function inspect(...cases){
 const prefix='@prefix : <urn:located:> .\n';
 const triples=result=>result.locatedEvents.filter(e=>['RESOURCE','STRING','LANGUAGE','TYPED'].includes(e.kind));
 function parity(result,content){
-  assert.equal(result.originalStatus,'PARSED',JSON.stringify(result));assert.equal(result.locatedStatus,'PARSED',JSON.stringify(result));assert.equal(result.returned,true);assert.equal(result.observerActive,0);assert.deepEqual(result.locatedEvents,result.originalEvents);
+  assert.equal(result.originalStatus,'PARSED',JSON.stringify(result));assert.equal(result.locatedStatus,'PARSED',JSON.stringify(result));assert.equal(result.unlocatedStatus,'PARSED',JSON.stringify(result));assert.equal(result.returned,true);assert.equal(result.observerActive,0);assert.deepEqual(result.locatedEvents,result.originalEvents);assert.deepEqual(result.unlocatedEvents,result.locatedEvents);
   const sources=new Map(result.sources.map(s=>[s.id,s]));assert.equal(sources.size,result.sources.length);const contexts=new Map(result.contexts.map(c=>[c.id,c]));assert.equal(contexts.size,result.contexts.length);
   for(const s of sources.values()){assert.ok(s.id>0&&s.start>=0&&s.end>s.start&&s.end<=content.length);assert.equal(content.slice(s.start,s.end),s.text);assert.ok(!(s.start>0&&/[\uDC00-\uDFFF]/.test(content[s.start])));}
   assert.deepEqual(result.occurrences.map(o=>o.id),result.observedIds);assert.equal(result.occurrences.length,triples(result).length);
@@ -140,6 +165,56 @@ test('base and prefix contexts preserve the original parser cache choices across
   assert.ok(contextFor(r.occurrences[1].subject).some(c=>c.resolved==='https://first.example/'));
   assert.ok(!contextFor(r.occurrences[1].subject).some(c=>c.resolved==='https://second.example/'));
   assert.equal(r.occurrences[2].triple.predicate,'https://changed.example/p');
+});
+
+test('IRIREF UCHAR correction decodes original escapes once in IRI, BASE and PREFIX without replacing raw spans',async()=>{
+  const subject=String.raw`<urn:located:\u0041\U0001F600>`,directive=String.raw`@prefix ex: <urn:located:\u0042\U0001F600:> .`;
+  const content=directive+'\n'+subject+' ex:p <urn:located:😀> .';
+  const based=String.raw`@base <https://example.test/\u0041\U0001F600/> .
+@prefix ex: <relative\u0042\U0001F600/> .
+<sub\u006Aect> ex:p <object> .`;
+  const results=await inspect({content},{content:based});
+  for(const r of results){assert.equal(r.originalStatus,'PARSED');assert.equal(r.locatedStatus,'PARSED',JSON.stringify(r));assert.equal(r.unlocatedStatus,'PARSED');assert.deepEqual(r.unlocatedEvents,r.locatedEvents);assert.equal(r.returned,true);}
+  const [r,b]=results;
+  assert.deepEqual(triples(r).map(t=>[t.subject,t.predicate,t.resource]),[['urn:located:A😀','urn:located:B😀:p','urn:located:😀']]);
+  assert.notDeepEqual(r.originalEvents,r.locatedEvents,'The independently retained original parser exposes its evidenced uppercase-U omission');
+  assert.equal(r.sources.find(s=>s.id===r.occurrences[0].subject.sourceId).text,subject);assert.ok(r.sources.some(s=>s.kind==='PREFIX'&&s.text===directive));
+  assert.deepEqual(triples(b).map(t=>[t.subject,t.predicate,t.resource]),[['https://example.test/A😀/subject','https://example.test/A😀/relativeB😀/p','https://example.test/A😀/object']]);
+  assert.ok(b.contexts.some(c=>c.kind==='BASE'&&c.resolved==='https://example.test/A😀/'));assert.ok(b.contexts.some(c=>c.kind==='PREFIX'&&c.resolved==='https://example.test/A😀/relativeB😀/'));
+  assert.ok(b.sources.some(s=>s.kind==='BASE'&&s.text===String.raw`@base <https://example.test/\u0041\U0001F600/> .`));
+});
+
+test('equivalent escaped and literal relative IRI spellings share the actual cache context without losing their original handles',async()=>{
+  const content=String.raw`@base <https://first.example/> .
+<\U00000073> <urn:located:p> <urn:located:o> .
+@base <https://second.example/> .
+<s> <urn:located:p> <urn:located:o> .`;
+  const [r]=await inspect({content});assert.equal(r.locatedStatus,'PARSED',JSON.stringify(r));assert.equal(r.unlocatedStatus,'PARSED');assert.deepEqual(r.unlocatedEvents,r.locatedEvents);
+  assert.deepEqual(triples(r).map(t=>t.subject),['https://first.example/s','https://first.example/s']);
+  assert.deepEqual(r.occurrences.map(o=>r.sources.find(s=>s.id===o.subject.sourceId).text),[String.raw`<\U00000073>`,'<s>']);
+  const contexts=new Map(r.contexts.map(c=>[c.id,c]));
+  for(const o of r.occurrences){const deps=o.subject.contextIds.map(id=>contexts.get(id));assert.ok(deps.some(c=>c.resolved==='https://first.example/'));assert.ok(!deps.some(c=>c.resolved==='https://second.example/'));}
+});
+
+test('malformed IRI escapes, non-scalars and escaped illegal IRI characters fail in both corrected parser modes',async()=>{
+  const invalid=[String.raw`\U00110000`,String.raw`\UFFFFFFFF`,String.raw`\uD800`,String.raw`\uDFFF`,String.raw`\U0000D800`,String.raw`\uD83D\uDE00`,String.raw`\uu0041`,String.raw`\U0001FX00`,String.raw`\U1234`,String.raw`\q`,String.raw`\\u0041`,String.raw`\u005Cu0041`,String.raw`\U0000005Cu0041`,String.raw`\U00000020`,String.raw`\U00000000`,String.raw`\U0000003C`,String.raw`\U0000003E`,String.raw`\U00000022`,String.raw`\U0000007B`,String.raw`\U0000007D`,String.raw`\U0000007C`,String.raw`\U0000005E`,String.raw`\U00000060`];
+  const results=await inspect(...invalid.map(value=>({content:'<urn:located:'+value+'> <urn:located:p> <urn:located:o> .'})));
+  for(const [i,r] of results.entries()){assert.equal(r.locatedStatus,'PARSE_ERROR',invalid[i]+' '+JSON.stringify(r));assert.equal(r.unlocatedStatus,'PARSE_ERROR',invalid[i]);assert.equal(r.returned,false);assert.equal(r.occurrences,undefined);}
+});
+
+test('IRI Unicode character classes preserve legal ucschar and constrain private-use characters to query',async()=>{
+  const legal=[String.raw`urn:located:\u00A0`,String.raw`urn:located:\u2028\u2029`,String.raw`urn:located:?q=\uE000`,String.raw`urn:located:?q=\U000F0000\U00100000`];
+  const illegal=[String.raw`urn:located:\u0085`,String.raw`urn:located:\uFDD0`,String.raw`urn:located:\U0001FFFE`,String.raw`urn:located:\U000E0001`,String.raw`urn:located:\U0010FFFF`,String.raw`urn:located:\uE000`,String.raw`urn:located:#fragment?\uE000`,String.raw`urn:located:?q=ok#\uE000`];
+  const results=await inspect(...[...legal,...illegal].map(value=>({content:'<'+value+'> <urn:located:p> <urn:located:o> .'})));
+  for(const [i,r] of results.entries()){const expected=i<legal.length?'PARSED':'PARSE_ERROR';assert.equal(r.locatedStatus,expected,JSON.stringify(r));assert.equal(r.unlocatedStatus,expected);if(expected==='PARSED')assert.deepEqual(r.unlocatedEvents,r.locatedEvents);else assert.equal(r.returned,false);}
+  assert.equal(triples(results[0])[0].subject,'urn:located:\u00A0');assert.equal(triples(results[1])[0].subject,'urn:located:\u2028\u2029');
+  assert.equal(triples(results[2])[0].subject,'urn:located:?q=\uE000');assert.equal(triples(results[3])[0].subject,'urn:located:?q='+String.fromCodePoint(0xF0000,0x100000));
+});
+
+test('ordinary parsing does not acquire located occurrence or directive capacity limits',async()=>{
+  const count=200001,directives=10001,content=prefix.repeat(directives)+':s :p :o .\n'.repeat(count);
+  const [r]=await inspect({content,countOnly:true});
+  assert.deepEqual(r.unlocatedCounts,r.originalCounts);assert.deepEqual(r.unlocatedCounts,{resources:count,plain:0,languages:0,datatypes:0,prefixes:directives,bases:0,ends:1});
 });
 
 test('upstream builtin prefixes retain explicit context identities without fabricated source spans',async()=>{

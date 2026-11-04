@@ -24,7 +24,7 @@
         },
         {
           "find": "public class TurtleParser implements TurtleParserConstants {",
-          "replace": "class LocatedTurtleSyntaxParser implements TurtleParserConstants {\n    LocatedTurtleParser.Collector locations;",
+          "replace": "class LocatedTurtleSyntaxParser implements TurtleParserConstants {\n    LocatedTurtleParser.Collector locations;\n    String sourceContent;",
           "occurrences": 1
         },
         {
@@ -44,42 +44,42 @@
         },
         {
           "find": "        parseDirective();\n        jj_consume_token(DOT);",
-          "replace": "        parseDirective();\n        jj_consume_token(DOT);\n        locations.closeDirective(token);",
+          "replace": "        parseDirective();\n        jj_consume_token(DOT);\n        if (locations != null) locations.closeDirective(token);",
           "occurrences": 1
         },
         {
           "find": "void parsePrefixDirective() throws ParseException {Token t;",
-          "replace": "void parsePrefixDirective() throws ParseException {Token t;\n    int locatedDirective = locations.open(getToken(1), \"PREFIX\");",
+          "replace": "void parsePrefixDirective() throws ParseException {Token t;\n    int locatedDirective = locations == null ? -1 : locations.open(getToken(1), \"PREFIX\");",
           "occurrences": 1
         },
         {
           "find": "pm.setPrefix(t.image, ns.toString());",
-          "replace": "pm.setPrefix(t.image, ns.toString());\n        locations.prefix(locatedDirective, t.image, ns);",
+          "replace": "pm.setPrefix(t.image, ns.toString());\n        if (locations != null) locations.prefix(locatedDirective, t.image, ns);",
           "occurrences": 1
         },
         {
           "find": "void parseBaseDirective() throws ParseException {Token t;",
-          "replace": "void parseBaseDirective() throws ParseException {Token t;\n    int locatedDirective = locations.open(getToken(1), \"BASE\");",
+          "replace": "void parseBaseDirective() throws ParseException {Token t;\n    int locatedDirective = locations == null ? -1 : locations.open(getToken(1), \"BASE\");",
           "occurrences": 1
         },
         {
           "find": "base = IRI.create(t.image.substring(1, t.image.length() - 1));",
-          "replace": "base = IRI.create(t.image.substring(1, t.image.length() - 1));\nlocations.base(locatedDirective, base);",
+          "replace": "base = IRI.create(LocatedTurtleParser.decodeIri(sourceContent, t));\nif (locations != null) locations.base(locatedDirective, base);",
           "occurrences": 1
         },
         {
           "find": "return getIRIFromQName(t.image);",
-          "replace": "return locations.qnameTerm(t, getIRIFromQName(t.image));",
+          "replace": "return locations == null ? getIRIFromQName(t.image) : locations.qnameTerm(t, getIRIFromQName(t.image));",
           "occurrences": 2
         },
         {
           "find": "return getIRI(t.image);",
-          "replace": "return locations.iriTerm(t, getIRI(t.image));",
+          "replace": "String locatedIri = LocatedTurtleParser.decodeIri(sourceContent, t);\n    IRI locatedValue = getIRI(\"<\" + locatedIri + \">\");\n    return locations == null ? locatedValue : locations.iriTerm(t, locatedValue, locatedIri);",
           "occurrences": 1
         },
         {
           "find": "return getNextBlankNode(t.image);",
-          "replace": "return locations.tokenTerm(t, getNextBlankNode(t.image));",
+          "replace": "return locations == null ? getNextBlankNode(t.image) : locations.tokenTerm(t, getNextBlankNode(t.image));",
           "occurrences": 1
         },
         {
@@ -89,27 +89,27 @@
         },
         {
           "find": "      jj_consume_token(EMPTY_BLANK_NODE);\nif(iri==null){iri = getNextBlankNode(null);}",
-          "replace": "      jj_consume_token(EMPTY_BLANK_NODE);\n      locations.last = locations.generated(locations.range(token, token, \"PROPERTY_LIST\", java.util.List.of()).sourceId());\nif(iri==null){iri = getNextBlankNode(null);}",
+          "replace": "      jj_consume_token(EMPTY_BLANK_NODE);\n      if (locations != null) locations.last = locations.generated(locations.range(token, token, \"PROPERTY_LIST\", java.util.List.of()).sourceId());\nif(iri==null){iri = getNextBlankNode(null);}",
           "occurrences": 1
         },
         {
           "find": "      jj_consume_token(OPEN_SQUARE_BRACKET);",
-          "replace": "      jj_consume_token(OPEN_SQUARE_BRACKET);\n      locatedBlank = locations.open(token, \"PROPERTY_LIST\");\n      locations.last = locations.generated(locatedBlank);",
+          "replace": "      jj_consume_token(OPEN_SQUARE_BRACKET);\n      if (locations != null) locatedBlank = locations.open(token, \"PROPERTY_LIST\");\n      if (locations != null) locations.last = locations.generated(locatedBlank);",
           "occurrences": 1
         },
         {
           "find": "      jj_consume_token(CLOSE_SQUARE_BRACKET);",
-          "replace": "      jj_consume_token(CLOSE_SQUARE_BRACKET);\n      locations.close(locatedBlank, token);\n      locations.last = locations.generated(locatedBlank);",
+          "replace": "      jj_consume_token(CLOSE_SQUARE_BRACKET);\n      if (locations != null) locations.close(locatedBlank, token);\n      if (locations != null) locations.last = locations.generated(locatedBlank);",
           "occurrences": 1
         },
         {
           "find": "void parsePredicateObjectList(IRI subject) throws ParseException {IRI predicate;",
-          "replace": "void parsePredicateObjectList(IRI subject) throws ParseException {IRI predicate;\n    LocatedTurtleParser.TermSource locatedSubject = locations.last, locatedPredicate;",
+          "replace": "void parsePredicateObjectList(IRI subject) throws ParseException {IRI predicate;\n    LocatedTurtleParser.TermSource locatedSubject = locations == null ? null : locations.last, locatedPredicate;",
           "occurrences": 1
         },
         {
           "find": "predicate = parseVerb();",
-          "replace": "predicate = parseVerb();\n    locatedPredicate = locations.last;",
+          "replace": "predicate = parseVerb();\n    locatedPredicate = locations == null ? null : locations.last;",
           "occurrences": 2
         },
         {
@@ -119,12 +119,12 @@
         },
         {
           "find": "      jj_consume_token(SEMICOLON);\n      predicate = parseVerb();",
-          "replace": "      jj_consume_token(SEMICOLON);\n      locatedSubject = locations.inherit(locatedSubject);\n      predicate = parseVerb();",
+          "replace": "      jj_consume_token(SEMICOLON);\n      if (locations != null) locatedSubject = locations.inherit(locatedSubject);\n      predicate = parseVerb();",
           "occurrences": 1
         },
         {
           "find": "iri = OWLRDFVocabulary.RDF_TYPE.getIRI();",
-          "replace": "iri = OWLRDFVocabulary.RDF_TYPE.getIRI();\nlocations.last = locations.token(token);",
+          "replace": "iri = OWLRDFVocabulary.RDF_TYPE.getIRI();\nif (locations != null) locations.last = locations.token(token);",
           "occurrences": 1
         },
         {
@@ -139,7 +139,7 @@
         },
         {
           "find": "      jj_consume_token(COMMA);",
-          "replace": "      jj_consume_token(COMMA);\n      locatedSubject = locations.inherit(locatedSubject);\n      locatedPredicate = locations.inherit(locatedPredicate);",
+          "replace": "      jj_consume_token(COMMA);\n      if (locations != null) locatedSubject = locations.inherit(locatedSubject);\n      if (locations != null) locatedPredicate = locations.inherit(locatedPredicate);",
           "occurrences": 1
         },
         {
@@ -154,12 +154,12 @@
         },
         {
           "find": "handler.handleTriple(subject, predicate, resObject);",
-          "replace": "locations.resource(handler, subject, predicate, resObject, locatedSubject, locatedPredicate, locations.last, locatedKind);",
+          "replace": "if (locations == null) handler.handleTriple(subject, predicate, resObject); else locations.resource(handler, subject, predicate, resObject, locatedSubject, locatedPredicate, locations.last, locatedKind);",
           "occurrences": 1
         },
         {
           "find": "    jj_consume_token(OPENPAR);\n    iri = parseItemList();\n    jj_consume_token(CLOSEPAR);",
-          "replace": "    jj_consume_token(OPENPAR);\n    int locatedCollection = locations.open(token, \"COLLECTION\");\n    iri = parseItemList(locatedCollection);\n    jj_consume_token(CLOSEPAR);\n    locations.close(locatedCollection, token);\n    locations.last = locations.generated(locatedCollection);",
+          "replace": "    jj_consume_token(OPENPAR);\n    int locatedCollection = locations == null ? -1 : locations.open(token, \"COLLECTION\");\n    iri = parseItemList(locatedCollection);\n    jj_consume_token(CLOSEPAR);\n    if (locations != null) locations.close(locatedCollection, token);\n    if (locations != null) locations.last = locations.generated(locatedCollection);",
           "occurrences": 1
         },
         {
@@ -169,81 +169,81 @@
         },
         {
           "find": "    IRI subject = null;",
-          "replace": "    IRI subject = null;\n    LocatedTurtleParser.TermSource locatedCell = null;\n    LocatedTurtleParser.TermSource locatedVocabulary = locations.generated(locatedCollection);",
+          "replace": "    IRI subject = null;\n    LocatedTurtleParser.TermSource locatedCell = null;\n    LocatedTurtleParser.TermSource locatedVocabulary = locations == null ? null : locations.generated(locatedCollection);",
           "occurrences": 1
         },
         {
           "find": "IRI prevSubject = subject;\n        subject=getNextBlankNode(null);",
-          "replace": "IRI prevSubject = subject;\n        LocatedTurtleParser.TermSource locatedPrevious = locatedCell;\n        int locatedItem = locations.open(getToken(1), \"ITEM\");\n        locatedCell = locations.generated(locatedItem);\n        subject=getNextBlankNode(null);",
+          "replace": "IRI prevSubject = subject;\n        LocatedTurtleParser.TermSource locatedPrevious = locatedCell;\n        int locatedItem = locations == null ? -1 : locations.open(getToken(1), \"ITEM\");\n        if (locations != null) locatedCell = locations.generated(locatedItem);\n        subject=getNextBlankNode(null);",
           "occurrences": 1
         },
         {
           "find": "handler.handleTriple(prevSubject, rest, subject);",
-          "replace": "locations.resource(handler, prevSubject, rest, subject, locatedPrevious, locatedVocabulary, locatedCell, \"COLLECTION_REST\");",
+          "replace": "if (locations == null) handler.handleTriple(prevSubject, rest, subject); else locations.resource(handler, prevSubject, rest, subject, locatedPrevious, locatedVocabulary, locatedCell, \"COLLECTION_REST\");",
           "occurrences": 1
         },
         {
           "find": "handler.handleTriple(subject, type, list);",
-          "replace": "locations.resource(handler, subject, type, list, locatedCell, locatedVocabulary, locatedVocabulary, \"COLLECTION_TYPE\");",
+          "replace": "if (locations == null) handler.handleTriple(subject, type, list); else locations.resource(handler, subject, type, list, locatedCell, locatedVocabulary, locatedVocabulary, \"COLLECTION_TYPE\");",
           "occurrences": 1
         },
         {
           "find": "      parseObject(subject, first);",
-          "replace": "      parseObject(subject, first, locatedCell, locatedVocabulary, \"COLLECTION_FIRST\");\n      locations.close(locatedItem, token);",
+          "replace": "      parseObject(subject, first, locatedCell, locatedVocabulary, \"COLLECTION_FIRST\");\n      if (locations != null) locations.close(locatedItem, token);",
           "occurrences": 1
         },
         {
           "find": "handler.handleTriple(subject, rest, nil);",
-          "replace": "locations.resource(handler, subject, rest, nil, locatedCell, locatedVocabulary, locatedVocabulary, \"COLLECTION_REST\");",
+          "replace": "if (locations == null) handler.handleTriple(subject, rest, nil); else locations.resource(handler, subject, rest, nil, locatedCell, locatedVocabulary, locatedVocabulary, \"COLLECTION_REST\");",
           "occurrences": 1
         },
         {
           "find": "void parseLiteral(IRI subject, IRI predicate) throws ParseException {String literal;",
-          "replace": "void parseLiteral(IRI subject, IRI predicate, LocatedTurtleParser.TermSource locatedSubject, LocatedTurtleParser.TermSource locatedPredicate, String locatedKind) throws ParseException {String literal;\n    Token locatedStart = getToken(1);\n    java.util.List<Integer> locatedContexts = java.util.List.of();",
+          "replace": "void parseLiteral(IRI subject, IRI predicate, LocatedTurtleParser.TermSource locatedSubject, LocatedTurtleParser.TermSource locatedPredicate, String locatedKind) throws ParseException {String literal;\n    Token locatedStart = locations == null ? null : getToken(1);\n    java.util.List<Integer> locatedContexts = java.util.List.of();",
           "occurrences": 1
         },
         {
           "find": "          datatype = parseResource();",
-          "replace": "          datatype = parseResource();\n          locatedContexts = locations.last.contextIds();",
+          "replace": "          datatype = parseResource();\n          if (locations != null) locatedContexts = locations.last.contextIds();",
           "occurrences": 1
         },
         {
           "find": "handler.handleTriple(subject, predicate, literal, datatype);",
-          "replace": "locations.datatype(handler, subject, predicate, literal, datatype, locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "replace": "if (locations == null) handler.handleTriple(subject, predicate, literal, datatype); else locations.datatype(handler, subject, predicate, literal, datatype, locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
           "occurrences": 1
         },
         {
           "find": "handler.handleTriple(subject, predicate, literal, lang);",
-          "replace": "locations.language(handler, subject, predicate, literal, lang, locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "replace": "if (locations == null) handler.handleTriple(subject, predicate, literal, lang); else locations.language(handler, subject, predicate, literal, lang, locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
           "occurrences": 1
         },
         {
           "find": "handler.handleTriple(subject, predicate, literal);",
-          "replace": "locations.plain(handler, subject, predicate, literal, locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "replace": "if (locations == null) handler.handleTriple(subject, predicate, literal); else locations.plain(handler, subject, predicate, literal, locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
           "occurrences": 1
         },
         {
           "find": "handler.handleTriple(subject, predicate, literal, XSDVocabulary.INTEGER.getIRI());",
-          "replace": "locations.datatype(handler, subject, predicate, literal, XSDVocabulary.INTEGER.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "replace": "if (locations == null) handler.handleTriple(subject, predicate, literal, XSDVocabulary.INTEGER.getIRI()); else locations.datatype(handler, subject, predicate, literal, XSDVocabulary.INTEGER.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
           "occurrences": 1
         },
         {
           "find": "handler.handleTriple(subject, predicate, literal, XSDVocabulary.DOUBLE.getIRI());",
-          "replace": "locations.datatype(handler, subject, predicate, literal, XSDVocabulary.DOUBLE.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "replace": "if (locations == null) handler.handleTriple(subject, predicate, literal, XSDVocabulary.DOUBLE.getIRI()); else locations.datatype(handler, subject, predicate, literal, XSDVocabulary.DOUBLE.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
           "occurrences": 1
         },
         {
           "find": "handler.handleTriple(subject, predicate, literal, XSDVocabulary.DECIMAL.getIRI());",
-          "replace": "locations.datatype(handler, subject, predicate, literal, XSDVocabulary.DECIMAL.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "replace": "if (locations == null) handler.handleTriple(subject, predicate, literal, XSDVocabulary.DECIMAL.getIRI()); else locations.datatype(handler, subject, predicate, literal, XSDVocabulary.DECIMAL.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
           "occurrences": 1
         },
         {
           "find": "handler.handleTriple(subject, predicate, literal, XSDVocabulary.BOOLEAN.getIRI());",
-          "replace": "locations.datatype(handler, subject, predicate, literal, XSDVocabulary.BOOLEAN.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "replace": "if (locations == null) handler.handleTriple(subject, predicate, literal, XSDVocabulary.BOOLEAN.getIRI()); else locations.datatype(handler, subject, predicate, literal, XSDVocabulary.BOOLEAN.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
           "occurrences": 1
         }
       ],
-      "patchedSourceSHA256": "e1e4f790b0b6b5d807f51a5c9f906843e41121764d61ca55c9d5d97237f2f7ee"
+      "patchedSourceSHA256": "e83a2c1f7de50bc87d59cb0e1d8629c83a037cf8c38f176de82ae6f8f7c98d9c"
     },
     {
       "sourceEntry": "org/semanticweb/owlapi/rdf/turtle/parser/JavaCharStream.java",
@@ -340,11 +340,11 @@
   "ownedSources": [
     {
       "file": "LocatedTurtleParser.java",
-      "sha256": "cc6a1138549dc37e7b46f307e60b70ec78e43e0c42207e48b274ecd2f5256ca4"
+      "sha256": "46128e35939f7ea770fa69954fe21dcdbeb4dbd791fa394b734b27be9863279d"
     }
   ],
-  "notice": "EvoPilot identified modifications of OWLAPI 5.5.1 TurtleParser, JavaCharStream and TurtleParserTokenManager: rename only the derived classes, instrument existing grammar semantic actions with raw source handles, and preserve original callback payload/order, lexer DFA, token images and Unicode decoding while retaining raw UTF-16 interval sidecars across read-ahead/backups. Original class files and parser factories are not replaced. Original source comments and notices are retained outside the exact changes listed here. Retain the exact source archive, recipe and generated sources with source/license evidence. This is not an unmodified upstream release or a completed license acceptance.",
-  "reason": "Capture exact raw Turtle triple occurrences, inherited terms, generated blank/list structure and actual prefix/base/IRI-cache dependencies. These records alone do not establish complete RDF-to-OWL axiom provenance. No grammar repair, resolution correction or semantic expansion is intended.",
+  "notice": "EvoPilot identified modifications of OWLAPI 5.5.1 TurtleParser, JavaCharStream and TurtleParserTokenManager: separately rename derived classes; instrument existing semantic actions with optional raw UTF-16 source handles; decode IRIREF UCHAR escapes once from original input, rejecting malformed escapes, non-scalar values and illegal decoded RFC 3987 character classes. This focused character/escape correction is not a complete RFC 3987 structural validator; no host, port, scheme or normalization policy is added. Source-disabled parsing invokes the same corrected semantic actions without a collector or location budgets. Original callback order, lexer DFA, token images, relative IRI/base resolution and QName semantics are otherwise preserved. Original class files and factories are not replaced. Source comments/notices outside these exact modifications remain unchanged. Retain the exact archive, recipe and generated sources with source/license evidence; this is neither an unmodified upstream release nor completed license acceptance.",
+  "reason": "Capture exact Turtle event sources and actual lexical dependencies, and correct the evidenced upstream IRIREF Unicode escape omission without decoding token.image twice. BASE and PREFIX IRIREFs use the same correction; existing relative/base/cache and QName policies are not rewritten. Located occurrence records alone do not establish complete RDF-to-OWL axiom provenance. Preserve legal Unicode ucschar values including NBSP and U+2028/U+2029; private-use characters are permitted only within query. General IRI-reference structural conformance remains separate from this correction.",
   "acceptance": "Actual parser event/ontology parity, exact Unicode offsets, resource limits, source-set mapper integration and formal source-fragment acceptance remain required.",
   "upstreamLicenseDeclarations": [
     {

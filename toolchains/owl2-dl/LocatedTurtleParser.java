@@ -65,9 +65,97 @@ public final class LocatedTurtleParser {
         Collector collector = new Collector(content.length(), documentIri, observer, maximumOccurrences);
         LocatedTurtleSyntaxParser parser = new LocatedTurtleSyntaxParser(
                 new StringReader(content), semanticSink, documentIri);
+        parser.sourceContent = content;
         parser.locations = collector;
         parser.parseDocument();
         return collector.seal();
+    }
+
+    /** Ordinary semantic parsing uses the same IRI correction without allocating
+     * source handles, contexts, occurrences or an observer. Located-index limits
+     * must not become new limits on ordinary ontology loading. */
+    public static void parseUnlocated(String content, IRI documentIri,
+            TripleHandler semanticSink) throws ParseException, IOException {
+        Objects.requireNonNull(content);
+        Objects.requireNonNull(documentIri);
+        Objects.requireNonNull(semanticSink);
+        LocatedTurtleSyntaxParser parser = new LocatedTurtleSyntaxParser(
+                new StringReader(content), semanticSink, documentIri);
+        parser.sourceContent = content;
+        parser.parseDocument();
+    }
+
+    /** Decode IRIREF UCHARs exactly once from the original input. JavaCharStream
+     * already applies Java-style lowercase-u translation to token.image, so the
+     * transformed image cannot establish either the original escape grammar or
+     * whether a backslash was itself escaped. QName decoding is not changed. */
+    static String decodeIri(String content, Token token) throws ParseException {
+        if (content == null || !(token instanceof LocatedToken value)
+                || value.sourceStart < 0 || value.sourceEnd > content.length()
+                || value.sourceEnd - value.sourceStart < 2
+                || content.charAt(value.sourceStart) != '<'
+                || content.charAt(value.sourceEnd - 1) != '>')
+            throw new ParseException("Missing original Turtle IRIREF");
+        StringBuilder decoded = new StringBuilder(value.sourceEnd - value.sourceStart - 2);
+        for (int i = value.sourceStart + 1, end = value.sourceEnd - 1; i < end;) {
+            char c = content.charAt(i++);
+            if (c == '\\') {
+                if (i >= end) throw new ParseException("Incomplete Turtle IRI escape");
+                char kind = content.charAt(i++);
+                int digits = kind == 'u' ? 4 : kind == 'U' ? 8 : 0;
+                if (digits == 0 || end - i < digits)
+                    throw new ParseException("Invalid Turtle IRI UCHAR");
+                long scalar = 0;
+                for (int n = 0; n < digits; n++) {
+                    char h = content.charAt(i++);
+                    int digit = h >= '0' && h <= '9' ? h - '0'
+                            : h >= 'A' && h <= 'F' ? h - 'A' + 10
+                            : h >= 'a' && h <= 'f' ? h - 'a' + 10 : -1;
+                    if (digit < 0) throw new ParseException("Invalid Turtle IRI hexadecimal escape");
+                    scalar = scalar * 16 + digit;
+                }
+                if (scalar > 0x10FFFF || scalar >= 0xD800 && scalar <= 0xDFFF)
+                    throw new ParseException("Turtle IRI escape is not a Unicode scalar");
+                decoded.appendCodePoint((int) scalar);
+            } else if (Character.isHighSurrogate(c)) {
+                if (i >= end || !Character.isLowSurrogate(content.charAt(i)))
+                    throw new ParseException("Unpaired surrogate in Turtle IRI");
+                decoded.append(c).append(content.charAt(i++));
+            } else {
+                if (Character.isLowSurrogate(c)) throw new ParseException("Unpaired surrogate in Turtle IRI");
+                decoded.append(c);
+            }
+        }
+        String iri = decoded.toString();
+        validateIriCharacters(iri);
+        return iri;
+    }
+
+    /** RFC 3987 section 2.2 character classes, without URI normalization or a
+     * java.net.URI conversion (which rejects some legal Unicode ucschar values).
+     * This is a character/escape correction, not a new relative-IRI resolver. */
+    private static void validateIriCharacters(String iri) throws ParseException {
+        boolean query = false, fragment = false;
+        for (int i = 0; i < iri.length();) {
+            int cp = iri.codePointAt(i); i += Character.charCount(cp);
+            if (cp == '#') { fragment = true; query = false; }
+            else if (cp == '?' && !fragment) query = true;
+            if (cp < 0x80) {
+                if (cp <= 0x20 || cp == 0x7F || "\\<>\"{}|^`".indexOf(cp) >= 0)
+                    throw new ParseException("Illegal character in decoded Turtle IRI");
+                continue;
+            }
+            boolean ucschar = cp >= 0xA0 && cp <= 0xD7FF
+                    || cp >= 0xF900 && cp <= 0xFDCF
+                    || cp >= 0xFDF0 && cp <= 0xFFEF
+                    || cp >= 0x10000 && cp <= 0xDFFFD && (cp & 0xFFFF) <= 0xFFFD
+                    || cp >= 0xE1000 && cp <= 0xEFFFD;
+            boolean privateChar = cp >= 0xE000 && cp <= 0xF8FF
+                    || cp >= 0xF0000 && cp <= 0xFFFFD
+                    || cp >= 0x100000 && cp <= 0x10FFFD;
+            if (!ucschar && !(query && privateChar))
+                throw new ParseException("Illegal Unicode character in decoded Turtle IRI");
+        }
     }
 
     /** Uses original token identity/kind/image; offsets include the raw escape spelling. */
@@ -154,8 +242,7 @@ public final class LocatedTurtleParser {
             return new TermSource(value.sourceId(), true, value.generated(), value.contextIds());
         }
         IRI tokenTerm(Token token, IRI value) { last = token(token); return value; }
-        IRI iriTerm(Token token, IRI value) {
-            String key = token.image.substring(1, token.image.length() - 1);
+        IRI iriTerm(Token token, IRI value, String key) {
             last = range(token, token, "TOKEN", iriContexts.getOrDefault(key, List.of())); return value;
         }
         IRI qnameTerm(Token token, IRI value) {

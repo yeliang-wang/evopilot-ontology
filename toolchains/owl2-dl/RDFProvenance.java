@@ -1,6 +1,8 @@
 package org.semanticweb.owlapi.rdf.rdfxml.parser;
 
 import java.util.*;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import org.semanticweb.owlapi.model.*;
 
 /**
@@ -10,6 +12,17 @@ import org.semanticweb.owlapi.model.*;
  * Original source spans are owned by the syntax adapter, keyed by occurrence ID.
  */
 public final class RDFProvenance {
+    private static final int PRESERVE = 1;
+    private static final int AS_CONTEXT = 2;
+
+    /** Roles describe actual mapper usage, not logical justification membership. */
+    public record Sources(Set<Integer> constructionOccurrenceIds,
+                          Set<Integer> parserContextOccurrenceIds) {
+        public Sources {
+            constructionOccurrenceIds = Collections.unmodifiableSet(new TreeSet<>(constructionOccurrenceIds));
+            parserContextOccurrenceIds = Collections.unmodifiableSet(new TreeSet<>(parserContextOccurrenceIds));
+        }
+    }
     public static final class MappingException extends RuntimeException {
         public MappingException(String message) { super(message); }
     }
@@ -57,7 +70,7 @@ public final class RDFProvenance {
 
     private static final class Node {
         final int id;
-        final Set<Node> dependencies = new LinkedHashSet<>();
+        final Map<Node, Integer> dependencies = new LinkedHashMap<>();
         final Set<Integer> occurrences = new LinkedHashSet<>();
         boolean closed, sourced;
         Node(int id) { this.id = id; }
@@ -65,12 +78,16 @@ public final class RDFProvenance {
     private record CacheKey(String kind, IRI node) {}
     private record Cached(Object value, Node provenance) {}
     private record RelationKey(String kind, IRI subject, IRI object) {}
+    private record Visit(Node node, boolean context) {}
 
     public final class Scope implements AutoCloseable {
         private final Node node;
         private final Scope parent;
         private FactKey trigger;
+        private Node triggerSource;
         private boolean translation;
+        private boolean selectionProbe;
+        private int attachmentMode = PRESERVE;
         private boolean closed;
         private Scope(Node node, Scope parent) { this.node = node; this.parent = parent; }
         @Override public void close() {
@@ -79,9 +96,9 @@ public final class RDFProvenance {
             if (!enabled()) return;
             if (current != this) throw new MappingException("RDF provenance scopes closed out of order");
             node.closed = true;
-            for (Node dependency : node.dependencies) node.sourced |= dependency.sourced;
+            for (Node dependency : node.dependencies.keySet()) node.sourced |= dependency.sourced;
             current = parent; budget.scopes--;
-            if (parent != null) edge(parent.node, node);
+            if (parent != null) edge(parent.node, node, attachmentMode);
         }
     }
 
@@ -96,11 +113,13 @@ public final class RDFProvenance {
     private final Map<IRI, Node> omittedRestTerminals = new HashMap<>();
     private final Set<IRI> consumedRestLinks = new HashSet<>();
     private final Map<OWLAnnotation, Set<Node>> pendingAnnotations = new HashMap<>();
+    private final IdentityHashMap<Collection<OWLAnnotation>, Node> annotationValues = new IdentityHashMap<>();
     private final Set<Integer> seenOccurrences = new HashSet<>();
     private Scope current;
     private Integer occurrence;
     private FactKey inputFact;
     private boolean inputUsed, finished;
+    private int unfinishedSelections;
     private int nextNode;
     private Node builtinContext;
 
@@ -119,28 +138,61 @@ public final class RDFProvenance {
         return new Node(nextNode++);
     }
     private void edge(Node from, Node to) {
+        edge(from, to, PRESERVE);
+    }
+    private void edge(Node from, Node to, int mode) {
         if (from == to) throw new MappingException("RDF provenance contains a self dependency");
-        if (from.dependencies.add(to)) budget.limit(++budget.edges, Budget.MAX_EDGES, "edge");
+        int previous = from.dependencies.getOrDefault(to, 0);
+        int added = mode & ~previous;
+        if (added != 0) {
+            budget.edges += Integer.bitCount(added);
+            budget.limit(budget.edges, Budget.MAX_EDGES, "role edge");
+            from.dependencies.put(to, previous | mode);
+        }
         from.sourced |= to.sourced;
     }
     private void use(Node value) {
+        use(value, PRESERVE);
+    }
+    private void use(Node value, int mode) {
         if (current == null) throw new MappingException("RDF dependency read outside a mapping scope");
-        edge(current.node, value);
+        edge(current.node, value, mode);
     }
     private Scope open() {
         if (!enabled()) return new Scope(null, null);
         mutable(); budget.limit(++budget.scopes, Budget.MAX_SCOPES, "scope depth");
         Scope value = new Scope(node(), current); current = value; return value;
     }
-    /** Snapshot only dependencies already observed, never a mutable ancestor frame. */
+    /** Snapshot local, already observed role edges; never climb to a caller. */
     private Node snapshot() {
         if (current == null) throw new MappingException("RDF state has no construction scope");
         Node result = node();
-        Scope source = current;
-        while (source.node.dependencies.isEmpty() && source.parent != null) source = source.parent;
-        for (Node dependency : source.node.dependencies) edge(result, dependency);
+        for (Map.Entry<Node, Integer> dependency : current.node.dependencies.entrySet()) {
+            edge(result, dependency.getKey(), dependency.getValue());
+        }
         result.closed = true;
         return result;
+    }
+    /** A context boundary changes this use, never the intrinsic cached value. */
+    public Scope context() {
+        Scope scope = open(); scope.attachmentMode = AS_CONTEXT; return scope;
+    }
+    public boolean probe(FactKey trigger, BooleanSupplier action) {
+        if (!enabled()) return action.getAsBoolean();
+        Node source = facts.get(trigger);
+        if (source == null) {
+            Scope caller = current;
+            while (caller != null && !trigger.equals(caller.trigger)) caller = caller.parent;
+            if (caller == null || caller.triggerSource == null) {
+                throw new MappingException("RDF selection probe has no bound trigger");
+            }
+            source = caller.triggerSource;
+        }
+        try (Scope scope = context()) {
+            scope.selectionProbe = true;
+            use(source);
+            return action.getAsBoolean();
+        }
     }
     private void add(Set<Node> target, Node source) {
         if (target.add(source)) budget.limit(++budget.edges, Budget.MAX_EDGES, "reference");
@@ -182,7 +234,7 @@ public final class RDFProvenance {
         }
         value.occurrences.add(occurrence); value.sourced = true;
         occurrenceFacts.put(occurrence, canonical);
-        Scope scope = open(); scope.trigger = canonical; use(value); return scope;
+        Scope scope = open(); scope.trigger = canonical; scope.triggerSource = value; use(value); return scope;
     }
     public Scope dispatch(String phase, FactKey trigger) {
         if (!enabled()) return open();
@@ -202,11 +254,39 @@ public final class RDFProvenance {
         scope.trigger = trigger;
         if (value != null) use(value);
         if (derived != null) use(derived);
+        scope.triggerSource = derived == null ? value : value == null ? derived : snapshot();
         return scope;
     }
     public Scope translation(String kind, IRI subject) {
         Objects.requireNonNull(kind); Objects.requireNonNull(subject);
-        Scope scope = open(); scope.translation = true; return scope;
+        // A selector can construct/cache a value as a side effect. Preserve the
+        // observations which actually led to that construction, as context of
+        // this cached value. Copy only observations already made, never an open
+        // parent node (which could later contain this translation itself).
+        // Stop at an enclosing translation: a nested shared value must not
+        // inherit an outer expression's caller/definition merely by nesting.
+        Node decision = null;
+        if (enabled()) {
+            List<Scope> path = new ArrayList<>();
+            Scope cursor = current;
+            while (cursor != null && !cursor.translation) {
+                path.add(cursor);
+                if (cursor.selectionProbe) {
+                    decision = node();
+                    for (Scope observed : path) {
+                        for (Map.Entry<Node, Integer> dependency : observed.node.dependencies.entrySet()) {
+                            edge(decision, dependency.getKey(), dependency.getValue());
+                        }
+                    }
+                    decision.closed = true;
+                    break;
+                }
+                cursor = cursor.parent;
+            }
+        }
+        Scope scope = open(); scope.translation = true;
+        if (decision != null) use(decision, AS_CONTEXT);
+        return scope;
     }
     public void readResource(IRI s, IRI p, IRI o) {
         if (enabled() && o != null) { mutable(); use(fact(FactKey.resource(s, p, o))); }
@@ -294,8 +374,10 @@ public final class RDFProvenance {
             if (started()) throw new MappingException("RDF classification changed outside mapping");
             return; // Constructor seedState records the initial vocabulary explicitly.
         }
+        Node cause = snapshot();
+        if (!cause.sourced) throw new MappingException("RDF classification has no local source witness");
         add(states.computeIfAbsent(state, k -> new HashMap<>())
-            .computeIfAbsent(iri, k -> new LinkedHashSet<>()), snapshot());
+            .computeIfAbsent(iri, k -> new LinkedHashSet<>()), cause);
     }
     public boolean stateContains(Set<IRI> state, IRI iri) {
         boolean result = state.contains(iri);
@@ -308,12 +390,12 @@ public final class RDFProvenance {
         if (dispatch != null && !dispatch.translation && dispatch.trigger != null) {
             Map<Set<IRI>, Set<IRI>> local = inputClassifications.get(dispatch.trigger);
             if (local != null && local.getOrDefault(state, Collections.emptySet()).contains(iri)) {
-                use(fact(dispatch.trigger)); return true;
+                use(fact(dispatch.trigger), AS_CONTEXT); return true;
             }
         }
         Set<Node> reasons = states.getOrDefault(state, Collections.emptyMap()).get(iri);
         if (reasons == null || reasons.isEmpty()) throw new MappingException("RDF classification has no provenance");
-        for (Node reason : reasons) use(reason);
+        for (Node reason : reasons) use(reason, AS_CONTEXT);
         return result;
     }
     public void relationAdded(String kind, IRI subject, IRI object) {
@@ -327,9 +409,70 @@ public final class RDFProvenance {
         for (IRI object : objects) {
             Set<Node> reasons = relations.get(new RelationKey(kind, subject, object));
             if (reasons == null) throw new MappingException("RDF annotation relation has no provenance");
-            for (Node reason : reasons) use(reason);
+            // This API enumerates candidates. The selected annotation relation
+            // is separately retained as construction by AnnotationSelection.
+            for (Node reason : reasons) use(reason, AS_CONTEXT);
         }
     }
+    /** Candidate annotation values retain their intrinsic roles behind a context edge. */
+    public Set<OWLAnnotation> annotationCandidate(Supplier<Set<OWLAnnotation>> action) {
+        if (!enabled()) return action.get();
+        try (Scope candidate = context()) {
+            Set<OWLAnnotation> value = action.get();
+            if (!value.isEmpty()) {
+                if (annotationValues.put(value, candidate.node) != null) {
+                    throw new MappingException("An annotation value has ambiguous candidate provenance");
+                }
+                budget.limit(++budget.edges, Budget.MAX_EDGES, "annotation value reference");
+            }
+            return value;
+        }
+    }
+    public void annotationValueUsed(Collection<OWLAnnotation> value) {
+        if (!enabled() || value.isEmpty()) return;
+        mutable(); Node source = annotationValues.get(value);
+        if (source == null || !source.closed) throw new MappingException("Selected annotation value has no completed provenance");
+        use(source);
+    }
+    public final class AnnotationSelection implements AutoCloseable {
+        private final IRI source;
+        private final Scope scope;
+        private final Map<IRI, Node> matching = new HashMap<>();
+        private boolean selected;
+        private AnnotationSelection(IRI source) {
+            this.source = source; scope = context();
+            if (enabled()) unfinishedSelections++;
+        }
+        public boolean test(IRI candidate, BooleanSupplier action) {
+            if (!enabled()) return action.getAsBoolean();
+            if (selected || current != scope) throw new MappingException("Invalid annotation selection lifecycle");
+            try (Scope observation = open()) {
+                boolean matches = action.getAsBoolean();
+                if (matches) {
+                    if (matching.put(candidate, observation.node) != null) {
+                        throw new MappingException("Duplicate annotation candidate");
+                    }
+                    budget.limit(++budget.edges, Budget.MAX_EDGES, "annotation candidate reference");
+                }
+                return matches;
+            }
+        }
+        public void select(IRI candidate) {
+            if (!enabled()) return;
+            if (selected || current != scope) throw new MappingException("Annotation selection already completed");
+            selected = true; unfinishedSelections--;
+            if (candidate == null) return;
+            Node chosen = matching.get(candidate);
+            Set<Node> links = relations.get(new RelationKey("ANNOTATED_SOURCE", source, candidate));
+            if (chosen == null || !chosen.closed || links == null || scope.parent == null) {
+                throw new MappingException("Selected annotation relation has no actual matching observation");
+            }
+            edge(scope.parent.node, chosen, PRESERVE);
+            for (Node link : links) edge(scope.parent.node, link, PRESERVE);
+        }
+        @Override public void close() { scope.close(); }
+    }
+    public AnnotationSelection annotationSelection(IRI source) { return new AnnotationSelection(source); }
     public void pendingAdded(Set<OWLAnnotation> annotations) {
         if (!enabled() || annotations.isEmpty()) return;
         mutable(); Node reason = snapshot();
@@ -392,7 +535,7 @@ public final class RDFProvenance {
     public Index finish(Set<OWLAxiom> finalAxioms) {
         if (!enabled()) throw new MappingException("Disabled RDF provenance cannot produce an index");
         mutable(); budget.check();
-        if (current != null || occurrence != null || pendingAnnotations.size() > 0) {
+        if (current != null || occurrence != null || pendingAnnotations.size() > 0 || unfinishedSelections != 0) {
             throw new MappingException("RDF mapping has unfinished provenance state");
         }
         Map<OWLAxiom, Set<Node>> retained = new LinkedHashMap<>();
@@ -411,31 +554,48 @@ public final class RDFProvenance {
 
     public final class Index {
         private final Map<OWLAxiom, Set<Node>> retained;
-        private final Map<OWLAxiom, Set<Integer>> resolved = new HashMap<>();
+        private final Map<OWLAxiom, Sources> resolved = new HashMap<>();
+        private final Map<OWLAxiom, Set<Integer>> unions = new HashMap<>();
         private Index(Map<OWLAxiom, Set<Node>> retained) { this.retained = retained; }
         public int factCount() { return facts.size(); }
         public int occurrenceCount() { return occurrenceFacts.size(); }
         public Set<OWLAxiom> axioms() { return retained.keySet(); }
         public Set<Integer> occurrences(OWLAxiom axiom) {
+            Sources roles = sources(axiom);
+            Set<Integer> value = unions.get(axiom);
+            if (value == null) {
+                TreeSet<Integer> all = new TreeSet<>(roles.constructionOccurrenceIds());
+                all.addAll(roles.parserContextOccurrenceIds());
+                value = Collections.unmodifiableSet(all); unions.put(axiom, value);
+            }
+            return value;
+        }
+        public Sources sources(OWLAxiom axiom) {
             budget.check();
-            Set<Integer> cached = resolved.get(axiom); if (cached != null) return cached;
+            Sources cached = resolved.get(axiom); if (cached != null) return cached;
             Set<Node> roots = retained.get(axiom);
             if (roots == null) throw new MappingException("Axiom is outside the final RDF provenance index");
-            TreeSet<Integer> result = new TreeSet<>();
-            Set<Node> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-            ArrayDeque<Node> pending = new ArrayDeque<>(roots);
+            TreeSet<Integer> construction = new TreeSet<>(), context = new TreeSet<>();
+            Set<Visit> visited = new HashSet<>();
+            ArrayDeque<Visit> pending = new ArrayDeque<>();
+            for (Node root : roots) pending.add(new Visit(root, false));
             while (!pending.isEmpty()) {
-                Node value = pending.removeLast();
-                if (!visited.add(value)) continue;
+                Visit visit = pending.removeLast();
+                if (!visited.add(visit)) continue;
+                Node value = visit.node();
                 budget.limit(++budget.resolution, Budget.MAX_RESOLUTION, "resolution");
                 if (!value.closed) throw new MappingException("Unsealed RDF source dependency");
-                for (int id : value.occurrences) if (result.add(id)) {
+                Set<Integer> destination = visit.context() ? context : construction;
+                for (int id : value.occurrences) if (destination.add(id)) {
                     budget.limit(++budget.resolution, Budget.MAX_RESOLUTION, "resolution");
                 }
-                pending.addAll(value.dependencies);
+                for (Map.Entry<Node, Integer> dependency : value.dependencies.entrySet()) {
+                    if ((dependency.getValue() & PRESERVE) != 0) pending.add(new Visit(dependency.getKey(), visit.context()));
+                    if ((dependency.getValue() & AS_CONTEXT) != 0) pending.add(new Visit(dependency.getKey(), true));
+                }
             }
-            if (result.isEmpty()) throw new MappingException("OWL axiom has no original RDF occurrence");
-            Set<Integer> answer = Collections.unmodifiableSet(result); resolved.put(axiom, answer); return answer;
+            if (construction.isEmpty()) throw new MappingException("OWL axiom has no original construction occurrence");
+            Sources answer = new Sources(construction, context); resolved.put(axiom, answer); return answer;
         }
     }
 }
