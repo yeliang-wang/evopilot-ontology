@@ -1,8 +1,8 @@
 # Managed formal toolchains in the v0.9 development installation
 
-The installed operator can bind already provisioned Java DL and Python SHACL executors to an independent Ontology installation. The managed daemon then uses the same owner service and formal task APIs as foreground `serve`. This is development functionality; it does not establish full OWL conformance, actual Host acceptance or release readiness.
+The installed operator can prepare one pinned offline distribution candidate and explicitly bind provisioned Java DL and Python SHACL executors to an independent Ontology installation. The managed daemon then uses the same owner service and formal task APIs as foreground `serve`. This is development functionality; it does not establish full OWL conformance, actual Host acceptance or release readiness.
 
-The operation verifies selected installed components. It does not download a JDK/Python runtime, run Maven/pip, build a worker from source, replace an interpreter or infer a component's Release identity from its filename. Complete component distribution and provisioning remain release obligations. Development toolchains must be labeled as such; source test preparation is not evidence of a published installer.
+These operations verify selected local components. They do not download a JDK/Python runtime, run Maven/pip, build a worker from source, replace an interpreter or infer a component's Release identity from its filename. The offline preparation below covers a fixed development candidate; a complete supported distribution remains a release obligation. Development toolchains must be labeled as such; source test preparation is not evidence of a published installer.
 
 ## Inspect a distribution candidate
 
@@ -25,9 +25,9 @@ The input uses this exact shape, with absolute canonical paths substituted for e
 
 Run the command from that exact installed runtime. Keep the artifact directory private and include exactly the eleven flat files named in the packaged `governance/distribution-linux-arm64-v090.json`. The selected bundle includes the prebuilt DL payload, SHACL adapter, Java runtime/source/metadata, Python runtime/build material and pinned wheel payload. It contains no workspace or credentials. Roots must be separate; planned destination parents must already exist and be private. Inspection does not create them.
 
-The report binds the runtime/Node and raw manifest identities, observed artifact hashes, declared execution platform, packaged worker/lock compatibility, proposed four component roots and a fresh capacity observation. `PLAN_VERIFIED` means these inspection conditions hold. `BLOCKED` lists a platform mismatch, package incompatibility, an occupied tool destination insufficient byte capacity or a reported inode shortage. Malformed manifests, unexpected files, changed bytes, unsafe files and observed filesystem races produce structured errors. An unknown catalog ID returns `NO_DISTRIBUTION_CANDIDATE`.
+The report binds the runtime/Node and raw manifest identities, observed artifact hashes, declared execution platform, packaged worker/lock compatibility, proposed four component roots and a fresh capacity observation. `PLAN_VERIFIED` means these inspection conditions hold. `BLOCKED` lists a platform mismatch, package incompatibility, an occupied tool destination, insufficient byte capacity or a reported inode shortage. Malformed manifests, unexpected files, changed bytes, unsafe files and observed filesystem races produce structured errors. An unknown catalog ID returns `NO_DISTRIBUTION_CANDIDATE`.
 
-Limits are 256 KiB of manifest data, 64 artifacts, 256 MiB per artifact and 768 MiB of artifact bytes. Hashing uses 64 KiB chunks and checks a 30-second read budget between chunks; this is not an operating-system deadline for a stalled filesystem call. The space estimate includes two declared payload copies, filesystem rounding and a 16 MiB control allowance. It excludes acquisition storage, historical generations, separate Node/product runtime and archival source/notice storage. The report records free inodes when the filesystem reports a positive inode pool; unknown inode capacity remains explicit and does not establish sufficient inode space. Future preparation must inspect the full applicable peak again.
+Limits are 256 KiB of manifest data, 64 artifacts, 256 MiB per artifact and 768 MiB of artifact bytes. Hashing uses 64 KiB chunks and checks a 30-second read budget between chunks; this is not an operating-system deadline for a stalled filesystem call. The space estimate includes two declared payload copies, filesystem rounding and a 16 MiB control allowance. It excludes acquisition storage, historical generations, separate Node/product runtime and archival source/notice storage. The report records free inodes when the filesystem reports a positive inode pool; unknown inode capacity remains explicit and does not establish sufficient inode space. Offline preparation refreshes remaining payload and control capacity before writing payloads.
 
 The inspector does not expand archives, generate `pyvenv.cfg`, verify ABI or systemd, execute tools, bind them, start the service or connect the Host. Its `artifactBytesVerified` fact is separate from `expandedInventoryObserved`, `relocationVerified`, `loadabilityVerified`, `resourceBackendVerified` and `toolsBound`, which remain false. Python final-path assembly is explicitly required. Source/notice references preserve selected materials; their presence does not establish redistribution sufficiency or reproducible-build provenance. Legal review and product acceptance remain `NOT_EVALUATED`. Inspection reports are historical observations, not leases or permission to perform later writes.
 
@@ -37,15 +37,99 @@ The inspector does not expand archives, generate `pyvenv.cfg`, verify ABI or sys
 
 Each inventory records normalized paths, file hashes and lengths, safe owner-only modes, explicit or derived directories, raw symbolic-link text and the final target resolved within the archive's virtual tree. The scanner does not follow links on the host. It rejects escape paths, duplicate entries, conflicting parents, dangling or cyclic links, and paths written through a symbolic-link ancestor. Directory names remain case-sensitive: the selected Python archive includes names that differ only by case. The report requires a case-sensitive destination; it has not verified the destination filesystem's behavior.
 
-`payloadRecipeDigest` identifies the product's fixed tar transformations. `payloadTarInventoryDigest` binds the resulting stable content inventories without observation time or available-space measurements. These digests cover tar inventory only; a later preparation plan must also bind its exact request, final paths and write/recovery rules.
+`payloadRecipeDigest` identifies the product's fixed tar transformations. `payloadTarInventoryDigest` binds the resulting stable content inventories without observation time or available-space measurements. These digests cover tar inventory only; `distribution-prepare` also binds its exact request, final paths, wheel contents and write/recovery rules.
 
 This bounded reader supports regular files, directories and symbolic links in POSIX/GNU ustar, plus per-file PAX `mtime` metadata. Hard links, device nodes, sparse files, global PAX and unrecognized extensions are refused. Headers, numeric fields, checksums, entry sizes, file padding and end markers are validated. Limits cover raw input, decoded tar bytes, total file bytes, entry count, individual files and an aggregate 60-second scanning budget. Streams are closed on completion or failure; a stalled operating-system filesystem call is not guaranteed to obey the user-space timer.
 
 `payloadTarInventoryObserved:true` describes this content observation. `expandedInventoryObserved` remains false: the wheel ZIP members have not been inventoried, no final Python environment has been created, and source archives have not been expanded. The command creates no files, leases or tool bindings and runs no executors. A platform mismatch can coexist with a valid archive inventory because scanning foreign-platform bytes does not establish that they can execute. This report is a preparation input, not a completed installation or permission to write later.
 
+## Prepare the offline candidate
+
+`distribution-prepare` materializes the selected candidate without launching Java, Python, a package manager or another child process. This recipe requires Linux ARM64, glibc 2.28 or newer, the exact selected installed Ontology package and Node 24.14.0. The eleven local artifacts described above must already be present. It is not a downloader or a general tar/wheel installer.
+
+First retain the complete successful JSON output from `distribution-inspect` or `distribution-inventory`. The prepare input nests that command's exact input under `distribution` and adds the request identity, a new private control directory and the saved `reportDigest`:
+
+```json
+{
+  "schema": "ontology-distribution-prepare-input/v1",
+  "requestId": "offline-tools-01",
+  "controlRoot": "ABS_NEW_PRIVATE_CONTROL_DIRECTORY",
+  "inspectionDigest": "sha256:EXACT_SAVED_REPORT_DIGEST",
+  "distribution": {
+    "schema": "ontology-distribution-inspect-input/v1",
+    "bundleId": "linux-arm64-temurin21-pbs20260211-candidate1",
+    "bundleRoot": "ABS_PRIVATE_ARTIFACT_DIRECTORY",
+    "runtimeRoot": "ABS_INSTALLED_NPM_RUNTIME",
+    "runtimeDigest": "sha256:EXACT_RUNTIME_DIGEST",
+    "toolRoot": "ABS_NEW_TOOL_DIRECTORY",
+    "installationRoot": "ABS_SELECTED_INSTALLATION",
+    "workspaceRoot": "ABS_SELECTED_WORKSPACE"
+  }
+}
+```
+
+Replace all placeholders with observed identities and absolute canonical paths. Leave `controlRoot` and `toolRoot` absent for a new request; their private mode-0700 parent directories must already exist outside source checkouts. Keep the input and saved inspection files outside those roots and the exact artifact directory. All selected roots must remain separate. Preparation does not create or modify the selected installation or business workspace; their paths constrain where tools may be placed.
+
+These are reference invocations with placeholders, not an installed-release acceptance record:
+
+```text
+evopilot-ontology distribution-prepare --input ABS_PREPARE_JSON --inspection ABS_SAVED_INSPECTION_JSON --json
+evopilot-ontology distribution-prepare-status --input ABS_PREPARE_JSON --json
+```
+
+The saved inspection file can contain the CLI's complete `{ "ok": true, "result": ... }` response or its unwrapped result containing `report`, `reportDigest` and `authority`. A bare report is insufficient. New preparation requires `--inspection`; its file is bounded to 8 MiB. The original report is retained unchanged. Fresh preparation checks compare its stable selections and directory identities, while refreshing capacity separately; a new observation timestamp is not a new request.
+
+The fixed recipe writes these final locations:
+
+| Component | Location beneath `toolRoot` | Preparation |
+| --- | --- | --- |
+| DL worker and dependencies | `dl/` | Expand the pinned prebuilt DL payload. |
+| Java runtime | `java/` | Expand the pinned Temurin JRE. |
+| Python runtime and environment | `python/python/`, `python/venv/` | Expand PBS Python, copy the eight pinned pure-Python wheels into the venv, and generate its configuration and interpreter links at the final absolute path. |
+| SHACL adapter | `shacl/worker.py` | Copy the exact packaged adapter bytes. |
+
+Wheel inspection validates the pinned ZIP contents and `RECORD` hashes before copying files. Native extensions, `.data` layouts, `.pth` files and unsupported ZIP features are refused. There is no dependency resolution, build hook, pip execution or generated console-script installation. Java/Python source archives remain unexpanded source materials. The final Python environment is bound to its absolute location; moving the completed tool tree is not a supported relocation operation.
+
+The command retains the original inspection, a stable preparation plan, physical root/component identities and immutable phase records in `controlRoot`. Writes use owned directory descriptors, reject links or replacements at write paths, and resume only exact selected file prefixes. Unknown entries, changed prefixes, conflicting records and missing previously bound roots are preserved and refused. Final file/link inventories and the two generated toolchain manifests are compared with the admitted tar, wheel, configuration and adapter plan before completion. The plan retains package source/lock compatibility as well as payload identities. Status, terminal replay and forward-only completion reconstruct the entire expected toolchain manifests from that original plan; a changed manifest cannot become valid by recomputing its own digest or a later verification record.
+
+Admission first retains an abort receipt ready for publication and an actually allocated 8 MiB completion reserve. A private SQLite lease serializes preparation and abort for that control root; a competing operation returns `DISTRIBUTION_PREPARATION_BUSY`. Do not remove the lease or its journal to bypass it. Control records are bounded to 8 MiB each and 40 MiB in aggregate. The combined wheel expansion is bounded to 32 MiB and 2,000 file entries, with separate per-wheel and materialized-tree limits. Capacity checks account for the selected tool and control filesystems; they are observations, not an unlimited-space guarantee.
+
+To resume, use the same command and the unchanged input. Once the original inspection is fully retained, `--inspection` can be omitted; supply the same saved inspection if bootstrap still needs it:
+
+```text
+evopilot-ontology distribution-prepare --input ABS_PREPARE_JSON --json
+```
+
+To cancel an owned request before forward completion has committed, explicitly select abort:
+
+```text
+evopilot-ontology distribution-prepare-abort --input ABS_PREPARE_JSON --json
+```
+
+Status reads retained control records without acquiring a lease, repairing SQLite or inspecting current executables. Its phase does not assert that a process is alive; `processLiveness:NOT_INFERRED` and `currentToolVerification:NOT_RUN` remain explicit.
+
+| Status | Operator meaning |
+| --- | --- |
+| `NOT_FOUND` | No control directory exists at the selected path. |
+| `UNOWNED_BOOTSTRAP` | No complete owner is retained. Preserve the directory; automatic adoption is unavailable. |
+| `BOOTSTRAP_PENDING`, `ADMISSION_PENDING` | Resume the original input and, when needed, its saved inspection. |
+| `TOOL_ROOT_BINDING_PENDING`, `TOOL_ROOT_OWNED`, `COMPONENT_ROOT_BINDING_PENDING`, `MATERIALIZING` | Ownership binding or payload preparation is incomplete. Resume requires the original retained identities and material. |
+| `MATERIALIZATION_COMMIT_PENDING`, `FINALIZING`, `VERIFIED` | Materialization or its final control records have not reached the terminal receipt. |
+| `COMPLETION_PENDING` | `recoveryDirection:FORWARD_ONLY`; repeat prepare to finish the committed completion. Abort is unavailable. |
+| `ABORT_PENDING` | `recoveryDirection:ABORT_ONLY`; repeat abort. Preparation cannot continue. |
+| `PREPARED`, `ABORTED` | A terminal receipt is retained. Exact replay returns that receipt without rerunning preparation. |
+
+`partialRecordsRequireOriginalInputs:true` means some incomplete records cannot be reconstructed from the retained status evidence alone. Status does not repair them or grant permission to adopt a directory. In particular, a crash between creating `controlRoot` and fully writing its owner leaves an unowned bootstrap. A tool directory without its complete owner marker is also refused. Preserve such directories and use new unused destinations for a new request; there is no promise that every interruption before ownership becomes durable can automatically resume.
+
+For an admitted request, the reserve is atomically renamed to commit either completion or abort before its padding is released. Missing or contradictory reserve records are errors; they are not silently recreated. An interrupted terminal operation follows its recorded direction. Abort retains partial tools and control evidence, performs no recursive cleanup and does not undo a completed preparation. On `STORAGE_FULL`, inspect retained status and available capacity before selecting the permitted recovery path; a failed call is not proof that no writes occurred.
+
+Successful preparation returns `PREPARED`, `filesMaterialized:true` and the private `dl`/`shacl` manifest paths and digests for the explicit binding flow below. It means the selected files were materialized and verified against their plan. `loadabilityVerified`, `resourceBackendVerified`, `toolsBound`, `serviceStarted` and `hostConnected` remain false, with `productAcceptance:NOT_EVALUATED`. No reasoner or interpreter has run. Actual formal-worker execution, Host integration, redistribution review and release acceptance still require their own evidence.
+
+Exact terminal replay reads the retained control evidence before checking the original runtime or bundle. It can recover a receipt after those source materials become unavailable, provided the required control records and directory identities remain intact. That historical receipt does not establish current tool health. Preparation never automatically binds the tools, starts an installation or connects a Host.
+
 ## Bind and inspect
 
-Prepare an independent installation using the [standalone operator](standalone-v090.md). Obtain the exact absolute private toolchain manifest paths and SHA-256 identities from the selected provisioned artifacts. The Python manifest must use the virtual environment's executable path; resolving it to the underlying interpreter loses the environment's packages. Keep credentials and private paths out of published assets.
+Prepare an independent installation using the [standalone operator](standalone-v090.md). Obtain the exact absolute private toolchain manifest paths and SHA-256 identities from the selected provisioned artifacts or the offline `PREPARED` receipt above. The Python manifest must use the virtual environment's executable path; resolving it to the underlying interpreter loses the environment's packages. Keep credentials and private paths out of published assets.
 
 Stop the selected managed service before its first binding or a new replacement:
 

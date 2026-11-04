@@ -24,6 +24,19 @@ export interface ArchiveInventory {
   entries:ArchiveEntry[];inventoryDigest:string;
 }
 
+/** Internal synchronous consumer. Inspection never supplies these callbacks.
+ * Entry callbacks describe physical member headers, not inferred directories;
+ * file chunks are borrowed buffers valid only for the duration of the call. */
+export interface ArchiveReadHooks {
+  onEntry?(entry:Readonly<ArchiveEntry>):void;
+  onFileChunk?(entry:Readonly<ArchiveEntry>,chunk:Buffer,offset:number):void;
+  onFileEnd?(entry:Readonly<ArchiveEntry>):void;
+}
+class ArchiveHookError extends Error {
+  constructor(readonly original:unknown){super('Archive consumer failed');}
+}
+function hook(callback:()=>void):void {try{callback();}catch(error){throw new ArchiveHookError(error);}}
+
 const CHUNK=65536,PAX_BYTES=65536,BLOCK=512;
 const stamp=(s:BigIntStats)=>[s.dev,s.ino,s.uid,s.mode,s.nlink,s.size,s.mtimeNs,s.ctimeNs].join(':');
 function invalid(message:string):never {fail('DISTRIBUTION_ARCHIVE_INVALID',message,409);}
@@ -112,7 +125,7 @@ class TarReader {
   private paxUsed=0;
   private fileHash:Hash|null=null;
   private fileEntry:ArchiveEntry|null=null;
-  constructor(private readonly spec:ArchiveSpec,private readonly deadline:number){}
+  constructor(private readonly spec:ArchiveSpec,private readonly deadline:number,private readonly hooks?:ArchiveReadHooks){}
 
   consume(chunk:Buffer):void {
     checkTime(this.deadline);
@@ -125,8 +138,11 @@ class TarReader {
         this.tailBytes+=rest.length;return;
       }
       if(this.remaining){
-        const count=Math.min(this.remaining,chunk.length-position),part=chunk.subarray(position,position+count);
-        if(this.body==='file')this.fileHash!.update(part);
+        const count=Math.min(this.remaining,chunk.length-position,CHUNK),part=chunk.subarray(position,position+count);
+        if(this.body==='file'){
+          this.fileHash!.update(part);
+          if(this.hooks?.onFileChunk){const entry=Object.freeze({...this.fileEntry!});hook(()=>this.hooks!.onFileChunk!(entry,part,entry.bytes-this.remaining));}
+        }
         else if(this.body==='pax'){part.copy(this.pax,this.paxUsed);this.paxUsed+=count;}
         else invalid('Tar body has no supported owner');
         this.remaining-=count;position+=count;
@@ -147,12 +163,14 @@ class TarReader {
   finish():ArchiveEntry[] {
     checkTime(this.deadline);
     if(!this.ended||this.tailBytes<2*BLOCK||this.tarBytes%BLOCK||this.remaining||this.padding||this.headerUsed||this.pendingPax)invalid('Tar archive is truncated or missing a complete terminator');
-    this.resolveLinks();
-    checkTime(this.deadline);
-    return [...this.entries.values()].sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0);
+    return this.finishTree();
   }
 
-  private add(entry:ArchiveEntry):void {
+  finishTree():ArchiveEntry[] {
+    this.resolveLinks();checkTime(this.deadline);
+    return [...this.entries.values()].sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0);
+  }
+  add(entry:ArchiveEntry):void {
     const parts=entry.path.split('/');
     for(let n=1;n<parts.length;n++){
       const path=parts.slice(0,n).join('/'),prior=this.entries.get(path);
@@ -171,7 +189,9 @@ class TarReader {
   }
   private finishBody():void {
     if(this.body==='file'){
-      this.fileEntry!.digest='sha256:'+this.fileHash!.digest('hex');this.fileHash=null;this.fileEntry=null;
+      this.fileEntry!.digest='sha256:'+this.fileHash!.digest('hex');
+      if(this.hooks?.onFileEnd){const entry=Object.freeze({...this.fileEntry!});hook(()=>this.hooks!.onFileEnd!(entry));}
+      this.fileHash=null;this.fileEntry=null;
     }else if(this.body==='pax')validatePax(this.pax.subarray(0,this.paxUsed));
     this.body=null;
   }
@@ -214,6 +234,7 @@ class TarReader {
     }
     const entry:ArchiveEntry={path,kind,mode:kind==='file'&&(mode&0o111)===0?0o600:0o700,bytes:size,digest:null,target:kind==='symlink'?link:null,resolvedTarget:null,derived:false};
     this.add(entry);
+    if(this.hooks?.onEntry){const observed=Object.freeze({...entry});hook(()=>this.hooks!.onEntry!(observed));}
     if(kind==='file'){
       this.fileBytes+=size;this.body='file';this.fileHash=createHash('sha256');this.fileEntry=entry;this.remaining=size;this.padding=(BLOCK-size%BLOCK)%BLOCK;
       if(!size)this.finishBody();
@@ -261,11 +282,68 @@ class TarReader {
   }
 }
 
+/** Internal pure tree validation for bounded in-memory preparation. File bytes
+ * are authenticated separately by its caller; links use the same virtual tree
+ * rules as tar inspection. No host paths or link targets are consulted. */
+export function validateArchiveEntryTree(entries:readonly ArchiveEntry[],maxEntries:number,timeoutMs=30000):ArchiveEntry[] {
+  if(!Number.isSafeInteger(maxEntries)||maxEntries<1||maxEntries>100000||!Array.isArray(entries)||entries.length>maxEntries||!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>120000)fail('INVALID_INPUT','Bounded archive tree required');
+  const spec:ArchiveSpec={format:'tar',bytes:1024,digest:'sha256:'+'0'.repeat(64),stripPrefix:null,maxEntries,maxFileBytes:2*1024*1024*1024,maxExpandedBytes:2*1024*1024*1024,maxTarBytes:4*1024*1024*1024,timeoutMs};
+  const reader=new TarReader(spec,performance.now()+timeoutMs),seen=new Set<string>();
+  for(const entry of entries){
+    exact(entry,['path','kind','mode','bytes','digest','target','resolvedTarget','derived']);
+    if(typeof entry.path!=='string'||Buffer.byteLength(entry.path)>4096||entry.path.split('/').some(p=>Buffer.byteLength(p)>255))invalid('Archive tree path exceeds its budget');
+    canonicalPath(entry.path);
+    if(seen.has(entry.path))invalid('Duplicate archive tree entity');seen.add(entry.path);
+    if(typeof entry.kind!=='string'||!['file','directory','symlink'].includes(entry.kind)||typeof entry.bytes!=='number'||!Number.isSafeInteger(entry.bytes)||entry.bytes<0||entry.bytes>2*1024*1024*1024||typeof entry.mode!=='number'||typeof entry.derived!=='boolean')invalid('Invalid archive tree entity');
+    if(entry.kind==='file'){
+      digest(entry.digest);if(![0o600,0o700].includes(entry.mode)||entry.derived||entry.target!==null||entry.resolvedTarget!==null)invalid('Invalid archive tree file');
+    }else{
+      if(entry.bytes!==0||entry.digest!==null||entry.mode!==0o700)invalid('Invalid archive tree directory or link');
+      if(entry.kind==='directory'){if(entry.target!==null||entry.resolvedTarget!==null)invalid('Invalid archive tree directory');}
+      else{
+        if(typeof entry.target!=='string'||Buffer.byteLength(entry.target)>4096||entry.derived)invalid('Invalid archive tree link');
+        pathText(entry.target);if(entry.target.split('/').some((p,n,a)=>!p&&n!==a.length-1))invalid('Link target contains an empty path segment');
+      }
+    }
+    reader.add({...entry,resolvedTarget:null} as unknown as ArchiveEntry);
+  }
+  return reader.finishTree();
+}
+
+/** Retained inventory envelope validation only. This does not read an archive
+ * or prove that a target directory contains the declared material. */
+export function validateArchiveInventory(value:unknown):asserts value is ArchiveInventory {
+  exact(value,['schema','artifactDigest','artifactBytes','tarBytes','entryCount','fileCount','directoryCount','symlinkCount','fileBytes','entries','inventoryDigest']);
+  if(value.schema!=='ontology-tar-inventory/v1')fail('INVALID_INPUT','Unknown archive inventory schema');
+  digest(value.artifactDigest);digest(value.inventoryDigest);
+  const limits:Record<string,number>={artifactBytes:256*1024*1024,tarBytes:4*1024*1024*1024,entryCount:100000,fileCount:100000,directoryCount:100000,symlinkCount:100000,fileBytes:2*1024*1024*1024};
+  for(const [key,max] of Object.entries(limits))if(typeof value[key]!=='number'||!Number.isSafeInteger(value[key])||(value[key] as number)<0||(value[key] as number)>max)fail('INVALID_INPUT','Invalid archive inventory counter');
+  if((value.artifactBytes as number)<1||(value.tarBytes as number)<1024||(value.tarBytes as number)%512!==0||!Array.isArray(value.entries)||value.entries.length!==value.entryCount)fail('INVALID_INPUT','Archive inventory framing or entry count differs');
+  const entries=value.entries as ArchiveEntry[];
+  for(const entry of entries){
+    exact(entry,['path','kind','mode','bytes','digest','target','resolvedTarget','derived']);
+    if(typeof entry.path!=='string'||Buffer.byteLength(entry.path)>256||(entry.target!==null&&(typeof entry.target!=='string'||Buffer.byteLength(entry.target)>100)))fail('INVALID_INPUT','Inventory member exceeds supported tar header fields');
+    if(entry.kind==='symlink'&&(typeof entry.resolvedTarget!=='string'||!entry.resolvedTarget||entry.resolvedTarget.length>4096))fail('INVALID_INPUT','Inventory link requires its resolved virtual target');
+  }
+  const normalized=validateArchiveEntryTree(entries,100000);
+  if(hash(normalized as unknown as Json)!==hash(entries as unknown as Json)||entries.filter(e=>e.kind==='file').length!==value.fileCount||entries.filter(e=>e.kind==='directory').length!==value.directoryCount||entries.filter(e=>e.kind==='symlink').length!==value.symlinkCount||entries.reduce((n,e)=>n+e.bytes,0)!==value.fileBytes)fail('INVALID_INPUT','Archive inventory tree or counters are inconsistent');
+  const minimumTarBytes=1024+entries.reduce((n,e)=>n+(e.kind==='file'?512+Math.ceil(e.bytes/512)*512:e.kind==='symlink'||!e.derived?512:0),0);
+  if((value.tarBytes as number)<minimumTarBytes)fail('INVALID_INPUT','Archive byte count cannot contain its inventoried members');
+  const {inventoryDigest,...body}=value;
+  if(hash(body as unknown as Json)!==inventoryDigest)fail('INVALID_INPUT','Archive inventory digest differs');
+}
+
 /** Read-only bounded inventory. Digests authenticate bytes against the supplied
  * selection, not upstream provenance, extraction safety on a particular target,
  * executable loadability or legal approval. The timer can destroy asynchronous
  * streams; it is not an operating-system deadline for a stalled filesystem. */
 export async function inspectTarArchive(path:string,spec:ArchiveSpec):Promise<ArchiveInventory> {
+  return readTarArchive(path,spec);
+}
+
+/** Internal bounded stream entry for the independently guarded materializer.
+ * It supplies no destination paths or write authority of its own. */
+export async function readTarArchive(path:string,spec:ArchiveSpec,hooks?:ArchiveReadHooks):Promise<ArchiveInventory> {
   validateSpec(spec);
   if(typeof path!=='string'||!isAbsolute(path)||resolve(path)!==path||/[\\\x00]/u.test(path))fail('INVALID_INPUT','Canonical absolute archive path required');
   const before=lstatSync(path,{bigint:true});
@@ -274,7 +352,7 @@ export async function inspectTarArchive(path:string,spec:ArchiveSpec):Promise<Ar
   const fd=openSync(path,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
   try{
     const opened=fstatSync(fd,{bigint:true});if(stamp(opened)!==stamp(before))changed('Archive changed before its descriptor was opened');
-    const deadline=performance.now()+spec.timeoutMs,reader=new TarReader(spec,deadline),rawHash=createHash('sha256');let rawBytes=0;
+    const deadline=performance.now()+spec.timeoutMs,reader=new TarReader(spec,deadline,hooks),rawHash=createHash('sha256');let rawBytes=0;
     // ReadStream.destroy() closes even an autoClose:false descriptor. Keep sole
     // ownership here with a no-op stream close, and await the close event below:
     // ReadStream delays that event until its pending asynchronous read settles.
@@ -301,7 +379,7 @@ export async function inspectTarArchive(path:string,spec:ArchiveSpec):Promise<Ar
         fileCount:entries.filter(e=>e.kind==='file').length,directoryCount:entries.filter(e=>e.kind==='directory').length,symlinkCount:entries.filter(e=>e.kind==='symlink').length,fileBytes:reader.fileBytes,entries};
       const inventoryDigest=hash(inventory as unknown as Json);checkTime(deadline);
       return {...inventory,inventoryDigest};
-    }catch(error){if(error instanceof ServiceError)throw error;return invalid('Archive stream could not be read or decoded');}
+    }catch(error){if(error instanceof ArchiveHookError)throw error.original;if(error instanceof ServiceError)throw error;return invalid('Archive stream could not be read or decoded');}
     finally{clearTimeout(timer);source.destroy();raw.destroy();unzip?.destroy();sink.destroy();await sourceClosed;}
   }finally{closeSync(fd);}
 }
