@@ -8,6 +8,7 @@ import { validateIdentity, validateCredentials, hashBytes,exact,id,digest,text }
 export const STATE_VERSION = 14;
 export const FILES = Object.freeze({identity:'identity.json', credentials:'credentials.json', db:'ontology.sqlite', lease:'writer.sqlite'});
 export const MAINTENANCE_FILE='maintenance-barrier.json';
+export const RESTORE_STAGE_BARRIER='restore-stage-barrier.json';
 export interface MaintenancePermit {requestId:string;requestDigest:string;}
 export interface MaintenanceBarrier extends MaintenancePermit {schema:'ontology-maintenance-barrier/v1';operation:'BACKUP';root:string;backupRoot:string;installationId:string;workspaceId:string;serviceId:string;reportDigest:string;}
 export function readMaintenanceBarrier(root:string):MaintenanceBarrier|null {
@@ -18,6 +19,9 @@ export function readMaintenanceBarrier(root:string):MaintenanceBarrier|null {
   return v as unknown as MaintenanceBarrier;
 }
 export function requireMaintenanceAvailable(root:string,permit?:MaintenancePermit):void {
+  // A materialized snapshot is not an activated owner. Even an interrupted
+  // barrier write must fail closed before identity/credentials or tasks open.
+  if(readdirSync(root).some(n=>n===RESTORE_STAGE_BARRIER||n===RESTORE_STAGE_BARRIER+'.pending'))fail('RESTORE_STAGED','Restore candidate is inactive; owner activation and request/history reconciliation are required',409);
   const marker=readMaintenanceBarrier(root);
   if(marker&&(!permit||marker.requestId!==permit.requestId||marker.requestDigest!==permit.requestDigest))fail('BACKUP_PENDING','Resume or abort the original installation backup before using this owner',409);
 }

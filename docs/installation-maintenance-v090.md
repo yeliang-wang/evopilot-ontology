@@ -2,9 +2,74 @@
 
 This is P4 development behavior, not a release, actual Host acceptance or a
 completed MAINT-01 result. Consistent stopped-owner **backup and byte verification**
-are implemented. Restore, upgrade, customization merge, credential reconciliation,
+and protected restore candidate materialization are implemented. Restore activation,
+upgrade, customization merge, credential reconciliation,
 post-restore unknown-request protection and selected test-asset reset remain
 required work. A verified backup alone does not establish restore capability.
+
+## Protected restore candidate
+
+The installed operator can materialize a fully byte-verified backup into a new
+private candidate directory. This step does not require the old owner directories
+or an available Java/Python runtime. It never opens their databases or modifies
+their files. The destination must be absent, outside source, with a canonical
+private parent and separate from the backup and original installation, workspace
+and package runtime. Select a dedicated recovery location outside toolchain trees.
+
+```text
+evopilot-ontology restore-stage-inspect --backup ABS_BACKUP --expected-manifest BACKUP_SHA256 --stage-root ABS_NEW_CANDIDATE --request-id RESTORE_ID --json
+evopilot-ontology restore-stage-apply --backup ABS_BACKUP --expected-manifest BACKUP_SHA256 --stage-root ABS_NEW_CANDIDATE --request-id RESTORE_ID --expected-report REPORT_SHA256 --json
+evopilot-ontology restore-stage-verify --stage-root ABS_CANDIDATE --expected-manifest STAGE_SHA256 --json
+```
+
+`BACKUP_SHA256` identifies the original independently retained backup manifest;
+`REPORT_SHA256` binds the inspected source, destination, request and parent
+identity. `STAGE_SHA256` is the distinct manifest digest in the staging receipt.
+Keep both manifests and receipts private. Inspection reports identities and
+relative file metadata, without printing credential bytes.
+
+Candidate `installation/` and `workspace/` contain the original file bytes and
+modes. Backup control history remains in the original manifest projection;
+excluded installation/workspace leases are not fabricated as recovered history.
+New staging control files and activation barriers are separate from the snapshot.
+The completion manifest maps each original inventory entry to its new physical
+file identity. In particular, worker catalogs, archive receipts, task references,
+business receipts and credential bytes are not rewritten to match new inodes or
+paths. This records storage lineage; activating historical journal lookup still
+requires the owner recovery implementation.
+
+Workspace, installation and worker-root barriers are durable before payloads
+are copied. Service startup, reviewer writes and new worker admission remain
+blocked with `RESTORE_STAGED`. An incomplete barrier also fails closed. The
+candidate is **not an executable recovered installation**, even after successful
+verification. All reports retain `activation: BLOCKED`; credential state is
+`SNAPSHOT_ONLY` and external runtime dependencies are `NOT_VERIFIED`.
+
+After interruption, repeat the exact apply request. Every unfinished attempt
+reverifies the entire backup before continuing and after copying. Partial files
+must be exact payload prefixes; resume only appends, preserving corruption or
+foreign material as an error. The control lease serializes writers. An inactive
+private SQLite lease journal can remain after process death; it is bounded to
+64 KiB and is not business history. An interruption before any request barrier
+is retained leaves an unowned occupied directory. A partial bootstrap barrier
+must already contain its complete report digest to identify the original request;
+a generic JSON prefix cannot establish ownership. Otherwise preserve the directory
+and choose a new destination, rather than automatically adopting or deleting it.
+
+A durable staging manifest is its completion point. Replay returns the original
+receipt with `verification: NOT_RUN`, even if source roots are now unavailable or
+candidate bytes later change. `restore-stage-verify` independently checks every
+candidate byte, mode, physical identity, exact inventory and activation barrier
+against the selected staging digest. It does not need the source backup. Copying
+the candidate to new inodes invalidates that physical completion identity;
+portable backup verification remains a separate capability.
+
+Disk-full errors leave the candidate inactive and the current owner unchanged.
+There is no implicit cleanup, owner switch, credential rollback, request replay
+or restore abort that deletes partial files. Missing post-backup receipts, newer
+immutable history and current credential revocations/rotations must be reconciled
+before a future activation command can permit new work. Staging does not satisfy
+those obligations, full restore/upgrade acceptance or MAINT-01.
 
 ## Cold backup workflow
 
@@ -155,3 +220,15 @@ payload corruption and a full filesystem. Mounting/filling that isolated volume
 is test infrastructure, not a product installation/restore capability. Reports
 retain exact package/component hashes and distinguish original completion from
 present copy integrity; they do not establish MAINT-01 restore acceptance.
+
+The installed restore-staging source tests additionally cover preserved original
+receipts and pre-revocation credential snapshots, readonly file modes, archived
+worker catalogs, explicit new-inode lineage, blocked service/worker startup,
+actual SIGKILL and exact-prefix resume, corrupted/missing source material,
+independent candidate verification and separately labeled partial-metadata
+fixtures. The isolated Linux `tests/acceptance/v090/restore-stage-faults.mjs`
+collector exercises actual ENOSPC, retry with zero free bytes, explicit fixture
+space release and resume, rejection of a backup corrupted after a disk-full
+failure, and actual installed-CLI SIGKILL. It checks that the original owner stays
+unchanged and the candidate stays inactive; it does not test activation or claim
+that missing historical outcomes have been resolved.
