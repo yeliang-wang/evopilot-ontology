@@ -3,10 +3,24 @@ import { constants, openSync, closeSync, readFileSync, lstatSync, realpathSync, 
 import { resolve, join, isAbsolute, dirname } from 'node:path';
 import { fail, LIMITS } from './types.js';
 import type { WorkspaceIdentity, Credentials } from './types.js';
-import { validateIdentity, validateCredentials, hashBytes } from './validation.js';
+import { validateIdentity, validateCredentials, hashBytes,exact,id,digest,text } from './validation.js';
 
 export const STATE_VERSION = 14;
 export const FILES = Object.freeze({identity:'identity.json', credentials:'credentials.json', db:'ontology.sqlite', lease:'writer.sqlite'});
+export const MAINTENANCE_FILE='maintenance-barrier.json';
+export interface MaintenancePermit {requestId:string;requestDigest:string;}
+export interface MaintenanceBarrier extends MaintenancePermit {schema:'ontology-maintenance-barrier/v1';operation:'BACKUP';root:string;backupRoot:string;installationId:string;workspaceId:string;serviceId:string;reportDigest:string;}
+export function readMaintenanceBarrier(root:string):MaintenanceBarrier|null {
+  const file=join(root,MAINTENANCE_FILE);try{lstatSync(file);}catch(e){if((e as NodeJS.ErrnoException).code==='ENOENT')return null;throw e;}
+  const v:unknown=JSON.parse(privateRead(file,65536));exact(v,['schema','operation','root','backupRoot','installationId','workspaceId','serviceId','requestId','requestDigest','reportDigest']);
+  for(const k of ['installationId','workspaceId','serviceId','requestId'])id(v[k]);digest(v.requestDigest);digest(v.reportDigest);text(v.backupRoot,4096);
+  if(v.schema!=='ontology-maintenance-barrier/v1'||v.operation!=='BACKUP'||v.root!==root||!isAbsolute(v.backupRoot))fail('MAINTENANCE_EVIDENCE','Invalid retained maintenance barrier',409);
+  return v as unknown as MaintenanceBarrier;
+}
+export function requireMaintenanceAvailable(root:string,permit?:MaintenancePermit):void {
+  const marker=readMaintenanceBarrier(root);
+  if(marker&&(!permit||marker.requestId!==permit.requestId||marker.requestDigest!==permit.requestDigest))fail('BACKUP_PENDING','Resume or abort the original installation backup before using this owner',409);
+}
 export function privatePath(path: string, directory = false): void {
   const s = lstatSync(path);
   if (s.isSymbolicLink() || (directory ? !s.isDirectory() : !s.isFile() || s.nlink !== 1) || s.uid !== process.getuid?.() || (s.mode & 0o077) !== 0) fail('UNSAFE_PATH', 'Private owned regular workspace path required');
@@ -37,8 +51,8 @@ export interface WorkspaceStore {
   root: string; identity: WorkspaceIdentity; db: DatabaseSync;
   guard(): void; credentials(): Credentials; close(): void;
 }
-export function openWorkspace(path: string, expected: {workspaceId: string; serviceId: string}): WorkspaceStore {
-  const root = workspacePath(path), identityPath = join(root, FILES.identity);
+export function openWorkspace(path: string, expected: {workspaceId: string; serviceId: string},maintenance?:MaintenancePermit): WorkspaceStore {
+  const root = workspacePath(path), identityPath = join(root, FILES.identity);requireMaintenanceAvailable(root,maintenance);
   const raw = privateRead(identityPath, 4096), identity: unknown = JSON.parse(raw);
   validateIdentity(identity);
   if (identity.workspaceId !== expected.workspaceId || identity.serviceId !== expected.serviceId) fail('IDENTITY_MISMATCH', 'Workspace/service identity mismatch', 403);
@@ -64,6 +78,7 @@ export function openWorkspace(path: string, expected: {workspaceId: string; serv
     if (!stored || stored.identity !== raw) fail('CORRUPT_STATE', 'Database identity mismatch');
     const guard = (): void => {
       if (closed) fail('CLOSED', 'Workspace is closed', 503);
+      requireMaintenanceAvailable(root,maintenance);
       privatePath(root, true);
       for (const [p, a] of anchors) { const s=lstatSync(p); privatePath(p, p===root); if (s.ino!==a.ino || s.dev!==a.dev) fail('WORKSPACE_CHANGED', 'Workspace file identity changed', 409); }
       if (hashBytes(privateRead(identityPath,4096)) !== identityHash) fail('WORKSPACE_CHANGED', 'Workspace identity changed',409);

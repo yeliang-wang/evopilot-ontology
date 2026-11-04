@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFileSync,writeFileSync,mkdirSync,existsSync,unlinkSync,rmdirSync,renameSync,symlinkSync,watch} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,existsSync,unlinkSync,rmdirSync,renameSync,symlinkSync,watch,lstatSync,openSync,closeSync,writeSync} from 'node:fs';
 import {join,isAbsolute,dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {execFile,spawn} from 'node:child_process';
@@ -31,6 +31,7 @@ const {taskWorkerReferences,readWorkerAttempt,workerUnitName,createWorkerAttempt
 const {reconcileSystemdWorker}=await installed('installation/systemd-worker.js');
 const {inspectInstallationWorkerMaintenance,maintainInstallationWorkers}=await installed('installation/worker-maintenance.js');
 const {inspectInstallationWorkerRotation,rotateInstallationWorkerJournal}=await installed('installation/worker-rotation.js');
+const {inspectInstallationBackup}=await installed('installation/backup.js');
 const binding=inspectSystemdBinding();
 const tools={dl:{toolchainFile:options.dl,toolchainDigest:JSON.parse(readFileSync(options.dl)).digest},shacl:{toolchainFile:options.shacl,toolchainDigest:JSON.parse(readFileSync(options.shacl)).digest}};
 const results=[],fixtures=[],references=new Map();let failure=null;
@@ -95,6 +96,17 @@ async function interruptedRotation(f,args){
     return {exit:exited,pendingRequestId:pending.requestId,successorExists:existsSync(join(f.workRoot,pending.next.file))};
   }finally{observer.close();}
 }
+async function interruptedBackup(args,object,bytes){
+  const child=spawn(process.execPath,[cli,...args],{env:{...process.env,NODE_NO_WARNINGS:'1'},stdio:['ignore','pipe','pipe']});let ended=false,killed=false,output='';
+  child.stdout.on('data',b=>{output+=b;if(output.length>65536)child.kill('SIGKILL');});child.stderr.resume();
+  const closed=new Promise((resolve,reject)=>{child.once('error',reject);child.once('close',(code,signal)=>{ended=true;resolve({code,signal});});});
+  try{
+    const deadline=performance.now()+20000;
+    while(!ended&&performance.now()<deadline){if(existsSync(object)){const n=lstatSync(object).size;if(n>1024*1024&&n<bytes){killed=child.kill('SIGKILL');break;}}await delay(1);}
+    if(!killed)child.kill('SIGKILL');const exit=await closed;assert.equal(killed,true,output);assert.equal(exit.signal,'SIGKILL');const retainedBytes=lstatSync(object).size;assert.ok(retainedBytes>0&&retainedBytes<bytes);
+    return {exit,retainedBytes,prefixDigest:hashBytes(readFileSync(object))};
+  }finally{if(!ended){child.kill('SIGKILL');await closed;}}
+}
 try{
   const inspected=await command(['worker-isolation-inspect','--json']);assert.equal(inspected.digest,binding.digest);
   {
@@ -153,6 +165,20 @@ try{
     const later=await p.write('reasoning.start',{assetId:'services',modelDigest:p.modelDigest,task:{kind:'consistency'}},'after-maintenance');assert.equal((await f.finished(client,'reasoning.inspect',later.receipt.result.taskId)).formalStatus,'COMPLETED');const laterRefs=retain(f,later.receipt.result.taskId);assert.equal(laterRefs[0].journalId,rotated.receipt.activeJournalId);assert.notEqual(laterRefs[0].journalId,refs[0].journalId);
     await stopInstallation(f.setup.root);const laterCleanup=await inspectInstallationWorkerMaintenance(f.setup.root,'demo',later.receipt.result.taskId);
     await assert.rejects(maintainInstallationWorkers(f.setup.root,{projectId:'demo',taskId:later.receipt.result.taskId,requestId:'clean',expectedReportDigest:laterCleanup.reportDigest}),e=>e.code==='REQUEST_CONFLICT');
+    const custom=join(f.setup.root,'00-large-customization'),fd=openSync(custom,'wx',0o600),block=Buffer.alloc(1024*1024,113);
+    try{for(let n=0;n<64;n++)writeSync(fd,block);}finally{closeSync(fd);}
+    const backupRoot=join(options.root,'normal-backup'),backupReport=await command(['backup-inspect','--installation',f.setup.root,'--backup',backupRoot,'--request-id','backup','--json']);
+    assert.equal(backupReport.report.formalTasks,2);assert.equal(backupReport.report.workerJournals,2);assert.equal(backupReport.report.workerAttempts,7);
+    const backupArgs=['backup-apply','--installation',f.setup.root,'--backup',backupRoot,'--request-id','backup','--expected-report',backupReport.reportDigest,'--json'],object=join(backupRoot,'objects',backupReport.report.entries.find(e=>e.path==='00-large-customization').digest.slice(7));
+    const backupFault=await interruptedBackup(backupArgs,object,64*1024*1024);assert.equal(inspectInstallationBackup(f.setup.root,backupRoot,'backup').status,'PENDING');
+    await assert.rejects(f.start(),e=>e.code==='BACKUP_PENDING');
+    assert.throws(()=>createWorkerAttempt(f.workRoot,{...readWorkerAttempt(refs[0]).intent,requestId:'backup-blocked-dispatch'}),e=>e.code==='BACKUP_PENDING');
+    assert.throws(()=>bindInstallationToolchains(f.setup.root,{...f.input,requestId:'backup-blocked-rebind',previousBindingDigest:f.bound.receipt.digest}),e=>e.code==='BACKUP_PENDING');
+    const backed=await command(backupArgs);assert.equal(hashBytes(readFileSync(object).subarray(0,backupFault.retainedBytes)),backupFault.prefixDigest);
+    const verified=await command(['backup-verify','--backup',backupRoot,'--expected-manifest',backed.receipt.manifestDigest,'--json']);assert.equal(verified.status,'VERIFIED');
+    assert.deepEqual((await command(backupArgs)).receipt,backed.receipt);assert.equal(hashBytes(readFileSync(join(f.workRoot,rotation.report.source.file))),oldJournal);
+    await f.start();assert.deepEqual(await f.call(client,'ontology_write',v.request),v.receipt);assert.equal((await f.finished(client,'validation.inspect',taskId)).resultDigest,result.resultDigest);await stopInstallation(f.setup.root);
+    results.push({name:'installed-consistent-backup-interruption-and-verification',status:'PASS',report:backupReport,interruption:backupFault,receipt:backed.receipt,verification:verified,originalBusinessReceiptDigest:hash(v.receipt),originalResultDigest:result.resultDigest,archiveUnchanged:true});
     results.push({name:'installed-worker-journal-rotation-interruption-and-replay',status:'PASS',report:rotation,interruption:rotationFault,receipt:rotated.receipt,originalMaintenanceReceipt:cleaned.receipt,laterJournalId:laterRefs[0].journalId,originalResultDigest:result.resultDigest,archiveUnchanged:oldJournal===hashBytes(readFileSync(join(f.workRoot,rotation.report.source.file)))});
     results.push({name:'installed-worker-maintenance-interruption-and-resume',status:'PASS',taskId,report:maintenance,interruption,receipt:cleaned.receipt,originalResultDigest:result.resultDigest});
   }
@@ -195,6 +221,6 @@ finally{
   for(const f of fixtures){for(const c of f.clients)try{await c.close();}catch{}try{await stopInstallation(f.setup.root);}catch(e){failure??={code:e.code??null,message:'Fixture owner cleanup failed'};}for(const id of f.tasks)try{retain(f,id);}catch{}}
   for(const r of references.values()){try{unitCall(r,'StopUnit','ss',['replace']);}catch{}try{unitCall(r,'ResetFailedUnit','s');}catch{}}
 }
-const artifacts=['../../../dist/installation/worker-archives.js','../../../dist/installation/worker-rotation.js','../../../dist/installation/worker-operator.js','../../../dist/installation/worker-maintenance.js','../../../dist/installation/worker-journal.js','../../../dist/installation/toolchains.js','../../../dist/installation/systemd-binding.js','../../../dist/installation/systemd-worker.js','../../../dist/reasoning/runner.js','../../../dist/native-v2/shacl-toolchain.js','../../../dist/native-v2/shacl-runner.js','../../../dist/native-v2/validation-runner.js','../../../dist/native-v2/tasks.js','../../../dist/native-v2/task-recovery.js','../../../dist/standalone/cli.js','./systemd-managed.mjs'].map(path=>({path,digest:hashBytes(readFileSync(new URL(path,import.meta.url)))}));
+const artifacts=['../../../dist/installation/backup-contract.js','../../../dist/installation/backup-files.js','../../../dist/installation/backup.js','../../../dist/installation/manager.js','../../../dist/standalone/workspace.js','../../../dist/installation/worker-archives.js','../../../dist/installation/worker-rotation.js','../../../dist/installation/worker-operator.js','../../../dist/installation/worker-maintenance.js','../../../dist/installation/worker-journal.js','../../../dist/installation/toolchains.js','../../../dist/installation/systemd-binding.js','../../../dist/installation/systemd-worker.js','../../../dist/reasoning/runner.js','../../../dist/native-v2/shacl-toolchain.js','../../../dist/native-v2/shacl-runner.js','../../../dist/native-v2/validation-runner.js','../../../dist/native-v2/tasks.js','../../../dist/native-v2/task-recovery.js','../../../dist/standalone/cli.js','./systemd-managed.mjs'].map(path=>({path,digest:hashBytes(readFileSync(new URL(path,import.meta.url)))}));
 writeFileSync(options.out,JSON.stringify({schema:'ontology-systemd-managed-probe/v1',binding,runtime,tools,artifacts,results,failure,recoveryObservations:fixtures.filter(f=>f.lastRecoveryInspection).map(f=>({fixture:f.name,...f.lastRecoveryInspection})),acceptance:'NOT_EVALUATED',limitations:['Synthetic installed-package and MCP evidence; not an actual Codex Host session','No published distribution/provisioning, complete conformance or selected asset reset']},null,2)+'\n',{mode:0o600,flag:'wx'});
 console.log(JSON.stringify({cases:results.length,pass:results.length,fail:failure?1:0,skip:0,report:options.out,failure}));if(failure)process.exitCode=1;

@@ -7,7 +7,7 @@ import {outsideSource,createPrivateRoot,assertSeparate,writePrivate,readPrivate,
 import {inspectRuntime,verifyRuntime} from './runtime.js';
 import type {RuntimeBinding} from './runtime.js';
 import {initializeWorkspace} from './workspace.js';
-import {privatePath,privateRead,openWorkspace} from '../standalone/workspace.js';
+import {privatePath,privateRead,openWorkspace,requireMaintenanceAvailable} from '../standalone/workspace.js';
 import {createStandaloneService} from '../standalone/service.js';
 import {exact,id,digest,hash,validateIdentity} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
@@ -127,6 +127,7 @@ const pause=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 export async function startInstallation(path:string):Promise<Json>{
   const installation=readInstallation(path),unlock=operatorLock(installation.root);
   try{
+    requireMaintenanceAvailable(installation.root);requireMaintenanceAvailable(installation.workspaceRoot);
     verifyRuntime(installation.runtime);
     const ledger=readToolchainLedger(installation),binding=ledger.records.at(-1)??null,old=currentRun(installation);
     requireRunToolchainHistory(old,ledger.records);verifyManagedToolchains(installation,binding,true);

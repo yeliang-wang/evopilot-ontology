@@ -5,7 +5,7 @@ import {randomUUID} from 'node:crypto';
 import {JOURNAL_BYTES,journalLocation,readArchiveCatalog,verifyJournalImage,requireNoRotation,journalFilename,workerFilePresent} from './worker-archives.js';
 import type {JournalHead} from './worker-archives.js';
 import {outsideSource} from './files.js';
-import {privatePath} from '../standalone/workspace.js';
+import {privatePath,requireMaintenanceAvailable} from '../standalone/workspace.js';
 import {exact,hash,id,digest,text} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
@@ -124,7 +124,7 @@ function requireAdmissionCapacity(db:DatabaseSync,root:string,intent:WorkerPlan)
   if(used+1024*1024+(unmaintained+(intent.systemd?1:0))*cleanupBytes+128*1024+Buffer.byteLength(encoded(intent))*2>JOURNAL_BYTES)fail('WORKER_JOURNAL_LIMIT','Rotate the closed worker journal before admitting another executor',409);
 }
 export function createWorkerAttempt(root:string,intent:WorkerPlan):WorkerReference {
-  validateWorkerPlan(intent);requireNoRotation(root);
+  validateWorkerPlan(intent);requireMaintenanceAvailable(root);requireNoRotation(root);
   for(const r of readArchiveCatalog(root)?.archives??[])verifyJournalImage(root,r.plan.source);
   const j=open(root,true);
   try{

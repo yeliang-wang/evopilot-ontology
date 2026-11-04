@@ -6,6 +6,8 @@ import { grantReviewer,revokeReviewer } from '../installation/reviewer.js';
 import {inspectSystemdBinding} from '../installation/systemd-binding.js';
 import {inspectInstallationTaskRecovery,reconcileInstallationTask} from '../installation/task-recovery.js';
 import {inspectInstallationWorkerRotation,rotateInstallationWorkerJournal} from '../installation/worker-rotation.js';
+import {inspectInstallationBackup,backupInstallation,abortInstallationBackup} from '../installation/backup.js';
+import {verifyBackup} from '../installation/backup-files.js';
 import {inspectInstallationWorkerMaintenance,maintainInstallationWorkers} from '../installation/worker-maintenance.js';
 import { initializeWorkspace } from '../installation/workspace.js';
 import { inspectRuntime } from '../installation/runtime.js';
@@ -17,7 +19,7 @@ import { json, object } from './validation.js';
 import { LIMITS, ServiceError, fail } from './types.js';
 import type { Json, ServiceRequest } from './types.js';
 
-const usage='evopilot-ontology worker-rotation-inspect --installation ABS [--request-id ID] --json | worker-rotation-apply --installation ABS --request-id ID --expected-report SHA256 --json | worker-maintenance-inspect --installation ABS --project ID --task ID --json | worker-maintenance-apply --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | worker-isolation-inspect --json | task-recovery-inspect --installation ABS --project ID --task ID --json | task-reconcile --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | toolchains-bind --installation ABS --request-id ID --previous-binding none|SHA256 --dl-toolchain ABS --dl-digest SHA256 --shacl-toolchain ABS --shacl-digest SHA256 [--systemd-digest SHA256] --json | toolchains-inspect --installation ABS --json | reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] [--systemd-digest SHA256] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
+const usage='evopilot-ontology backup-inspect --installation ABS --backup ABS --request-id ID --json | backup-apply --installation ABS --backup ABS --request-id ID --expected-report SHA256 --json | backup-abort --installation ABS --request-id ID --expected-report SHA256 --json | backup-verify --backup ABS --expected-manifest SHA256 --json | worker-rotation-inspect --installation ABS [--request-id ID] --json | worker-rotation-apply --installation ABS --request-id ID --expected-report SHA256 --json | worker-maintenance-inspect --installation ABS --project ID --task ID --json | worker-maintenance-apply --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | worker-isolation-inspect --json | task-recovery-inspect --installation ABS --project ID --task ID --json | task-reconcile --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | toolchains-bind --installation ABS --request-id ID --previous-binding none|SHA256 --dl-toolchain ABS --dl-digest SHA256 --shacl-toolchain ABS --shacl-digest SHA256 [--systemd-digest SHA256] --json | toolchains-inspect --installation ABS --json | reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] [--systemd-digest SHA256] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
 function flags(args: string[],required: string[],optional: string[]=[]): Map<string,string>{
   const found=new Map<string,string>();
   for(let i=0;i<args.length;i++){
@@ -50,6 +52,17 @@ function selectedSystemd(flags:Map<string,string>){
 }
 export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>{
   const [command,...args]=argv;
+  if(command==='backup-inspect'||command==='backup-apply'){
+    const f=flags(args,['--installation','--backup','--request-id',...(command==='backup-apply'?['--expected-report']:[])]);
+    emit(command==='backup-inspect'?inspectInstallationBackup(f.get('--installation')!,f.get('--backup')!,f.get('--request-id')!):backupInstallation(f.get('--installation')!,{backupRoot:f.get('--backup')!,requestId:f.get('--request-id')!,expectedReportDigest:f.get('--expected-report')!}));return;
+  }
+  if(command==='backup-abort'){
+    const f=flags(args,['--installation','--request-id','--expected-report']);emit(abortInstallationBackup(f.get('--installation')!,f.get('--request-id')!,f.get('--expected-report')!));return;
+  }
+  if(command==='backup-verify'){
+    const f=flags(args,['--backup','--expected-manifest']),v=verifyBackup(f.get('--backup')!,f.get('--expected-manifest')!);
+    emit({status:'VERIFIED',receipt:v.receipt as unknown as Json,objects:v.objects,storedBytes:v.storedBytes,authority:false});return;
+  }
   if(command==='worker-rotation-inspect'||command==='worker-rotation-apply'){
     const f=flags(args,['--installation',...(command==='worker-rotation-apply'?['--request-id','--expected-report']:[])],command==='worker-rotation-inspect'?['--request-id']:[]);
     emit(await (command==='worker-rotation-inspect'?inspectInstallationWorkerRotation(f.get('--installation')!,f.get('--request-id')):rotateInstallationWorkerJournal(f.get('--installation')!,{requestId:f.get('--request-id')!,expectedReportDigest:f.get('--expected-report')!})));return;
