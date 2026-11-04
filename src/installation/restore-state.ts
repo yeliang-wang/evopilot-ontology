@@ -10,6 +10,7 @@ import {backupNode,writeBackupJSON} from './backup-files.js';
 import {backupHash,validateNode,BACKUP_LIMITS} from './backup-contract.js';
 import type {NodeIdentity} from './backup-contract.js';
 import {outsideSource,assertSeparate,operatorLock} from './files.js';
+import {requireRuntimeDestinationSeparate} from './runtime-history.js';
 import {fileDigest} from './runtime.js';
 import {workerFilePresent} from './worker-archives.js';
 import {FILES,STATE_VERSION,RESTORE_STAGE_BARRIER,RESTORE_ACTIVATION_BARRIER,privatePath,privateRead,privateLease} from '../standalone/workspace.js';
@@ -110,6 +111,7 @@ function planFor(input:RestoreStateInput,a:Source,b:Source|null,layout:Layout[])
   const selected=b??a;selectedCredentials(selected);const i=a.stage.plan.backup.manifest.plan.installation;
   for(const e of selected.stage.plan.backup.manifest.plan.entries)if(e.scope==='workspace'&&[FILES.identity+'.pending',FILES.credentials+'.pending',FILES.db+'-journal',FILES.db+'-wal',FILES.db+'-shm',FILES.lease,FILES.lease+'-journal'].includes(e.path))fail('RESTORE_STATE','Snapshot contains reserved preparation control paths',409);
   for(const s of [a,...(b?[b]:[])])for(const root of [s.selection.root,s.stage.plan.backup.manifest.plan.installation.root,s.stage.plan.backup.manifest.plan.installation.workspaceRoot,s.stage.plan.backup.manifest.plan.installation.runtime.root])assertSeparate(input.root,root);
+  for(const s of [a,...(b?[b]:[])])requireRuntimeDestinationSeparate(s.stage.plan.backup.manifest.plan.installation,input.root);
   return {schema:'ontology-restore-state-plan/v1',...input,parent:backupNode(parent),installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,counts,rows:count,credentialPolicy:b?'CURRENT':'REKEY_LOST_OWNER'};
 }
 function readPlan(root:string):StatePlan {

@@ -1,6 +1,7 @@
 import {mkdirSync,readdirSync,lstatSync,renameSync,unlinkSync} from 'node:fs';
 import {dirname,join,isAbsolute,resolve} from 'node:path';
 import {outsideSource,assertSeparate,operatorLock} from './files.js';
+import {requireRuntimeDestinationSeparate} from './runtime-history.js';
 import {readInstallation} from './manager.js';
 import type {Installation} from './manager.js';
 import {inspectStoppedOwnerBackupPlan} from './backup.js';
@@ -83,6 +84,7 @@ function verifyCurrent(a:Admission,store:WorkspaceStore):void {
 function newPlan(v:RestoreActivationInput,i:Installation,store:WorkspaceStore):Plan {
   const parent=dirname(v.recoveryRoot);if(outsideSource(parent)!==parent)fail('UNSAFE_PATH','Canonical private recovery parent required');privatePath(parent,true);
   for(const p of [i.root,i.workspaceRoot,i.runtime.root,v.snapshot.root,v.retained.root])assertSeparate(v.recoveryRoot,p);
+  requireRuntimeDestinationSeparate(i,v.recoveryRoot);
   if(backupNode(parent).device!==backupNode(i.workspaceRoot).device||backupNode(dirname(i.workspaceRoot)).device!==backupNode(i.workspaceRoot).device)fail('RESTORE_FILESYSTEM','Select a recovery directory on the workspace filesystem, without moving a mount root',409);
   const current=readVerifiedRestoreStage(v.retained.root,v.retained.manifestDigest),prior=backupControlRecords(i);
   if(prior.some(r=>r.state==='PENDING'))fail('BACKUP_PENDING','Finish the original backup before restore',409);

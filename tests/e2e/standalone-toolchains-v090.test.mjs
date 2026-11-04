@@ -117,7 +117,7 @@ test('sustained installed bridge reads outlive the per-socket request budget wit
 test('compiled installed operator binds actual executors and managed MCP executes them across restart',async t=>{
   const f=fixture(t,'actual');assert.equal(inspectInstallationToolchains(f.setup.root).status,'UNCONFIGURED');
   const bound=JSON.parse(await execute(process.execPath,[cli,...bindArgs(f)],{cwd:base})).result;assert.equal(bound.replayed,false);assert.equal(bound.receipt.binding.runtimeDigest,runtime.digest);
-  const first=await f.start();assert.equal(first.run.schema,'ontology-managed-run/v2');assert.equal(first.run.toolchainBindingDigest,bound.receipt.digest);
+  const first=await f.start();assert.equal(first.run.schema,'ontology-managed-run/v3');assert.equal(first.run.runtimeBindingDigest,hash(runtime));assert.equal(first.run.toolchainBindingDigest,bound.receipt.digest);
   const client=await f.connect(),context=await f.call(client,'ontology_context');assert.equal(context.reasoningExecutionConfigured,true);assert.equal(context.validationExecutionConfigured,true);assert.equal(context.toolchainDigest,dl.digest);assert.equal(context.reasoningReady,false);assert.equal(context.writeOperations.includes('toolchains-bind'),false);
   const p=await seed(f,client),v=await p.write('validation.start',{assetId:'services',modelDigest:p.modelDigest},'validate'),result=await terminal(f,client,'validation.inspect',v.receipt.result.taskId);assert.equal(result.formalStatus,'MATCHED');assert.equal(result.complete,true);
   const r=await p.write('reasoning.start',{assetId:'services',modelDigest:p.modelDigest,task:{kind:'consistency'}},'reason');assert.equal((await terminal(f,client,'reasoning.inspect',r.receipt.result.taskId)).formalStatus,'COMPLETED');

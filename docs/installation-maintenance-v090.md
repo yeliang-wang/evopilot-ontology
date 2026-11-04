@@ -617,3 +617,51 @@ storage-failure recovery remain separate implementation obligations. These
 preparation checks do not establish MAINT-02, actual Codex Host behavior or v0.9
 acceptance. Installed source tests use two isolated offline installs and clearly
 labeled synthetic upstream templates; they do not impersonate a released upgrade.
+
+## Retaining runtime identity across upgrades
+
+The versioned `ontology-installation/v2` contract retains the original runtime,
+the original installation metadata digest, the exact original `setup.json` byte
+digest and an ordered chain of runtime transition records. Each record binds its
+owner, request and inspected-plan identities, previous transition, complete prior
+runtime identity, selected new runtime, old/new toolchain binding digests, plugin
+plan and timestamp. The current runtime must match the final transition. History
+is bounded to 128 transitions and a 2 MiB installation document. Original v1
+installations remain readable and initial setup still produces v1.
+
+Old toolchain records retain their original bytes and digests. Their request
+identities are reconstructed against the runtime they originally selected, rather
+than against the current package. The complete toolchain sequence must agree with
+the runtime transitions, including any intervening rebind. Configured tools cannot
+disappear or reuse an old binding as evidence for a new runtime. Current execution
+requires a binding for the selected runtime and matching actual Java/Python source
+and dependency identities. Reading history does not execute historical packages
+or attest that their old filesystem contents remain available.
+
+New managed runs use `ontology-managed-run/v3` and bind the complete runtime
+identity, including package root and Node executable/version/digest. The control
+socket and daemon launch check that identity together with the toolchain binding.
+The daemon also checks its own actual module location before changing a retained
+starting record; an entry loaded from another package cannot impersonate the
+selected runtime. Refusal preserves the original request for reconciliation.
+Historical v2 runs remain readable without retroactively inventing a runtime
+claim. An upgraded installation cannot reuse a live v2 run whose runtime is
+unproven, or a v3 run bound to a different runtime. Original stopped run records
+are not rewritten when a new run starts.
+
+All retained runtime roots stay outside backup, restore-stage, reconciliation and
+activation write destinations. New toolchains and candidate runtimes must also
+respect those locations. Returning to an exact historical binding can be
+represented; assigning different bytes to the same historical package location
+cannot. One package digest cannot ambiguously identify multiple retained root or
+Node bindings. Backup validation checks that the setup file in its inventory
+matches the runtime history, and both restoration modes preserve that history.
+
+These are implemented storage, reader and execution guards. The history builder
+only constructs a prospective record; there is still no fault-safe product command
+that atomically activates a runtime, toolchain and merged plugin together. Tests
+explicitly construct versioned metadata fixtures under the owner leases, then
+exercise actual installed startup, formal Java/Python validation, historical
+receipt readback and lost/current-owner restoration. Such fixtures do not replace
+actual upgrade admission, interrupted activation, disk-full recovery, Codex Host
+journeys or MAINT-02 acceptance.

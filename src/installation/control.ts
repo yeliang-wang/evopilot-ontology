@@ -5,10 +5,12 @@ import {privatePath} from '../standalone/workspace.js';
 import {fail} from '../standalone/types.js';
 import {exact,id,text,digest} from '../standalone/validation.js';
 
-export interface RunRecord {schema:'ontology-managed-run/v2';installationId:string;runId:string;toolchainBindingDigest:string|null;createdAt:string;pid:number|null;controlSocket:string;state:'STARTING'|'RUNNING'|'STOPPED'|'FAILED';origin:string|null;error:string|null;}
+interface RunBase {installationId:string;runId:string;toolchainBindingDigest:string|null;createdAt:string;pid:number|null;controlSocket:string;state:'STARTING'|'RUNNING'|'STOPPED'|'FAILED';origin:string|null;error:string|null;}
+export type RunRecord=RunBase&({schema:'ontology-managed-run/v2'}|{schema:'ontology-managed-run/v3';runtimeBindingDigest:string});
 export function validateRun(value:unknown):asserts value is RunRecord{
-  exact(value,['schema','installationId','runId','toolchainBindingDigest','createdAt','pid','controlSocket','state','origin','error']);
-  if(value.schema!=='ontology-managed-run/v2')fail('INVALID_STATE','Unknown managed run; use its original operator reader');
+  exact(value,['schema','installationId','runId','toolchainBindingDigest','createdAt','pid','controlSocket','state','origin','error'],['runtimeBindingDigest']);
+  if(value.schema==='ontology-managed-run/v3')digest(value.runtimeBindingDigest);
+  else if(value.schema!=='ontology-managed-run/v2'||Object.hasOwn(value,'runtimeBindingDigest'))fail('INVALID_STATE','Unknown or ambiguous managed run; use its original operator reader');
   if(value.toolchainBindingDigest!==null)digest(value.toolchainBindingDigest);
   id(value.installationId);id(value.runId);text(value.createdAt,40);text(value.controlSocket,1000);
   if(value.pid!==null&&(!Number.isSafeInteger(value.pid)||(value.pid as number)<1))fail('INVALID_STATE','Invalid process identity');
@@ -29,7 +31,7 @@ export async function operatorRequest(run:RunRecord,operation:'status'|'stop'):P
     socket.setTimeout(2000,()=>done(new Error('Control timeout')));socket.on('error',e=>done(e));
     socket.on('connect',()=>socket.write(JSON.stringify({installationId:run.installationId,runId:run.runId,operation})+'\n'));
     socket.on('data',chunk=>{data+=chunk.toString('utf8');if(Buffer.byteLength(data)>4096){done(new Error('Control output budget'));return;}
-      if(!data.includes('\n'))return;try{const value:unknown=JSON.parse(data.split('\n')[0]);validateRun(value);if(value.installationId!==run.installationId||value.runId!==run.runId||value.toolchainBindingDigest!==run.toolchainBindingDigest)fail('IDENTITY_MISMATCH','Foreign managed process or toolchain binding',403);done(undefined,value);}catch(e){done(e instanceof Error?e:new Error('Control response'));}});
+      if(!data.includes('\n'))return;try{const value:unknown=JSON.parse(data.split('\n')[0]);validateRun(value);if(value.installationId!==run.installationId||value.runId!==run.runId||value.toolchainBindingDigest!==run.toolchainBindingDigest||value.schema!==run.schema||value.schema==='ontology-managed-run/v3'&&run.schema==='ontology-managed-run/v3'&&value.runtimeBindingDigest!==run.runtimeBindingDigest)fail('IDENTITY_MISMATCH','Foreign managed process, runtime or toolchain binding',403);done(undefined,value);}catch(e){done(e instanceof Error?e:new Error('Control response'));}});
     socket.on('end',()=>{if(!finished)done(new Error('Control closed without receipt'));});
   });
 }

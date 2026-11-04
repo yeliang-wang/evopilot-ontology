@@ -3,6 +3,7 @@ import type {Installation} from './manager.js';
 import {exact,id,digest,hash,text} from '../standalone/validation.js';
 import type {Json} from '../standalone/types.js';
 import {fail} from '../standalone/types.js';
+import {validateInstallation} from './installation-contract.js';
 
 export const BACKUP_LIMITS={entries:10000,depth:16,fileBytes:64*1024*1024,totalBytes:2*1024*1024*1024,manifestBytes:8*1024*1024,requests:128,completionReserveBytes:128*1024} as const;
 export const BACKUP_RECORDS='backup-requests';
@@ -36,13 +37,8 @@ export function validateBackupRecord(v:unknown,i:Pick<Installation,'installation
 export function validateBackupPlan(v:unknown):asserts v is BackupPlan {
   if(Buffer.byteLength(JSON.stringify(v))>BACKUP_LIMITS.manifestBytes-8192)fail('BACKUP_LIMIT','Backup plan exceeds its envelope',409);
   exact(v,['schema','installation','backupRoot','targetParent','roots','entries','priorBackups','toolchainBindingDigest','formalTasks','workerAttempts','workerJournals']);
-  const i=v.installation;exact(i,['schema','installationId','root','workspaceRoot','workspaceId','serviceId','projectId','principalId','credentialFile','runtime','port','createdAt']);
-  for(const k of ['installationId','workspaceId','serviceId','projectId','principalId'])id(i[k]);
-  for(const p of [i.root,i.workspaceRoot,i.credentialFile,v.backupRoot]){text(p,4096);if(!isAbsolute(p))fail('BACKUP_EVIDENCE','Absolute backup references required',409);}
-  if(v.schema!=='ontology-backup-plan/v1'||i.schema!=='ontology-installation/v1'||i.credentialFile!==i.workspaceRoot+'/operator-token'||!Number.isInteger(i.port)||(i.port as number)<0||(i.port as number)>65535)fail('BACKUP_EVIDENCE','Invalid installation snapshot',409);text(i.createdAt,40);
-  const rt=i.runtime;exact(rt,['root','packageRoot','version','digest','files','bytes','nodePath','nodeDigest','nodeVersion']);digest(rt.digest);digest(rt.nodeDigest);
-  for(const p of [rt.root,rt.packageRoot,rt.nodePath]){text(p,4096);if(!isAbsolute(p))fail('BACKUP_EVIDENCE','Absolute runtime references required',409);}
-  text(rt.version,40);text(rt.nodeVersion,40);if(rt.packageRoot!==rt.root+'/node_modules/@evopilot-next/ontology'||![rt.files,rt.bytes].every(n=>Number.isSafeInteger(n)&&(n as number)>=0))fail('BACKUP_EVIDENCE','Invalid runtime snapshot',409);
+  const i=v.installation;validateInstallation(i);text(v.backupRoot,4096);
+  if(v.schema!=='ontology-backup-plan/v1'||!isAbsolute(v.backupRoot))fail('BACKUP_EVIDENCE','Invalid backup schema or location',409);
   validateNode(v.targetParent);exact(v.roots,['installation','workspace']);validateNode(v.roots.installation);validateNode(v.roots.workspace);
   if(v.toolchainBindingDigest!==null)digest(v.toolchainBindingDigest);
   for(const [k,max] of [['formalTasks',4096],['workerAttempts',17*4096],['workerJournals',17]] as const)if(!Number.isSafeInteger(v[k])||(v[k] as number)<0||(v[k] as number)>max)fail('BACKUP_EVIDENCE','Invalid formal inventory count',409);
@@ -56,6 +52,7 @@ export function validateBackupPlan(v:unknown):asserts v is BackupPlan {
   }
   if(bytes>BACKUP_LIMITS.totalBytes)fail('BACKUP_LIMIT','Backup exceeds its aggregate byte budget',409);
   for(const [scope,path] of [['installation','installation.json'],['installation','setup.json'],['workspace','identity.json'],['workspace','ontology.sqlite'],['workspace','credentials.json'],['workspace','operator-token']])if(!v.entries.some(e=>e.scope===scope&&e.path===path&&e.kind==='file'))fail('BACKUP_EVIDENCE','Required owner state is missing',409);
+  if(i.schema==='ontology-installation/v2'&&!v.entries.some(e=>e.scope==='installation'&&e.path==='setup.json'&&e.digest===i.runtimeHistory.setupDigest))fail('BACKUP_EVIDENCE','Runtime history differs from the inventoried original setup bytes',409);
   const requests=new Set<string>();for(const r of v.priorBackups){validateBackupRecord(r,i as unknown as Installation);if(r.state==='PENDING'||requests.has(r.requestId))fail('BACKUP_EVIDENCE','Prior backup control history is unfinished or ambiguous',409);requests.add(r.requestId);}
 }
 export function validateBackupOwner(v:unknown,plan:BackupPlan):asserts v is BackupOwner {

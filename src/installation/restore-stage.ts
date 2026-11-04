@@ -5,6 +5,7 @@ import {exact,id,digest,text} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
 import {outsideSource,assertSeparate,operatorLock} from './files.js';
+import {requireRuntimeDestinationSeparate} from './runtime-history.js';
 import {workerFilePresent} from './worker-archives.js';
 import {BACKUP_LIMITS,backupHash,backupReceipt,validateBackupPlan,validateNode} from './backup-contract.js';
 import type {BackupEnvelope,BackupManifest,NodeIdentity,BackupEntry} from './backup-contract.js';
@@ -38,6 +39,7 @@ function validatePlan(v:unknown):asserts v is RestoreStagePlan {
   const work=paths.get('installation/formal-work');if(work&&work.kind!=='directory')fail('RESTORE_LAYOUT','Worker root must remain a directory',409);
   const p=v as unknown as RestoreStagePlan,i=m.plan.installation;
   for(const original of [p.backupRoot,i.root,i.workspaceRoot,i.runtime.root])assertSeparate(p.stageRoot,original);
+  requireRuntimeDestinationSeparate(i,p.stageRoot);
 }
 function newPlan(input:RestoreStageInput):RestoreStagePlan {
   validateInput(input);const verified=verifyBackup(input.backupRoot,input.expectedManifestDigest),parent=outsideSource(dirname(input.stageRoot));

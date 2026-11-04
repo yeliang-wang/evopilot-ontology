@@ -5,6 +5,7 @@ import {readInstallation,currentRun} from './manager.js';
 import {inspectRuntime,verifyRuntime} from './runtime.js';
 import {operatorLock,assertSeparate,outsideSource} from './files.js';
 import {processPresent} from './control.js';
+import {requireSelectedRuntimeLocation} from './runtime-history.js';
 import {privatePath,privateRead,requireMaintenanceAvailable} from '../standalone/workspace.js';
 import {digest,exact,hash,hashBytes,validateIdentity} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
@@ -83,6 +84,7 @@ export function preparePluginUpgrade(path:string,input:PluginUpgradeInput):Plugi
     verifyRuntime(i.runtime);const next=inspectRuntime(input.runtimeRoot);
     if(next.digest!==input.runtimeDigest)fail('RUNTIME_CHANGED','Selected upgrade package digest changed',409);
     for(const root of [i.root,i.workspaceRoot,i.runtime.root])assertSeparate(next.root,root);
+    requireSelectedRuntimeLocation(i,next);
     const base=pluginContent(i.runtime,i.root),upstream=pluginContent(next,i.root),root=join(i.root,'plugin'),current=snapshot(root);
     const merge=mergePluginFiles(base,current.files,upstream,resolutions(input.resolutionsFile));
     const directories=[...new Set([...PLUGIN_DIRECTORIES,...current.entries.filter(e=>e.kind==='directory').map(e=>e.path)])].sort();

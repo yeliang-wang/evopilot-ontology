@@ -1,7 +1,7 @@
 import {createServer} from 'node:net';
 import {chmodSync,realpathSync,rmSync,rmdirSync} from 'node:fs';
 import {dirname,join} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {pathToFileURL,fileURLToPath} from 'node:url';
 import {readInstallation,currentRun,writeRun} from './manager.js';
 import {verifyRuntime} from './runtime.js';
 import {currentToolchainBinding,verifyManagedToolchains} from './toolchains.js';
@@ -9,10 +9,12 @@ import {writePrivate} from './files.js';
 import {listenStandalone} from '../standalone/http.js';
 import {ServiceError,fail} from '../standalone/types.js';
 import {exact} from '../standalone/validation.js';
+import {runtimeBindingDigest} from './runtime-history.js';
 
 export async function runDaemon(root:string,runId:string):Promise<void>{
   const installation=readInstallation(root),run=currentRun(installation);
   if(!run||run.runId!==runId||run.state!=='STARTING')fail('LAUNCH_CONFLICT','Daemon requires its exact retained starting request',409);
+  if(realpathSync(fileURLToPath(import.meta.url))!==join(installation.runtime.packageRoot,'dist/installation/daemon.js'))fail('RUNTIME_ENTRY_MISMATCH','Launch the retained request using its selected installed daemon entry',409);
   let service:Awaited<ReturnType<typeof listenStandalone>>|undefined,control:ReturnType<typeof createServer>|undefined;
   let shutdown:Promise<void>|undefined;
   const stop=():Promise<void>=>{
@@ -24,6 +26,7 @@ export async function runDaemon(root:string,runId:string):Promise<void>{
     })();return shutdown;
   };
   try{
+    if(run.schema==='ontology-managed-run/v3'?run.runtimeBindingDigest!==runtimeBindingDigest(installation.runtime):installation.schema!=='ontology-installation/v1')fail('RUNTIME_BINDING_CONFLICT','Managed launch requires its exact selected runtime',409);
     run.pid=process.pid;writeRun(installation,run);verifyRuntime(installation.runtime);
     const binding=currentToolchainBinding(installation);
     if(run.toolchainBindingDigest!==(binding?.digest??null))fail('TOOLCHAIN_BINDING_CONFLICT','Managed run toolchain binding changed before launch',409);

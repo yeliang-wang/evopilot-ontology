@@ -125,7 +125,7 @@ export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>
     const f=flags(args,['--root','--workspace-root','--workspace','--project','--principal','--runtime-root','--runtime-digest','--mode'],['--service','--port']);
     const mode=f.get('--mode');if(mode!=='create'&&mode!=='attach')fail('INVALID_ARGUMENTS','Mode must be create or attach');
     const result=prepareInstallation({root:f.get('--root')!,workspaceRoot:f.get('--workspace-root')!,workspaceId:f.get('--workspace')!,projectId:f.get('--project')!,principalId:f.get('--principal')!,runtimeRoot:f.get('--runtime-root')!,runtimeDigest:f.get('--runtime-digest')!,mode,serviceId:f.get('--service'),port:f.has('--port')?integer(f.get('--port')!):0});
-    emit({...result,runtime:{...result.runtime}});return;
+    emit(result as unknown as Json);return;
   }
   if(['installation-inspect','start','stop'].includes(command)){
     const f=flags(args,['--installation']);

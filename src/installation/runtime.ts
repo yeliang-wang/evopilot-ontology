@@ -2,10 +2,16 @@ import {lstatSync,readdirSync,readFileSync,readlinkSync,realpathSync,openSync,cl
 import {isAbsolute,join,relative,resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {outsideSource} from './files.js';
-import {hash} from '../standalone/validation.js';
+import {hash,exact,digest,text} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 
 export interface RuntimeBinding{root:string;packageRoot:string;version:string;digest:string;files:number;bytes:number;nodePath:string;nodeDigest:string;nodeVersion:string;}
+export function validateRuntimeBinding(value:unknown):asserts value is RuntimeBinding {
+  exact(value,['root','packageRoot','version','digest','files','bytes','nodePath','nodeDigest','nodeVersion']);
+  digest(value.digest);digest(value.nodeDigest);text(value.version,40);text(value.nodeVersion,40);
+  for(const k of ['root','packageRoot','nodePath']){text(value[k],4096);if(!isAbsolute(value[k] as string)||resolve(value[k] as string)!==value[k])fail('RUNTIME_IDENTITY','Canonical absolute runtime references required',409);}
+  if(value.packageRoot!==join(value.root as string,'node_modules/@evopilot-next/ontology')||![value.files,value.bytes].every(n=>Number.isSafeInteger(n)&&(n as number)>=0))fail('RUNTIME_IDENTITY','Invalid retained runtime identity',409);
+}
 export function fileDigest(path:string,max=256*1024*1024):string{
   const fd=openSync(path,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
   try{const stat=fstatSync(fd);if(!stat.isFile()||stat.size>max)fail('RUNTIME_LIMIT','Runtime file is not bounded and regular');
@@ -41,6 +47,7 @@ export function inspectRuntime(path:string):RuntimeBinding{
   return {root,packageRoot,version:pkg.version,digest:hash(entries),files:entries.length,bytes,nodePath,nodeDigest:fileDigest(nodePath),nodeVersion:process.versions.node};
 }
 export function verifyRuntime(binding:RuntimeBinding):void{
+  validateRuntimeBinding(binding);
   const actual=inspectRuntime(binding.root);
   if(hash({...actual})!==hash({...binding}))fail('RUNTIME_CHANGED','Installed runtime bytes or Node identity changed; no implicit execution',409);
 }

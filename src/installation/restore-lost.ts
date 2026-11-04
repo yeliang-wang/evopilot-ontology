@@ -1,6 +1,7 @@
 import {mkdirSync,readdirSync,lstatSync,chmodSync,renameSync,unlinkSync} from 'node:fs';
 import {join,dirname,isAbsolute,resolve} from 'node:path';
 import {outsideSource,assertSeparate,operatorLock} from './files.js';
+import {requireRuntimeDestinationSeparate} from './runtime-history.js';
 import {readInstallation,currentRun} from './manager.js';
 import {processPresent} from './control.js';
 import {verifyRuntime} from './runtime.js';
@@ -51,6 +52,7 @@ function newPlan(v:RestoreLostInput):Plan {
   const parentPaths={recovery:dirname(v.recoveryRoot),installation:dirname(i.root),workspace:dirname(i.workspaceRoot)};
   for(const parent of Object.values(parentPaths)){privatePath(parent,true);if(outsideSource(parent)!==parent)fail('UNSAFE_PATH','Canonical private recovery parents required');}
   for(const p of [i.root,i.workspaceRoot,i.runtime.root,v.snapshot.root,source.backupRoot])assertSeparate(v.recoveryRoot,p);
+  requireRuntimeDestinationSeparate(i,v.recoveryRoot);
   assertSeparate(i.root,i.workspaceRoot);
   const parents={recovery:backupNode(parentPaths.recovery),installation:backupNode(parentPaths.installation),workspace:backupNode(parentPaths.workspace)};
   if(new Set(Object.values(parents).map(n=>n.device)).size!==1)fail('RESTORE_FILESYSTEM','Recovery and original owner parents must share a filesystem for atomic moves',409);

@@ -13,6 +13,7 @@ import type {ReasoningConfiguration} from '../native-v2/tasks.js';
 import {validateSystemdBinding,verifySystemdBinding} from './systemd-binding.js';
 import type {SystemdBinding} from './systemd-binding.js';
 import {requireWorkerMaintenanceComplete} from './worker-journal.js';
+import {runtimeForDigest,requireRuntimeDestinationSeparate} from './runtime-history.js';
 
 export interface ToolSelection {toolchainFile:string;toolchainDigest:string;}
 export interface BindToolchainsInput {requestId:string;previousBindingDigest:string|null;dl:ToolSelection;shacl:ToolSelection;systemd?:SystemdBinding;}
@@ -34,12 +35,26 @@ export function toolchainRequestDigest(i:Installation,input:BindToolchainsInput)
   validateToolchainInput(input);
   return hash({installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,runtimeDigest:i.runtime.digest,previousBindingDigest:input.previousBindingDigest,dl:{...input.dl},shacl:{...input.shacl},...(input.systemd?{systemd:input.systemd as unknown as Json}:{})});
 }
+function checkRuntimeSequence(i:Installation,records:ToolchainRecord[]):void {
+  if(i.schema==='ontology-installation/v1')return;
+  const transitions=i.runtimeHistory.records.map(r=>r.transition);let position=0,active=i.runtimeHistory.initial.digest,head:string|null=null;
+  const advance=():void=>{
+    const t=transitions[position++];if(t.previousToolchainBindingDigest!==head)fail('TOOLCHAIN_BINDING_CORRUPT','Runtime transition does not continue the original toolchain head',409);active=t.runtime.digest;
+  };
+  for(const r of records){
+    while(position<transitions.length&&transitions[position].toolchainBindingDigest===null)advance();
+    if(position<transitions.length&&transitions[position].toolchainBindingDigest===r.digest)advance();
+    if(r.binding.runtimeDigest!==active)fail('TOOLCHAIN_BINDING_CORRUPT','Toolchain sequence crosses an unproven runtime transition',409);head=r.digest;
+  }
+  while(position<transitions.length&&transitions[position].toolchainBindingDigest===null)advance();
+  if(position!==transitions.length||active!==i.runtime.digest)fail('TOOLCHAIN_BINDING_MISSING','Runtime transition requires its original toolchain receipt',409);
+}
 export function readToolchainLedger(i:Installation,storageRoot=i.root):Ledger {
   const file=join(storageRoot,'toolchain-bindings.json');
   if(!existsSync(file)){
     const work=join(storageRoot,'formal-work');
     if(existsSync(work)){privatePath(work,true);if(readdirSync(work).length)fail('TOOLCHAIN_BINDING_MISSING','Managed worker state exists but its binding history is missing; explicit recovery required',409);}
-    return {schema:'ontology-managed-toolchain-ledger/v1',installationId:i.installationId,records:[]};
+    checkRuntimeSequence(i,[]);return {schema:'ontology-managed-toolchain-ledger/v1',installationId:i.installationId,records:[]};
   }
   const value=readPrivate(file,2*1024*1024);exact(value,['schema','installationId','records']);
   if(value.schema!=='ontology-managed-toolchain-ledger/v1'||value.installationId!==i.installationId||!Array.isArray(value.records)||!value.records.length||value.records.length>LIMIT)fail('TOOLCHAIN_BINDING_CORRUPT','Unknown or foreign toolchain ledger',409);
@@ -50,12 +65,13 @@ export function readToolchainLedger(i:Installation,storageRoot=i.root):Ledger {
     if(b.schema==='ontology-managed-toolchain-binding/v2')validateSystemdBinding(b.systemd);
     else if(b.schema!=='ontology-managed-toolchain-binding/v1'||b.systemd!==undefined)fail('TOOLCHAIN_BINDING_CORRUPT','Unknown toolchain isolation contract',409);
     selection(b.dl);selection(b.shacl);id(b.requestId);digest(b.requestDigest);text(b.recordedAt,40);
-    if(b.installationId!==i.installationId||b.workspaceId!==i.workspaceId||b.serviceId!==i.serviceId||b.runtimeDigest!==i.runtime.digest||b.previousDigest!==previous||b.workRoot!==join(i.root,'formal-work')||ids.has(b.requestId))fail('TOOLCHAIN_BINDING_CORRUPT','Toolchain history owner, parent or runtime differs',409);
+    if(b.installationId!==i.installationId||b.workspaceId!==i.workspaceId||b.serviceId!==i.serviceId||b.previousDigest!==previous||b.workRoot!==join(i.root,'formal-work')||ids.has(b.requestId))fail('TOOLCHAIN_BINDING_CORRUPT','Toolchain history owner or parent differs',409);
+    const runtime=runtimeForDigest(i,b.runtimeDigest as string);
     const input={requestId:b.requestId,previousBindingDigest:previous,dl:b.dl,shacl:b.shacl,...(b.systemd?{systemd:b.systemd as unknown as SystemdBinding}:{})};
-    if(toolchainRequestDigest(i,input)!==b.requestDigest||hash(b as unknown as Json)!==entry.digest)fail('TOOLCHAIN_BINDING_CORRUPT','Toolchain receipt differs from its immutable identity',409);
+    if(toolchainRequestDigest({...i,runtime},input)!==b.requestDigest||hash(b as unknown as Json)!==entry.digest)fail('TOOLCHAIN_BINDING_CORRUPT','Toolchain receipt differs from its immutable identity',409);
     ids.add(b.requestId);previous=entry.digest;
   }
-  return value as unknown as Ledger;
+  checkRuntimeSequence(i,value.records as ToolchainRecord[]);return value as unknown as Ledger;
 }
 export function currentToolchainBinding(i:Installation):ToolchainRecord|null {return readToolchainLedger(i).records.at(-1)??null;}
 const workOwner=(i:Installation)=>({schema:'ontology-managed-work/v1',installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,root:join(i.root,'formal-work')});
@@ -83,12 +99,14 @@ export function verifySelections(i:Installation,input:Pick<BindToolchainsInput,'
   for(const root of [dl.root,dl.javaRoot,shacl.root,shacl.runtimeRoot]){
     if(outsideSource(root)!==root)fail('UNSAFE_PATH','Installed executor roots must be canonical and outside source');
     for(const owner of [i.root,i.workspaceRoot,i.runtime.root])assertSeparate(root,owner);
+    requireRuntimeDestinationSeparate(i,root);
   }
   if(dl.workerSourceDigest!==fileDigest(join(i.runtime.packageRoot,'toolchains/owl2-dl/Worker.java'),2*1024*1024)||dl.dependencyLockDigest!==fileDigest(join(i.runtime.packageRoot,'toolchains/owl2-dl/dependencies.json'),2*1024*1024)||shacl.adapterDigest!==fileDigest(join(i.runtime.packageRoot,'src/native-v2/shacl-worker.py'),1024*1024))fail('PACKAGE_TOOLCHAIN_MISMATCH','Formal worker source/lock differs from the selected installed product package',409);
   verifyDLToolchain(dl);verifySHACLToolchain(shacl);
 }
 export function verifyManagedToolchains(i:Installation,record:ToolchainRecord|null,prepareWork=false):{reasoning?:ReasoningConfiguration;validation?:ReasoningConfiguration} {
-  if(!record)return {};
+  if(!record){if(i.schema==='ontology-installation/v2'&&i.runtimeHistory.records.some(r=>r.transition.toolchainBindingDigest!==null))fail('TOOLCHAIN_BINDING_MISSING','Configured upgrade cannot fall back to an unconfigured service',409);return {};}
+  if(record.binding.runtimeDigest!==i.runtime.digest)fail('TOOLCHAIN_BINDING_CONFLICT','Current execution requires a toolchain binding for the selected runtime',409);
   verifySelections(i,record.binding);const workRoot=workDirectory(i,prepareWork);
   const isolated=record.binding.systemd?{systemd:structuredClone(record.binding.systemd)}:{};
   return {reasoning:{toolchainFile:record.binding.dl.toolchainFile,workRoot,...isolated},validation:{toolchainFile:record.binding.shacl.toolchainFile,workRoot,...isolated}};

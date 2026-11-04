@@ -10,6 +10,7 @@ import {readInstallation,currentRun} from './manager.js';
 import type {Installation} from './manager.js';
 import {operatorLock,outsideSource,assertSeparate,settleOperatorJournal} from './files.js';
 import {verifyRuntime} from './runtime.js';
+import {requireRuntimeDestinationSeparate} from './runtime-history.js';
 import {processPresent} from './control.js';
 import {readToolchainLedger} from './toolchains.js';
 import {readDLToolchain} from '../reasoning/toolchain.js';
@@ -30,6 +31,7 @@ function target(i:Installation,path:string):string {
   if(!isAbsolute(path)||resolve(path)!==path)fail('UNSAFE_PATH','Canonical absolute backup destination required');
   const parent=dirname(path);privatePath(parent,true);if(outsideSource(parent)!==parent)fail('UNSAFE_PATH','Canonical private backup parent required');
   for(const root of [i.root,i.workspaceRoot,i.runtime.root])assertSeparate(path,root);
+  requireRuntimeDestinationSeparate(i,path);
   return join(parent,basename(path));
 }
 function marker(i:Installation,r:BackupRecord,root:string):MaintenanceBarrier {
@@ -62,6 +64,7 @@ function stopped(i:Installation):void {
 /** Internal stopped-owner verification shared by backup and restore admission.
  * The caller retains installation/workspace leases; this never copies files. */
 export function inspectStoppedOwnerBackupPlan(i:Installation,store:WorkspaceStore,backupRoot:string,priorBackups:BackupRecord[]):BackupPlan {
+  requireRuntimeDestinationSeparate(i,backupRoot);
   verifyRuntime(i.runtime);stopped(i);
   const ledger=readToolchainLedger(i),binding=ledger.records.at(-1)??null,run=currentRun(i);
   if(run?.toolchainBindingDigest&&!ledger.records.some(r=>r.digest===run.toolchainBindingDigest))fail('TOOLCHAIN_BINDING_MISSING','Managed run requires its original tool history',409);
