@@ -365,23 +365,76 @@ public final class Worker {
       deadline(end);return out;
     }finally{r.dispose();}
   }
+  enum CandidateProof { ESTABLISHED, NOT_ESTABLISHED, INELIGIBLE }
+  static final class ExplanationSearch {
+    final LinkedHashSet<OWLAxiom> support;
+    final List<OWLAxiom> query;
+    final boolean inconsistency;
+    final long end;
+    int candidateChecks=0,ineligibleCandidates=0;
+    ExplanationSearch(LinkedHashSet<OWLAxiom> support,List<OWLAxiom> query,boolean inconsistency,long end){
+      this.support=support;this.query=query;this.inconsistency=inconsistency;this.end=end;
+    }
+    CandidateProof prove(Set<OWLAxiom> candidate)throws Exception {
+      deadline(end);candidateChecks++;var axioms=new HashSet<>(candidate);var m=manager();
+      // Internal search needs typing declarations only for the candidate and
+      // complete query. Keep entity type as well as IRI (legal punning), never
+      // add query facts or name anonymous witnesses. These generated declarations
+      // are not logical support. Final replay retains all original nonlogical
+      // axioms and independently checks the serialized ontology below.
+      Stream.concat(candidate.stream(),query.stream()).flatMap(OWLAxiom::signature).distinct()
+        .forEach(e->axioms.add(m.getOWLDataFactory().getOWLDeclarationAxiom(e)));
+      var o=anonymous(m,axioms);
+      try{
+        // A subset can lose a definition needed by OWL 2 DL's global rules.
+        // An ineligible intermediate candidate proves nothing about the target.
+        if(!profileViolations(o).isEmpty()){deadline(end);ineligibleCandidates++;return CandidateProof.INELIGIBLE;}
+        var r=reasoner(o,end);
+        try{boolean consistent=r.isConsistent();boolean holds=inconsistency?!consistent:consistent&&entailed(r,query);deadline(end);return holds?CandidateProof.ESTABLISHED:CandidateProof.NOT_ESTABLISHED;}
+        finally{r.dispose();}
+      }finally{m.removeOntology(o);}
+    }
+    void reduce(List<OWLAxiom> removable)throws Exception {
+      // Process a level before drilling into a necessary block. This releases
+      // unrelated parts of the ontology before expensive singleton checks.
+      // Every removal still requires the same complete-target proof.
+      var pending=new ArrayDeque<List<OWLAxiom>>();if(!removable.isEmpty())pending.add(removable);
+      while(!pending.isEmpty()){
+        deadline(end);var block=pending.removeFirst();var candidate=new LinkedHashSet<>(support);candidate.removeAll(block);
+        if(prove(candidate)==CandidateProof.ESTABLISHED){support.removeAll(block);continue;}
+        if(block.size()>1){int middle=block.size()/2;pending.addLast(block.subList(0,middle));pending.addLast(block.subList(middle,block.size()));}
+      }
+    }
+  }
   static ObjectNode explanation(Loaded loaded,JsonNode task,List<OWLAxiom> q,OWLReasoner original,boolean consistent,long end)throws Exception {
     boolean inconsistency=str(task,"target").equals("inconsistency");
     require(inconsistency||consistent,"INCONSISTENT_PREMISE","Ordinary entailment explanation requires consistent premises");
     require(inconsistency?!consistent:entailed(original,q),"NO_EXPLANATION_TARGET","Requested conclusion is not established");
     var declarations=loaded.ontology().axioms().filter(a->!a.isLogicalAxiom()).collect(Collectors.toSet());
     var support=new LinkedHashSet<OWLAxiom>(loaded.ontology().logicalAxioms().sorted(Comparator.comparing(Object::toString)).toList());
-    for(OWLAxiom ax:new ArrayList<>(support)){
-      deadline(end);var candidate=new HashSet<>(support);candidate.remove(ax);candidate.addAll(declarations);var m=manager();var o=anonymous(m,candidate);var r=reasoner(o,end);
-      try{boolean c=r.isConsistent();if(inconsistency?!c:c&&entailed(r,q))support.remove(ax);}finally{r.dispose();}
-    }
+    // Keep datatype definitions as logical support, not invisible background.
+    // Removing one can make references to the custom datatype illegal even
+    // though the original ontology is legal. No minimality is promised.
+    var search=new ExplanationSearch(support,q,inconsistency,end);
+    search.reduce(support.stream().filter(a->!(a instanceof OWLDatatypeDefinitionAxiom)).toList());
+    deadline(end);var replay=new HashSet<>(support);replay.addAll(declarations);var m=manager();var ontology=anonymous(m,replay);var target=new StringDocumentTarget();
+    m.saveOntology(ontology,new FunctionalSyntaxDocumentFormat(),target);String replayText=target.toString();m.removeOntology(ontology);deadline(end);
+    if(replayText.getBytes(StandardCharsets.UTF_8).length>8*1024*1024)throw new Refusal("FAILED","OUTPUT_LIMIT","Explanation replay exceeds the document/output budget");
+    String replayDigest=sha(replayText);var replayDocument=JSON.createObjectNode();replayDocument.put("format","functional");replayDocument.put("content",replayText);replayDocument.put("digest",replayDigest);
+    var rm=manager();var parsed=parse(rm,replayDocument,"urn:evopilot:explanation:replay",List.of());var ro=parsed.ontology();
+    try{
+      deadline(end);if(!profileViolations(ro).isEmpty())throw new Refusal("FAILED","EXPLANATION_REPLAY","Serialized explanation is not legal OWL 2 DL");
+      var rr=reasoner(ro,end);
+      try{boolean c=rr.isConsistent();if(!(inconsistency?!c:c&&entailed(rr,q)))throw new Refusal("FAILED","EXPLANATION_REPLAY","Serialized explanation does not establish the complete target");deadline(end);}
+      finally{rr.dispose();}
+    }finally{rm.removeOntology(ro);}
     deadline(end);ObjectNode out=JSON.createObjectNode();out.put("status","COMPLETED");out.put("complete",true);ObjectNode result=out.putObject("result");
-    result.put("target",str(task,"target"));result.put("method","DELETION_REPLAY");result.put("allMinimalJustifications",false);engineEvidence(result);ArrayNode supporting=result.putArray("support");
+    result.put("target",str(task,"target"));result.put("method","DELETION_REPLAY");result.put("searchStrategy","BREADTH_FIRST_BLOCKS");result.put("allMinimalJustifications",false);result.put("replayVerified",true);
+    result.put("candidateChecks",search.candidateChecks);result.put("ineligibleCandidates",search.ineligibleCandidates);result.put("retainedDatatypeDefinitions",support.stream().filter(a->a instanceof OWLDatatypeDefinitionAxiom).count());engineEvidence(result);ArrayNode supporting=result.putArray("support");
     for(OWLAxiom ax:support){ObjectNode item=supporting.addObject();item.put("axiom",ax.toString());item.put("axiomDigest",sha(ax.toString()));ArrayNode sources=item.putArray("sources");
       for(JsonNode doc:loaded.origins().get(ax)){ObjectNode s=sources.addObject();s.put("documentId",str(doc,"id"));s.put("documentDigest",str(doc,"digest"));s.put("selectorKind","OWL_STRUCTURAL_AXIOM");s.put("axiomDigest",sha(ax.toString()));}
     }
-    var replay=new HashSet<>(support);replay.addAll(declarations);var m=manager();var ontology=anonymous(m,replay);var target=new StringDocumentTarget();m.saveOntology(ontology,new FunctionalSyntaxDocumentFormat(),target);
-    ObjectNode replayNode=result.putObject("replay");replayNode.put("format","functional");replayNode.put("content",target.toString());replayNode.put("digest",sha(target.toString()));return out;
+    ObjectNode replayNode=result.putObject("replay");replayNode.put("format","functional");replayNode.put("content",replayText);replayNode.put("digest",replayDigest);deadline(end);return out;
   }
   static Refusal refusal(Throwable error){
     if(refusedImport!=null)return new Refusal("MISSING_IMPORT","MISSING_IMPORT","Unbound ontology import: "+refusedImport);
