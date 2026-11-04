@@ -104,6 +104,7 @@ export function bindInstallationToolchains(path:string,input:BindToolchainsInput
     const ledger=readToolchainLedger(installation),old=ledger.records.find(r=>r.binding.requestId===input.requestId),run=currentRun(installation);
     requireRunToolchainHistory(run,ledger.records);
     if(old){const prior={...installation,runtime:runtimeForDigest(installation,old.binding.runtimeDigest)};if(old.binding.requestDigest!==toolchainRequestDigest(prior,input))fail('REQUEST_CONFLICT','Toolchain request ID binds different parameters',409);return {receipt:old as unknown as Json,replayed:true,currentBindingDigest:ledger.records.at(-1)!.digest,authority:false};}
+    requireMaintenanceAvailable(installation.root);
     if(run&&!['STOPPED','FAILED'].includes(run.state)&&processPresent(run.pid)!==false)fail('INSTALLATION_RUNNING','Stop or reconcile the exact managed service before changing toolchain binding',409);
     const workspace=openWorkspace(installation.workspaceRoot,installation);
     try{

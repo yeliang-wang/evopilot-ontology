@@ -9,6 +9,7 @@ import {operatorLock,assertSeparate,outsideSource} from './files.js';
 import {processPresent} from './control.js';
 import {requireSelectedRuntimeLocation} from './runtime-history.js';
 import {privatePath,privateRead,requireMaintenanceAvailable} from '../standalone/workspace.js';
+import type {MaintenancePermit} from '../standalone/workspace.js';
 import {digest,exact,hash,hashBytes,validateIdentity} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
@@ -79,10 +80,10 @@ export function preparePluginUpgrade(path:string,input:PluginUpgradeInput):Plugi
   try{return preparePluginUpgradeLocked(i,input);}finally{unlock();}
 }
 /** Internal composition entry: caller holds the exact installation lease. */
-export function preparePluginUpgradeLocked(i:Installation,input:PluginUpgradeInput):PluginUpgradePreparation {
+export function preparePluginUpgradeLocked(i:Installation,input:PluginUpgradeInput,permit?:MaintenancePermit):PluginUpgradePreparation {
   exact(input,['runtimeRoot','runtimeDigest'],['resolutionsFile']);digest(input.runtimeDigest);
   if(typeof input.runtimeRoot!=='string'||input.resolutionsFile!==undefined&&typeof input.resolutionsFile!=='string')fail('INVALID_INPUT','Explicit runtime and optional private resolution file required');
-    requireMaintenanceAvailable(i.root);requireMaintenanceAvailable(i.workspaceRoot);
+    requireMaintenanceAvailable(i.root,permit);requireMaintenanceAvailable(i.workspaceRoot,permit);
     const run=currentRun(i);if(run&&!['STOPPED','FAILED'].includes(run.state)&&processPresent(run.pid)!==false)fail('INSTALLATION_RUNNING','Stop the exact owner before preparing a plugin upgrade',409);
     const identity:unknown=JSON.parse(privateRead(join(i.workspaceRoot,'identity.json'),4096));validateIdentity(identity);
     if(identity.workspaceId!==i.workspaceId||identity.serviceId!==i.serviceId)fail('IDENTITY_MISMATCH','Plugin installation and workspace differ',403);

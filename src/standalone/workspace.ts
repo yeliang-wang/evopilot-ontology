@@ -2,15 +2,18 @@ import { DatabaseSync } from 'node:sqlite';
 import { constants, openSync, closeSync, readFileSync, lstatSync, realpathSync, readdirSync, fstatSync } from 'node:fs';
 import { resolve, join, isAbsolute, dirname } from 'node:path';
 import { fail, LIMITS } from './types.js';
-import type { WorkspaceIdentity, Credentials } from './types.js';
-import { validateIdentity, validateCredentials, hashBytes,exact,id,digest,text } from './validation.js';
+import type { WorkspaceIdentity, Credentials, Json } from './types.js';
+import { validateIdentity, validateCredentials, hashBytes,hash,exact,id,digest,text } from './validation.js';
 
 export const STATE_VERSION = 14;
 export const FILES = Object.freeze({identity:'identity.json', credentials:'credentials.json', db:'ontology.sqlite', lease:'writer.sqlite'});
 export const MAINTENANCE_FILE='maintenance-barrier.json';
 export const RESTORE_STAGE_BARRIER='restore-stage-barrier.json';
 export const RESTORE_ACTIVATION_BARRIER='restore-activation-barrier.json';
-export interface MaintenancePermit {requestId:string;requestDigest:string;}
+export const UPGRADE_BARRIER='upgrade-barrier.json';
+export const UPGRADE_RECORDS='upgrade-requests';
+export interface MaintenancePermit {requestId:string;requestDigest:string;operation?:'UPGRADE'|'BACKUP';}
+export interface UpgradeBarrier {schema:'ontology-upgrade-barrier/v1';root:string;upgradeRoot:string;installationId:string;workspaceId:string;serviceId:string;requestId:string;requestDigest:string;reportDigest:string;}
 export interface RestoreActivationBarrier extends MaintenancePermit {schema:'ontology-restore-activation-barrier/v1';root:string;recoveryRoot:string;installationId:string;workspaceId:string;serviceId:string;}
 export function readRestoreActivationBarrier(root:string):RestoreActivationBarrier|null {
   const file=join(root,RESTORE_ACTIVATION_BARRIER);try{lstatSync(file);}catch(e){if((e as NodeJS.ErrnoException).code==='ENOENT')return null;throw e;}
@@ -27,7 +30,53 @@ export function readMaintenanceBarrier(root:string):MaintenanceBarrier|null {
   if(v.schema!=='ontology-maintenance-barrier/v1'||v.operation!=='BACKUP'||v.root!==root||!isAbsolute(v.backupRoot))fail('MAINTENANCE_EVIDENCE','Invalid retained maintenance barrier',409);
   return v as unknown as MaintenanceBarrier;
 }
+/** The installation anchor closes the admission-to-barrier crash window.
+ * Exact terminal receipts remain readable after backups relocate their files. */
+export const upgradeControlKey=(requestId:string):string=>{id(requestId);return Buffer.from(requestId,'utf8').toString('hex');};
+const controlName=/^([a-f0-9]{2,192})(\.aborted\.json|\.released\.json|\.reserve|\.json)(\.pending)?$/;
+export function upgradeControlNames(root:string):string[] {
+  const directory=join(root,UPGRADE_RECORDS);
+  if(!readdirSync(root).includes(UPGRADE_RECORDS))return [];
+  privatePath(directory,true);const names=readdirSync(directory).sort();
+  if(names.length>1024)fail('UPGRADE_LIMIT','Upgrade history exceeds its retained control budget',409);
+  let bytes=0;
+  for(const name of names){
+    const match=controlName.exec(name);
+    if(!match)fail('UPGRADE_EVIDENCE','Unknown upgrade control material was preserved',409);
+    const requestId=Buffer.from(match[1]!,'hex').toString('utf8');id(requestId);if(upgradeControlKey(requestId)!==match[1])fail('UPGRADE_EVIDENCE','Invalid upgrade control name',409);const file=join(directory,name);privatePath(file);
+    const size=lstatSync(file).size;bytes+=size;
+    if(size>8*1024*1024||bytes>64*1024*1024)fail('UPGRADE_LIMIT','Upgrade control records exceed their metadata budget',409);
+  }
+  return names;
+}
+function requireUpgradeAvailable(root:string,permit?:MaintenancePermit):void {
+  const names=upgradeControlNames(root),directory=join(root,UPGRADE_RECORDS),requests=new Set<string>();
+  for(const n of names)requests.add(Buffer.from(controlName.exec(n)![1]!,'hex').toString('utf8'));
+  if(requests.size>128)fail('UPGRADE_LIMIT','Upgrade request history exceeds its budget',409);
+  for(const requestId of requests){
+    const key=upgradeControlKey(requestId);
+    if(permit?.operation==='UPGRADE'&&permit.requestId===requestId)continue;
+    if(!names.includes(key+'.released.json'))fail('UPGRADE_PENDING','Resume or abort the original upgrade before using this installation',409);
+    const a:unknown=JSON.parse(privateRead(join(directory,key+'.json'),8*1024*1024));
+    exact(a,['schema','input','report','reportDigest','requestDigest','controlNode']);
+    const r:unknown=JSON.parse(privateRead(join(directory,key+'.released.json'),65536));
+    exact(r,['schema','requestId','requestDigest','reportDigest','admissionDigest','abortDigest','authority']);
+    const aborted:unknown=JSON.parse(privateRead(join(directory,key+'.aborted.json'),65536));
+    exact(aborted,['schema','requestId','requestDigest','reportDigest','upgradeRoot','runtimeActivated','serviceStarted','partialMaterialRetained','authority']);
+    if(a.schema!=='ontology-upgrade-admission/v1'||r.schema!=='ontology-upgrade-released/v1'||aborted.schema!=='ontology-upgrade-abort/v1'||r.requestId!==requestId||aborted.requestId!==requestId||r.requestDigest!==a.requestDigest||aborted.requestDigest!==a.requestDigest||r.reportDigest!==a.reportDigest||aborted.reportDigest!==a.reportDigest||r.admissionDigest!==hash(a as Json)||r.abortDigest!==hash(aborted as Json)||hash(a.report as Json)!==a.reportDigest||r.authority!==false||aborted.authority!==false||aborted.runtimeActivated!==false||aborted.serviceStarted!==false||aborted.partialMaterialRetained!==true)fail('UPGRADE_EVIDENCE','Upgrade terminal evidence differs from its admission',409);
+    if(names.some(n=>controlName.exec(n)![1]===key&&!['.json','.aborted.json','.released.json'].some(s=>n===key+s)))fail('UPGRADE_EVIDENCE','Released upgrade has unresolved control material',409);
+  }
+  const marker=join(root,UPGRADE_BARRIER),pending=UPGRADE_BARRIER+'.pending',entries=readdirSync(root);
+  if(entries.includes(pending))fail('UPGRADE_PENDING','Complete the original partial upgrade barrier before using this owner',409);
+  if(entries.includes(UPGRADE_BARRIER)){
+    const v:unknown=JSON.parse(privateRead(marker,65536));exact(v,['schema','root','upgradeRoot','installationId','workspaceId','serviceId','requestId','requestDigest','reportDigest']);
+    for(const k of ['installationId','workspaceId','serviceId','requestId'])id(v[k]);digest(v.requestDigest);digest(v.reportDigest);
+    if(v.schema!=='ontology-upgrade-barrier/v1'||v.root!==root||typeof v.upgradeRoot!=='string'||!isAbsolute(v.upgradeRoot))fail('UPGRADE_EVIDENCE','Foreign upgrade barrier was preserved',409);
+    if(permit?.operation!=='UPGRADE'||v.requestId!==permit.requestId||v.requestDigest!==permit.requestDigest)fail('UPGRADE_PENDING','Resume or abort the original upgrade before using this owner',409);
+  }
+}
 export function requireMaintenanceAvailable(root:string,permit?:MaintenancePermit):void {
+  requireUpgradeAvailable(root,permit);
   // A materialized snapshot is not an activated owner. Even an interrupted
   // barrier write must fail closed before identity/credentials or tasks open.
   if(readdirSync(root).some(n=>n===RESTORE_STAGE_BARRIER||n===RESTORE_STAGE_BARRIER+'.pending'))fail('RESTORE_STAGED','Restore candidate is inactive; owner activation and request/history reconciliation are required',409);

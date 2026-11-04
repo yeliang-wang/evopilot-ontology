@@ -611,9 +611,9 @@ stale digests and resolutions that break the owned launcher remain refused.
 }
 ```
 
-The caller must inspect a fresh plan after editing any input. Durable upgrade
-admission, immutable runtime/toolchain lineage, activation, interruption and
-storage-failure recovery remain separate implementation obligations. These
+The caller must inspect a fresh plan after editing any input. Runtime/toolchain
+lineage and internal admission are described below; atomic activation and actual
+interruption/storage-failure recovery remain separate obligations. These
 preparation checks do not establish MAINT-02, actual Codex Host behavior or v0.9
 acceptance. Installed source tests use two isolated offline installs and clearly
 labeled synthetic upstream templates; they do not impersonate a released upgrade.
@@ -692,11 +692,56 @@ The merged private buffers are returned only to the internal transaction planner
 the CLI reports identities and digests, not private file contents.
 
 Toolchain preparation returns stable proposed binding content without recording a
-timestamp, appending a receipt or creating `formal-work`. A real binding timestamp
-belongs to admission. An unconfigured installation may select verified tools or
+timestamp, appending a receipt or creating `formal-work`. The eventual staging
+transaction must durably record the actual binding timestamp before activation. An unconfigured installation may select verified tools or
 retain `toolchains: null`; the latter explicitly reports `toolchainsVerified: false`
 and establishes no formal reasoning readiness. Configured tools cannot be removed.
 
-This command prepares a complete upgrade selection. Durable admission, staging,
-activation, abort/resume and failure recovery still need implementation and actual
-installed verification. It does not apply the prepared report or satisfy MAINT-02.
+This command prepares a complete upgrade selection. Internal admission and
+pre-switch abort are described below. Staging, activation and actual crash/storage
+failure recovery still need implementation and installed verification. Inspection
+does not apply the prepared report or satisfy MAINT-02.
+
+
+## Durable upgrade admission and pre-switch abort
+
+The installed internal transaction module now retains an exact upgrade admission
+in `upgrade-requests/` inside the selected installation. Its hexadecimal filename
+encodes the request ID without confusing IDs such as `name.aborted` with protocol
+suffixes. The admission binds the complete inspected plan, exact inputs, original
+owner identities and the control directory's physical identity. The complete
+plan is revalidated under the installation and workspace leases before admission.
+A changed input or stale report cannot reuse an admitted request.
+
+Pending admissions block ordinary installation startup, new tool binding and
+backup even if interruption occurred before the maintenance barriers were written.
+The transaction also places owned barriers in the original workspace and existing
+formal-work directory. Exact partial barriers can resume; unknown bytes, replaced
+roots and unrelated staging material are preserved and refused. Existing tool
+binding receipts remain readable. New business writes require the transaction to
+finish or be explicitly aborted.
+
+Admission reserves bounded real filesystem blocks for completion metadata. This
+is not protection against unrelated consumers exhausting that filesystem. Resume
+verifies the original source and candidate again; a later source change refuses
+resume. Pre-switch abort preserves the later source change, records the abort
+before clearing its own barriers, and never starts the service or changes runtime,
+plugin, credentials or toolchain bindings. If admission itself was only partially
+written, retain the original complete inspected report: abort uses it to reconcile
+only an exact prefix, without relying on the source still matching that report.
+After an abort has begun, admission cannot reverse it. Released receipts replay
+without requiring the selected candidate runtime to remain available.
+
+Historical upgrade records remain part of subsequent backup inventories and
+upgrade snapshots. Only the active request's bounded control files are excluded
+from its own source comparison; its exact protocol verifies those files separately.
+The record budget is 128 requests, 1,024 control files and 64 MiB of aggregate
+control metadata, with completion headroom checked before admission; nothing is
+silently pruned. An aborted request ID cannot be reused for a new upgrade inspection.
+
+This is an internal implementation stage, with no public admission command yet.
+It does not create the sibling staging directory or activate a runtime. Atomic
+plugin/toolchain/runtime staging and switching, real restart, SIGKILL/ENOSPC
+recovery and full maintenance acceptance remain required. Tests that reconstruct
+partial protocol files are synthetic interruption evidence, not actual crash or
+disk-full acceptance. Product acceptance and release authority remain unchanged.
