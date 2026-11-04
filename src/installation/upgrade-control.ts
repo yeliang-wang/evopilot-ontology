@@ -4,13 +4,14 @@ import {operatorLock} from './files.js';
 import {readInstallation} from './manager.js';
 import type {Installation} from './manager.js';
 import {prepareInstallationUpgradeLocked,validateInstallationUpgradeInput} from './upgrade-plan.js';
-import type {InstallationUpgradeInput,InstallationUpgradePlan} from './upgrade-plan.js';
+import type {InstallationUpgradeInput,InstallationUpgradePlan,InstallationUpgradePreparation} from './upgrade-plan.js';
 import {backupNode,writeBackupJSON} from './backup-files.js';
 import {backupHash,validateBackupPlan,validateNode,BACKUP_LIMITS} from './backup-contract.js';
 import type {NodeIdentity} from './backup-contract.js';
+import {admittedUpgradeStageNode,preserveUpgradeStageForAbort,readUpgradeStageOwner} from './upgrade-stage-files.js';
 import {workerFilePresent} from './worker-archives.js';
 import {privatePath,privateRead,openWorkspace,requireMaintenanceAvailable,upgradeControlNames,upgradeControlKey,UPGRADE_BARRIER,UPGRADE_RECORDS} from '../standalone/workspace.js';
-import type {UpgradeBarrier,MaintenancePermit} from '../standalone/workspace.js';
+import type {UpgradeBarrier,MaintenancePermit,WorkspaceStore} from '../standalone/workspace.js';
 import {exact,digest} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
@@ -25,7 +26,13 @@ const directory=(i:Installation)=>join(i.root,UPGRADE_RECORDS);
 const file=(i:Installation,requestId:string,suffix='.json')=>join(directory(i),upgradeControlKey(requestId)+suffix);
 const requestDigest=(i:Installation,input:InstallationUpgradeInput,reportDigest:string)=>backupHash({installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,input,reportDigest});
 const permit=(a:UpgradeAdmission):MaintenancePermit=>({operation:'UPGRADE',requestId:a.input.requestId,requestDigest:a.requestDigest});
-const roots=(a:UpgradeAdmission):string[]=>{const i=a.report.ownerSnapshot.installation;return [i.root,i.workspaceRoot,...(a.report.ownerSnapshot.entries.some(e=>e.scope==='installation'&&e.path==='formal-work')?[join(i.root,'formal-work')]:[])];};
+const roots=(a:UpgradeAdmission):string[]=>{
+  const p=a.report.ownerSnapshot,i=p.installation,work=join(i.root,'formal-work');
+  // Earlier internal admission candidates also marked empty, unconfigured
+  // worker directories. Preserve their exact explicit-abort recovery path.
+  const retained=p.entries.some(e=>e.scope==='installation'&&e.path==='formal-work')&&[UPGRADE_BARRIER,UPGRADE_BARRIER+'.pending'].some(n=>workerFilePresent(join(work,n)));
+  return [i.root,i.workspaceRoot,...(p.toolchainBindingDigest!==null||retained?[work]:[])];
+};
 const marker=(a:UpgradeAdmission,root:string):UpgradeBarrier=>{
   const i=a.report.ownerSnapshot.installation;return {schema:'ontology-upgrade-barrier/v1',root,upgradeRoot:a.input.upgradeRoot,installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,requestId:a.input.requestId,requestDigest:a.requestDigest,reportDigest:a.reportDigest};
 };
@@ -74,7 +81,7 @@ function assertSelection(a:UpgradeAdmission,input:InstallationUpgradeInput,expec
   if(!equal(a.input,input)||a.reportDigest!==expectedReportDigest)fail('REQUEST_CONFLICT','Upgrade request binds another exact input or report',409);
 }
 const abortValue=(a:UpgradeAdmission)=>({schema:'ontology-upgrade-abort/v1',requestId:a.input.requestId,requestDigest:a.requestDigest,reportDigest:a.reportDigest,upgradeRoot:a.input.upgradeRoot,runtimeActivated:false,serviceStarted:false,partialMaterialRetained:true,authority:false});
-const releasedValue=(a:UpgradeAdmission)=>({schema:'ontology-upgrade-released/v1',requestId:a.input.requestId,requestDigest:a.requestDigest,reportDigest:a.reportDigest,admissionDigest:backupHash(a),abortDigest:backupHash(abortValue(a)),authority:false});
+const releasedValue=(a:UpgradeAdmission)=>({...(readUpgradeStageOwner(a)?{stageDigest:backupHash(readUpgradeStageOwner(a))}:{}),schema:'ontology-upgrade-released/v1',requestId:a.input.requestId,requestDigest:a.requestDigest,reportDigest:a.reportDigest,admissionDigest:backupHash(a),abortDigest:backupHash(abortValue(a)),authority:false});
 function released(a:UpgradeAdmission):boolean {
   const i=a.report.ownerSnapshot.installation,path=file(i,a.input.requestId,'.released.json');if(!workerFilePresent(path))return false;
   if(!equal(JSON.parse(privateRead(path,65536)),releasedValue(a))||!equal(JSON.parse(privateRead(file(i,a.input.requestId,'.aborted.json'),65536)),abortValue(a)))fail('UPGRADE_EVIDENCE','Upgrade terminal receipt changed',409);
@@ -84,27 +91,30 @@ function released(a:UpgradeAdmission):boolean {
 
 /** Internal transaction admission, deliberately not a public CLI command until
  * staging and activation are implemented. No runtime or tool ledger is changed. */
-export function admitInstallationUpgrade(path:string,input:InstallationUpgradeInput,expectedReportDigest:string):Json {
+export function withInstallationUpgradeAdmission<T>(path:string,input:InstallationUpgradeInput,expectedReportDigest:string,work:(a:UpgradeAdmission,prepared:InstallationUpgradePreparation,store:WorkspaceStore,replayed:boolean)=>T,aborted:(a:UpgradeAdmission)=>T):T {
   validateInstallationUpgradeInput(input);digest(expectedReportDigest);const i=readInstallation(path),unlock=operatorLock(i.root);
   try{
     const names=upgradeControlNames(i.root),key=upgradeControlKey(input.requestId),saved=workerFilePresent(file(i,input.requestId))?readAdmission(i,input.requestId):null;
     for(const suffix of ['.json','.aborted.json','.released.json'])if(workerFilePresent(file(i,input.requestId,suffix))&&workerFilePresent(file(i,input.requestId,suffix)+'.pending'))fail('UPGRADE_EVIDENCE','Ambiguous complete and partial upgrade records were preserved',409);
-    if(saved){assertSelection(saved,input,expectedReportDigest);if(released(saved))return {status:'ABORTED',receipt:abortValue(saved),replayed:true,authority:false};settleMarkers(saved);}
+    if(saved){assertSelection(saved,input,expectedReportDigest);if(released(saved))return aborted(saved);settleMarkers(saved);}
     const p:MaintenancePermit={operation:'UPGRADE',requestId:input.requestId,requestDigest:requestDigest(i,input,expectedReportDigest)};
     requireMaintenanceAvailable(i.root,p);const store=openWorkspace(i.workspaceRoot,i,p);
     try{
       if(names.some(n=>n===key+'.aborted.json'||n===key+'.aborted.json.pending'||n===key+'.released.json.pending'))fail('UPGRADE_ABORT_PENDING','Complete the original abort; admission cannot reverse a terminal decision',409);
-      const prepared=prepareInstallationUpgradeLocked(i,store,input,expectedReportDigest,p);
+      const prepared=prepareInstallationUpgradeLocked(i,store,input,expectedReportDigest,p,saved?admittedUpgradeStageNode(saved):undefined);
       if(!workerFilePresent(directory(i))){mkdirSync(directory(i),{mode:0o700});sync(i.root);}privatePath(directory(i),true);
-      if(new Set([...names.map(n=>n.split('.')[0]),key]).size>128||names.length>1016)fail('UPGRADE_LIMIT','Upgrade control history lacks completion headroom',409);
+      if(new Set([...names.map(n=>n.split('.')[0]),key]).size>128||names.length>1014)fail('UPGRADE_LIMIT','Upgrade control history lacks completion headroom',409);
       const a:UpgradeAdmission={schema:'ontology-upgrade-admission/v1',input,report:prepared.report,reportDigest:prepared.reportDigest,requestDigest:p.requestDigest,controlNode:backupNode(directory(i))};
       if(saved&&!equal(a,saved))fail('UPGRADE_CHANGED','Original admitted upgrade changed',409);
       const ownKey=upgradeControlKey(input.requestId),otherBytes=names.filter(n=>n.split('.')[0]!==ownKey).reduce((sum,n)=>sum+lstatSync(join(directory(i),n)).size,0);
       if(otherBytes+2*Buffer.byteLength(JSON.stringify(a))+2*BACKUP_LIMITS.completionReserveBytes+65536>64*1024*1024)fail('UPGRADE_LIMIT','Upgrade history lacks bounded completion space; nothing was pruned',409);
       writeBackupJSON(file(i,input.requestId),a);reserve(a);block(a);store.guard();anchors(a);
-      return {status:'ADMITTED',requestId:input.requestId,requestDigest:a.requestDigest,reportDigest:a.reportDigest,replayed:saved!==null,runtimeActivated:false,serviceStarted:false,authority:false};
+      return work(a,prepared,store,saved!==null);
     }finally{store.close();}
   }finally{unlock();}
+}
+export function admitInstallationUpgrade(path:string,input:InstallationUpgradeInput,expectedReportDigest:string):Json {
+  return withInstallationUpgradeAdmission<Json>(path,input,expectedReportDigest,(a,_prepared,_store,replayed)=>({status:'ADMITTED',requestId:input.requestId,requestDigest:a.requestDigest,reportDigest:a.reportDigest,replayed,runtimeActivated:false,serviceStarted:false,authority:false}),(a)=>({status:'ABORTED',receipt:abortValue(a),replayed:true,authority:false}));
 }
 /** Explicit pre-switch abort. Original request/report may reconstruct an exact
  * interrupted admission prefix; it never grants permission to activate it. */
@@ -122,9 +132,7 @@ export function abortInstallationUpgrade(path:string,input:InstallationUpgradeIn
     assertSelection(a,input,expectedReportDigest);
     if(released(a))return {status:'ABORTED',receipt:abortValue(a),replayed:true,authority:false};
     anchors(a);
-    // This admission stage never creates upgradeRoot. A later staging/switch
-    // protocol must explicitly prove the phase before enabling its abort path.
-    if(workerFilePresent(input.upgradeRoot))fail('UPGRADE_PHASE_UNKNOWN','Staging or switch material exists; preserve it and reconcile its exact phase',409);
+    preserveUpgradeStageForAbort(a);
     settleMarkers(a);requireMaintenanceAvailable(i.root,permit(a));
     const store=openWorkspace(i.workspaceRoot,i,permit(a));
     try{

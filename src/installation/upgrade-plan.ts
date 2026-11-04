@@ -13,7 +13,8 @@ import type {BindToolchainsInput,ToolchainBindingDraft} from './toolchains.js';
 import {inspectStoppedOwnerBackupPlan} from './backup.js';
 import {backupControlRecords} from './backup-control.js';
 import {backupHash,BACKUP_LIMITS} from './backup-contract.js';
-import type {BackupPlan} from './backup-contract.js';
+import {backupNode} from './backup-files.js';
+import type {NodeIdentity,BackupPlan} from './backup-contract.js';
 import {requireRuntimeDestinationSeparate,requireRuntimeTransitionCandidate} from './runtime-history.js';
 import {readDLToolchain} from '../reasoning/toolchain.js';
 import {readSHACLToolchain} from '../native-v2/shacl-toolchain.js';
@@ -36,12 +37,12 @@ export interface InstallationUpgradePreparation {report:InstallationUpgradePlan;
 /** The future transaction retains old plugin bytes by rename. Requiring an
  * absent sibling keeps staging on the installation filesystem and out of any
  * existing package/tool/owner subtree. Inspection never creates this path. */
-function destination(i:ReturnType<typeof readInstallation>,input:InstallationUpgradeInput):void {
+function destination(i:ReturnType<typeof readInstallation>,input:InstallationUpgradeInput,admittedStage?:NodeIdentity):void {
   const p=input.upgradeRoot;
   if(typeof p!=='string'||!isAbsolute(p)||resolve(p)!==p||dirname(p)!==dirname(i.root))fail('UPGRADE_LOCATION','Upgrade staging must be an absent canonical sibling of the installation',409);
   privatePath(dirname(p),true);if(outsideSource(dirname(p))!==dirname(p))fail('UNSAFE_PATH','Canonical private upgrade parent required');
   for(const root of [i.root,i.workspaceRoot,input.runtimeRoot])assertSeparate(p,root);requireRuntimeDestinationSeparate(i,p);
-  try{lstatSync(p);fail('UPGRADE_EXISTS','Upgrade destination is occupied; inspect the retained transaction instead',409);}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}
+  try{lstatSync(p);if(!admittedStage||backupHash(backupNode(p))!==backupHash(admittedStage))fail('UPGRADE_EXISTS','Upgrade destination is occupied; inspect the retained transaction instead',409);}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}
   if(lstatSync(dirname(p)).dev!==lstatSync(i.root).dev)fail('UPGRADE_LOCATION','Upgrade staging and installation require the same filesystem',409);
 }
 
@@ -55,9 +56,9 @@ export function validateInstallationUpgradeInput(input:unknown):asserts input is
 }
 
 /** Internal composition entry. Caller owns both original owner leases. */
-export function prepareInstallationUpgradeLocked(i:Installation,store:WorkspaceStore,input:InstallationUpgradeInput,expectedReportDigest?:string,permit?:MaintenancePermit):InstallationUpgradePreparation {
+export function prepareInstallationUpgradeLocked(i:Installation,store:WorkspaceStore,input:InstallationUpgradeInput,expectedReportDigest?:string,permit?:MaintenancePermit,admittedStage?:NodeIdentity):InstallationUpgradePreparation {
   validateInstallationUpgradeInput(input);if(expectedReportDigest!==undefined)digest(expectedReportDigest);
-  requireMaintenanceAvailable(i.root,permit);destination(i,input);
+  requireMaintenanceAvailable(i.root,permit);destination(i,input,admittedStage);
   if(permit?.operation!=='UPGRADE'&&upgradeControlNames(i.root).some(n=>n.split('.')[0]===upgradeControlKey(input.requestId)))fail('REQUEST_CONFLICT','Upgrade request already has retained control history; reconcile its exact receipt',409);
   const run=currentRun(i);
   if(run&&!['STOPPED','FAILED'].includes(run.state)&&processPresent(run.pid)!==false)fail('INSTALLATION_RUNNING','Stop the exact owner before inspecting an upgrade',409);
@@ -78,7 +79,7 @@ export function prepareInstallationUpgradeLocked(i:Installation,store:WorkspaceS
     for(const root of [dl.root,dl.javaRoot,shacl.root,shacl.runtimeRoot])assertSeparate(input.upgradeRoot,root);
     if(backupHash(prepareToolchainBinding(prospective,bindingInput,ledger))!==backupHash(toolchainDraft))fail('UPGRADE_CHANGED','Toolchain preparation changed during inspection',409);
   }
-  store.guard();destination(i,input);
+  store.guard();destination(i,input,admittedStage);
   const finalSnapshot=upgradeOwnerSnapshot(inspectStoppedOwnerBackupPlan(i,store,input.upgradeRoot,backupControlRecords(i)),input.requestId);
   if(backupHash(finalSnapshot)!==backupHash(ownerSnapshot))fail('UPGRADE_CHANGED','Owner state changed during upgrade inspection',409);
   verifyRuntime(plugin.runtime);
@@ -96,7 +97,7 @@ export function prepareInstallationUpgradeLocked(i:Installation,store:WorkspaceS
 /** Current request control files are covered by their own exact protocol.
  * Historical request files remain part of the stopped-owner snapshot. */
 export function upgradeOwnerSnapshot(plan:BackupPlan,requestId:string):BackupPlan {
-  const own=new Set(['.json','.json.pending','.reserve','.reserve.pending','.aborted.json','.aborted.json.pending','.released.json','.released.json.pending'].map(s=>'upgrade-requests/'+upgradeControlKey(requestId)+s));
+  const own=new Set(['.json','.json.pending','.reserve','.reserve.pending','.aborted.json','.aborted.json.pending','.released.json','.released.json.pending','.stage.json','.stage.json.pending'].map(s=>'upgrade-requests/'+upgradeControlKey(requestId)+s));
   return {...plan,entries:plan.entries.filter(e=>e.scope!=='installation'||e.path!=='upgrade-requests'&&!own.has(e.path))};
 }
 export function prepareInstallationUpgrade(path:string,input:InstallationUpgradeInput,expectedReportDigest?:string):InstallationUpgradePreparation {

@@ -692,14 +692,14 @@ The merged private buffers are returned only to the internal transaction planner
 the CLI reports identities and digests, not private file contents.
 
 Toolchain preparation returns stable proposed binding content without recording a
-timestamp, appending a receipt or creating `formal-work`. The eventual staging
-transaction must durably record the actual binding timestamp before activation. An unconfigured installation may select verified tools or
+timestamp, appending a receipt or creating `formal-work`. The staging
+transaction durably records the actual binding timestamp before activation. An unconfigured installation may select verified tools or
 retain `toolchains: null`; the latter explicitly reports `toolchainsVerified: false`
 and establishes no formal reasoning readiness. Configured tools cannot be removed.
 
 This command prepares a complete upgrade selection. Internal admission and
-pre-switch abort are described below. Staging, activation and actual crash/storage
-failure recovery still need implementation and installed verification. Inspection
+pre-switch abort and staging are described below. Activation and actual
+crash/storage failure recovery still need implementation and installed verification. Inspection
 does not apply the prepared report or satisfy MAINT-02.
 
 
@@ -715,8 +715,9 @@ A changed input or stale report cannot reuse an admitted request.
 
 Pending admissions block ordinary installation startup, new tool binding and
 backup even if interruption occurred before the maintenance barriers were written.
-The transaction also places owned barriers in the original workspace and existing
-formal-work directory. Exact partial barriers can resume; unknown bytes, replaced
+The transaction also places owned barriers in the original workspace and any
+configured formal-work directory. An unconfigured empty worker directory remains
+untouched; when tools are first selected, their owner and barrier are staged. Exact partial barriers can resume; unknown bytes, replaced
 roots and unrelated staging material are preserved and refused. Existing tool
 binding receipts remain readable. New business writes require the transaction to
 finish or be explicitly aborted.
@@ -740,8 +741,62 @@ control metadata, with completion headroom checked before admission; nothing is
 silently pruned. An aborted request ID cannot be reused for a new upgrade inspection.
 
 This is an internal implementation stage, with no public admission command yet.
-It does not create the sibling staging directory or activate a runtime. Atomic
-plugin/toolchain/runtime staging and switching, real restart, SIGKILL/ENOSPC
-recovery and full maintenance acceptance remain required. Tests that reconstruct
+Admission alone does not create the sibling staging directory or activate a runtime.
+Atomic switching, real restart, SIGKILL/ENOSPC recovery and full maintenance
+acceptance remain required. Tests that reconstruct
 partial protocol files are synthetic interruption evidence, not actual crash or
 disk-full acceptance. Product acceptance and release authority remain unchanged.
+
+
+## Staging an admitted upgrade
+
+The internal stage transaction retains a physically owned sibling directory with
+`next/`, `pending/`, a committed timestamp and `prepared.json`. Its owner anchor
+is stored beside the installation's admission, so an occupied foreign directory
+cannot become a candidate. An admitted root interrupted before ownership commit
+can be adopted only while empty and with an exact ownership-record prefix.
+Missing or replaced anchored roots are refused; no replacement is silently created.
+
+The `next/` image contains the merged private plugin, a versioned installation
+with its complete runtime lineage, and, when tools are configured, the complete
+prospective toolchain ledger. A first tool binding also stages its logical worker
+owner and maintenance barrier. The new first-tool worker directory uses mode `0700`, so a read-only original
+empty directory cannot prevent subsequent worker writes. The original empty
+directory and its mode remain unchanged during staging. Existing configured
+worker histories remain in their original location. An unconfigured empty directory is preserved until a later explicitly
+implemented switch. Original runtime selection, plugin files, credentials, business
+state, toolchain ledger and worker journals remain unchanged during staging.
+
+The binding and runtime transition use one durably committed timestamp. Retries
+reuse it and preserve uncommitted timestamp attempts as inert evidence, bounded to
+16 attempts. Payload writes use a separate namespace keyed by the relative path's
+SHA-256 digest. A legitimate custom `*.pending` file cannot collide with protocol
+files. Binary bytes, empty directories and private file/directory modes are
+retained. Exact pending prefixes can continue; foreign bytes are preserved.
+
+Before sealing, staging revalidates the original source and selected runtime and
+tools. It verifies the candidate's complete contents and cross-checks runtime and
+toolchain history through the ordinary installed validators. The prepared record
+binds file bytes, modes and physical identities, including the committed timestamp
+and stage directories. A sealed image cannot be silently repaired or rebuilt after
+content drift or equal-byte inode replacement. Resume returns the same timestamp,
+binding identity and prepared digest when the original image is unchanged.
+
+The candidate image is bounded to 2,048 entries, depth 28, 2 MiB per file and 24 MiB
+in total, in addition to the stricter plugin limits. Pending payloads must be exact
+prefixes of the same bounded planned files. Stage metadata permits only the defined
+layout; unknown switch or other top-level material blocks continuation and abort.
+
+Pre-switch abort retains the staged payloads and records the stage-owner digest in
+its released receipt before ordinary owner use resumes. Historical replay validates
+that retained receipt without requiring the external staged directory to remain
+available. This evidence proves staging and pre-switch abort only. No public
+activation command, runtime rename/switch, automatic start, actual crash/disk-full
+acceptance, or product/release acceptance is established by this implementation.
+
+
+Installed development verification additionally kills an owned staging child with
+`SIGKILL` after its durable stage anchor appears and before a prepared image exists,
+then resumes the same request. This single real interruption does not establish
+switch-phase crash recovery, ENOSPC behavior, Linux parity or formal maintenance
+acceptance. Reconstructed partial payload/metadata cases remain separately labeled.

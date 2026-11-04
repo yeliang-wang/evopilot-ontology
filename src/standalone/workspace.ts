@@ -33,7 +33,7 @@ export function readMaintenanceBarrier(root:string):MaintenanceBarrier|null {
 /** The installation anchor closes the admission-to-barrier crash window.
  * Exact terminal receipts remain readable after backups relocate their files. */
 export const upgradeControlKey=(requestId:string):string=>{id(requestId);return Buffer.from(requestId,'utf8').toString('hex');};
-const controlName=/^([a-f0-9]{2,192})(\.aborted\.json|\.released\.json|\.reserve|\.json)(\.pending)?$/;
+const controlName=/^([a-f0-9]{2,192})(\.aborted\.json|\.released\.json|\.stage\.json|\.reserve|\.json)(\.pending)?$/;
 export function upgradeControlNames(root:string):string[] {
   const directory=join(root,UPGRADE_RECORDS);
   if(!readdirSync(root).includes(UPGRADE_RECORDS))return [];
@@ -60,11 +60,12 @@ function requireUpgradeAvailable(root:string,permit?:MaintenancePermit):void {
     const a:unknown=JSON.parse(privateRead(join(directory,key+'.json'),8*1024*1024));
     exact(a,['schema','input','report','reportDigest','requestDigest','controlNode']);
     const r:unknown=JSON.parse(privateRead(join(directory,key+'.released.json'),65536));
-    exact(r,['schema','requestId','requestDigest','reportDigest','admissionDigest','abortDigest','authority']);
+    exact(r,['schema','requestId','requestDigest','reportDigest','admissionDigest','abortDigest','authority'],['stageDigest']);
     const aborted:unknown=JSON.parse(privateRead(join(directory,key+'.aborted.json'),65536));
     exact(aborted,['schema','requestId','requestDigest','reportDigest','upgradeRoot','runtimeActivated','serviceStarted','partialMaterialRetained','authority']);
     if(a.schema!=='ontology-upgrade-admission/v1'||r.schema!=='ontology-upgrade-released/v1'||aborted.schema!=='ontology-upgrade-abort/v1'||r.requestId!==requestId||aborted.requestId!==requestId||r.requestDigest!==a.requestDigest||aborted.requestDigest!==a.requestDigest||r.reportDigest!==a.reportDigest||aborted.reportDigest!==a.reportDigest||r.admissionDigest!==hash(a as Json)||r.abortDigest!==hash(aborted as Json)||hash(a.report as Json)!==a.reportDigest||r.authority!==false||aborted.authority!==false||aborted.runtimeActivated!==false||aborted.serviceStarted!==false||aborted.partialMaterialRetained!==true)fail('UPGRADE_EVIDENCE','Upgrade terminal evidence differs from its admission',409);
-    if(names.some(n=>controlName.exec(n)![1]===key&&!['.json','.aborted.json','.released.json'].some(s=>n===key+s)))fail('UPGRADE_EVIDENCE','Released upgrade has unresolved control material',409);
+    if(r.stageDigest!==undefined){digest(r.stageDigest);const stage:unknown=JSON.parse(privateRead(join(directory,key+'.stage.json'),65536));if(hash(stage as Json)!==r.stageDigest)fail('UPGRADE_EVIDENCE','Retained upgrade stage identity differs',409);}
+    if(names.some(n=>controlName.exec(n)![1]===key&&![ '.json','.aborted.json','.released.json',...(r.stageDigest!==undefined?['.stage.json']:[])].some(s=>n===key+s)))fail('UPGRADE_EVIDENCE','Released upgrade has unresolved control material',409);
   }
   const marker=join(root,UPGRADE_BARRIER),pending=UPGRADE_BARRIER+'.pending',entries=readdirSync(root);
   if(entries.includes(pending))fail('UPGRADE_PENDING','Complete the original partial upgrade barrier before using this owner',409);
