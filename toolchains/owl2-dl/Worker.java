@@ -24,6 +24,7 @@ import org.semanticweb.owlapi.util.OWLObjectWalker;
 import org.semanticweb.owlapi.util.OWLObjectTransformer;
 import org.semanticweb.owlapi.reasoner.*;
 import org.semanticweb.owlapi.functional.parser.OWLFunctionalSyntaxOWLParserFactory;
+import org.semanticweb.owlapi.functional.parser.LocatedFunctionalParser;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFXMLParserFactory;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFParser;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFParserException;
@@ -172,13 +173,25 @@ public final class Worker {
       m.removeAxiom(o,ax);m.addAxiom(o,d.getOWLSubClassOfAxiom(args.get(0),args.get(0),ax.getAnnotations()));
     }
   }
-  record Parsed(OWLOntology ontology,Set<OWLAxiom> syntaxAxioms){}
+  record Parsed(OWLOntology ontology,Set<OWLAxiom> syntaxAxioms,LocatedFunctionalParser.Result locations){}
   static Parsed parse(OWLOntologyManager m,JsonNode doc,String base,Collection<String> imports)throws Exception {
+    return parse(m,doc,base,imports,false);
+  }
+  static Parsed parse(OWLOntologyManager m,JsonNode doc,String base,Collection<String> imports,boolean locate)throws Exception {
     String content=str(doc,"content"),f=str(doc,"format");require(content.getBytes(StandardCharsets.UTF_8).length<=8*1024*1024,"INPUT_LIMIT","Document byte budget");
     require(sha(content).equals(str(doc,"digest")),"DIGEST_MISMATCH","Document bytes differ from binding");
     if(f.equals("rdfxml"))try{safeXML(content);}catch(Exception e){throw invalid("UNSAFE_XML","Malformed, external-entity or over-budget XML");}
-    OWLOntology result;var syntaxAxioms=new HashSet<OWLAxiom>();
-    if(f.equals("functional"))result=m.loadOntologyFromOntologyDocument(new StringDocumentSource(content,IRI.create(base),format(f),null),loader(imports));
+    // The pinned lexer can turn EOF while reading a token into a successful
+    // EOF token after a complete ontology. Guard ordinary premise/query/replay
+    // parsing as well as the located adapter; do not alter the original parser.
+    if(f.equals("functional")&&!locate)LocatedFunctionalParser.verifyLexicalCompleteness(content);
+    OWLOntology result;var syntaxAxioms=new HashSet<OWLAxiom>();LocatedFunctionalParser.Result locations=null;
+    if(f.equals("functional")&&locate){
+      result=m.createOntology(new OWLOntologyID());m.setOntologyDocumentIRI(result,IRI.create(base));
+      locations=LocatedFunctionalParser.parse(content,result,loader(imports),200000);m.setOntologyFormat(result,locations.format());
+      require(locations.occurrences().keySet().equals(result.getAxioms()),"SOURCE_LOCATION_MAPPING","Located parser axioms differ from its admitted ontology");
+    }
+    else if(f.equals("functional"))result=m.loadOntologyFromOntologyDocument(new StringDocumentSource(content,IRI.create(base),format(f),null),loader(imports));
     else{
       result=m.createOntology(new OWLOntologyID());m.setOntologyDocumentIRI(result,IRI.create(base));
       var rdfFormat=format(f);var consumer=new MappingConsumer(result,loader(imports));consumer.setOntologyFormat((RDFDocumentFormat)rdfFormat);
@@ -199,17 +212,18 @@ public final class Worker {
       var syntax=anonymous(m,syntaxAxioms);normalizeRDFClassExpressions(syntax);
       syntaxAxioms=new HashSet<>(syntax.getAxioms());m.removeOntology(syntax);
     }
-    return new Parsed(result,syntaxAxioms);
+    return new Parsed(result,syntaxAxioms,locations);
   }
-  record Loaded(OWLOntologyManager manager,OWLOntology ontology,OWLOntology validationOntology,Map<OWLAxiom,List<JsonNode>> origins){}
+  record Origin(JsonNode document,LocatedFunctionalParser.Result locations){}
+  record Loaded(OWLOntologyManager manager,OWLOntology ontology,OWLOntology validationOntology,Map<OWLAxiom,List<Origin>> origins){}
   static OWLOntology anonymous(OWLOntologyManager manager,Collection<OWLAxiom> axioms)throws Exception {
     var ontology=manager.createOntology(new OWLOntologyID());manager.addAxioms(ontology,new HashSet<>(axioms));return ontology;
   }
-  static Loaded load(JsonNode closure,long end)throws Exception {
+  static Loaded load(JsonNode closure,long end,boolean locate)throws Exception {
     require(closure!=null&&closure.isObject(),"INVALID_ENVELOPE","Closure required");
     JsonNode docs=closure.get("documents"),edges=closure.get("imports");
     require(docs!=null&&docs.isArray()&&docs.size()>0&&docs.size()<=64&&edges!=null&&edges.isArray()&&edges.size()<=512,"INPUT_LIMIT","Bounded closure required");
-    var m=manager();var origins=new HashMap<OWLAxiom,List<JsonNode>>();var byId=new HashMap<String,JsonNode>();var syntaxAxioms=new HashSet<OWLAxiom>();
+    var m=manager();var origins=new HashMap<OWLAxiom,List<Origin>>();var byId=new HashMap<String,JsonNode>();var syntaxAxioms=new HashSet<OWLAxiom>();int locationCount=0;
     var expected=new HashMap<String,Map<String,String>>();var alias=new HashMap<String,String>();int bytes=0;
     for(JsonNode d:docs){String id=str(d,"id");require(byId.put(id,d)==null,"IMPORT_CONFLICT","Duplicate document identity");bytes+=str(d,"content").getBytes(StandardCharsets.UTF_8).length;
       for(String key:List.of("documentIri","ontologyIri","versionIri")){JsonNode a=d.get(key);require(a!=null,"INVALID_ENVELOPE","Missing document identity");if(a.isNull())continue;String old=alias.put(a.asText(),id);require(old==null||old.equals(id),"IMPORT_CONFLICT","Conflicting ontology identity");}
@@ -220,13 +234,14 @@ public final class Worker {
     require(reachable.size()==byId.size(),"UNREACHABLE_DOCUMENT","Closure contains unused documents");
     for(String id:byId.keySet().stream().sorted().toList()){
       deadline(end);JsonNode d=byId.get(id);var imports=expected.getOrDefault(id,Map.of());
-      var parsed=parse(m,d,str(d,"documentIri"),imports.keySet());var o=parsed.ontology();syntaxAxioms.addAll(parsed.syntaxAxioms());
+      var parsed=parse(m,d,str(d,"documentIri"),imports.keySet(),locate);var o=parsed.ontology();syntaxAxioms.addAll(parsed.syntaxAxioms());
+      if(parsed.locations()!=null){locationCount+=parsed.locations().occurrences().values().stream().mapToInt(List::size).sum();require(locationCount<=200000,"SOURCE_LOCATION_LIMIT","Closure axiom occurrence budget exceeded");}
       require(syntaxAxioms.size()<=AXIOMS,"EXPRESSION_LIMIT","Closure class-expression budget exceeded");
       String ontology=o.getOntologyID().getOntologyIRI().map(Object::toString).orElse(null),version=o.getOntologyID().getVersionIRI().map(Object::toString).orElse(null);
       require(Objects.equals(ontology,d.get("ontologyIri").isNull()?null:d.get("ontologyIri").asText())&&Objects.equals(version,d.get("versionIri").isNull()?null:d.get("versionIri").asText()),"ONTOLOGY_IDENTITY_MISMATCH","Parsed ontology identity differs from admitted identity");
       var actual=o.importsDeclarations().map(x->x.getIRI().toString()).collect(Collectors.toSet());
       if(!actual.equals(imports.keySet()))throw new Refusal("MISSING_IMPORT","IMPORT_CLOSURE_MISMATCH","Declared imports differ from pinned closure");
-      for(OWLAxiom ax:o.axioms().toList()){origins.computeIfAbsent(ax,k->new ArrayList<>()).add(d);if(origins.size()>AXIOMS)throw invalid("AXIOM_LIMIT","Axiom budget exceeded");}
+      for(OWLAxiom ax:o.axioms().toList()){origins.computeIfAbsent(ax,k->new ArrayList<>()).add(new Origin(d,parsed.locations()));if(origins.size()>AXIOMS)throw invalid("AXIOM_LIMIT","Axiom budget exceeded");}
     }
     // OWL Direct Semantics applies to the union of the complete imports closure. Inputs
     // remain distinct in origins; this derived union never overwrites their original bytes.
@@ -317,7 +332,7 @@ public final class Worker {
   }
   static List<String> names(Stream<? extends OWLEntity> values){return values.map(x->x.getIRI().toString()).distinct().sorted().toList();}
   static ObjectNode execute(JsonNode request,long end)throws Exception {
-    Loaded loaded=load(request.get("closure"),end);OWLOntology o=loaded.ontology();JsonNode task=request.get("task");String kind=str(task,"kind");
+    JsonNode task=request.get("task");String kind=str(task,"kind");Loaded loaded=load(request.get("closure"),end,kind.equals("explanation"));OWLOntology o=loaded.ontology();
     ObjectNode out=JSON.createObjectNode();ObjectNode result=out.putObject("result");out.put("status","COMPLETED");out.put("complete",true);
     result.put("semantics","OWL_2_DL_DIRECT");result.put("axiomCount",o.getAxiomCount());
     var profile=profileViolations(loaded.validationOntology());
@@ -364,6 +379,41 @@ public final class Worker {
       }
       deadline(end);return out;
     }finally{r.dispose();}
+  }
+  /** Sparse offsets for the supporting occurrences only. Never rescan a whole
+   * document once per axiom or treat a Java UTF-16 offset as a UTF-8 byte offset. */
+  static final class SourceIndex {
+    final String content;final int[] chars,bytes,lines;ArrayNode prefixContext;
+    SourceIndex(String content,List<LocatedFunctionalParser.Span> spans,long end){
+      this.content=content;
+      chars=spans.stream().flatMapToInt(s->{require(s.start()>=0&&s.end()>s.start()&&s.end()<=content.length(),"SOURCE_LOCATION_MAPPING","Invalid parser occurrence");return IntStream.of(s.start(),s.end()-1,s.end());}).distinct().sorted().toArray();
+      bytes=new int[chars.length];lines=new int[chars.length];int cursor=0,offset=0,line=1;boolean cr=false;
+      for(int i=0;i<chars.length;i++){
+        while(cursor<chars[i]){
+          if((cursor&8191)==0)deadline(end);int cp=content.codePointAt(cursor),width=Character.charCount(cp);
+          require(!(cp>=0xD800&&cp<=0xDFFF)&&cursor+width<=chars[i],"SOURCE_LOCATION_UNICODE","Parser position splits a Unicode character");
+          offset+=cp<=0x7F?1:cp<=0x7FF?2:cp<=0xFFFF?3:4;
+          if(cp=='\r')line++;else if(cp=='\n'&&!cr)line++;cr=cp=='\r';cursor+=width;
+        }
+        bytes[i]=offset;lines[i]=line;
+      }
+      deadline(end);
+    }
+    ObjectNode fragment(LocatedFunctionalParser.Span span)throws Exception {
+      int a=Arrays.binarySearch(chars,span.start()),b=Arrays.binarySearch(chars,span.end()),last=Arrays.binarySearch(chars,span.end()-1);
+      require(a>=0&&b>=0&&last>=0,"SOURCE_LOCATION_MAPPING","Parser range was not indexed");
+      ObjectNode result=JSON.createObjectNode();result.put("start",bytes[a]);result.put("end",bytes[b]);
+      result.put("fragmentDigest",sha(content.substring(span.start(),span.end())));result.put("startLine",lines[a]);result.put("endLine",lines[last]);return result;
+    }
+    ObjectNode location(LocatedFunctionalParser.Result parsed,OWLAxiom ax,long end)throws Exception {
+      var spans=parsed.occurrences().get(ax);require(spans!=null&&!spans.isEmpty(),"SOURCE_LOCATION_MAPPING","Functional source axiom has no parser occurrence");
+      ObjectNode result=JSON.createObjectNode();result.put("schema","ontology-axiom-source-location/v1");ArrayNode occurrences=result.putArray("occurrences");
+      for(var span:spans){deadline(end);occurrences.addObject().putArray("fragments").add(fragment(span));}
+      if(prefixContext==null){prefixContext=JSON.createArrayNode();for(var span:parsed.prefixes()){deadline(end);ObjectNode f=fragment(span);f.put("kind","PREFIX");prefixContext.add(f);}}
+      // Prefixes are immutable document context. Hash long source IRIs once,
+      // even when many supporting axioms share those declarations.
+      result.set("context",prefixContext);return result;
+    }
   }
   enum CandidateProof { ESTABLISHED, NOT_ESTABLISHED, INELIGIBLE }
   static final class ExplanationSearch {
@@ -430,9 +480,18 @@ public final class Worker {
     }finally{rm.removeOntology(ro);}
     deadline(end);ObjectNode out=JSON.createObjectNode();out.put("status","COMPLETED");out.put("complete",true);ObjectNode result=out.putObject("result");
     result.put("target",str(task,"target"));result.put("method","DELETION_REPLAY");result.put("searchStrategy","BREADTH_FIRST_BLOCKS");result.put("allMinimalJustifications",false);result.put("replayVerified",true);
-    result.put("candidateChecks",search.candidateChecks);result.put("ineligibleCandidates",search.ineligibleCandidates);result.put("retainedDatatypeDefinitions",support.stream().filter(a->a instanceof OWLDatatypeDefinitionAxiom).count());engineEvidence(result);ArrayNode supporting=result.putArray("support");
+    result.put("candidateChecks",search.candidateChecks);result.put("ineligibleCandidates",search.ineligibleCandidates);result.put("retainedDatatypeDefinitions",support.stream().filter(a->a instanceof OWLDatatypeDefinitionAxiom).count());engineEvidence(result);result.put("sourceLocationVersion",1);ArrayNode supporting=result.putArray("support");
+    var sourceSpans=new HashMap<String,List<LocatedFunctionalParser.Span>>();var sourceDocuments=new HashMap<String,JsonNode>();
+    for(OWLAxiom ax:support)for(Origin origin:loaded.origins().get(ax))if(origin.locations()!=null){
+      String id=str(origin.document(),"id");var spans=sourceSpans.get(id);
+      if(spans==null){spans=new ArrayList<>(origin.locations().prefixes());sourceSpans.put(id,spans);sourceDocuments.put(id,origin.document());}
+      spans.addAll(origin.locations().occurrences().get(ax));
+    }
+    var indexes=new HashMap<String,SourceIndex>();for(String id:sourceSpans.keySet()){deadline(end);indexes.put(id,new SourceIndex(str(sourceDocuments.get(id),"content"),sourceSpans.get(id),end));}
     for(OWLAxiom ax:support){ObjectNode item=supporting.addObject();item.put("axiom",ax.toString());item.put("axiomDigest",sha(ax.toString()));ArrayNode sources=item.putArray("sources");
-      for(JsonNode doc:loaded.origins().get(ax)){ObjectNode s=sources.addObject();s.put("documentId",str(doc,"id"));s.put("documentDigest",str(doc,"digest"));s.put("selectorKind","OWL_STRUCTURAL_AXIOM");s.put("axiomDigest",sha(ax.toString()));}
+      for(Origin origin:loaded.origins().get(ax)){JsonNode doc=origin.document();ObjectNode s=sources.addObject();s.put("documentId",str(doc,"id"));s.put("documentDigest",str(doc,"digest"));s.put("selectorKind","OWL_STRUCTURAL_AXIOM");s.put("axiomDigest",sha(ax.toString()));
+        if(origin.locations()!=null)s.set("sourceLocation",indexes.get(str(doc,"id")).location(origin.locations(),ax,end));
+      }
     }
     ObjectNode replayNode=result.putObject("replay");replayNode.put("format","functional");replayNode.put("content",replayText);replayNode.put("digest",replayDigest);deadline(end);return out;
   }
@@ -443,11 +502,12 @@ public final class Worker {
       if(e instanceof UnloadableImportException||e instanceof OWLOntologyFactoryNotFoundException)return new Refusal("MISSING_IMPORT","MISSING_IMPORT","An import has no admitted offline document");
       if(e instanceof XmlSchemaAutomata.Syntax)return invalid("XSD_REGEX",e.getMessage());
       if(e instanceof XmlSchemaAutomata.ResourceLimit)return new Refusal("FAILED","REGEX_RESOURCE_LIMIT",e.getMessage());
+      if(e instanceof LocatedFunctionalParser.LimitException)return new Refusal("FAILED","SOURCE_LOCATION_LIMIT",e.getMessage());
       if(e instanceof TimeOutException)return new Refusal("TIMEOUT","ENGINE_TIMEOUT","Formal engine deadline reached");
       // The pinned Turtle parser's generated syntax exception/token error are
       // package-private. Match their exact classes, never human-readable messages.
       if(e instanceof RDFParserException||e instanceof SAXException||Set.of("org.semanticweb.owlapi.rdf.turtle.parser.ParseException","org.semanticweb.owlapi.rdf.turtle.parser.TokenMgrError").contains(e.getClass().getName()))return invalid("ONTOLOGY_PARSE","Malformed RDF ontology document");
-      if(e instanceof OWLOntologyCreationException)return invalid("ONTOLOGY_PARSE","Ontology could not be parsed without external resolution");
+      if(e instanceof OWLOntologyCreationException||e instanceof OWLParserException)return invalid("ONTOLOGY_PARSE","Ontology could not be parsed without external resolution");
     }
     return new Refusal("FAILED","ENGINE_FAILURE","Formal engine failed; no logical conclusion established");
   }

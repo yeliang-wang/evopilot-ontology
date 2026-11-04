@@ -506,5 +506,9 @@
   "enginePatch": {
     "file": "engine-compat.json",
     "sha256": "912dcba081458027431866b7cee07d5ddd76b2ca4ccb6e3e49fadb7c6e3420bd"
+  },
+  "parserPatch": {
+    "file": "parser-compat.json",
+    "sha256": "8ee25b235350012d07cb5b6102a8b67f14eb3cc32a641db778804da146133f72"
   }
 }

@@ -132,6 +132,28 @@ export async function checkSource() {
     assert((await lstat(source)).isFile());
     assert.equal(createHash('sha256').update(await readFile(source)).digest('hex'),file.sha256);
   }
+  assert.deepEqual(Object.keys(dl.parserPatch).sort(),['file','sha256']);
+  assert.equal(dl.parserPatch.file,'parser-compat.json');assert.match(dl.parserPatch.sha256,/^[a-f0-9]{64}$/);
+  const parserBytes=await readFile(resolve(ROOT,'toolchains/owl2-dl/parser-compat.json'));
+  assert.equal(createHash('sha256').update(parserBytes).digest('hex'),dl.parserPatch.sha256);
+  const parser=JSON.parse(parserBytes);
+  assert.equal(parser.schema,'ontology-dl-parser-compat/v1');assert.equal(parser.parserId,'owlapi-functional-locations:1');
+  assert.equal(parser.sourceArchive.url,'https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/owlapi-parsers/5.5.1/owlapi-parsers-5.5.1-sources.jar');
+  assert.equal(parser.sourceArchive.sha256,'ca5ade39883033eb730faa86a8c3af1ad8ed6f0484384369b2e5f02af6af4293');
+  assert.equal(parser.files.length,1);
+  assert.equal(parser.files[0].sourceEntry,'org/semanticweb/owlapi/functional/parser/CustomTokenizer.java');
+  assert.equal(parser.files[0].sourceSHA256,'7a809981541711b882baa4caeca7037abae3a71e7b6bd69d72745d2ff440d1cf');
+  assert.equal(parser.files[0].outputFile,'LocatedTokenizer.java');assert.match(parser.files[0].patchedSourceSHA256,/^[a-f0-9]{64}$/);
+  assert(Array.isArray(parser.files[0].changes)&&parser.files[0].changes.length>0);
+  assert(parser.files[0].changes.every(c=>typeof c.find==='string'&&c.find&&typeof c.replace==='string'&&Number.isSafeInteger(c.occurrences)&&c.occurrences>0));
+  assert.deepEqual(parser.ownedSources.map(f=>f.file),['LocatedFunctionalParser.java']);
+  for(const file of parser.ownedSources){
+    assert.match(file.sha256,/^[a-f0-9]{64}$/);
+    const source=resolve(ROOT,'toolchains/owl2-dl',file.file),node=await lstat(source);
+    assert(node.isFile()&&node.nlink===1);
+    assert.equal(createHash('sha256').update(await readFile(source)).digest('hex'),file.sha256);
+  }
+  assert(typeof parser.notice==='string'&&parser.notice.trim()&&Buffer.byteLength(parser.notice)<=16384);
   assert(dl.files.length>0&&new Set(dl.files.map(f=>f.file)).size===dl.files.length);
   for(const f of dl.files){assert.match(f.file,/^[A-Za-z0-9._-]+\.jar$/);assert.match(f.sha256,/^[a-f0-9]{64}$/);assert(!f.repositoryPath.split('/').some(x=>['','..','.'].includes(x)));assert.equal(f.url,'https://repo.maven.apache.org/maven2/'+f.repositoryPath);assert(f.repositoryPath.endsWith('/'+f.file));}
   assert((await lstat(resolve(ROOT,'toolchains/owl2-dl/Worker.java'))).isFile());

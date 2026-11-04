@@ -90,9 +90,11 @@ test('actual replay metadata reaches public explanation and review preparation w
   const project=evidence=>explainEvidence(evidence,actual.model,actual.sources);
 
   await t.test('legacy evidence retains exactly the previous projection shape and digest without backfilling verification',()=>{
-    const evidence=changed(data=>{for(const field of fields)delete data[field];});
+    const evidence=changed(data=>{for(const field of fields)delete data[field];delete data.sourceLocationVersion;for(const ax of data.support)for(const origin of ax.sources)delete origin.sourceLocation;});
     const historical=project(evidence),expected=structuredClone(projected);
     for(const field of fields)delete expected[field];
+    delete expected.sourceLocationVersion;delete expected.axiomSourceLocationCoverage;
+    for(const ax of expected.support)for(const document of ax.documents)delete document.axiomSourceLocation;
     // The legacy result has its own byte identity; all old projection fields
     // keep their original semantics, including that exact task result binding.
     expected.task=taskBinding(evidence);

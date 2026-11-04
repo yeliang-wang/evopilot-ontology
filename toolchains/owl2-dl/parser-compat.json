@@ -1,0 +1,99 @@
+{
+  "schema": "ontology-dl-parser-compat/v1",
+  "parserId": "owlapi-functional-locations:1",
+  "upstreamParser": "net.sourceforge.owlapi:owlapi-parsers:5.5.1",
+  "sourceArchive": {
+    "url": "https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/owlapi-parsers/5.5.1/owlapi-parsers-5.5.1-sources.jar",
+    "sha256": "ca5ade39883033eb730faa86a8c3af1ad8ed6f0484384369b2e5f02af6af4293"
+  },
+  "files": [
+    {
+      "sourceEntry": "org/semanticweb/owlapi/functional/parser/CustomTokenizer.java",
+      "sourceSHA256": "7a809981541711b882baa4caeca7037abae3a71e7b6bd69d72745d2ff440d1cf",
+      "outputFile": "LocatedTokenizer.java",
+      "changes": [
+        {
+          "find": "class CustomTokenizer implements TokenManager {",
+          "replace": "class LocatedTokenizer implements TokenManager {",
+          "occurrences": 1
+        },
+        {
+          "find": "LoggerFactory.getLogger(CustomTokenizer.class)",
+          "replace": "LoggerFactory.getLogger(LocatedTokenizer.class)",
+          "occurrences": 1
+        },
+        {
+          "find": "public CustomTokenizer(Reader reader)",
+          "replace": "public LocatedTokenizer(Reader reader)",
+          "occurrences": 1
+        },
+        {
+          "find": "    private int lineNo = 1;",
+          "replace": "    // Raw logical Reader cursor; one unit per original UTF-16 code unit.\n    // Keep upstream diagnostic line/column behavior independent of locations.\n    private int sourceCursor = 0;\n    private int tokenStart = 0;\n\n    private int lineNo = 1;",
+          "occurrences": 1
+        },
+        {
+          "find": "        Token result = new Token(kind, image);",
+          "replace": "        Token result = new LocatedFunctionalParser.LocatedToken(kind, image,\n                kind == EOF ? sourceCursor : tokenStart, sourceCursor);",
+          "occurrences": 1
+        },
+        {
+          "find": "                startLine = lineNo;",
+          "replace": "                tokenStart = sourceCursor - 1;\n                startLine = lineNo;",
+          "occurrences": 1
+        },
+        {
+          "find": "        unreadChar = c;",
+          "replace": "        unreadChar = c;\n        sourceCursor--;",
+          "occurrences": 1
+        },
+        {
+          "find": "            return (char) c;",
+          "replace": "            sourceCursor++;\n            return (char) c;",
+          "occurrences": 1
+        },
+        {
+          "find": "    public Token getNextToken() {\n        while (true) {\n            char c;",
+          "replace": "    public Token getNextToken() {\n        while (true) {\n            boolean eofAllowed = true;\n            char c;",
+          "occurrences": 1
+        },
+        {
+          "find": "                c = findTokenStart();",
+          "replace": "                c = findTokenStart();\n                eofAllowed = false;",
+          "occurrences": 1
+        },
+        {
+          "find": "                    case '#':\n                        skipComment();",
+          "replace": "                    case '#':\n                        eofAllowed = true;\n                        skipComment();",
+          "occurrences": 1
+        },
+        {
+          "find": "            } catch (@SuppressWarnings(\"unused\") EOFException e) {\n                return makeToken(EOF, \"\");",
+          "replace": "            } catch (@SuppressWarnings(\"unused\") EOFException e) {\n                if (!eofAllowed) {\n                    throw new org.semanticweb.owlapi.io.OWLParserException(\n                            \"Premature EOF inside Functional Syntax token\");\n                }\n                return makeToken(EOF, \"\");",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "851b2e25a2328308c447740d443d00c4de90e52dd9d864a4f654f5bad8787aa3"
+    }
+  ],
+  "ownedSources": [
+    {
+      "file": "LocatedFunctionalParser.java",
+      "sha256": "68928a0726615b25932f790234febbc0aa20a3ed172b31eeed188beef2aba162"
+    }
+  ],
+  "notice": "EvoPilot identified modification of the OWLAPI 5.5.1 CustomTokenizer source: rename the class, record raw UTF-16 token offsets, and reject premature EOF while reading a token instead of returning an erroneous document EOF. EOF remains allowed while waiting for a new token or reading a comment; valid token kinds/images and the original token-local EOF handling remain unchanged. The original source content and creator comment are retained except for the exact changes in this recipe. LocatedFunctionalParser is an identified EvoPilot adapter in the upstream package to access package-private Token and TokenManager; it does not replace the original generated parser or dependency JAR. Retain the exact upstream source archive and its package license/notice evidence with the generated source and this recipe. This is not an unmodified upstream parser release or completed license acceptance.",
+  "reason": "Associate complete Functional Syntax axiom callbacks with exact lexical intervals, preserving valid comments, strings, IRI tokens and duplicate axiom occurrences. Correct the empirically demonstrated outer EOF catch that swallowed trailing unfinished quoted literals, numbers and a single caret, for located parsing and the separate no-index lexical precheck. No other lexical repair or grammar expansion is claimed. UTF-8 conversion and fragment verification belong to the immutable document owner.",
+  "acceptance": "Parser semantic equivalence, source-location tests, resource limits, all supported formats and formal source-fragment acceptance remain required.",
+  "upstreamLicenseDeclarations": [
+    {
+      "name": "Apache License Version 2.0, January 2004",
+      "url": "http://www.apache.org/licenses/"
+    },
+    {
+      "name": "GNU LGPL Version 3.0",
+      "url": "http://www.gnu.org/licenses/lgpl.txt"
+    }
+  ],
+  "licenseDeclarationSource": "https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/owlapi-parent/5.5.1/owlapi-parent-5.5.1.pom"
+}

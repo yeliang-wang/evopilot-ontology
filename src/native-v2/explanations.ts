@@ -5,6 +5,7 @@ import type {ModelAdmission} from './models.js';
 import type {SourceAdmission} from './sources.js';
 import {loadTask,verifyTask,dlEvidence,taskBinding} from './task-evidence.js';
 import type {TaskEvidence} from './task-evidence.js';
+import {axiomLocationValidator,axiomLocationFormatInstrumented} from './axiom-locations.js';
 import {exact,id,digest,hashBytes,hash} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
@@ -17,8 +18,10 @@ const count=(value:unknown):value is number=>typeof value==='number'&&Number.isS
 export function explainEvidence(e:TaskEvidence,model:ModelAdmission,sources:SourceAdmission):Json {
   verifyTask(e,model,'dl');const {request,result}=dlEvidence(e);
   if(request.task.kind!=='explanation'||result.status!=='COMPLETED')fail('EXPLANATION_REQUIRED','A completed explanation task is required',409);
-  const data=result.result;exact(data,['target','method','allMinimalJustifications','support','replay'],['reasoningEngine','engineSelectionPolicy','unknownUnicodeBlocks',...replayFields]);
+  const data=result.result;exact(data,['target','method','allMinimalJustifications','support','replay'],['reasoningEngine','engineSelectionPolicy','unknownUnicodeBlocks',...replayFields,'sourceLocationVersion']);
   if(data.target!==request.task.target||data.method!=='DELETION_REPLAY'||data.allMinimalJustifications!==false||!Array.isArray(data.support))fail('EXPLANATION_PROTOCOL','Native explanation scope differs',409);
+  const located=Object.hasOwn(data,'sourceLocationVersion'),locations=axiomLocationValidator();let locatedDocuments=0,unlocatedDocuments=0;
+  if(located&&data.sourceLocationVersion!==1)fail('EXPLANATION_PROTOCOL','Unsupported axiom source location version',409);
   let replayEvidence:Record<string,Json>={};
   if(replayFields.some(field=>Object.hasOwn(data,field))){
     const {searchStrategy,replayVerified,candidateChecks,ineligibleCandidates,retainedDatatypeDefinitions}=data;
@@ -35,19 +38,31 @@ export function explainEvidence(e:TaskEvidence,model:ModelAdmission,sources:Sour
     if(typeof entry.axiom!=='string'||hashBytes(entry.axiom)!==entry.axiomDigest||seen.has(String(entry.axiomDigest))||!Array.isArray(entry.sources)||!entry.sources.length)fail('EXPLANATION_PROTOCOL','Supporting axiom identity is absent or repeated',409);seen.add(String(entry.axiomDigest));
     const origins=new Set<string>();
     const documents=entry.sources.map(origin=>{
-      exact(origin,['documentId','documentDigest','selectorKind','axiomDigest']);
+      exact(origin,['documentId','documentDigest','selectorKind','axiomDigest'],located?['sourceLocation']:[]);
       const document=model.draft.closure.documents.find(d=>d.id===origin.documentId&&d.digest===origin.documentDigest);
       if(!document||origin.selectorKind!=='OWL_STRUCTURAL_AXIOM'||origin.axiomDigest!==entry.axiomDigest||origins.has(document.id))fail('EXPLANATION_PROTOCOL','Axiom source is outside its exact model closure',409);origins.add(document.id);
+      let sourceLocation:Record<string,Json>={};
+      if(located){
+        if(axiomLocationFormatInstrumented(document.format)){
+          if(!Object.hasOwn(origin,'sourceLocation'))fail('EXPLANATION_PROTOCOL','Functional axiom source location is missing',409);
+          sourceLocation={axiomSourceLocation:locations.validate(document,origin.sourceLocation) as unknown as Json};locatedDocuments++;
+        }else{
+          if(Object.hasOwn(origin,'sourceLocation'))fail('EXPLANATION_PROTOCOL','Axiom source format is not instrumented',409);
+          sourceLocation={axiomSourceLocation:{status:'UNAVAILABLE',reason:'FORMAT_NOT_INSTRUMENTED'}};unlocatedDocuments++;
+        }
+      }
       const mappings=model.draft.mappings.filter(m=>m.anchors.some(a=>a.documentId===document.id)).map(m=>({requirementId:m.requirementId,rationale:m.rationale,
         modelAnchors:m.anchors.filter(a=>a.documentId===document.id),
         sourceFragments:m.sourceFragmentIds.map(fragmentId=>{const f=sources.fragments.find(f=>f.id===fragmentId)!,d=sources.sourceSet.sources.find(d=>d.id===f.sourceId)!;return {...f,locator:d.locator,revision:d.revision,origin:d.origin};}),
         linkKind:'AUTHOR_DECLARED_DOCUMENT_MAPPING',axiomByteSpanEstablished:false,businessMeaningProven:false}));
       if(!mappings.length)sourceLinksComplete=false;
-      return {documentId:document.id,documentDigest:document.digest,documentIri:document.documentIri,format:document.format,selectorKind:'OWL_STRUCTURAL_AXIOM',mappings};
+      return {documentId:document.id,documentDigest:document.digest,documentIri:document.documentIri,format:document.format,selectorKind:'OWL_STRUCTURAL_AXIOM',...sourceLocation,mappings};
     });
     return {axiom:entry.axiom,axiomDigest:entry.axiomDigest,documents};
   });
-  return {schema:'ontology-explanation-projection/v2',modelDigest:model.digest,sourceSetDigest:model.draft.sourceSetDigest,closureDigest:model.closureDigest,task:{...taskBinding(e)},target:request.task.target,query:request.task.query?{format:request.task.query.format,digest:request.task.query.digest}:null,method:'DELETION_REPLAY',...replayEvidence,support:support as unknown as Json,replay:data.replay as Json,sourceLinksComplete,sourceLinkPrecision:'DOCUMENT_MAPPING_NOT_AXIOM_BYTE_LOCATION',allMinimalJustifications:false,businessMeaningProven:false,authority:false};
+  locations.finish();
+  const locationEvidence:Record<string,Json>=located?{sourceLocationVersion:1,axiomSourceLocationCoverage:!data.support.length?'NOT_APPLICABLE':!locatedDocuments?'UNAVAILABLE':unlocatedDocuments?'PARTIAL':'COMPLETE'}:{};
+  return {schema:'ontology-explanation-projection/v2',modelDigest:model.digest,sourceSetDigest:model.draft.sourceSetDigest,closureDigest:model.closureDigest,task:{...taskBinding(e)},target:request.task.target,query:request.task.query?{format:request.task.query.format,digest:request.task.query.digest}:null,method:'DELETION_REPLAY',...replayEvidence,...locationEvidence,support:support as unknown as Json,replay:data.replay as Json,sourceLinksComplete,sourceLinkPrecision:'DOCUMENT_MAPPING_NOT_AXIOM_BYTE_LOCATION',allMinimalJustifications:false,businessMeaningProven:false,authority:false};
 }
 export function explanationRead(db:DatabaseSync,projectId:string,input:unknown,toolchainDigest:string|null):Json {
   exact(input,['assetId','modelDigest','taskId','offset','maxBytes']);id(input.assetId);digest(input.modelDigest);id(input.taskId);

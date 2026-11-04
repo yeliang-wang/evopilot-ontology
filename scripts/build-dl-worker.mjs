@@ -1,4 +1,4 @@
-import {readFileSync,readdirSync,mkdirSync,copyFileSync,rmSync,realpathSync,writeFileSync,chmodSync} from 'node:fs';
+import {readFileSync,readdirSync,mkdirSync,copyFileSync,rmSync,realpathSync,writeFileSync,chmodSync,lstatSync} from 'node:fs';
 import {join,resolve,isAbsolute} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync,spawnSync} from 'node:child_process';
@@ -8,8 +8,8 @@ import {inspectJavaRuntime,inventory,verifyDLToolchain} from '../dist/reasoning/
 import {hash,hashBytes} from '../dist/standalone/validation.js';
 
 const args=process.argv.slice(2),flags=new Map();
-for(let i=0;i<args.length;i+=2){if(!['--dependencies','--java-home','--output','--engine-source'].includes(args[i])||flags.has(args[i])||!args[i+1]||!isAbsolute(args[i+1]))throw new Error('Usage: --dependencies ABS --java-home ABS --output ABS --engine-source ABS');flags.set(args[i],args[i+1]);}
-if(flags.size!==4)throw new Error('Four explicit locations required');
+for(let i=0;i<args.length;i+=2){if(!['--dependencies','--java-home','--output','--engine-source','--parser-source'].includes(args[i])||flags.has(args[i])||!args[i+1]||!isAbsolute(args[i+1]))throw new Error('Usage: --dependencies ABS --java-home ABS --output ABS --engine-source ABS --parser-source ABS');flags.set(args[i],args[i+1]);}
+if(flags.size!==5)throw new Error('Five explicit locations required');
 const directory=fileURLToPath(new URL('../toolchains/owl2-dl/',import.meta.url));
 const lockBytes=readFileSync(join(directory,'dependencies.json')),lock=JSON.parse(lockBytes);
 const dependencies=realpathSync(flags.get('--dependencies')),javaRoot=realpathSync(flags.get('--java-home'));
@@ -25,6 +25,24 @@ const expectedEntries=['org/semanticweb/HermiT/structural/ExpressionManager.java
   'org/semanticweb/HermiT/datatypes/anyuri/AnyURIValueSpaceSubset.java'];
 if(!Array.isArray(patch.files)||JSON.stringify(patch.files.map(f=>f.sourceEntry).sort())!==JSON.stringify(expectedEntries.sort()))throw new Error('Unknown patched source entries');
 if(!Array.isArray(patch.ownedSources)||patch.ownedSources.length!==1||patch.ownedSources[0].file!=='XmlSchemaAutomata.java')throw new Error('Unknown formal helper source');
+if(lock.parserPatch?.file!=='parser-compat.json')throw new Error('Unknown parser adapter recipe');
+const parserPatchFile=join(directory,lock.parserPatch.file);
+if(sha(parserPatchFile)!==lock.parserPatch.sha256)throw new Error('Parser adapter recipe digest mismatch');
+const parserPatch=JSON.parse(readFileSync(parserPatchFile)),parserSource=realpathSync(flags.get('--parser-source'));
+const parserEntry='org/semanticweb/owlapi/functional/parser/CustomTokenizer.java';
+const parserArchiveURL='https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/owlapi-parsers/5.5.1/owlapi-parsers-5.5.1-sources.jar';
+const parserArchiveSHA='ca5ade39883033eb730faa86a8c3af1ad8ed6f0484384369b2e5f02af6af4293';
+const parserNode=lstatSync(parserSource);
+if(parserPatch.schema!=='ontology-dl-parser-compat/v1'||parserPatch.parserId!=='owlapi-functional-locations:1'
+  ||parserPatch.sourceArchive?.url!==parserArchiveURL||parserPatch.sourceArchive?.sha256!==parserArchiveSHA
+  ||!parserNode.isFile()||parserNode.nlink!==1||parserNode.size!==515012||sha(parserSource)!==parserArchiveSHA)throw new Error('Parser source differs from exact adapter binding');
+if(!Array.isArray(parserPatch.files)||parserPatch.files.length!==1||parserPatch.files[0].sourceEntry!==parserEntry||parserPatch.files[0].outputFile!=='LocatedTokenizer.java'
+  ||!Array.isArray(parserPatch.ownedSources)||parserPatch.ownedSources.length!==1||parserPatch.ownedSources[0].file!=='LocatedFunctionalParser.java')throw new Error('Unknown parser adapter source entries');
+for(const file of parserPatch.files){
+  if(!/^[a-f0-9]{64}$/.test(file.sourceSHA256)||!/^[a-f0-9]{64}$/.test(file.patchedSourceSHA256)||!Array.isArray(file.changes)||!file.changes.length
+    ||file.changes.some(c=>typeof c.find!=='string'||!c.find||typeof c.replace!=='string'||!Number.isSafeInteger(c.occurrences)||c.occurrences<1))throw new Error('Invalid parser adapter patch');
+}
+if(!/^[a-f0-9]{64}$/.test(parserPatch.ownedSources[0].sha256)||typeof parserPatch.notice!=='string'||!parserPatch.notice.trim()||Buffer.byteLength(parserPatch.notice)>16384)throw new Error('Invalid parser adapter source notice');
 if(JSON.stringify(readdirSync(dependencies).sort())!==JSON.stringify(lock.files.map(f=>f.file).sort()))throw new Error('Dependency closure differs from source lock');
 for(const file of lock.files)if(sha(join(dependencies,file.file))!==file.sha256)throw new Error('Dependency digest mismatch: '+file.file);
 // java -version normally writes stderr; capture it explicitly without parsing shell output.
@@ -58,10 +76,42 @@ for(const file of patch.ownedSources){
   copyFileSync(input,target);chmodSync(target,0o600);if(sha(target)!==file.sha256)throw new Error('Copied formal helper differs');modified.push(target);
 }
 rmSync(join(provenance,'org'),{recursive:true});
+// This is a separately named tokenizer/facade, not an override of OWLAPI's
+// original classes. Keep its exact source, recipe and notice inside the existing
+// engine-source inventory so executable and provenance drift fail together.
+const parserProvenance=join(provenance,'parser');mkdirSync(parserProvenance,{mode:0o700});
+const retainedParserArchive=join(parserProvenance,'upstream-sources.jar');
+copyFileSync(parserSource,retainedParserArchive);chmodSync(retainedParserArchive,0o600);
+copyFileSync(parserPatchFile,join(parserProvenance,'parser-compat.json'));chmodSync(join(parserProvenance,'parser-compat.json'),0o600);
+if(sha(retainedParserArchive)!==parserArchiveSHA||sha(join(parserProvenance,'parser-compat.json'))!==lock.parserPatch.sha256)throw new Error('Copied parser source provenance differs');
+const listing=execFileSync(join(javaRoot,'bin/jar'),['--list','--file',retainedParserArchive],{env,encoding:'utf8',stdio:'pipe',timeout:30000,maxBuffer:4*1024*1024});
+const parserMembers=listing.split(/\r?\n/);if(parserMembers.at(-1)==='')parserMembers.pop();
+if(!parserMembers.length||parserMembers.length>10000||new Set(parserMembers).size!==parserMembers.length
+  ||parserMembers.some(name=>!name||name.length>4096||isAbsolute(name)||/[\\\x00-\x1f\x7f]/.test(name)||name.replace(/\/$/,'').split('/').some(p=>['','..','.'].includes(p)))
+  ||parserMembers.filter(name=>name===parserEntry).length!==1||parserMembers.some(name=>name!==parserEntry&&name.startsWith(parserEntry)))throw new Error('Unsafe or ambiguous parser archive members');
+execFileSync(join(javaRoot,'bin/jar'),['--extract','--file',retainedParserArchive,parserEntry],{cwd:parserProvenance,env,stdio:'pipe',timeout:30000});
+for(const file of parserPatch.files){
+  const input=join(parserProvenance,file.sourceEntry),node=lstatSync(input);
+  if(!node.isFile()||node.nlink!==1||node.size>2*1024*1024||sha(input)!==file.sourceSHA256)throw new Error('Upstream parser source entry differs');
+  let content=readFileSync(input,'utf8');
+  for(const change of file.changes){if(content.split(change.find).length-1!==change.occurrences)throw new Error('Parser adapter patch context differs');content=content.split(change.find).join(change.replace);}
+  if(hashBytes(Buffer.from(content))!=='sha256:'+file.patchedSourceSHA256)throw new Error('Patched parser source digest mismatch');
+  const target=join(parserProvenance,file.outputFile);writeFileSync(target,content,{mode:0o600,flag:'wx'});modified.push(target);
+}
+for(const file of parserPatch.ownedSources){
+  const input=join(directory,file.file),target=join(parserProvenance,file.file);
+  if(sha(input)!==file.sha256)throw new Error('Owned parser facade digest mismatch');
+  copyFileSync(input,target);chmodSync(target,0o600);if(sha(target)!==file.sha256)throw new Error('Copied parser facade differs');modified.push(target);
+}
+rmSync(join(parserProvenance,'org'),{recursive:true});
 // The worker JAR precedes upstream JARs explicitly in javaClasspath. Its modified
 // HermiT class is separately identified by the engine label and source manifest.
 execFileSync(join(javaRoot,'bin/javac'),['--release','21','-classpath',classpath,'-d',classes,source,...modified],{env,stdio:'pipe',timeout:30000});
+const parserClasses=join(classes,'org/semanticweb/owlapi/functional/parser'),compiledParserNames=readdirSync(parserClasses);
+if(!compiledParserNames.includes('LocatedTokenizer.class')||!compiledParserNames.includes('LocatedFunctionalParser.class')
+  ||compiledParserNames.some(name=>!/^Located(?:Tokenizer|FunctionalParser)(?:\$[A-Za-z0-9_$]+)?\.class$/.test(name)||!lstatSync(join(parserClasses,name)).isFile()))throw new Error('Parser adapter must not replace upstream OWLAPI classes');
 mkdirSync(join(classes,'META-INF'),{mode:0o700});writeFileSync(join(classes,'META-INF','EVOPILOT-ENGINE-MODIFICATION.txt'),patch.notice+'\nSource and recipe: ../engine-source\n',{mode:0o600});
+writeFileSync(join(classes,'META-INF','EVOPILOT-PARSER-MODIFICATION.txt'),parserPatch.notice+'\nAdapter: '+parserPatch.parserId+'\nSource and recipe: ../engine-source/parser\n',{mode:0o600});
 execFileSync(join(javaRoot,'bin/jar'),['--create','--file',join(root,'worker.jar'),'--date','2026-01-01T00:00:00Z','-C',classes,'.'],{env,stdio:'pipe',timeout:30000});
 chmodSync(join(root,'worker.jar'),0o600);rmSync(classes,{recursive:true});
 const identity={schema:'ontology-dl-toolchain/v1',root,javaRoot,javaVersion,platform:process.platform,arch:process.arch,engine:lock.engine,owlapi:lock.owlapi,workerSourceDigest:hashBytes(readFileSync(source)),dependencyLockDigest:hashBytes(lockBytes),runtimeFiles:inventory(root),javaFiles:inspectJavaRuntime(javaRoot)};
