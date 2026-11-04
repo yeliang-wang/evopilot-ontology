@@ -14,7 +14,12 @@ import {inspectLostRestore,activateLostRestore,abortLostRestore} from '../instal
 import {inspectInstallationWorkerMaintenance,maintainInstallationWorkers} from '../installation/worker-maintenance.js';
 import {inspectPluginUpgrade} from '../installation/plugin-upgrade.js';
 import {inspectInstallationUpgrade} from '../installation/upgrade-plan.js';
-import type {InstallationUpgradeInput} from '../installation/upgrade-plan.js';
+import type {InstallationUpgradeInput,InstallationUpgradePlan} from '../installation/upgrade-plan.js';
+import {stageInstallationUpgrade} from '../installation/upgrade-stage.js';
+import {activateInstallationUpgrade} from '../installation/upgrade-activate.js';
+import {abortInstallationUpgrade} from '../installation/upgrade-control.js';
+import {inspectInstallationUpgradeRequest} from '../installation/upgrade-status.js';
+import {BACKUP_LIMITS} from '../installation/backup-contract.js';
 import { initializeWorkspace } from '../installation/workspace.js';
 import { inspectRuntime } from '../installation/runtime.js';
 import { prepareInstallation,inspectInstallation,startInstallation,stopInstallation,bindInstallationToolchains,inspectInstallationToolchains } from '../installation/manager.js';
@@ -25,7 +30,7 @@ import { json, object } from './validation.js';
 import { LIMITS, ServiceError, fail } from './types.js';
 import type { Json, ServiceRequest } from './types.js';
 
-const usage='evopilot-ontology upgrade-inspect --installation ABS --input ABS_JSON --json | upgrade-plugin-inspect --installation ABS --runtime-root ABS --runtime-digest SHA256 [--resolutions ABS_JSON] --json | restore-lost-inspect|restore-lost-apply --snapshot ABS_STAGE --snapshot-manifest SHA256 --recovery-root ABS --request-id ID --rekey-expires-at UTC [--expected-report SHA256 for apply] --json | restore-lost-abort --recovery-root ABS --request-id ID --expected-report SHA256 --json | restore-current-inspect|restore-current-apply --installation ABS --snapshot ABS_STAGE --snapshot-manifest SHA256 --retained ABS_CURRENT_STAGE --retained-manifest SHA256 --recovery-root ABS --request-id ID [--expected-report SHA256 for apply] --json | restore-current-abort --recovery-root ABS --request-id ID --expected-report SHA256 --json | restore-stage-inspect --backup ABS --expected-manifest SHA256 --stage-root ABS --request-id ID --json | restore-stage-apply --backup ABS --expected-manifest SHA256 --stage-root ABS --request-id ID --expected-report SHA256 --json | restore-stage-verify --stage-root ABS --expected-manifest SHA256 --json | backup-inspect --installation ABS --backup ABS --request-id ID --json | backup-apply --installation ABS --backup ABS --request-id ID --expected-report SHA256 --json | backup-abort --installation ABS --request-id ID --expected-report SHA256 --json | backup-verify --backup ABS --expected-manifest SHA256 --json | worker-rotation-inspect --installation ABS [--request-id ID] --json | worker-rotation-apply --installation ABS --request-id ID --expected-report SHA256 --json | worker-maintenance-inspect --installation ABS --project ID --task ID --json | worker-maintenance-apply --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | worker-isolation-inspect --json | task-recovery-inspect --installation ABS --project ID --task ID --json | task-reconcile --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | toolchains-bind --installation ABS --request-id ID --previous-binding none|SHA256 --dl-toolchain ABS --dl-digest SHA256 --shacl-toolchain ABS --shacl-digest SHA256 [--systemd-digest SHA256] --json | toolchains-inspect --installation ABS --json | reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] [--systemd-digest SHA256] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
+const usage='evopilot-ontology upgrade-status --installation ABS --request-id ID --json | upgrade-stage|upgrade-activate|upgrade-abort --installation ABS --input ABS_JSON --expected-report SHA256 [--expected-prepared SHA256 for activate] [--retained-report ABS_RAW_REPORT_JSON for abort] --json | upgrade-inspect --installation ABS --input ABS_JSON --json | upgrade-plugin-inspect --installation ABS --runtime-root ABS --runtime-digest SHA256 [--resolutions ABS_JSON] --json | restore-lost-inspect|restore-lost-apply --snapshot ABS_STAGE --snapshot-manifest SHA256 --recovery-root ABS --request-id ID --rekey-expires-at UTC [--expected-report SHA256 for apply] --json | restore-lost-abort --recovery-root ABS --request-id ID --expected-report SHA256 --json | restore-current-inspect|restore-current-apply --installation ABS --snapshot ABS_STAGE --snapshot-manifest SHA256 --retained ABS_CURRENT_STAGE --retained-manifest SHA256 --recovery-root ABS --request-id ID [--expected-report SHA256 for apply] --json | restore-current-abort --recovery-root ABS --request-id ID --expected-report SHA256 --json | restore-stage-inspect --backup ABS --expected-manifest SHA256 --stage-root ABS --request-id ID --json | restore-stage-apply --backup ABS --expected-manifest SHA256 --stage-root ABS --request-id ID --expected-report SHA256 --json | restore-stage-verify --stage-root ABS --expected-manifest SHA256 --json | backup-inspect --installation ABS --backup ABS --request-id ID --json | backup-apply --installation ABS --backup ABS --request-id ID --expected-report SHA256 --json | backup-abort --installation ABS --request-id ID --expected-report SHA256 --json | backup-verify --backup ABS --expected-manifest SHA256 --json | worker-rotation-inspect --installation ABS [--request-id ID] --json | worker-rotation-apply --installation ABS --request-id ID --expected-report SHA256 --json | worker-maintenance-inspect --installation ABS --project ID --task ID --json | worker-maintenance-apply --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | worker-isolation-inspect --json | task-recovery-inspect --installation ABS --project ID --task ID --json | task-reconcile --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | toolchains-bind --installation ABS --request-id ID --previous-binding none|SHA256 --dl-toolchain ABS --dl-digest SHA256 --shacl-toolchain ABS --shacl-digest SHA256 [--systemd-digest SHA256] --json | toolchains-inspect --installation ABS --json | reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] [--systemd-digest SHA256] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
 function flags(args: string[],required: string[],optional: string[]=[]): Map<string,string>{
   const found=new Map<string,string>();
   for(let i=0;i<args.length;i++){
@@ -39,17 +44,32 @@ function flags(args: string[],required: string[],optional: string[]=[]): Map<str
   return found;
 }
 const integer=(text: string):number=>{if(!/^(0|[1-9][0-9]*)$/.test(text)||!Number.isSafeInteger(Number(text)))fail('INVALID_ARGUMENTS','Nonnegative integer required');return Number(text);};
-function readInput(path:string):Buffer{
+function readInput(path:string,maxBytes:number=LIMITS.requestBytes):Buffer{
   if(!isAbsolute(path))fail('UNSAFE_PATH','Absolute input file required');
   const fd=openSync(path,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
   try{
     const stat=fstatSync(fd);if(!stat.isFile())fail('UNSAFE_PATH','Regular input file required');
-    if(stat.size>LIMITS.requestBytes)fail('INPUT_LIMIT','Input exceeds byte budget',413);
-    const buffer=Buffer.alloc(LIMITS.requestBytes+1);let offset=0;
+    if(stat.size>maxBytes)fail('INPUT_LIMIT','Input exceeds byte budget',413);
+    const buffer=Buffer.alloc(maxBytes+1);let offset=0;
     while(offset<buffer.length){const n=readSync(fd,buffer,offset,buffer.length-offset,null);if(n===0)break;offset+=n;}
-    if(offset>LIMITS.requestBytes)fail('INPUT_LIMIT','Input exceeds byte budget',413);
+    if(offset>maxBytes)fail('INPUT_LIMIT','Input exceeds byte budget',413);
     return buffer.subarray(0,offset);
   }finally{closeSync(fd);}
+}
+function readRetainedUpgradeReport(path:string):InstallationUpgradePlan {
+  const value:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(readInput(path,BACKUP_LIMITS.manifestBytes)));
+  // Maintenance inventories have their own byte/count bounds. Do not apply the
+  // ordinary domain-request byte/node ceiling to an original inspected report.
+  const visit=(v:unknown,depth:number):void=>{
+    if(depth>LIMITS.jsonDepth)fail('INPUT_LIMIT','Retained report nesting exceeds budget',413);
+    if(v===null||typeof v==='string'||typeof v==='boolean')return;
+    if(typeof v==='number'){if(!Number.isFinite(v))fail('INVALID_INPUT','Finite JSON numbers required');return;}
+    if(Array.isArray(v)){for(const item of v)visit(item,depth+1);return;}
+    object(v);for(const [key,item] of Object.entries(v)){
+      if(['__proto__','prototype','constructor'].includes(key))fail('INVALID_INPUT','Reserved JSON member');visit(item,depth+1);
+    }
+  };
+  visit(value,0);object(value);return value as unknown as InstallationUpgradePlan;
 }
 function selectedSystemd(flags:Map<string,string>){
   const expected=flags.get('--systemd-digest');if(expected===undefined)return undefined;
@@ -58,6 +78,19 @@ function selectedSystemd(flags:Map<string,string>){
 }
 export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>{
   const [command,...args]=argv;
+  if(command==='upgrade-status'){
+    const f=flags(args,['--installation','--request-id']);
+    emit(inspectInstallationUpgradeRequest(f.get('--installation')!,f.get('--request-id')!));return;
+  }
+  if(command==='upgrade-stage'||command==='upgrade-activate'||command==='upgrade-abort'){
+    const f=flags(args,['--installation','--input','--expected-report',...(command==='upgrade-activate'?['--expected-prepared']:[])],command==='upgrade-abort'?['--retained-report']:[]);
+    const input:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(readInput(f.get('--input')!)));json(input);object(input);
+    const installation=f.get('--installation')!,selection=input as unknown as InstallationUpgradeInput,report=f.get('--expected-report')!;
+    if(command==='upgrade-stage'){emit(stageInstallationUpgrade(installation,selection,report));return;}
+    if(command==='upgrade-activate'){emit(activateInstallationUpgrade(installation,selection,report,f.get('--expected-prepared')!));return;}
+    const retained=f.has('--retained-report')?readRetainedUpgradeReport(f.get('--retained-report')!):undefined;
+    emit(abortInstallationUpgrade(installation,selection,report,retained));return;
+  }
   if(command==='upgrade-inspect'){
     const f=flags(args,['--installation','--input']);
     const input:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(readInput(f.get('--input')!)));json(input);object(input);

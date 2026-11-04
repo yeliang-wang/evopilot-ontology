@@ -89,14 +89,21 @@ function released(a:UpgradeAdmission):boolean {
   return true;
 }
 
-export function readUpgradeAdmissionAtRoot(path:string,requestId:string):UpgradeAdmission {
-  id(requestId);privatePath(path,true);const root=outsideSource(path);
-  const v:unknown=JSON.parse(privateRead(join(root,UPGRADE_RECORDS,upgradeControlKey(requestId)+'.json'),BACKUP_LIMITS.manifestBytes));
+/** Validate a retained admission without reading current owner or runtime files. */
+export function validateUpgradeAdmissionAtRoot(v:unknown,root:string,requestId:string):asserts v is UpgradeAdmission {
+  id(requestId);
   exact(v,['schema','input','report','reportDigest','requestDigest','controlNode']);
   const p=v.report;exact(p,['schema','status','requestId','upgradeRoot','ownerSnapshot','pluginPlan','pluginPlanDigest','toolchainDraft','toolchainsVerified','runtimeActivated','serviceStarted','productAcceptance','authority']);validateBackupPlan(p.ownerSnapshot);
   validateAdmission(v,p.ownerSnapshot.installation);
-  if(p.ownerSnapshot.installation.root!==root||v.input.requestId!==requestId)fail('UPGRADE_EVIDENCE','Retained admission belongs to another root or request',409);return v;
+  if(p.ownerSnapshot.installation.root!==root||v.input.requestId!==requestId)fail('UPGRADE_EVIDENCE','Retained admission belongs to another root or request',409);
 }
+export function readUpgradeAdmissionAtRoot(path:string,requestId:string):UpgradeAdmission {
+  id(requestId);privatePath(path,true);const root=outsideSource(path);
+  const v:unknown=JSON.parse(privateRead(join(root,UPGRADE_RECORDS,upgradeControlKey(requestId)+'.json'),BACKUP_LIMITS.manifestBytes));
+  validateUpgradeAdmissionAtRoot(v,root,requestId);return v;
+}
+export const upgradeAbortReceipt=abortValue;
+export const upgradeReserveReceipt=reserveValue;
 export const upgradeControlFile=(a:UpgradeAdmission,suffix:string):string=>file(a.report.ownerSnapshot.installation,a.input.requestId,suffix);
 export const upgradePermit=permit;
 export const upgradeMarker=marker;
@@ -114,8 +121,8 @@ function requireNoUpgradeSwitch(path:string,requestId:string):void {
   if(['.switch.json','.switch.json.pending'].some(s=>workerFilePresent(join(root,UPGRADE_RECORDS,key+s))))fail('UPGRADE_SWITCH_PENDING','An admitted switch requires exact forward recovery; pre-switch operations are unavailable',409);
 }
 
-/** Internal transaction admission, deliberately not a public CLI command until
- * staging and activation are implemented. No runtime or tool ledger is changed. */
+/** Shared admission boundary for exact staging and the maintenance CLI.
+ * Admission itself changes no runtime or tool ledger. */
 export function withInstallationUpgradeAdmission<T>(path:string,input:InstallationUpgradeInput,expectedReportDigest:string,work:(a:UpgradeAdmission,prepared:InstallationUpgradePreparation,store:WorkspaceStore,replayed:boolean)=>T,aborted:(a:UpgradeAdmission)=>T):T {
   validateInstallationUpgradeInput(input);digest(expectedReportDigest);requireNoUpgradeSwitch(path,input.requestId);const i=readInstallation(path),unlock=operatorLock(i.root);
   try{

@@ -659,8 +659,8 @@ matches the runtime history, and both restoration modes preserve that history.
 
 These are implemented storage, reader and execution guards. The history builder
 constructs a prospective record; the internal activation protocol described below
-uses it to verify the selected installation before committing completion. There
-is no public upgrade activation command yet. The earlier lineage tests explicitly
+uses it to verify the selected installation before committing completion. The
+public upgrade commands below delegate to that same protocol. Earlier lineage tests explicitly
 construct versioned metadata fixtures under the owner leases, then
 exercise actual installed startup, formal Java/Python validation, historical
 receipt readback and lost/current-owner restoration. Such fixtures do not replace
@@ -698,10 +698,72 @@ transaction durably records the actual binding timestamp before activation. An u
 retain `toolchains: null`; the latter explicitly reports `toolchainsVerified: false`
 and establishes no formal reasoning readiness. Configured tools cannot be removed.
 
-This command prepares a complete upgrade selection. Internal admission,
+This command prepares a complete upgrade selection. Admission,
 pre-switch abort, staging and activation are described below. Actual
 crash/storage-failure recovery still requires installed verification. Inspection
 does not apply the prepared report or satisfy MAINT-02.
+
+## Public upgrade operation and retained status
+
+Use the installed `evopilot-ontology` binary. Each operation requires `--json` and
+rejects missing, duplicate or unknown flags. The ordinary selection input is a
+bounded UTF-8 JSON object at an absolute regular-file path. Keep the original
+input, inspected report and report digest together in private operator storage.
+
+```text
+evopilot-ontology upgrade-stage --installation /private/ontology/installation --input /private/ontology/upgrade-input.json --expected-report SHA256 --json
+evopilot-ontology upgrade-status --installation /private/ontology/installation --request-id REQUEST_ID --json
+evopilot-ontology upgrade-activate --installation /private/ontology/installation --input /private/ontology/upgrade-input.json --expected-report SHA256 --expected-prepared SHA256 --json
+evopilot-ontology upgrade-abort --installation /private/ontology/installation --input /private/ontology/upgrade-input.json --expected-report SHA256 --json
+```
+
+First run `upgrade-inspect` and resolve any reported plugin conflict. Bind
+`upgrade-stage` to the returned `reportDigest`; successful staging returns the
+`preparedDigest` required by `upgrade-activate`. Stage replay returns the same
+sealed candidate when its evidence remains exact. Activation replay continues
+the same switch or returns its retained completed receipt. Neither command starts
+the service. Select the separate `start` operation after successful completion
+when startup is intended.
+
+Before a switch or its partial record exists, `upgrade-abort` releases the admitted
+request while retaining its partial/staged material. An interrupted admission may
+have only a `.pending` prefix. In that case supply
+`--retained-report /private/ontology/original-report.json` with the exact original
+report object and its original `--expected-report` digest. This file contains the
+raw report, not the CLI `{ok,result}` wrapper. It uses a separate 8 MiB maintenance
+byte limit and bounded JSON nesting; ordinary selection input retains the 512 KiB
+request limit. A wrong report cannot authorize reconciliation. After switch
+admission, continue with `upgrade-activate`; pre-switch stage/abort cannot reverse
+that transaction.
+
+`upgrade-status` reads only retained installation-side records. It does not open
+the business database, acquire or create a writer/operator lock, settle a marker,
+repair an incomplete record, or inspect external runtime/tool health. Missing
+live `installation.json` during component renames and unavailable external stage
+directories therefore do not prevent retained-status inspection. A changing read
+sample is refused so the caller can repeat the read.
+
+| Retained phase | Meaning and recovery direction |
+| --- | --- |
+| `NOT_FOUND` | No record for the selected request was observed. |
+| `ADMISSION_PENDING` | Reconcile the original admission; a prefix is not a complete admission. |
+| `ADMITTED` / `STAGE_OWNED` | Continue the pre-switch operation or abort; stage ownership alone does not prove a sealed candidate. |
+| `SWITCH_PENDING` / `SWITCH_RECORDED` | Only exact forward recovery is permitted. |
+| `ABORT_PENDING` / `ABORTED` | Complete the original abort until its release is validated. |
+| `COMPLETED` | Complete remaining cleanup unless the release is already validated. |
+
+The separate `releaseState` distinguishes absent, partial and validated release
+records. A validated terminal release needs no transaction recovery. Pending files
+never establish a completed milestone. Before a switch records its prepared
+digest, status leaves that digest null; use exact stage replay to recover the
+sealed digest. `FORWARD_ONLY` describes protocol direction, not proof that every
+external artifact needed for recovery is currently available.
+
+Historical completed/aborted status and receipt replay validate retained evidence
+without asserting current service health. Status reports
+`validation: RETAINED_RECORDS_ONLY`, `runtimeHealth: NOT_CHECKED`,
+`productAcceptance: NOT_EVALUATED` and `authority: false`. Contradictory, orphaned,
+changed or unsafe control material is preserved and refused.
 
 
 ## Durable upgrade admission and pre-switch abort
@@ -796,8 +858,8 @@ its released receipt before ordinary owner use resumes. Historical replay valida
 that retained receipt without requiring the external staged directory to remain
 available. Staging evidence proves staging and pre-switch abort only; the internal
 component-switch implementation below has separate verification obligations.
-Neither step establishes a public activation command, automatic start, actual
-crash/disk-full acceptance or product/release acceptance.
+Staging evidence does not establish activation recovery, automatic start,
+disk-full acceptance or product/release acceptance.
 
 
 Installed development verification additionally kills an owned staging child with
@@ -889,8 +951,8 @@ digest and request bindings without requiring the external candidate runtime or
 stage directory to remain available. It does not establish current runtime health
 or the continuing availability of retained originals.
 
-This contract is implemented internally; no public activation CLI or automatic
-service start is provided yet. Installed development verification covers actual
+The public activation CLI delegates to this contract and does not automatically
+start the service. Installed development verification covers actual
 restart with the selected runtime and binding, actual `SIGKILL` recovery, and
 preservation of a read-only original worker directory during a first binding.
 It also exercises exact partial-record recovery, overlapping-maintenance refusal,
