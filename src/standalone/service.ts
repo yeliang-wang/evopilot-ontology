@@ -17,9 +17,9 @@ import { reasoningTasks } from '../native-v2/tasks.js';
 import type { ReasoningConfiguration } from '../native-v2/tasks.js';
 import { LIMITS, fail } from './types.js';
 import type { Json, Receipt, Project, Grant } from './types.js';
-import { canonical, exact, hash, hashBytes, id, json, text, digest, validateIntent, validateRequest } from './validation.js';
+import { canonical, exact, hash, hashBytes, id, text, digest, validateIntent, validateRequest } from './validation.js';
 
-export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','project.list','project.inspect','intent.read','receipt.read','source.inspect','source.read','source.fragment.read','model.list','model.inspect','model.document.read','model.compare.read','reasoning.list','reasoning.inspect','reasoning.result.read','expectations.list','expectations.inspect','expectations.read','validation.list','validation.inspect','validation.result.read','view.list','view.inspect','view.read','view.query','explanation.read','review.list','review.inspect','review.report.read','delivery.list','delivery.inspect','delivery.export.read']);
+export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','project.list','project.inspect','intent.read','receipt.read','source.inspect','source.metadata.read','source.read','source.fragment.read','model.list','model.inspect','model.metadata.read','model.document.read','model.compare.read','reasoning.list','reasoning.inspect','reasoning.result.read','expectations.list','expectations.inspect','expectations.metadata.read','expectations.read','validation.list','validation.inspect','validation.result.read','view.list','view.inspect','view.read','view.query','explanation.read','review.list','review.inspect','review.report.read','delivery.list','delivery.inspect','delivery.export.read']);
 export const WRITE_OPERATIONS = Object.freeze(['project.create','intent.record','source.admit','model.record','reasoning.start','reasoning.cancel','expectations.record','validation.start','validation.cancel','view.record','review.prepare','review.decide','delivery.record']);
 export function createStandaloneService(options: {root: string; workspaceId: string; serviceId: string;reasoning?:ReasoningConfiguration;validation?:ReasoningConfiguration}) {
   const store=openWorkspace(options.root,options), {db,identity}=store;
@@ -68,7 +68,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
   };
   function request(value: unknown, token: string): Json {
     if(closing)fail('CLOSED','Service is closing',503);
-    json(value); exact(value,['workspaceId','serviceId','projectId','operation','input'],['requestId','expectedRevision']);
+    exact(value,['workspaceId','serviceId','projectId','operation','input'],['requestId','expectedRevision']);
     text(value.operation,96);
     const write=WRITE_OPERATIONS.includes(value.operation);
     validateRequest(value,write);
@@ -167,6 +167,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
         if(operation==='expectations.record')result=expectations.record(projectId,input,current.revision+1,new Date().toISOString());
         else if(operation==='expectations.list')result=expectations.list(projectId,input);
         else if(operation==='expectations.inspect')result=expectations.inspect(projectId,input);
+        else if(operation==='expectations.metadata.read')result=expectations.metadataRead(projectId,input);
         else result=expectations.read(projectId,input);
       } else if(operation.startsWith('model.')) {
         if(!current)fail('NOT_FOUND','Project not initialized',404);
@@ -174,11 +175,13 @@ export function createStandaloneService(options: {root: string; workspaceId: str
         else if(operation==='model.compare.read')result=comparisonRead(db,identity,projectId,input,{dl:tasks.toolchainDigest,validation:tasks.validationToolchainDigest});
         else if(operation==='model.list')result=models.list(projectId,input);
         else if(operation==='model.inspect')result=models.inspect(projectId,input);
+        else if(operation==='model.metadata.read')result=models.metadataRead(projectId,input);
         else result=models.read(projectId,input);
       } else if(operation.startsWith('source.')) {
         if(!current)fail('NOT_FOUND','Project not initialized',404);
         if(operation==='source.admit')result=sources.admit(projectId,input,current.revision+1,new Date().toISOString());
         else if(operation==='source.inspect')result=sources.inspect(projectId,input);
+        else if(operation==='source.metadata.read')result=sources.metadataRead(projectId,input);
         else result=sources.read(projectId,input,operation==='source.fragment.read');
       } else {
         exact(input,['requestId']); id(input.requestId);
@@ -207,7 +210,10 @@ export function createStandaloneService(options: {root: string; workspaceId: str
       throw e;
     }
   }
-  return {request,context,close(){
+  return {request,context,authenticateTransport(token:string):{principalId:string}{
+    if(closing)fail('CLOSED','Service is closing',503);
+    return {principalId:credential(token).principalId};
+  },close(){
     if(closing)return closed;closing=true;
     try{const wait=tasks.shutdown();if(wait){closed=wait.finally(()=>store.close());return closed;}}
     catch(e){store.close();throw e;}store.close();return undefined;

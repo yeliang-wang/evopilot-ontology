@@ -4,10 +4,26 @@ import { toNodeHandler } from '@modelcontextprotocol/node';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { READ_OPERATIONS, WRITE_OPERATIONS } from './service.js';
 import type { createStandaloneService } from './service.js';
-import { LIMITS, ServiceError, fail } from './types.js';
+import { ServiceError, fail } from './types.js';
 import type { Json } from './types.js';
+import { json } from './validation.js';
+import { REQUEST_BUDGETS, ownerRequestBudget } from './request-budget.js';
 
 type Service = ReturnType<typeof createStandaloneService>;
+/** Only a real write-tool envelope can select a document-sized wire budget.
+ * This does not authorize the operation; the owner still validates its input. */
+export function validateMcpEnvelope(body: unknown): unknown {
+  json(body,REQUEST_BUDGETS.maxWireBytes);
+  const record=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+  const params=record(body)&&record(body.params)?body.params:undefined;
+  const args=params&&record(params.arguments)?params.arguments:undefined;
+  const operation=record(body)&&body.method==='tools/call'&&params?.name==='ontology_write'?args?.operation:undefined;
+  const bytes=Buffer.byteLength(JSON.stringify(body));
+  const argumentBytes=args?Buffer.byteLength(JSON.stringify(args)):0;
+  if(bytes>ownerRequestBudget(operation)+REQUEST_BUDGETS.mcpEnvelopeBytes ||
+    (args&&bytes-argumentBytes>REQUEST_BUDGETS.mcpEnvelopeBytes))fail('INPUT_LIMIT','MCP request exceeds its operation or envelope byte budget',413);
+  return operation;
+}
 const identifier={type:'string',pattern:'^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$'};
 const toolSchema=(write: boolean)=>fromJsonSchema<Record<string, unknown>>({
   type:'object',additionalProperties:false,
@@ -49,14 +65,31 @@ export function createOntologyMcp(service: Service) {
       }));
     }
     return server;
-  },{legacy:'stateless',responseMode:'auto',maxRequestBodySize:LIMITS.requestBytes,maxSubscriptions:0,keepAliveMs:0});
-  const nodeHandler=toNodeHandler(handler);
+  },{legacy:'stateless',responseMode:'auto',maxRequestBodySize:REQUEST_BUDGETS.maxWireBytes,maxSubscriptions:0,keepAliveMs:0});
+  // The Node adapter otherwise has a separate 4 MiB default. Its parsed-body
+  // path reserializes the envelope; our checks also cover that path explicitly.
+  const nodeHandler=toNodeHandler(handler,{maxRequestBodySize:REQUEST_BUDGETS.maxWireBytes});
   return {
     async handle(req: IncomingMessage,res: ServerResponse,body: unknown,token: string): Promise<void>{
       // Current credentials are rechecked for every exchange, including initialize/listTools.
       service.context(token);
+      validateMcpEnvelope(body);
       const authenticated=Object.assign(req,{auth:{token,clientId:'ontology-local',scopes:[]}});
-      await nodeHandler(authenticated,res,body);
+      let responseBytes=0;
+      const accept=(chunk?:string|Uint8Array):boolean=>{
+        responseBytes+=chunk===undefined?0:typeof chunk==='string'?Buffer.byteLength(chunk):chunk.byteLength;
+        if(responseBytes<=REQUEST_BUDGETS.mcpResponseBytes)return !res.destroyed;
+        // A streamed result may already include a committed receipt. Close it
+        // as an uncertain transport outcome rather than append a success/error.
+        res.destroy();return false;
+      };
+      await nodeHandler(authenticated,{
+        get destroyed(){return res.destroyed;},
+        writeHead:(status,headers)=>res.writeHead(status,headers),
+        write:chunk=>accept(chunk)?res.write(chunk):false,
+        end:chunk=>{if(accept(chunk))res.end(chunk);},
+        on:(event,listener)=>res.on(event,listener),
+      },body);
     },
     close:()=>handler.close(),
   };

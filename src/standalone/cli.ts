@@ -32,6 +32,7 @@ import { READ_OPERATIONS, WRITE_OPERATIONS } from './service.js';
 import { json, object } from './validation.js';
 import { LIMITS, ServiceError, fail } from './types.js';
 import type { Json, ServiceRequest } from './types.js';
+import {inputBudget} from './request-budget.js';
 
 const usage='evopilot-ontology distribution-prepare|distribution-prepare-status|distribution-prepare-abort --input ABS_JSON [--inspection ABS_INSPECTION_JSON for prepare] --json | distribution-inspect|distribution-inventory --input ABS_JSON --json | upgrade-status --installation ABS --request-id ID --json | upgrade-stage|upgrade-activate|upgrade-abort --installation ABS --input ABS_JSON --expected-report SHA256 [--expected-prepared SHA256 for activate] [--retained-report ABS_RAW_REPORT_JSON for abort] --json | upgrade-inspect --installation ABS --input ABS_JSON --json | upgrade-plugin-inspect --installation ABS --runtime-root ABS --runtime-digest SHA256 [--resolutions ABS_JSON] --json | restore-lost-inspect|restore-lost-apply --snapshot ABS_STAGE --snapshot-manifest SHA256 --recovery-root ABS --request-id ID --rekey-expires-at UTC [--expected-report SHA256 for apply] --json | restore-lost-abort --recovery-root ABS --request-id ID --expected-report SHA256 --json | restore-current-inspect|restore-current-apply --installation ABS --snapshot ABS_STAGE --snapshot-manifest SHA256 --retained ABS_CURRENT_STAGE --retained-manifest SHA256 --recovery-root ABS --request-id ID [--expected-report SHA256 for apply] --json | restore-current-abort --recovery-root ABS --request-id ID --expected-report SHA256 --json | restore-stage-inspect --backup ABS --expected-manifest SHA256 --stage-root ABS --request-id ID --json | restore-stage-apply --backup ABS --expected-manifest SHA256 --stage-root ABS --request-id ID --expected-report SHA256 --json | restore-stage-verify --stage-root ABS --expected-manifest SHA256 --json | backup-inspect --installation ABS --backup ABS --request-id ID --json | backup-apply --installation ABS --backup ABS --request-id ID --expected-report SHA256 --json | backup-abort --installation ABS --request-id ID --expected-report SHA256 --json | backup-verify --backup ABS --expected-manifest SHA256 --json | worker-rotation-inspect --installation ABS [--request-id ID] --json | worker-rotation-apply --installation ABS --request-id ID --expected-report SHA256 --json | worker-maintenance-inspect --installation ABS --project ID --task ID --json | worker-maintenance-apply --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | worker-isolation-inspect --json | task-recovery-inspect --installation ABS --project ID --task ID --json | task-reconcile --installation ABS --project ID --task ID --request-id ID --expected-report SHA256 --json | toolchains-bind --installation ABS --request-id ID --previous-binding none|SHA256 --dl-toolchain ABS --dl-digest SHA256 --shacl-toolchain ABS --shacl-digest SHA256 [--systemd-digest SHA256] --json | toolchains-inspect --installation ABS --json | reviewer-grant --root ABS --workspace ID --service ID --project ID --principal ID --grant-id ID --expires-at UTC --json | reviewer-revoke --root ABS --workspace ID --service ID --grant-id ID --json | runtime-inspect --runtime-root ABS --json | install --root ABS --workspace-root ABS --workspace ID --project ID --principal ID --runtime-root ABS --runtime-digest SHA256 --mode create|attach [--service ID --port N] --json | installation-inspect|start|stop --installation ABS --json | init --root ABS --workspace ID --project ID --principal ID --json | serve --root ABS --workspace ID --service ID [--port N] [--dl-toolchain ABS --dl-work-root ABS] [--shacl-toolchain ABS --shacl-work-root ABS] [--systemd-digest SHA256] --json | context --connection ABS --json | read|write --connection ABS --operation NAME [--input ABS_JSON] [--request-id ID --expected-revision N] --json';
 function flags(args: string[],required: string[],optional: string[]=[]): Map<string,string>{
@@ -51,11 +52,15 @@ function readInput(path:string,maxBytes:number=LIMITS.requestBytes):Buffer{
   if(!isAbsolute(path))fail('UNSAFE_PATH','Absolute input file required');
   const fd=openSync(path,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
   try{
-    const stat=fstatSync(fd);if(!stat.isFile())fail('UNSAFE_PATH','Regular input file required');
+    const stat=fstatSync(fd,{bigint:true});if(!stat.isFile())fail('UNSAFE_PATH','Regular input file required');
     if(stat.size>maxBytes)fail('INPUT_LIMIT','Input exceeds byte budget',413);
-    const buffer=Buffer.alloc(maxBytes+1);let offset=0;
+    // Bound allocation by the observed file, not the largest permitted document.
+    // One extra byte detects growth; the same descriptor is checked after EOF.
+    const buffer=Buffer.alloc(Number(stat.size)+1);let offset=0;
     while(offset<buffer.length){const n=readSync(fd,buffer,offset,buffer.length-offset,null);if(n===0)break;offset+=n;}
     if(offset>maxBytes)fail('INPUT_LIMIT','Input exceeds byte budget',413);
+    const after=fstatSync(fd,{bigint:true});
+    if(offset!==Number(stat.size)||after.dev!==stat.dev||after.ino!==stat.ino||after.size!==stat.size||after.mtimeNs!==stat.mtimeNs||after.ctimeNs!==stat.ctimeNs)fail('INPUT_CHANGED','Input changed while reading; retain the original request identity',409);
     return buffer.subarray(0,offset);
   }finally{closeSync(fd);}
 }
@@ -212,8 +217,8 @@ export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>
   if(!(write?WRITE_OPERATIONS:READ_OPERATIONS).includes(operation))fail('UNSUPPORTED_OPERATION','Operation does not belong to selected read/write mode');
   let input: Json={};
   if(f.has('--input')){
-    const bytes=readInput(f.get('--input')!);
-    const value:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));json(value);object(value);input=value;
+    const budget=inputBudget(operation),bytes=readInput(f.get('--input')!,budget);
+    const value:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));json(value,budget);object(value);input=value;
   }
   const request:ServiceRequest={workspaceId:connection.workspaceId,serviceId:connection.serviceId,projectId:connection.projectId,operation,input};
   if(write){request.requestId=f.get('--request-id');request.expectedRevision=integer(f.get('--expected-revision')!);}

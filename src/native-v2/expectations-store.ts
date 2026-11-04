@@ -3,6 +3,7 @@ import {sourceStore} from './store.js';
 import {boundIntent} from './intent-binding.js';
 import {admitExpectations,EXPECTATIONS_CONTRACT_DIGEST} from './expectations.js';
 import type {ExpectationAdmission} from './expectations.js';
+import {metadataProjection,metadataPointer,metadataPage,METADATA_INLINE_BYTES} from './metadata.js';
 import {canonical,exact,id,digest} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
@@ -38,13 +39,34 @@ export function expectationStore(db:DatabaseSync){
     const v=admitExpectations(input.definition,sources.load(projectId,input.definition.sourceSetDigest),boundIntent(db,projectId,input.definition.intentDigest));
     db.prepare('INSERT INTO native_expectations VALUES(?,?,?,?,?,?,?)').run(projectId,v.definition.assetId,v.digest,v.schemaDigest,canonical(v.definition as unknown as Json),revision,createdAt);
     db.prepare('INSERT INTO native_expectation_heads VALUES(?,?,?) ON CONFLICT(project_id,asset_id) DO UPDATE SET digest=excluded.digest').run(projectId,v.definition.assetId,v.digest);
-    return {assetId:v.definition.assetId,expectationsDigest:v.digest,previousDigest:v.definition.previousDigest,status:'RECORDED',coverage:{...v.coverage},businessConfirmed:false,authority:false};
+    const encoded=metadataProjection(projection(v)),inline=encoded.bytes.length<=METADATA_INLINE_BYTES;
+    return {assetId:v.definition.assetId,expectationsDigest:v.digest,previousDigest:v.definition.previousDigest,status:'RECORDED',
+      coverage:coverageSummary(v,inline),...(inline?{}:{metadata:metadataPointer(encoded,'expectations.metadata.read',false)}),businessConfirmed:false,authority:false};
   }
   function inspect(projectId:string,input:unknown):Json {
     exact(input,['assetId','expectationsDigest']);id(input.assetId);if(input.expectationsDigest!==null)digest(input.expectationsDigest);
     const wanted=input.expectationsDigest??head(projectId,input.assetId);if(wanted===null)fail('NOT_FOUND','Asset has no retained expectations',404);
-    const v=load(projectId,input.assetId,wanted),d=v.definition;
-    return {assetId:d.assetId,expectationsDigest:v.digest,schemaDigest:v.schemaDigest,intentDigest:d.intentDigest,sourceSetDigest:d.sourceSetDigest,previousDigest:d.previousDigest,current:current(projectId,v),coverage:{...v.coverage},requiredShapes:d.requiredShapes.length,cases:d.cases.map(c=>({id:c.id,kind:c.kind,requirementIds:[...c.requirementIds],expected:c.kind==='shacl'?(c.expectedConforms?'CONFORMS':'NONCONFORMING'):c.expectedStatus})),businessConfirmed:false,authority:false};
+    const v=load(projectId,input.assetId,wanted),metadata=projection(v),encoded=metadataProjection(metadata),inline=encoded.bytes.length<=METADATA_INLINE_BYTES;
+    if(inline)return {...metadata,current:current(projectId,v),metadata:metadataPointer(encoded,'expectations.metadata.read',true)};
+    const {coverage:_,cases:__,...identities}=metadata;
+    return {...identities,current:current(projectId,v),coverage:coverageSummary(v,false),caseCount:v.definition.cases.length,
+      metadata:metadataPointer(encoded,'expectations.metadata.read',false)};
+  }
+  function coverageSummary(v:ExpectationAdmission,inline:boolean):Json {
+    return inline?{...v.coverage}:{complete:v.coverage.complete,requirements:v.coverage.requirements,cases:v.coverage.cases,missingCount:v.coverage.missing.length};
+  }
+  function projection(v:ExpectationAdmission):Record<string,Json> {
+    const d=v.definition;
+    return {assetId:d.assetId,expectationsDigest:v.digest,schemaDigest:v.schemaDigest,intentDigest:d.intentDigest,sourceSetDigest:d.sourceSetDigest,
+      previousDigest:d.previousDigest,coverage:{...v.coverage},requiredShapes:d.requiredShapes.length,
+      cases:d.cases.map(c=>({id:c.id,kind:c.kind,requirementIds:[...c.requirementIds],expected:c.kind==='shacl'?(c.expectedConforms?'CONFORMS':'NONCONFORMING'):c.expectedStatus})),
+      businessConfirmed:false,authority:false};
+  }
+  function metadataRead(projectId:string,input:unknown):Json {
+    exact(input,['assetId','expectationsDigest','projectionDigest','offset','maxBytes']);id(input.assetId);digest(input.expectationsDigest);digest(input.projectionDigest);
+    const v=load(projectId,input.assetId,input.expectationsDigest);
+    const page=metadataPage(metadataProjection(projection(v)),input.projectionDigest,input.offset,input.maxBytes);
+    return {...page as Record<string,Json>,assetId:v.definition.assetId,expectationsDigest:v.digest,current:current(projectId,v),authority:false};
   }
   function read(projectId:string,input:unknown):Json {
     exact(input,['assetId','expectationsDigest','offset','maxBytes']);id(input.assetId);digest(input.expectationsDigest);
@@ -60,5 +82,5 @@ export function expectationStore(db:DatabaseSync){
     const rows=db.prepare('SELECT asset_id,digest FROM native_expectation_heads WHERE project_id=? AND asset_id>? ORDER BY asset_id LIMIT ?').all(projectId,input.afterAssetId??'',(input.limit as number)+1),page=rows.slice(0,input.limit as number);
     return {expectations:page.map(r=>{const v=load(projectId,String(r.asset_id),String(r.digest));return {assetId:v.definition.assetId,expectationsDigest:v.digest,current:current(projectId,v),coverageComplete:v.coverage.complete};}),nextCursor:rows.length>page.length?String(page.at(-1)!.asset_id):null,projectRevision:Number(db.prepare('SELECT revision FROM projects WHERE id=?').get(projectId)!.revision),authority:false};
   }
-  return {head,load,current,record,inspect,read,list};
+  return {head,load,current,record,inspect,read,list,metadataRead};
 }

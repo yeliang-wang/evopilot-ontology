@@ -2,6 +2,7 @@ import { isAbsolute } from 'node:path';
 import { privateRead } from './workspace.js';
 import { exact, id, text, validateRequest } from './validation.js';
 import { LIMITS, ServiceError, fail } from './types.js';
+import {requestTimeoutMs} from './request-budget.js';
 import type { Json, ServiceRequest } from './types.js';
 
 export interface Connection {
@@ -27,7 +28,7 @@ export async function sendRequest(connection: Connection,request: ServiceRequest
   if(!/^[A-Za-z0-9_-]{43}$/.test(token)) fail('UNAUTHENTICATED','Invalid local credential file',401);
   let response: Response;
   try {
-    response=await fetch(connection.origin+'/v1/request',{method:'POST',redirect:'error',signal:AbortSignal.timeout(10000),
+    response=await fetch(connection.origin+'/v1/request',{method:'POST',redirect:'error',signal:AbortSignal.timeout(requestTimeoutMs(request.operation)),
       headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(request)});
     if(!response.headers.get('content-type')?.startsWith('application/json')||!response.body) throw new Error('Unexpected response');
     const reader=response.body.getReader(),parts:Uint8Array[]=[];let bytes=0;

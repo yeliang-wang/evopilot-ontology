@@ -31,3 +31,11 @@ Limits are 8 MiB per document, 32 MiB combined source bytes, 48 MiB request JSON
 The pure admission helper neither writes state nor approves assets. The authenticated owner service must persist the source snapshot, project binding and request receipt in its transaction. A source admission result reports `authority: false`, `businessConfirmed: false` and `semanticValidation: NOT_EVALUATED`. Required-source coverage, parsed ontology/SHACL validation, derived views, reviews and immutable delivery remain distinct obligations.
 
 References: [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/json-schema-core), [RFC 6901](https://www.rfc-editor.org/rfc/rfc6901).
+
+## Owner metadata pages
+
+`source.inspect` retains its small metadata projection inline through 256 KiB. It always includes a `metadata` pointer with the canonical UTF-8 `projectionDigest`, byte count, `source.metadata.read` operation and `inline` flag. Above that limit, `sources` and `fragments` are omitted and replaced with `sourceCount` and `fragmentCount`; omitted collections are not empty collections.
+
+`source.metadata.read` requires exact `sourceSetDigest`, `projectionDigest`, `offset` and `maxBytes` (4–65,536). It returns canonical JSON UTF-8 pages with `startByte`, `endByte`, `nextOffset`, `complete`, total bytes and the pinned projection digest. Reassemble every page and verify its byte count and SHA-256 before interpreting the full metadata. The projection contains the original manifests, typed selectors and verified fragment locations but no source content. Read content separately through `source.read` or `source.fragment.read`.
+
+The stable projection excludes mutable heads and freshness. Every read reports `current` separately; a new intent can make the same byte-identical projection stale. A different projection digest fails with `METADATA_CONFLICT`. The operations retain project/credential scope and do not change assets, receipts or authority. The [public transport budgets](../../docs/large-inputs-v090.md) make native document limits reachable without changing the asset envelope or bypassing the owner's retained-state capacity.

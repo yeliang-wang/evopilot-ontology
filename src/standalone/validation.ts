@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
 import { fail, LIMITS } from './types.js';
+import { inputBudget, ownerRequestBudget } from './request-budget.js';
 import type { Json, ModelingIntent, ServiceRequest, Credentials, WorkspaceIdentity } from './types.js';
 
-export function json(value: unknown): asserts value is Json {
+export function json(value: unknown, byteLimit: number = LIMITS.requestBytes): asserts value is Json {
   let nodes = 0;
   const visit = (v: unknown, depth: number): void => {
     if (++nodes > LIMITS.jsonNodes || depth > LIMITS.jsonDepth) fail('INPUT_LIMIT', 'JSON structure exceeds budget', 413);
@@ -19,7 +20,7 @@ export function json(value: unknown): asserts value is Json {
     fail('INVALID_INPUT', 'Plain finite JSON required');
   };
   visit(value, 0);
-  if (Buffer.byteLength(JSON.stringify(value)) > LIMITS.requestBytes) fail('INPUT_LIMIT', 'Request exceeds byte budget', 413);
+  if (Buffer.byteLength(JSON.stringify(value)) > byteLimit) fail('INPUT_LIMIT', 'Request exceeds byte budget', 413);
 }
 export function object(value: unknown): asserts value is Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_INPUT', 'Object required');
@@ -75,9 +76,11 @@ export function validateCredentials(value: unknown, identity: WorkspaceIdentity)
   }
 }
 export function validateRequest(value: unknown, write: boolean): asserts value is ServiceRequest {
-  json(value);
+  object(value);
+  json(value, ownerRequestBudget(value.operation));
   exact(value, ['workspaceId','serviceId','projectId','operation','input', ...(write ? ['requestId','expectedRevision'] : [])]);
   id(value.workspaceId); id(value.serviceId); id(value.projectId); text(value.operation, 96); object(value.input);
+  if (Buffer.byteLength(JSON.stringify(value.input)) > inputBudget(value.operation)) fail('INPUT_LIMIT', 'Operation input exceeds byte budget', 413);
   if (write) {
     id(value.requestId);
     if (!Number.isSafeInteger(value.expectedRevision) || (value.expectedRevision as number) < 0) fail('INVALID_INPUT', 'Nonnegative safe expectedRevision required');

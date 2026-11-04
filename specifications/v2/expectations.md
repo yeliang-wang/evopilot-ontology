@@ -12,14 +12,15 @@ OWL cases pin a nonempty logical entailment query and an independently expected 
 
 SHACL cases pin independent fixture data/import closures, expected conformance and, for negative cases, named constraint shapes that must actually appear as `sh:sourceShape` in the native violation report. Candidate SHACL documents are used for every case; fixture data is never silently merged with the candidate's example individuals. The fixed required target ledger applies to each case. Core constraints used by negative oracles therefore need stable named shapes rather than anonymous IDs. A nonconforming case that violates a different constraint does not match its expected oracle.
 
-The contract permits at most 32 cases and 16 MiB of expectation JSON internally. Existing RDF/import limits apply to each fixture/query, and the 512 KiB HTTP request limit remains the tighter inline limit. Incomplete expectations can be retained and repaired as drafts. The service cannot start a validation suite until the fixed requirement/method/constraint coverage is complete.
+The contract permits at most 32 cases and 16 MiB of expectation JSON. Existing RDF/import limits apply to each fixture/query; the owner and transports enforce the native operation's bounded envelope instead of applying the generic 512 KiB request limit to this operation. The 30,000-node and depth-24 JSON limits still apply. Incomplete expectations can be retained and repaired as drafts. The service cannot start a validation suite until the fixed requirement/method/constraint coverage is complete.
 
 ## Owner operations
 
 | Operation | Input | Behavior |
 |---|---|---|
 | `expectations.record` | `definition` | Atomic immutable expectation snapshot, source checks, parent/revision check, receipt and audit |
-| `expectations.inspect` | `assetId`, `expectationsDigest` or null | Identities, current/stale state, coverage and fixed case summaries |
+| `expectations.inspect` | `assetId`, `expectationsDigest` or null | Identities, current/stale state, bounded coverage/case summary and metadata pointer |
+| `expectations.metadata.read` | `assetId`, `expectationsDigest`, `projectionDigest`, `offset`, `maxBytes` | Complete stable coverage and fixed case-summary projection in UTF-8 pages up to 65,536 bytes |
 | `expectations.read` | `assetId`, `expectationsDigest`, `offset`, `maxBytes` | Canonical definition JSON in UTF-8 pages up to 65,536 bytes |
 | `expectations.list` | nullable `afterAssetId`, `limit` 1–100 | Scoped expectation heads, including assets not yet modeled |
 | `validation.start` | `assetId`, `modelDigest`, optional `timeoutMs` and `view` | Retain and queue the exact suite; inline expected-outcome overrides are not accepted |
@@ -29,6 +30,10 @@ The contract permits at most 32 cases and 16 MiB of expectation JSON internally.
 | `validation.cancel` | `taskId` | Durable cancellation request; actual worker exit determines the terminal result |
 
 After expectations exist, `model.record` must bind their current `expectationsDigest`. Editing either the expectations or the source/intent makes the former model/result noncurrent; the author explicitly records a new model binding before another suite. Historical records and exact receipt replay never reactivate old heads. Records, tasks and reads remain credential/project scoped.
+
+An expectation's stable metadata projection includes its immutable identities, complete `coverage.missing` evidence and all fixed case summaries. Inspection always returns a `metadata` pointer with the projection digest, canonical JSON UTF-8 byte length, reader operation, page limit and `inline` flag. At or below 256 KiB, inspection includes the complete projection with `inline:true`; the small write receipt keeps its original coverage shape and has no metadata pointer. Above that bound, the write receipt also includes the pointer with `inline:false`, neither response includes `coverage.missing`, and inspection omits `cases`; `coverage.missingCount`, the coverage requirement/case counts, inspection's `caseCount` and `metadata.inline:false` describe the omission. Missing evidence is never replaced with an empty list or a truncated success. The pointer permits full readback even when the missing-coverage ledger alone exceeds the 1 MiB response budget.
+
+Metadata pages pin both the expectation digest and projection digest. The projection excludes mutable freshness; each page reports `current` separately, so historical bytes and their digest remain stable after a new expectation or intent is recorded. A mismatched projection digest, invalid UTF-8 offset, page size outside 4–65,536 bytes or wrong project scope is rejected. `expectations.read` remains the complete canonical definition reader, including fixture/query content; metadata pages contain the coverage projection and case summaries rather than those documents. Successful authoring or complete page retrieval does not make incomplete coverage complete or supply business approval.
 
 ## Execution and outcomes
 

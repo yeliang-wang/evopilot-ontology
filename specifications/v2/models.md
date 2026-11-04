@@ -12,7 +12,7 @@ Envelope checks verify bytes, document identities, the pinned import graph and m
 
 Mappings reference independently retained intent requirements, admitted source fragments and nonempty UTF-8 ranges in model/shape documents. Ranges bind exact document and fragment digests. Unknown requirements, missing fragments and invented byte ranges fail. Omitted mappings remain explicit `missing` requirements and open issues remain visible. `mapping.complete` means all declared requirements have mappings; `semanticCoverage: NOT_EVALUATED` remains explicit. A range can locate relevant text but is not a parsed OWL axiom selector or a proof that the requirement is satisfied. Independent expected cases, parsed projections, SHACL checks and actual review remain required before delivery.
 
-The request envelope is at most 48 MiB internally, with the existing DL closure limits (64 documents, 8 MiB/document, 32 MiB closure). SHACL text is separately limited to 16 MiB. Referenced model ranges total at most 32 MiB. The current 512 KiB HTTP envelope remains the tighter inline-operation limit. Document readback uses at most 65,536 original UTF-8 bytes per page and never splits a character.
+The request envelope is at most 48 MiB internally, with the existing DL closure limits (64 documents, 8 MiB/document, 32 MiB closure). SHACL text is separately limited to 16 MiB. Referenced model ranges total at most 32 MiB. The public CLI/HTTP/MCP paths admit that native document budget with fixed wrapper allowances; ordinary operations remain 512 KiB. See [public input budgets](../../docs/large-inputs-v090.md). Document readback uses at most 65,536 original UTF-8 bytes per page and never splits a character.
 
 ## Owner operations
 
@@ -21,12 +21,15 @@ The request envelope is at most 48 MiB internally, with the existing DL closure 
 | `model.record` | `draft` | Durable project receipt with immutable model/closure digests, mapping completeness and unresolved count |
 | `model.list` | `afterAssetId` (nullable), `limit` (1–100) | Scoped asset heads, current/stale indicators, cursor and observed project revision |
 | `model.inspect` | `assetId`, `modelDigest` or null for the current asset head | Metadata, document manifests, mappings, issues and current/stale relationship |
+| `model.metadata.read` | `assetId`, `modelDigest`, `projectionDigest`, `offset`, `maxBytes` | Stable canonical metadata pages with a pinned digest and separate freshness |
 | `model.document.read` | `assetId`, `modelDigest`, `documentId`, `offset`, `maxBytes` | Exact original-byte page and continuation offset |
 | `reasoning.start` | `assetId`, `modelDigest`, typed `task`, optional bounded `timeoutMs` | Durable `QUEUED` task receipt; no logical conclusion yet |
 | `reasoning.list` | nullable `assetId`, nullable `afterTaskId`, `limit` 1–100 | Scoped existing task identities and state |
 | `reasoning.inspect` | `taskId` | Task state, exact identities, formal status/completeness, retained result when small, current/stale relationship and recent events |
 | `reasoning.result.read` | `taskId`, `offset`, `maxBytes` | Pages of the exact retained JSON result, with its digest |
 | `reasoning.cancel` | `taskId` | Cancellation request or confirmed pre-dispatch cancellation; active exit confirmation arrives in the task result |
+
+`model.inspect` includes a `metadata` pointer with canonical UTF-8 `projectionDigest`, bytes, page operation and `inline`. Through 256 KiB the existing metadata fields remain inline. Above it, mappings, open issues, document manifests and other potentially large collections are omitted; counts and binding identities remain. This is explicit omission, never an empty or complete collection. `model.metadata.read` reads the whole stable projection in 4–65,536 byte pages. Reassemble through `nextOffset: null`, verify byte count/digest, and check `current` separately. The projection excludes mutable freshness and includes original document digests/byte counts, but excludes document content. A changed expected projection digest is refused.
 
 All writes use the existing authenticated principal/project scope, request ID and expected project revision. Source/model/task records cannot be submitted as arbitrary formal results. Only the configured executor can produce task results. Internal modules share the owner's SQLite transaction/lease and cannot open a second product writer. Workspaces and reasoning worker directories are separate private locations.
 
@@ -46,4 +49,4 @@ Startup converts retained queued/running/cancel-requested tasks to `INTERRUPTED`
 
 Foreground startup accepts paired `--dl-toolchain ABS` and `--dl-work-root ABS` operator arguments. Both refer to separately prepared private installed artifacts. Ordinary domain requests cannot choose executable paths or modify the toolchain. Absence of configuration returns `TOOLCHAIN_NOT_READY`. This optional execution binding is reported independently of product readiness: `reasoningReady` and `nativeV2Ready` remain false until the full required implementation and acceptance are satisfied.
 
-Managed installation toolchain preparation/binding, larger-material uploads, derived graph views, semantic review, immutable delivery/export, full Expert/Host journeys and explicit interruption recovery remain required work. This draft/task implementation does not close those obligations. Source-bound expectations and actual OWL/SHACL suite operations are now implemented under the [independent expectation contract](expectations.md); their formal matches do not substitute for remaining acceptance.
+Managed installation toolchain preparation/binding, reference-scale large-input verification, derived graph views, semantic review, immutable delivery/export, full Expert/Host journeys and explicit interruption recovery remain required work. This draft/task implementation does not close those obligations. Source-bound expectations and actual OWL/SHACL suite operations are now implemented under the [independent expectation contract](expectations.md); their formal matches do not substitute for remaining acceptance.

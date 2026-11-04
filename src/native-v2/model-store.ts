@@ -5,6 +5,7 @@ import {expectationStore} from './expectations-store.js';
 import {admitModel} from './models.js';
 import type {ModelAdmission} from './models.js';
 import {MODEL_SCHEMA_DIGEST} from './model-schema.js';
+import {metadataProjection,metadataPointer,metadataPage,METADATA_INLINE_BYTES} from './metadata.js';
 import {canonical,exact,id,digest} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
@@ -53,10 +54,27 @@ export function modelStore(db:DatabaseSync){
   function inspect(projectId:string,input:unknown):Json {
     transaction();exact(input,['assetId','modelDigest']);id(input.assetId);if(input.modelDigest!==null)digest(input.modelDigest);
     const wanted=input.modelDigest??head(projectId,input.assetId);if(wanted===null)fail('NOT_FOUND','Asset has no draft',404);
-    const model=load(projectId,input.assetId,wanted),{closure,shapes,...metadata}=model.draft;
-    return {...metadata,modelDigest:model.digest,schemaDigest:model.schemaDigest,closureDigest:model.closureDigest,current:current(projectId,model),status:'DRAFT',
+    const model=load(projectId,input.assetId,wanted),metadata=projection(model),encoded=metadataProjection(metadata),inline=encoded.bytes.length<=METADATA_INLINE_BYTES;
+    return {...(inline?metadata:{schema:model.draft.schema,assetId:model.draft.assetId,label:model.draft.label,
+      intentDigest:model.draft.intentDigest,sourceSetDigest:model.draft.sourceSetDigest,previousDigest:model.draft.previousDigest,
+      ...(model.draft.expectationsDigest===undefined?{}:{expectationsDigest:model.draft.expectationsDigest}),
+      modelDigest:model.digest,schemaDigest:model.schemaDigest,closureDigest:model.closureDigest,status:'DRAFT',
+      documentCount:model.draft.closure.documents.length,shapeCount:model.draft.shapes.length,
+      mappingCount:model.draft.mappings.length,openIssueCount:model.draft.openIssues.length,mapping:{...model.mapping},
+      formalValidation:'NOT_EVALUATED',businessConfirmed:false,authority:false}),current:current(projectId,model),
+      metadata:metadataPointer(encoded,'model.metadata.read',inline)};
+  }
+  function projection(model:ModelAdmission):Record<string,Json> {
+    const {closure,shapes,...metadata}=model.draft;
+    return {...metadata,modelDigest:model.digest,schemaDigest:model.schemaDigest,closureDigest:model.closureDigest,status:'DRAFT',
       closure:{...closure,documents:closure.documents.map(({content,...d})=>({...d,bytes:Buffer.byteLength(content)}))},shapes:shapes.map(({content,...d})=>({...d,bytes:Buffer.byteLength(content)})),
-      mapping:{...model.mapping},formalValidation:'NOT_EVALUATED',businessConfirmed:false,authority:false} as unknown as Json;
+      mapping:{...model.mapping},formalValidation:'NOT_EVALUATED',businessConfirmed:false,authority:false} as unknown as Record<string,Json>;
+  }
+  function metadataRead(projectId:string,input:unknown):Json {
+    exact(input,['assetId','modelDigest','projectionDigest','offset','maxBytes']);id(input.assetId);digest(input.modelDigest);digest(input.projectionDigest);
+    const model=load(projectId,input.assetId,input.modelDigest);
+    const page=metadataPage(metadataProjection(projection(model)),input.projectionDigest,input.offset,input.maxBytes);
+    return {...page as Record<string,Json>,assetId:model.draft.assetId,modelDigest:model.digest,current:current(projectId,model),authority:false};
   }
   function read(projectId:string,input:unknown):Json {
     exact(input,['assetId','modelDigest','documentId','offset','maxBytes']);id(input.assetId);digest(input.modelDigest);id(input.documentId);
@@ -75,5 +93,5 @@ export function modelStore(db:DatabaseSync){
     const page=rows.slice(0,input.limit as number),selected=sources.head(projectId);
     return {models:page.map(r=>{const d=JSON.parse(String(r.document));return {assetId:String(r.asset_id),modelDigest:String(r.digest),label:String(d.label),revision:Number(r.revision),current:selected.status==='CURRENT'&&d.intentDigest===selected.intentDigest&&d.sourceSetDigest===selected.sourceSetDigest&&expectations.head(projectId,String(r.asset_id))===(d.expectationsDigest??null)};}),nextCursor:rows.length>page.length?String(page.at(-1)!.asset_id):null,projectRevision:Number(db.prepare('SELECT revision FROM projects WHERE id=?').get(projectId)!.revision),authority:false};
   }
-  return {head,load,current,record,inspect,read,list};
+  return {head,load,current,record,inspect,read,list,metadataRead};
 }

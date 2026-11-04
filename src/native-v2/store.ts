@@ -2,6 +2,7 @@ import type {DatabaseSync} from 'node:sqlite';
 import {admitSourceSet} from './sources.js';
 import type {SourceAdmission} from './sources.js';
 import {SOURCE_SCHEMA_DIGEST} from './schema.js';
+import {metadataProjection,metadataPointer,metadataPage,METADATA_INLINE_BYTES} from './metadata.js';
 import {canonical,exact,digest,id} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json,ModelingIntent} from '../standalone/types.js';
@@ -62,10 +63,24 @@ export function sourceStore(db:DatabaseSync) {
     const selected=head(projectId),wanted=input.sourceSetDigest??selected.sourceSetDigest;
     if(wanted===null)return {...selected,authority:false};
     const admitted=load(projectId,wanted),current=selected.status==='CURRENT'&&selected.sourceSetDigest===wanted;
-    return {...selected,sourceSetDigest:wanted,current,status:current?'CURRENT':'STALE',schemaDigest:admitted.schemaDigest,
+    const metadata=projection(admitted),encoded=metadataProjection(metadata),inline=encoded.bytes.length<=METADATA_INLINE_BYTES;
+    return {...selected,...(inline?metadata:{sourceSetDigest:wanted,schemaDigest:admitted.schemaDigest,
+      sourceCount:admitted.sourceSet.sources.length,fragmentCount:admitted.fragments.length,
+      semanticValidation:'NOT_EVALUATED',businessConfirmed:false,authority:false}),current,status:current?'CURRENT':'STALE',
+      metadata:metadataPointer(encoded,'source.metadata.read',inline)};
+  }
+  function projection(admitted:SourceAdmission):Record<string,Json> {
+    return {sourceSetDigest:admitted.sourceSetDigest,schemaDigest:admitted.schemaDigest,
       sources:admitted.sourceSet.sources.map(({content,...s})=>({...s,bytes:Buffer.byteLength(content)})),
       fragments:admitted.sourceSet.fragments.map(f=>({...f,...admitted.fragments.find(r=>r.id===f.id)!})),
       semanticValidation:'NOT_EVALUATED',businessConfirmed:false,authority:false};
+  }
+  function metadataRead(projectId:string,input:unknown):Json {
+    exact(input,['sourceSetDigest','projectionDigest','offset','maxBytes']);digest(input.sourceSetDigest);digest(input.projectionDigest);
+    const admitted=load(projectId,input.sourceSetDigest),selected=head(projectId);
+    const page=metadataPage(metadataProjection(projection(admitted)),input.projectionDigest,input.offset,input.maxBytes);
+    return {...page as Record<string,Json>,sourceSetDigest:admitted.sourceSetDigest,
+      current:selected.status==='CURRENT'&&selected.sourceSetDigest===admitted.sourceSetDigest,authority:false};
   }
   function read(projectId:string,input:unknown,fragment:boolean):Json {
     exact(input,['sourceSetDigest',fragment?'fragmentId':'sourceId','offset','maxBytes']);digest(input.sourceSetDigest);
@@ -85,5 +100,5 @@ export function sourceStore(db:DatabaseSync) {
       format:source.format,startByte:start,endByte:end,content:bytes.subarray(start,end).toString('utf8'),
       nextOffset:end===limit?null:end-(f?.startByte??0),complete:end===limit,current,authority:false};
   }
-  return {head,load,admit,inspect,read};
+  return {head,load,admit,inspect,read,metadataRead};
 }

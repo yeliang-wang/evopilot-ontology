@@ -219,6 +219,7 @@ export async function checkSource() {
       if (isBuiltin(specifier)) continue;
       if (path===resolve(ROOT,'src/standalone/mcp.ts') && ['@modelcontextprotocol/server','@modelcontextprotocol/node'].includes(specifier)) continue;
       if (path===resolve(ROOT,'src/standalone/bridge.ts') && ['@modelcontextprotocol/server','@modelcontextprotocol/server/stdio','@modelcontextprotocol/client'].includes(specifier)) continue;
+      if (path===resolve(ROOT,'src/standalone/stdio-transport.ts') && specifier==='@modelcontextprotocol/server') continue;
       if (specifier === 'yaml' && (path.endsWith('/src/asset-sources.ts') || path === resolve(ROOT, 'src/import-operations.ts') || PRODUCT === 'ontology' && path.includes('/src/compat/'))) continue;
       if (specifier === 'yaml' && ['src/installation/plugin-content.ts','src/installation/plugin-merge.ts'].some(p=>path===resolve(ROOT,p))) continue;
       if (PRODUCT === 'ontology' && path.includes('/src/compat/') && specifier === 'ajv/dist/2020.js') continue;
