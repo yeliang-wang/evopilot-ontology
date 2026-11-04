@@ -5,8 +5,8 @@
   "targetVersion": "0.9.0",
   "sourceBase": "d8fb3da2f3fae6d8c3333ab9d2d6ff5c969f3462",
   "publishedBase": "f491b40d5348bfe465e43d5be73a84114ed4f207",
-  "roadmapDigest": "sha256:bcfe96e91da1754bbca76ac65afff1a886fbda8b13591e8c01af0e14a9ded85e",
-  "planDigest": "sha256:b15f3d36d2a745248c3251ecd52217eae426a9ad5a5990c7cd3193a05ede6264",
+  "roadmapDigest": "sha256:45fef56c310c585d7c8a39f3e04caaf8c8756da8b0628a3e1000f6b6702b2792",
+  "planDigest": "sha256:377cf0dba8e6f4648202b8afefca9e9c30c42f488b02fcbd3c174155a0255b6e",
   "adrDigest": "sha256:8255fe2f6840fa67ca619ab54d37cf4189930cad2cd36e80c39f2e5af5ccb95d",
   "acceptanceDigest": "sha256:b536bb5e63d2f4da02b9a8166a0f03dd3fdbe1181681e40cf7232a314972ffb8",
   "implementationStatus": "AUTHORIZED",
@@ -93,5 +93,7 @@
     "old releases"
   ],
   "scopePolicy": "New source APIs use new directories. Additional existing-owned implementation paths require reviewed scope extension bound to unchanged objective; no silent wildcard authority. Sibling/parent source changes use separate exact scopes. Daily mutations require P6 inventory and accepted installed candidate.",
-  "expertSourceDigest": "sha256:052a153b9c052fe057a54f46a515ba22574ef57c551a1e70a43eb194fa3be5d6"
+  "expertSourceDigest": "sha256:052a153b9c052fe057a54f46a515ba22574ef57c551a1e70a43eb194fa3be5d6",
+  "standardsGateDigest": "sha256:819bc306352a053fbc406e129bde4cc2c80c09f0d4c78234db73d2d689ef850d",
+  "standardsProtocolDigest": "sha256:9a63936555d805fd7b9ffccf541f5013ac5c512e272dcb4b43f692570f5cc7be"
 }

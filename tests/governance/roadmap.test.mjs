@@ -23,7 +23,7 @@ test('plan, roadmap and acceptance drift cannot be silently approved',async t=>{
   await cp(join(root,'governance'),join(copy,'governance'),{recursive:true});
   await cp(join(root,'docs'),join(copy,'docs'),{recursive:true});
   await inspectGovernance(copy);
-  for(const path of ['docs/ontology-v090-plan.md','governance/roadmap.json','governance/acceptance-v090.json']){
+  for(const path of ['docs/ontology-v090-plan.md','governance/roadmap.json','governance/acceptance-v090.json','governance/standards-gate-v090.json','docs/standards-evaluation-v090.md']){
     await appendFile(join(copy,path),'\n');
     await assert.rejects(inspectGovernance(copy),/DEVIATION/);
     await cp(join(root,path),join(copy,path));

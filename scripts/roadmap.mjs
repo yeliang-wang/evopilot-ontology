@@ -14,14 +14,23 @@ export async function inspectGovernance(root = ROOT) {
     roadmapDigest: 'governance/roadmap.json', planDigest: 'docs/ontology-v090-plan.md',
     adrDigest: 'docs/architecture/0001-ontology-v090-independence.md', acceptanceDigest: 'governance/acceptance-v090.json',
     expertSourceDigest: 'governance/expert-source-v090.json',
+    standardsGateDigest: 'governance/standards-gate-v090.json',
+    standardsProtocolDigest: 'docs/standards-evaluation-v090.md',
   };
   for (const [key, path] of Object.entries(bindings)) if (hash(await read(path)) !== target[key]) fail(`DEVIATION: ${key} drift`);
   const roadmap = JSON.parse(await read(bindings.roadmapDigest));
   const matrix = JSON.parse(await read(bindings.acceptanceDigest));
+  const standards = JSON.parse(await read(bindings.standardsGateDigest));
+  const sequence = ['FREEZE','ISOLATED_INSTALL','STANDARDS_E2E','FULL_REPORT','USER_REPORT_APPROVAL','PRODUCT_E2E','RELEASE_REVIEW','DOWNLOADED_READBACK'];
+  const families = ['rdf11-turtle-syntax','rdf11-turtle-eval','rdfxml','owl2-dl','shacl-core','shacl-sparql-local'];
+  if (standards.schema !== 'ontology-standards-gate-policy/v1' || standards.version !== target.targetVersion || JSON.stringify(standards.sequence) !== JSON.stringify(sequence) || JSON.stringify(standards.families) !== JSON.stringify(families) || standards.officialStatus !== 'APPROVED' || standards.allRequiredMustPass !== true || standards.zeroRequiredIsPass !== false || standards.technicalPassIsApproval !== false || standards.releaseAuthorized !== false || standards.developmentChecksAreFormalAcceptance !== false || standards.originalRequiredVariants !== 143 || standards.sourceMatrixMustRemainNotEvaluated !== true || standards.decisionScope !== 'ENTER_ORIGINAL_PRODUCT_E2E_ONLY' || standards.productEntry !== 'scripts/formal-e2e.mjs' || standards.policyDocument !== bindings.standardsProtocolDigest) fail('DEVIATION: standards prerequisite changed');
+  if (JSON.stringify(standards.decisionBindings) !== JSON.stringify(['candidateDigest','corpusDigest','toolchainDigest','reportDigest','freezeDigest','targetDigest']) || standards.decisionSource !== 'EXPLICIT_USER_REVIEW_OF_COMPLETE_REPORT') fail('DEVIATION: user review bindings changed');
+  const prerequisite = roadmap.milestones.find(m => m.id === 'P5')?.entryGate;
+  if (!prerequisite || prerequisite.policy !== bindings.standardsGateDigest || prerequisite.preflight !== standards.productEntry || JSON.stringify(prerequisite.sequence) !== JSON.stringify(sequence)) fail('DEVIATION: missing formal E2E dependency');
   if (roadmap.owner !== 'ontology' || roadmap.targetVersion !== target.targetVersion || matrix.version !== target.targetVersion) fail('DEVIATION: version/owner mismatch');
   const stages = roadmap.milestones.map(m => m.id);
   if (JSON.stringify(stages) !== JSON.stringify(Array.from({length: 7}, (_, i) => `P${i}`))) fail('DEVIATION: milestone set');
-  if (!Array.isArray(matrix.cases) || !matrix.cases.length || new Set(matrix.cases.map(c => c.id)).size !== matrix.cases.length) fail('DEVIATION: missing/duplicate cases');
+  if (!Array.isArray(matrix.cases) || matrix.cases.length !== 143 || new Set(matrix.cases.map(c => c.id)).size !== matrix.cases.length) fail('DEVIATION: missing/duplicate original cases');
   for (const c of matrix.cases) {
     if (!stages.includes(c.stage) || !roadmap.milestones.find(m => m.id === c.stage).groups.includes(c.group) || !c.variant || !c.requiredOrigin || !c.collector?.startsWith('tests/acceptance/v090/')) fail(`DEVIATION: unmapped case ${c.id}`);
     if (c.status !== 'NOT_EVALUATED' || c.evidence.length !== 0) fail('DEVIATION: source matrix must not claim private acceptance');

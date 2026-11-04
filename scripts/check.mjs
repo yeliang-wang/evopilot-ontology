@@ -64,7 +64,9 @@ const expected = {
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "tsc --noEmit && node scripts/check.mjs",
-    "test": "node --test tests/e2e/*.test.mjs"
+    "test": "node --test tests/e2e/*.test.mjs",
+    "test:governance": "node --test tests/governance/*.test.mjs",
+    "acceptance:product:preflight": "node scripts/formal-e2e.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/client": "2.4.0",

@@ -52,7 +52,21 @@
       "id": "P5",
       "groups": [
         "RELEASE"
-      ]
+      ],
+      "entryGate": {
+        "policy": "governance/standards-gate-v090.json",
+        "preflight": "scripts/formal-e2e.mjs",
+        "sequence": [
+          "FREEZE",
+          "ISOLATED_INSTALL",
+          "STANDARDS_E2E",
+          "FULL_REPORT",
+          "USER_REPORT_APPROVAL",
+          "PRODUCT_E2E",
+          "RELEASE_REVIEW",
+          "DOWNLOADED_READBACK"
+        ]
+      }
     },
     {
       "id": "P6",
