@@ -1,5 +1,5 @@
 import {mkdirSync,openSync,closeSync,writeFileSync,renameSync,fsyncSync,readdirSync,realpathSync,existsSync,lstatSync} from 'node:fs';
-import {dirname,isAbsolute,join,resolve,relative} from 'node:path';
+import {dirname,isAbsolute,join,resolve,relative,sep} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {privatePath,privateRead,privateLease} from '../standalone/workspace.js';
 import {fail} from '../standalone/types.js';
@@ -17,7 +17,7 @@ export function createPrivateRoot(path:string):string{
   privatePath(root,true);return root;
 }
 export function assertSeparate(a:string,b:string):void{
-  const inside=(x:string,y:string)=>{const r=relative(x,y);return !r||(!r.startsWith('..')&&!isAbsolute(r));};
+  const inside=(x:string,y:string)=>{const r=relative(x,y);return !r||(r!=='..'&&!r.startsWith('..'+sep)&&!isAbsolute(r));};
   if(inside(a,b)||inside(b,a))fail('UNSAFE_PATH','Installation, runtime and workspace roots must be separate');
 }
 export function writePrivate(path:string,value:unknown,replace=false):void{

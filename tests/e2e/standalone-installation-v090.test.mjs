@@ -69,6 +69,14 @@ test('installed operator creates isolated exact setup and private plugin without
   const alias=join(base,'runtime-alias');symlinkSync(runtimeRoot,alias);
   assert.throws(()=>prepareInstallation({...f.input,root:join(alias,'nested-installation')}),{code:'UNSAFE_PATH'});
   assert.equal(existsSync(join(runtimeRoot,'nested-installation')),false);
+  for(const parent of [runtimeRoot,f.input.workspaceRoot]){
+    const nested=join(parent,'..installation');
+    assert.throws(()=>prepareInstallation({...f.input,root:nested}),{code:'UNSAFE_PATH'});
+    assert.equal(existsSync(nested),false,'Double-dot-prefixed child names remain inside their parent');
+  }
+  const nestedState=join(runtimeRoot,'..workspace');
+  assert.throws(()=>prepareInstallation({...f.input,root:join(base,'new-owner'),workspaceRoot:nestedState}),{code:'UNSAFE_PATH'});
+  assert.equal(existsSync(nestedState),false);
   // Resume an interrupted final manifest write against the original exact workspace identity.
   rmSync(join(f.input.root,'installation.json'));
   assert.deepEqual(prepareInstallation(f.input),f.installation);

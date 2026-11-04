@@ -4,6 +4,33 @@ The installed operator can bind already provisioned Java DL and Python SHACL exe
 
 The operation verifies selected installed components. It does not download a JDK/Python runtime, run Maven/pip, build a worker from source, replace an interpreter or infer a component's Release identity from its filename. Complete component distribution and provisioning remain release obligations. Development toolchains must be labeled as such; source test preparation is not evidence of a published installer.
 
+## Inspect a distribution candidate
+
+The installed operator now has a read-only `distribution-inspect --input ABS_JSON --json` command. It selects an exact manifest from the executing product's compiled catalog and verifies the local artifact bytes. A user-provided manifest, digest or environment variable cannot replace that catalog. The initial `linux-arm64-temurin21-pbs20260211-candidate1` entry is experimental and is not a published distribution or supported-platform declaration.
+
+The input uses this exact shape, with absolute canonical paths substituted for every `ABS_*` value:
+
+```json
+{
+  "schema": "ontology-distribution-inspect-input/v1",
+  "bundleId": "linux-arm64-temurin21-pbs20260211-candidate1",
+  "bundleRoot": "ABS_PRIVATE_ARTIFACT_DIRECTORY",
+  "runtimeRoot": "ABS_INSTALLED_NPM_RUNTIME",
+  "runtimeDigest": "sha256:EXACT_RUNTIME_DIGEST",
+  "toolRoot": "ABS_NEW_TOOL_DIRECTORY",
+  "installationRoot": "ABS_SELECTED_INSTALLATION",
+  "workspaceRoot": "ABS_SELECTED_WORKSPACE"
+}
+```
+
+Run the command from that exact installed runtime. Keep the artifact directory private and include exactly the eleven flat files named in the packaged `governance/distribution-linux-arm64-v090.json`. The selected bundle includes the prebuilt DL payload, SHACL adapter, Java runtime/source/metadata, Python runtime/build material and pinned wheel payload. It contains no workspace or credentials. Roots must be separate; planned destination parents must already exist and be private. Inspection does not create them.
+
+The report binds the runtime/Node and raw manifest identities, observed artifact hashes, declared execution platform, packaged worker/lock compatibility, proposed four component roots and a fresh capacity observation. `PLAN_VERIFIED` means these inspection conditions hold. `BLOCKED` lists a platform mismatch, package incompatibility, an occupied tool destination insufficient byte capacity or a reported inode shortage. Malformed manifests, unexpected files, changed bytes, unsafe files and observed filesystem races produce structured errors. An unknown catalog ID returns `NO_DISTRIBUTION_CANDIDATE`.
+
+Limits are 256 KiB of manifest data, 64 artifacts, 256 MiB per artifact and 768 MiB of artifact bytes. Hashing uses 64 KiB chunks and checks a 30-second read budget between chunks; this is not an operating-system deadline for a stalled filesystem call. The space estimate includes two declared payload copies, filesystem rounding and a 16 MiB control allowance. It excludes acquisition storage, historical generations, separate Node/product runtime and archival source/notice storage. The report records free inodes when the filesystem reports a positive inode pool; unknown inode capacity remains explicit and does not establish sufficient inode space. Future preparation must inspect the full applicable peak again.
+
+The inspector does not expand archives, generate `pyvenv.cfg`, verify ABI or systemd, execute tools, bind them, start the service or connect the Host. Its `artifactBytesVerified` fact is separate from `expandedInventoryObserved`, `relocationVerified`, `loadabilityVerified`, `resourceBackendVerified` and `toolsBound`, which remain false. Python final-path assembly is explicitly required. Source/notice references preserve selected materials; their presence does not establish redistribution sufficiency or reproducible-build provenance. Legal review and product acceptance remain `NOT_EVALUATED`. Inspection reports are historical observations, not leases or permission to perform later writes.
+
 ## Bind and inspect
 
 Prepare an independent installation using the [standalone operator](standalone-v090.md). Obtain the exact absolute private toolchain manifest paths and SHA-256 identities from the selected provisioned artifacts. The Python manifest must use the virtual environment's executable path; resolving it to the underlying interpreter loses the environment's packages. Keep credentials and private paths out of published assets.
