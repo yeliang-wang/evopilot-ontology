@@ -3,7 +3,7 @@ import {join,dirname} from 'node:path';
 import {createHash} from 'node:crypto';
 import type {BigIntStats} from 'node:fs';
 import type {Installation} from './manager.js';
-import {privatePath,privateRead,MAINTENANCE_FILE} from '../standalone/workspace.js';
+import {privatePath,privateRead,MAINTENANCE_FILE,RESTORE_ACTIVATION_BARRIER} from '../standalone/workspace.js';
 import {outsideSource} from './files.js';
 import {workerFilePresent} from './worker-archives.js';
 import {exact,id,digest} from '../standalone/validation.js';
@@ -28,10 +28,11 @@ function fileHash(path:string):{bytes:number;digest:string} {
     return {bytes,digest:'sha256:'+h.digest('hex')};
   }finally{closeSync(fd);}
 }
-const excluded=(scope:BackupEntry['scope'],path:string)=>scope==='installation'?[BACKUP_RECORDS,'operator.sqlite','operator.sqlite-journal',MAINTENANCE_FILE,MAINTENANCE_FILE+'.pending','formal-work/'+MAINTENANCE_FILE,'formal-work/'+MAINTENANCE_FILE+'.pending'].includes(path):['writer.sqlite','writer.sqlite-journal',MAINTENANCE_FILE,MAINTENANCE_FILE+'.pending'].includes(path);
-export function backupInventory(i:Installation):BackupEntry[] {
+const excluded=(scope:BackupEntry['scope'],path:string)=>[RESTORE_ACTIVATION_BARRIER,RESTORE_ACTIVATION_BARRIER+'.pending',...(scope==='installation'?['formal-work/'+RESTORE_ACTIVATION_BARRIER,'formal-work/'+RESTORE_ACTIVATION_BARRIER+'.pending']:[])].includes(path)||(scope==='installation'?[BACKUP_RECORDS,'operator.sqlite','operator.sqlite-journal',MAINTENANCE_FILE,MAINTENANCE_FILE+'.pending','formal-work/'+MAINTENANCE_FILE,'formal-work/'+MAINTENANCE_FILE+'.pending'].includes(path):['writer.sqlite','writer.sqlite-journal',MAINTENANCE_FILE,MAINTENANCE_FILE+'.pending'].includes(path));
+export function backupInventory(i:Installation,scopes:readonly BackupEntry['scope'][]=['installation','workspace']):BackupEntry[] {
   const entries:BackupEntry[]=[];let bytes=0;
   for(const [scope,root] of [['installation',i.root],['workspace',i.workspaceRoot]] as const){
+    if(!scopes.includes(scope))continue;
     const anchor=backupNode(root);
     const visit=(directory:string,prefix:string,depth:number):void=>{
       if(depth>BACKUP_LIMITS.depth)fail('BACKUP_LIMIT','Owner directory nesting exceeds backup budget',409);

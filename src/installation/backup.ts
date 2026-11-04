@@ -58,7 +58,9 @@ function stopped(i:Installation):void {
   const run=currentRun(i);
   if(run&&!['STOPPED','FAILED'].includes(run.state)&&processPresent(run.pid)!==false)fail('INSTALLATION_RUNNING','Stop the exact owner before backup',409);
 }
-function makePlan(i:Installation,store:WorkspaceStore,backupRoot:string,priorBackups:BackupRecord[]):BackupPlan {
+/** Internal stopped-owner verification shared by backup and restore admission.
+ * The caller retains installation/workspace leases; this never copies files. */
+export function inspectStoppedOwnerBackupPlan(i:Installation,store:WorkspaceStore,backupRoot:string,priorBackups:BackupRecord[]):BackupPlan {
   verifyRuntime(i.runtime);stopped(i);
   const ledger=readToolchainLedger(i),binding=ledger.records.at(-1)??null,run=currentRun(i);
   if(run?.toolchainBindingDigest&&!ledger.records.some(r=>r.digest===run.toolchainBindingDigest))fail('TOOLCHAIN_BINDING_MISSING','Managed run requires its original tool history',409);
@@ -118,7 +120,7 @@ export function inspectInstallationBackup(path:string,backupRoot:string,requestI
     if(history.some(r=>r.state==='PENDING'))fail('BACKUP_PENDING','Resolve the original backup first',409);
     if(history.length>=BACKUP_LIMITS.requests)fail('BACKUP_LIMIT','Backup request history is full',409);
     requireMaintenanceAvailable(i.root);stopped(i);if(workerFilePresent(backupRoot))fail('BACKUP_EXISTS','A new backup requires an absent destination',409);
-    const store=openWorkspace(i.workspaceRoot,i);try{const plan=makePlan(i,store,backupRoot,history);return {status:'READY',requestId,report:plan as unknown as Json,reportDigest:backupHash(plan),authority:false};}finally{store.close();}
+    const store=openWorkspace(i.workspaceRoot,i);try{const plan=inspectStoppedOwnerBackupPlan(i,store,backupRoot,history);return {status:'READY',requestId,report:plan as unknown as Json,reportDigest:backupHash(plan),authority:false};}finally{store.close();}
   }finally{unlock();}
 }
 export function backupInstallation(path:string,input:Request):Json {
@@ -142,7 +144,7 @@ export function backupInstallation(path:string,input:Request):Json {
       else{
         if(!r&&workerFilePresent(input.backupRoot))fail('BACKUP_EXISTS','A new backup requires an absent destination',409);
         if(!r&&history.length>=BACKUP_LIMITS.requests)fail('BACKUP_LIMIT','Backup request history is full',409);
-        plan=makePlan(i,store,input.backupRoot,history.filter(v=>v.requestId!==input.requestId));
+        plan=inspectStoppedOwnerBackupPlan(i,store,input.backupRoot,history.filter(v=>v.requestId!==input.requestId));
         if(backupHash(plan)!==input.expectedReportDigest)fail('BACKUP_SOURCE_CHANGED','Source differs from the reviewed backup inventory',409);
       }
       if(!r){r=selected;save(i,r);}

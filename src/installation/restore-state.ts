@@ -12,7 +12,7 @@ import type {NodeIdentity} from './backup-contract.js';
 import {outsideSource,assertSeparate,operatorLock} from './files.js';
 import {fileDigest} from './runtime.js';
 import {workerFilePresent} from './worker-archives.js';
-import {FILES,STATE_VERSION,RESTORE_STAGE_BARRIER,privatePath,privateRead,privateLease} from '../standalone/workspace.js';
+import {FILES,STATE_VERSION,RESTORE_STAGE_BARRIER,RESTORE_ACTIVATION_BARRIER,privatePath,privateRead,privateLease} from '../standalone/workspace.js';
 import {exact,id,digest,timestamp,validateIdentity,validateCredentials,hashBytes} from '../standalone/validation.js';
 import {recoveryRequestPrefix} from '../standalone/recovery.js';
 import {fail,LIMITS} from '../standalone/types.js';
@@ -62,7 +62,8 @@ function sources<T>(input:RestoreStateInput,use:(snapshot:Source,retained:Source
     const expected=backupHash(schema(reference)),layout=layouts(reference),owner=a.stage.plan.backup.manifest.plan.installation;
     for(const s of [a,...(b?[b]:[])]){
       const i=s.stage.plan.backup.manifest.plan.installation;
-      for(const key of ['installationId','workspaceId','serviceId','root','workspaceRoot','projectId','principalId'] as const)if(i[key]!==owner[key])fail('RESTORE_OWNER_CONFLICT','Retained state belongs to another owner or original location',409);
+      for(const key of ['installationId','workspaceId','serviceId','root','workspaceRoot','projectId','principalId','createdAt'] as const)if(i[key]!==owner[key])fail('RESTORE_OWNER_CONFLICT','Retained state belongs to another owner or original location',409);
+      if(s.identity.createdAt!==a.identity.createdAt)fail('RESTORE_OWNER_CONFLICT','Immutable workspace creation identity differs',409);
       if(backupHash(schema(s.db))!==expected||s.db.prepare('PRAGMA quick_check').get()?.quick_check!=='ok'||s.db.prepare('PRAGMA foreign_key_check').get())fail('RESTORE_STATE','Unknown or inconsistent snapshot schema was preserved',409);
       if(s.db.prepare("SELECT id FROM native_reasoning_tasks WHERE state!='FINISHED' LIMIT 1").get())fail('TASK_RECOVERY_REQUIRED','Unfinished formal work cannot be silently restored or redispatched',409);
       const prefix='r'+input.generation+'.';
@@ -178,13 +179,13 @@ function checkLayout(p:StatePlan,source:Source,complete:boolean):void {
   const root=join(p.root,'workspace');if(workerFilePresent(root))visit(root,'',1);
 }
 interface PreparedFile {path:string;kind:'file'|'directory';node:NodeIdentity;bytes:number;digest:string|null;}
-function inventory(p:StatePlan):PreparedFile[]{
-  const root=join(p.root,'workspace'),result:PreparedFile[]=[];let total=0;
+function inventory(p:StatePlan,root=join(p.root,'workspace'),activating=false):PreparedFile[]{
+  const result:PreparedFile[]=[];let total=0;
   const visit=(dir:string,prefix:string,depth:number):void=>{
     if(depth>BACKUP_LIMITS.depth)fail('RESTORE_LIMIT','Prepared workspace depth limit',409);
     for(const name of readdirSync(dir).sort()){
       const relative=prefix?prefix+'/'+name:name,file=join(dir,name);
-      if(!prefix&&[RESTORE_STAGE_BARRIER,FILES.lease,FILES.lease+'-journal'].includes(name)){privatePath(file);if(lstatSync(file).size>65536)fail('RESTORE_STATE','Oversized private preparation control',409);continue;}
+      if(!prefix&&[RESTORE_STAGE_BARRIER,FILES.lease,FILES.lease+'-journal',...(activating?[RESTORE_ACTIVATION_BARRIER]:[])].includes(name)){privatePath(file);if(lstatSync(file).size>65536)fail('RESTORE_STATE','Oversized private preparation control',409);continue;}
       if(result.length>=BACKUP_LIMITS.entries)fail('RESTORE_LIMIT','Prepared file count limit',409);
       const directory=lstatSync(file).isDirectory(),node=backupNode(file,directory),bytes=directory?0:lstatSync(file).size;if(bytes>BACKUP_LIMITS.fileBytes||(total+=bytes)>BACKUP_LIMITS.totalBytes)fail('RESTORE_LIMIT','Prepared byte budget',409);
       const checksum=directory?null:fileDigest(file,BACKUP_LIMITS.fileBytes);
@@ -239,4 +240,17 @@ export function verifyPreparedRestoreState(root:string,expectedManifestDigest:st
   checkControlRoot(p,true);
   if(saved.manifestDigest!==expectedManifestDigest||backupHash(backupNode(root))!==backupHash(m.root)||backupHash(backupNode(join(root,'workspace')))!==backupHash(m.workspace)||backupHash(inventory(p))!==backupHash(m.files)||privateRead(join(root,'workspace',RESTORE_STAGE_BARRIER),65536)!==JSON.stringify(barrier(p))+'\n')fail('RESTORE_STATE','Prepared bytes, storage identity or activation barrier differs',409);
   return {status:'VERIFIED',receipt:saved.receipt,activation:'BLOCKED',authority:false};
+}
+/** Read-only operator proof for the same prepared inode before/after an atomic
+ * directory move. It cannot remove barriers or open a writable domain service. */
+export function readPreparedRestoreLocation(root:string,expectedManifestDigest:string,workspaceRoot:string) {
+  path(workspaceRoot);digest(expectedManifestDigest);const plan=readPlan(root),saved=completion(plan),m=saved.manifest as {[key:string]:Json};checkControlRoot(plan,true);
+  if(saved.manifestDigest!==expectedManifestDigest||backupHash(backupNode(root))!==backupHash(m.root)||backupHash(backupNode(workspaceRoot))!==backupHash(m.workspace)||backupHash(inventory(plan,workspaceRoot,true))!==backupHash(m.files)||privateRead(join(workspaceRoot,RESTORE_STAGE_BARRIER),65536)!==JSON.stringify(barrier(plan))+'\n')fail('RESTORE_STATE','Moved preparation differs from its exact retained state',409);
+  return {plan,manifest:saved.manifest,manifestDigest:saved.manifestDigest,receipt:saved.receipt,barrier:barrier(plan)};
+}
+export function withPreparedRestoreState<T>(root:string,expectedManifestDigest:string,use:(store:{db:DatabaseSync;identity:WorkspaceIdentity;guard:()=>void})=>T):T {
+  const workspace=join(root,'workspace'),saved=readPreparedRestoreLocation(root,expectedManifestDigest,workspace),file=join(workspace,FILES.db),raw=privateRead(join(workspace,FILES.identity),4096),identity:unknown=JSON.parse(raw);validateIdentity(identity);
+  const stamp=()=>{const s=lstatSync(file,{bigint:true});return [s.dev,s.ino,s.size,s.mtimeNs,s.ctimeNs,s.mode].join(':');},before=stamp(),db=new DatabaseSync(file,{readOnly:true});
+  const guard=()=>{privatePath(file);if(stamp()!==before||privateRead(join(workspace,FILES.identity),4096)!==raw)fail('RESTORE_STATE','Prepared read-only state changed',409);};
+  try{db.exec('PRAGMA trusted_schema=OFF;BEGIN');guard();const result=use({db,identity,guard});guard();readPreparedRestoreLocation(root,saved.manifestDigest,workspace);return result;}finally{db.close();}
 }

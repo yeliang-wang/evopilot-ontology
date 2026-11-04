@@ -3,11 +3,13 @@
 This is P4 development behavior, not a release, actual Host acceptance or a
 completed MAINT-01 result. Consistent stopped-owner **backup and byte verification**
 and protected restore candidate materialization are implemented. Internal inactive
-state preparation now reconciles selected history and credentials and installs
-request-generation guards. Owner activation, current-owner freshness verification,
-historical worker storage activation, upgrade, customization merge and selected
-test-asset reset remain required work. A verified backup or prepared database
-alone does not establish restore capability.
+state preparation reconciles selected history and credentials and installs
+request-generation guards. Retained-current restoration now verifies the stopped
+owner, activates reconciled drafts at the original workspace path and preserves
+current installation/worker storage. Missing-owner activation, copied historical
+worker storage lineage, upgrade, customization merge and selected test-asset reset
+remain required work. A verified backup or prepared database alone does not
+establish full restore capability.
 
 ## Protected restore candidate
 
@@ -79,10 +81,10 @@ The internal operator module `dist/installation/restore-state.js` prepares a
 separate, blocked workspace from a verified selected stage and, where available,
 a verified retained-current stage of the same owner and original locations. Its
 `inspectRestoreState`, `prepareRestoreState` and `verifyPreparedRestoreState`
-functions are preparation primitives; there is no public activation command yet.
-The future activation workflow must stop the current owner, bind its latest
-state and credentials, and prove that the retained stage still represents that
-owner. Merely supplying a stage as `retained` is not proof of freshness.
+functions are preparation primitives used by the retained-current activation
+workflow below. Activation binds the latest stopped state and credentials and
+proves that the retained stage still represents that owner. Merely supplying a
+stage as `retained` to the preparation primitive is not proof of freshness.
 
 Preparation preserves the exact original receipt, audit, intent, model, source,
 formal-task, review and immutable delivery rows from both sources. Same-key
@@ -136,11 +138,95 @@ completion replay returns the original receipt with `verification: NOT_RUN`.
 Independent verification checks the full prepared inventory without its source
 stages. Neither replay nor verification removes a barrier.
 
-Final activation must also retain worker evidence newer than the selected
-snapshot, resolve physical journal storage through explicit lineage, verify
-external dependencies and safely switch installation/workspace locations.
-Prepared database rows alone cannot establish those guarantees. All preparation
-receipts therefore retain `activation: BLOCKED`; MAINT-01 remains unevaluated.
+Retained-current activation keeps worker evidence newer than the selected
+snapshot at its original physical location, verifies external dependencies and
+safely switches the workspace. Missing-owner activation must additionally resolve
+copied physical journal storage through explicit lineage. Prepared database rows
+alone cannot establish those guarantees. All preparation receipts therefore
+retain `activation: BLOCKED`; MAINT-01 remains unevaluated.
+
+## Restore with the current owner retained
+
+This mode restores selected draft heads while preserving the latest stopped
+owner's immutable business history, decisions, grants, installation customization,
+runtime/toolchain bindings and worker journals. Both original owner directories
+must still exist. Missing directories are refused; the command does not silently
+substitute snapshot credentials or switch to a lost-owner policy.
+
+Stop the exact installed owner first. Materialize the selected historical backup
+with the staging commands above. Capture and stage a fresh backup of the stopped
+current owner after reconciling formal tasks. Use that stage as `--retained`.
+The activation operator compares its complete source byte/mode/inode inventory
+with the current owner, validates immutable owner identity and task/worker
+evidence, and verifies the pinned runtime and Java/Python toolchains. A newly
+changed grant, task, file or run after that snapshot requires a fresh retained
+snapshot and inspection; no stale source is silently adopted.
+
+```text
+evopilot-ontology restore-current-inspect --installation ABS_INSTALLATION --snapshot ABS_SELECTED_STAGE --snapshot-manifest SELECTED_STAGE_SHA256 --retained ABS_CURRENT_STAGE --retained-manifest CURRENT_STAGE_SHA256 --recovery-root ABS_NEW_RECOVERY --request-id RESTORE_ID --json
+evopilot-ontology restore-current-apply --installation ABS_INSTALLATION --snapshot ABS_SELECTED_STAGE --snapshot-manifest SELECTED_STAGE_SHA256 --retained ABS_CURRENT_STAGE --retained-manifest CURRENT_STAGE_SHA256 --recovery-root ABS_NEW_RECOVERY --request-id RESTORE_ID --expected-report REPORT_SHA256 --json
+evopilot-ontology start --installation ABS_INSTALLATION --json
+```
+
+The new private recovery directory must have a canonical private parent on the
+workspace filesystem, outside source and separate from installation, workspace,
+runtime and both stages. Moving a filesystem mount root is excluded. There must
+be room for the prepared workspace and bounded metadata; the old workspace is
+retained by rename, not deleted. Application is bound to the exact inspected
+report. Admission durably generates a fresh request generation once, freezes
+ordinary workspace/installation/worker writes and reserves 128 KiB of real
+completion storage. This reserve is bounded headroom, not protection from
+unrelated processes exhausting the filesystem.
+An interruption before a complete admission is retained leaves an unowned
+occupied directory. Preserve it and select a new recovery destination; a generic
+partial JSON prefix is not authority to adopt that directory.
+
+The operator reconciles state, proves all retained task references against
+current worker evidence, and records the exact prepared manifest. It then
+durably admits the directory switch, renames the old workspace to
+`ABS_NEW_RECOVERY/previous-workspace`, and moves the verified candidate to the
+original workspace path. Existing installation and worker files retain their
+original bytes and inodes. Original business receipts and archived journal
+identities are not rewritten. Each directory transition is synchronized and
+records its phase; another writer, unexpected directory, changed source or
+corrupt candidate prevents continuation.
+
+Keep the recovery directory private and retain it with its admission, phase
+records, original workspace and activation/release receipts. It is independent
+recovery evidence outside the active owner; a later ordinary owner backup does
+not implicitly collect that external directory. The preserved workspace remains
+blocked from service startup. The new workspace's barriers are released only
+after the cutover receipt is durable. Apply never starts the server; use the
+explicit installed `start` command, then read authenticated context for the new
+request prefix. Current revoked or expired grants remain unusable. Do not use
+the prefix to relabel old uncertain work as a new request.
+
+After a process interruption, repeat the exact apply command. Before switch
+admission it rechecks current state and resumes the same candidate. After switch
+admission it verifies the recorded old/new physical directories and continues
+forward. An interruption between renames leaves the installation blocked;
+absence of the workspace at that phase does not mean it should be initialized.
+Once prepared state and the switch intent are durable, resuming the switch does
+not require the source stages to remain available. Unknown replacement material
+is preserved rather than overwritten. A committed cutover with pending barrier
+release reports `CUTOVER_COMMITTED`; exact retry completes matching cleanup.
+Independent inspection reports phase evidence with `verification: NOT_RUN`.
+
+Before switch admission, an explicitly abandoned attempt can release its owned
+barriers while retaining all partial candidate files:
+
+```text
+evopilot-ontology restore-current-abort --recovery-root ABS_RECOVERY --request-id RESTORE_ID --expected-report REPORT_SHA256 --json
+```
+
+Abort refuses an admitted directory switch. Resume that switch instead of
+rolling back potentially visible new state. An aborted request cannot be reused.
+Terminal apply/abort replay returns its original receipt with `verification:
+NOT_RUN`; after completed barrier release it is independent of source stages or
+the owner's current location and can be read while the service runs. It does not
+attest current file integrity or undo subsequent work. Foreign markers are never
+removed as owned cleanup. Missing-owner recovery and copied worker lineage still
+need separate actual activation/fault evidence before full MAINT-01 acceptance.
 
 ## Cold backup workflow
 
@@ -316,3 +402,20 @@ during post-commit copying. Corrupt prefixes must remain unchanged and fail;
 only explicit fixture repair permits that test to resume. These checks leave
 the original owner unchanged and the candidate inactive, and do not establish
 current-owner freshness, activation, actual Codex Host acceptance or MAINT-01.
+
+`restore-activation-v090.test.mjs` additionally exercises the actual installed
+retained-current commands, a restarted service handling new requests, repeated
+activation, stale-source refusal, original-root preservation and real SIGKILL
+during copying and both directory transitions. Actual Java/Python tasks, archived
+worker references and new post-activation formal work are checked. Terminal
+cleanup metadata fixtures are explicitly synthetic and separate from actual
+killed-process evidence. These are owning product/installed-service checks;
+they do not establish missing-owner activation or an actual Codex Host journey.
+
+The Linux `tests/acceptance/v090/restore-activation-faults.mjs` collector uses a
+separate owned 128 MiB tmpfs. It checks exact retry at zero free bytes, explicit
+pre-switch abort using reserved completion space, and a real post-rename SIGKILL
+followed by continuation without source stages. It also starts an installed
+restored service, executes new Java/Python work under systemd and maintains the
+original and new task evidence. Fault fixtures are synthetic private owners,
+not production workspaces or Codex Host acceptance.

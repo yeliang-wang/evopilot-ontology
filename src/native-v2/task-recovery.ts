@@ -9,12 +9,13 @@ import {shaclIdentities} from './shacl-request.js';
 import type {ValidationPlan} from './validation-runner.js';
 
 type Row=Record<string,unknown>;
+type EvidenceStore=Pick<WorkspaceStore,'db'|'identity'|'guard'>;
 const sha=(value:unknown)=>hash(value as Json);
-function row(store:WorkspaceStore,projectId:string,taskId:string):Row {
+function row(store:EvidenceStore,projectId:string,taskId:string):Row {
   id(projectId);id(taskId);store.guard();const r=store.db.prepare('SELECT * FROM native_reasoning_tasks WHERE project_id=? AND id=?').get(projectId,taskId);
   if(!r)fail('NOT_FOUND','Formal task is absent in selected project',404);return r;
 }
-function events(store:WorkspaceStore,taskId:string):{kind:string;detail:unknown;digest:string}[]{
+function events(store:EvidenceStore,taskId:string):{kind:string;detail:unknown;digest:string}[]{
   const rows=store.db.prepare('SELECT * FROM native_reasoning_events WHERE task_id=? ORDER BY sequence LIMIT 1025').all(taskId);
   if(!rows.length||rows.length>1024)fail('RECOVERY_EVIDENCE_INVALID','Task event history is missing or exceeds its budget',409);
   let previous:string|null=null;
@@ -24,7 +25,7 @@ function events(store:WorkspaceStore,taskId:string):{kind:string;detail:unknown;
     previous=String(r.digest);return {kind:String(r.event),detail:document.detail,digest:previous};
   });
 }
-function reportFor(store:WorkspaceStore,r:Row,roots:string[]){
+function reportFor(store:EvidenceStore,r:Row,roots:string[]){
   const history=events(store,String(r.id)),queued=history[0],blockers:string[]=[],attempts:Json[]=[];
   if(queued.kind!=='QUEUED'||!queued.detail||typeof queued.detail!=='object'||Array.isArray(queued.detail))fail('RECOVERY_EVIDENCE_INVALID','Initial queue identity is missing',409);
   const q=queued.detail as Row;
@@ -78,7 +79,7 @@ export function inspectTaskRecovery(store:WorkspaceStore,projectId:string,taskId
   const report=reportFor(store,row(store,projectId,taskId),roots);store.guard();return {report,reportDigest:sha(report)};
 }
 /** Completed business evidence is read-only; cleanup never changes the result. */
-export function completedTaskWorkerEvidence(store:WorkspaceStore,projectId:string,taskId:string,roots:string[]) {
+export function completedTaskWorkerEvidence(store:EvidenceStore,projectId:string,taskId:string,roots:string[]) {
   const r=row(store,projectId,taskId),report=reportFor(store,r,roots),history=events(store,taskId),last=history.at(-1)!;
   if(r.state!=='FINISHED')fail('TASK_RECOVERY_REQUIRED','Resolve the original task before worker maintenance',409);
   if(last.kind!=='FINISHED'||(last.detail as Row)?.resultDigest!==r.result_digest||report.blockers.some(b=>b!=='TASK_ALREADY_FINISHED'))fail('RECOVERY_EVIDENCE_INVALID','Completed task and worker evidence do not establish cleanup eligibility',409);

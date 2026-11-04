@@ -9,7 +9,16 @@ export const STATE_VERSION = 14;
 export const FILES = Object.freeze({identity:'identity.json', credentials:'credentials.json', db:'ontology.sqlite', lease:'writer.sqlite'});
 export const MAINTENANCE_FILE='maintenance-barrier.json';
 export const RESTORE_STAGE_BARRIER='restore-stage-barrier.json';
+export const RESTORE_ACTIVATION_BARRIER='restore-activation-barrier.json';
 export interface MaintenancePermit {requestId:string;requestDigest:string;}
+export interface RestoreActivationBarrier extends MaintenancePermit {schema:'ontology-restore-activation-barrier/v1';root:string;recoveryRoot:string;installationId:string;workspaceId:string;serviceId:string;}
+export function readRestoreActivationBarrier(root:string):RestoreActivationBarrier|null {
+  const file=join(root,RESTORE_ACTIVATION_BARRIER);try{lstatSync(file);}catch(e){if((e as NodeJS.ErrnoException).code==='ENOENT')return null;throw e;}
+  const v:unknown=JSON.parse(privateRead(file,65536));exact(v,['schema','root','recoveryRoot','installationId','workspaceId','serviceId','requestId','requestDigest']);
+  for(const k of ['installationId','workspaceId','serviceId','requestId'])id(v[k]);digest(v.requestDigest);text(v.recoveryRoot,4096);
+  if(v.schema!=='ontology-restore-activation-barrier/v1'||v.root!==root||!isAbsolute(v.recoveryRoot))fail('RESTORE_ACTIVATION_EVIDENCE','Foreign restore activation barrier',409);
+  return v as unknown as RestoreActivationBarrier;
+}
 export interface MaintenanceBarrier extends MaintenancePermit {schema:'ontology-maintenance-barrier/v1';operation:'BACKUP';root:string;backupRoot:string;installationId:string;workspaceId:string;serviceId:string;reportDigest:string;}
 export function readMaintenanceBarrier(root:string):MaintenanceBarrier|null {
   const file=join(root,MAINTENANCE_FILE);try{lstatSync(file);}catch(e){if((e as NodeJS.ErrnoException).code==='ENOENT')return null;throw e;}
@@ -22,6 +31,8 @@ export function requireMaintenanceAvailable(root:string,permit?:MaintenancePermi
   // A materialized snapshot is not an activated owner. Even an interrupted
   // barrier write must fail closed before identity/credentials or tasks open.
   if(readdirSync(root).some(n=>n===RESTORE_STAGE_BARRIER||n===RESTORE_STAGE_BARRIER+'.pending'))fail('RESTORE_STAGED','Restore candidate is inactive; owner activation and request/history reconciliation are required',409);
+  const recovery=readRestoreActivationBarrier(root);
+  if(recovery?(!permit||recovery.requestId!==permit.requestId||recovery.requestDigest!==permit.requestDigest):readdirSync(root).includes(RESTORE_ACTIVATION_BARRIER+'.pending'))fail('RESTORE_ACTIVATION_PENDING','Resume the original owner restore before using this workspace or installation',409);
   const marker=readMaintenanceBarrier(root);
   if(marker&&(!permit||marker.requestId!==permit.requestId||marker.requestDigest!==permit.requestDigest))fail('BACKUP_PENDING','Resume or abort the original installation backup before using this owner',409);
 }
