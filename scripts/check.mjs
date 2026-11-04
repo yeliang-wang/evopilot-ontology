@@ -218,6 +218,7 @@ export async function checkSource() {
       if (path===resolve(ROOT,'src/standalone/mcp.ts') && ['@modelcontextprotocol/server','@modelcontextprotocol/node'].includes(specifier)) continue;
       if (path===resolve(ROOT,'src/standalone/bridge.ts') && ['@modelcontextprotocol/server','@modelcontextprotocol/server/stdio','@modelcontextprotocol/client'].includes(specifier)) continue;
       if (specifier === 'yaml' && (path.endsWith('/src/asset-sources.ts') || path === resolve(ROOT, 'src/import-operations.ts') || PRODUCT === 'ontology' && path.includes('/src/compat/'))) continue;
+      if (specifier === 'yaml' && ['src/installation/plugin-content.ts','src/installation/plugin-merge.ts'].some(p=>path===resolve(ROOT,p))) continue;
       if (PRODUCT === 'ontology' && path.includes('/src/compat/') && specifier === 'ajv/dist/2020.js') continue;
       if (path === resolve(ROOT,'src/native-v2/sources.ts') && ['ajv/dist/2020.js','yaml'].includes(specifier)) continue;
       if (['src/native-v2/models.ts','src/native-v2/shacl-request.ts','src/native-v2/expectations.ts','src/native-v2/projection.ts','src/native-v2/lifecycle-contract.ts'].some(p=>path===resolve(ROOT,p)) && specifier==='ajv/dist/2020.js') continue;

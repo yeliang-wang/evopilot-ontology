@@ -1,4 +1,4 @@
-import {existsSync,mkdirSync,realpathSync,mkdtempSync,chmodSync,writeFileSync,openSync,closeSync,readFileSync,readdirSync} from 'node:fs';
+import {existsSync,mkdirSync,realpathSync,mkdtempSync,chmodSync,writeFileSync,openSync,closeSync,readdirSync} from 'node:fs';
 import {join,dirname,basename,resolve,isAbsolute} from 'node:path';
 import {tmpdir} from 'node:os';
 import {randomUUID} from 'node:crypto';
@@ -17,6 +17,7 @@ import {operatorRequest,processPresent,validateRun} from './control.js';
 import type {RunRecord} from './control.js';
 import {readToolchainLedger,verifyManagedToolchains,recordToolchainBinding,toolchainRequestDigest,validateToolchainInput} from './toolchains.js';
 import type {BindToolchainsInput,ToolchainRecord} from './toolchains.js';
+import {pluginContent,PLUGIN_DIRECTORIES} from './plugin-content.js';
 
 export interface Installation {schema:'ontology-installation/v1';installationId:string;root:string;workspaceRoot:string;workspaceId:string;serviceId:string;projectId:string;principalId:string;credentialFile:string;runtime:RuntimeBinding;port:number;createdAt:string;}
 export interface PrepareInput{root:string;workspaceRoot:string;workspaceId:string;projectId:string;principalId:string;runtimeRoot:string;runtimeDigest:string;mode:'create'|'attach';serviceId?:string;port?:number;}
@@ -33,19 +34,15 @@ export function readInstallation(path:string):Installation{
   return value as unknown as Installation;
 }
 function plugin(installation:Installation):void{
-  const root=join(installation.root,'plugin'),skillRoot=join(root,'skills','evopilot-ontology-expert');
-  for(const dir of [root,join(root,'.codex-plugin'),join(root,'skills'),skillRoot,join(skillRoot,'agents')]){if(!existsSync(dir))mkdirSync(dir,{mode:0o700});privatePath(dir,true);}
-  const source=join(installation.runtime.packageRoot,'plugins/codex');
-  for(const [sourcePath,target] of [['.codex-plugin/plugin.json',join(root,'.codex-plugin/plugin.json')],['skills/evopilot-ontology-expert/agents/openai.yaml',join(skillRoot,'agents/openai.yaml')]]){
-    const value=readSource(join(source,sourcePath));
-    if(sourcePath.endsWith('.json'))writePrivate(target,JSON.parse(value),true);else writeText(target,value);
+  const root=join(installation.root,'plugin'),files=pluginContent(installation.runtime,installation.root);
+  verifyRuntime(installation.runtime);
+  for(const dir of [root,...PLUGIN_DIRECTORIES.map(p=>join(root,p))]){if(!existsSync(dir))mkdirSync(dir,{mode:0o700});privatePath(dir,true);}
+  for(const [path,bytes] of files){
+    const target=join(root,path);
+    if(path.endsWith('.json'))writePrivate(target,JSON.parse(bytes.toString('utf8')),true);else writeText(target,bytes);
   }
-  writeText(join(skillRoot,'SKILL.md'),readSource(join(source,'skills/evopilot-ontology-expert/SKILL.md')));
-  writePrivate(join(root,'.mcp.json'),{mcpServers:{'evopilot-ontology':{command:installation.runtime.nodePath,args:[join(installation.runtime.packageRoot,'dist/standalone/bridge.js'),'--connection',join(installation.root,'connection.json')],env:{NODE_OPTIONS:'',NODE_PATH:''}}}},true);
 }
-// Public package files may be world readable. Only generated bindings contain private locations.
-const readSource=(path:string)=>readFileSync(path,'utf8');
-function writeText(path:string,value:string):void{if(existsSync(path))privatePath(path);writeFileSync(path,value,{mode:0o600});chmodSync(path,0o600);}
+function writeText(path:string,value:Buffer):void{if(existsSync(path))privatePath(path);writeFileSync(path,value,{mode:0o600});chmodSync(path,0o600);}
 export function prepareInstallation(input:PrepareInput):Installation{
   id(input.workspaceId);id(input.projectId);id(input.principalId);digest(input.runtimeDigest);
   if(!['create','attach'].includes(input.mode))fail('INVALID_INPUT','Explicit create or attach mode required');

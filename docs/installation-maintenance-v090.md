@@ -549,3 +549,71 @@ in `restore-lost-faults.mjs` checks zero-free-space refusal/abort, post-rename
 continuation without the source stage, and an installed restarted service with
 archived, current and newly executed systemd-isolated formal tasks. These remain
 isolated product evidence, not actual Codex Host or complete MAINT-01 acceptance.
+
+## Preparing Expert customizations for a runtime upgrade
+
+The stopped-owner command below compares the verified installed template (base),
+the complete private plugin tree (current), and an explicitly selected, separate
+installed runtime (new). Initial installation and this comparison share the same
+canonical template generation, including the runtime-specific MCP binding.
+
+```bash
+evopilot-ontology upgrade-plugin-inspect \
+  --installation /absolute/private/installation \
+  --runtime-root /absolute/separate/installed-runtime \
+  --runtime-digest sha256:EXACT_SELECTED_RUNTIME_DIGEST \
+  --json
+```
+
+This is a preparation command. It neither activates the new runtime nor starts
+the service, changes workspace/credentials, writes plugin files, verifies the
+new formal toolchains, or admits an upgrade request. `MERGED` means only that a
+candidate plugin tree could be constructed. The report binds runtime identities,
+workspace identity, current physical tree, per-file base/current/new/output
+digests and preserved modes. It contains no file contents or credential values.
+An operator lease serializes preparation with other installation commands.
+
+Unchanged files retain exact bytes. Independent text edits merge by exact lines,
+preserving comments, CRLF and missing final newlines. JSON manifest/MCP edits
+merge by object member; arrays are atomic. A structured JSON merge may normalize
+formatting. Private files, binary content, executable modes and empty custom
+directories are retained. Symlinks, hardlinks, public permissions, file/directory
+collisions, invalid required configuration and changed managed launcher bindings
+cannot produce an applicable candidate. The owned command, arguments and cleared
+Node option variables must match the new runtime; unrelated private MCP settings
+and explicitly configured other servers can remain.
+
+Overlapping edits, competing insertions (including ambiguous insertion boundaries),
+delete/edit and add/add conflicts remain `CONFLICT`. Conflicts identify paths and
+line ranges or JSON pointers, without embedding private values. No conflict
+markers become executable configuration. The total tree is bounded to 1,024
+entries, depth 24, 16 MiB, and 1 MiB per file; automatic text comparison is bounded
+to 10,000 lines and four million LCS cells per comparison. Exceeding text merge
+complexity requires an explicit resolution rather than silently choosing a side.
+
+An optional `--resolutions /absolute/private/resolutions.json` selects a private
+document with the following structure. The three input digests come from the
+exact conflict report; use JSON `null` for an absent input. Each `file` names a
+private regular resolved file outside source, or is `null` for an explicit
+deletion. Required plugin resources cannot be deleted. Duplicate/unknown paths,
+stale digests and resolutions that break the owned launcher remain refused.
+
+```json
+{
+  "schema": "ontology-plugin-resolutions/v1",
+  "resolutions": [{
+    "path": "skills/evopilot-ontology-expert/SKILL.md",
+    "baseDigest": "sha256:EXACT_BASE_DIGEST",
+    "currentDigest": "sha256:EXACT_CURRENT_DIGEST",
+    "newDigest": "sha256:EXACT_NEW_DIGEST",
+    "file": "/absolute/private/reviewed-SKILL.md"
+  }]
+}
+```
+
+The caller must inspect a fresh plan after editing any input. Durable upgrade
+admission, immutable runtime/toolchain lineage, activation, interruption and
+storage-failure recovery remain separate implementation obligations. These
+preparation checks do not establish MAINT-02, actual Codex Host behavior or v0.9
+acceptance. Installed source tests use two isolated offline installs and clearly
+labeled synthetic upstream templates; they do not impersonate a released upgrade.
