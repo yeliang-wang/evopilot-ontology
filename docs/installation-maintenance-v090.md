@@ -203,6 +203,8 @@ delivery. Restoring authoritative ordinary v1 state uses a null floor and adds
 no loss-related review requirement. Revoking a reviewer's credential prevents
 future authenticated actions; it does not revoke a recorded business decision.
 
+After the restored managed owner has started, `reviewer-connection --installation ABS --grant-id ID --json` creates or refreshes its private reviewer connection from the current grant, original issuance and authenticated live run. A retained-current restore can reuse a still-valid retained grant; a lost-owner restore cannot revive a revoked reviewer merely because its old issuance/token/connection files remain. Issue a new reviewer grant while stopped using the recovery request namespace, start the owner, then prepare that new connection. Missing issuance or token evidence is a conflict, not permission to regenerate a credential. The derived connection retains the existing `ontology-connection/v1` schema and original credential-file reference; it changes no recovery identity, decision floor, business receipt or authority. Refresh it after every restart because the bound loopback port can change. Existing author connections are not replaced, and connection preparation is not semantic approval.
+
 Legacy completed v2 recovery identities without a floor remain readable. Their
 new deliveries require an exact review receipt/audit in the current recovery
 generation. A subsequent restore preserves their history and binds the highest
