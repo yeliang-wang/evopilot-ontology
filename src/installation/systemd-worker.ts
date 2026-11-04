@@ -1,6 +1,6 @@
 import {execFileSync} from 'node:child_process';
 import {mkdirSync,readdirSync,lstatSync,readFileSync,writeFileSync,statfsSync,openSync,closeSync,fstatSync,constants} from 'node:fs';
-import {join} from 'node:path';
+import {isAbsolute,join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {setTimeout as delay} from 'node:timers/promises';
 import {privatePath,privateRead} from '../standalone/workspace.js';
@@ -19,7 +19,7 @@ const fileSizeLimit=512*1024*1024;
 const sha=(value:unknown)=>hash(value as Json);
 type Properties=Record<string,{type:string;data:unknown}>;
 const jobRoot=(r:WorkerReference)=>join(r.root,'unit-jobs',r.attemptId);
-function definition(reference:WorkerReference,plan:WorkerPlan){
+function definition(reference:WorkerReference,plan:WorkerPlan,workerLauncher=launcher){
   const selection=plan.systemd;if(!selection)fail('WORKER_PROTOCOL','Bound systemd plan required');
   const dir=jobRoot(reference),escape=(s:string)=>s.replaceAll('%','%%');
   const properties={Description:'Ontology worker '+reference.intentDigest+' '+reference.journalId,
@@ -32,8 +32,34 @@ function definition(reference:WorkerReference,plan:WorkerPlan){
   // Business event canonicalization can reorder keys. Reconstruct the original
   // createWorkerAttempt field order so recovery matches the actual argv bytes.
   const argument=JSON.stringify({root:reference.root,journalId:reference.journalId,attemptId:reference.attemptId,intentDigest:reference.intentDigest});
-  const argv=[selection.binding.node.path,launcher,'--systemd',argument];
+  const argv=[selection.binding.node.path,workerLauncher,'--systemd',argument];
   return {properties,argv,digest:sha({binding:selection.binding.digest,properties,argv})};
+}
+/** Internal pure identity check. The journal-authenticated unit digest and
+ * invocation, not a manager-supplied path, authorize a historical launcher.
+ * No historical executable is resolved, imported or run by this projection. */
+export function validateSystemdUnitDefinition(reference:WorkerReference,plan:WorkerPlan,retained:UnitRecord|null,commands:unknown,invocationBytes:unknown):{definition:ReturnType<typeof definition>;invocationId:string} {
+  const current=definition(reference,plan);
+  if(!Array.isArray(commands)||commands.length!==1||!Array.isArray(commands[0]))fail('WORKER_UNIT_CHANGED','Unit executable or arguments differ',409);
+  const command=commands[0],argv=command[1];
+  // ExecStart is the complete a(sasbttttuii) D-Bus value, including its
+  // ignore-failure flag and typed execution metadata, not an argv shorthand.
+  if(command.length!==10||command[0]!==current.argv[0]||command[2]!==false||
+    [3,4,5,6].some(n=>!Number.isSafeInteger(command[n])||command[n]<0)||
+    !Number.isInteger(command[7])||command[7]<0||command[7]>0xffffffff||
+    [8,9].some(n=>!Number.isInteger(command[n])||command[n]<-0x80000000||command[n]>0x7fffffff)||
+    !Array.isArray(argv)||argv.length!==4||argv.some(v=>typeof v!=='string'||v.includes('\0'))||
+    argv[0]!==current.argv[0]||argv[2]!==current.argv[2]||argv[3]!==current.argv[3]||
+    argv[1].length>4096||!isAbsolute(argv[1])||resolve(argv[1])!==argv[1])fail('WORKER_UNIT_CHANGED','Unit executable or arguments differ',409);
+  if(!Array.isArray(invocationBytes)||invocationBytes.length!==16||!invocationBytes.every(n=>Number.isInteger(n)&&n>=0&&n<=255))fail('WORKER_UNIT_CHANGED','Unit invocation identity unavailable',409);
+  const invocationId=Buffer.from(invocationBytes).toString('hex');
+  if(!retained){
+    if(sha(argv)!==sha(current.argv))fail('WORKER_UNIT_CHANGED','Unit executable or arguments differ',409);
+    return {definition:current,invocationId};
+  }
+  const original=definition(reference,plan,argv[1]);
+  if(retained.configurationDigest!==original.digest||retained.invocationId!==invocationId)fail('WORKER_UNIT_CHANGED','Original invocation was replaced',409);
+  return {definition:original,invocationId};
 }
 function properties(reference:WorkerReference,iface:string,path:string):Properties {
   const a=readWorkerAttempt(reference),b=a.intent.systemd!.binding;
@@ -54,13 +80,8 @@ function unitState(reference:WorkerReference){
   const check=(p:Properties,key:string,type:string,expected:unknown)=>{if(sha(value(p,key,type))!==sha(expected))fail('WORKER_UNIT_CHANGED','Selected unit property differs: '+key,409);};
   check(u,'Id','s',workerUnitName(reference));check(u,'Description','s',d.properties.Description);
   for(const [key,type,expected] of [['MemoryMax','t',2147483648],['MemorySwapMax','t',0],['TasksMax','t',128],['OOMPolicy','s','kill'],['RemainAfterExit','b',true],['Restart','s','no'],['KillMode','s','control-group'],['RuntimeMaxUSec','t',plan.timeoutMs*1000],['LimitFSIZE','t',fileSizeLimit],['NoNewPrivileges','b',true]] as const)check(s,key,type,expected);
-  const commands=value(s,'ExecStart','a(sasbttttuii)');
-  if(!Array.isArray(commands)||commands.length!==1||!Array.isArray(commands[0])||commands[0][0]!==b.node.path||sha(commands[0][1])!==sha(d.argv))fail('WORKER_UNIT_CHANGED','Unit executable or arguments differ',409);
-  const bytes=value(u,'InvocationID','ay');
-  if(!Array.isArray(bytes)||bytes.length!==16||!bytes.every(n=>Number.isInteger(n)&&n>=0&&n<=255))fail('WORKER_UNIT_CHANGED','Unit invocation identity unavailable',409);
-  const invocationId=Buffer.from(bytes).toString('hex');
-  if(a.unit&&(a.unit.invocationId!==invocationId||a.unit.configurationDigest!==d.digest))fail('WORKER_UNIT_CHANGED','Original invocation was replaced',409);
-  return {attempt:a,definition:d,u,s,invocationId};
+  const observed=validateSystemdUnitDefinition(reference,plan,a.unit,value(s,'ExecStart','a(sasbttttuii)'),value(u,'InvocationID','ay'));
+  return {attempt:a,definition:observed.definition,u,s,invocationId:observed.invocationId};
 }
 /** Called inside the actual manager-created supervisor, before engine dispatch. */
 export function admittingSystemdUnit(reference:WorkerReference):UnitRecord {

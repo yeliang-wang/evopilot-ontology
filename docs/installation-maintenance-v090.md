@@ -765,6 +765,25 @@ without asserting current service health. Status reports
 `productAcceptance: NOT_EVALUATED` and `authority: false`. Contradictory, orphaned,
 changed or unsafe control material is preserved and refused.
 
+An actual local filesystem `ENOSPC` failure is reported as `STORAGE_FULL` with a
+fixed message that does not expose filesystem paths. Existing typed product errors
+keep their own codes. A storage error does not imply that the operation made no
+writes: inspect retained state and available space before selecting recovery.
+The CLI does not automatically retry, abort or roll back the request.
+
+The development probe `tests/faults/upgrade-enospc.mjs` exercises installed public
+upgrade commands on synthetic owners in a separately owned Linux tmpfs, bounded
+to 128 MiB. Its fixture marker, mount identity, permissions and capacity must be
+verified before filling that volume. Installed runtimes, tools and evidence stay
+outside the fault volume. The probe distinguishes an observed filler-write
+`ENOSPC`, zero available blocks, and the product command's error; these are separate
+observations. Process interruption counts only when the child actually exits by
+`SIGKILL` and retained post-exit records establish the interrupted phase.
+
+This probe is development evidence. It does not replace the MAINT acceptance
+collector, the standards-first formal evaluation sequence, actual Codex Host
+journeys, or verification on other filesystems and platforms.
+
 
 ## Durable upgrade admission and pre-switch abort
 
@@ -951,6 +970,16 @@ digest and request bindings without requiring the external candidate runtime or
 stage directory to remain available. It does not establish current runtime health
 or the continuing availability of retained originals.
 
+Retained systemd workers can have been launched by an earlier installed runtime.
+For an already admitted unit, maintenance and recovery verify its exact original
+configuration digest and InvocationID, including the original supervisor path,
+Node executable and reference arguments. They do not substitute the calling CLI's
+supervisor path, import or execute the historical supervisor, or infer a new launch
+authorization from manager observations. Before a unit has an admitted record,
+the supervisor path must still match the current runtime. Existing boot, resource,
+process and cgroup checks remain required. An interrupted maintenance request
+resumes its original request ID and inspected report digest.
+
 The public activation CLI delegates to this contract and does not automatically
 start the service. Installed development verification covers actual
 restart with the selected runtime and binding, actual `SIGKILL` recovery, and
@@ -958,7 +987,9 @@ preservation of a read-only original worker directory during a first binding.
 It also exercises exact partial-record recovery, overlapping-maintenance refusal,
 changed evidence, terminal history and backup/restore materialization.
 Reconstructed transitional-mode and interrupted-rename cases are labeled synthetic
-and remain distinct from actual process restart and `SIGKILL` scenarios. ENOSPC
-recovery, Linux parity, actual Codex Host journeys and full MAINT-02 acceptance
-remain unproven. Code implementation and any later source-test results do not
-approve product acceptance or release.
+and remain distinct from actual process restart and `SIGKILL` scenarios. Bounded
+Linux ENOSPC and process-interruption checks use the development probe described
+above; only its observed failure boundaries count. Exhaustive fault coverage,
+other filesystems/platforms, actual Codex Host journeys and full MAINT-02 acceptance
+remain unproven. Code implementation and development results do not approve
+product acceptance or release.

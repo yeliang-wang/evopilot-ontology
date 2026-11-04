@@ -117,6 +117,9 @@ test('cold backup control cleanup preserves active, foreign, oversized and redir
 
 test('missing or changed exit proof and stale inspection cannot clear an interrupted task',async t=>{
   const f=fixture(t,'missing-proof'),run=await f.start(),p=await seed(f),started=await p.write('reasoning.start',{assetId:'services',modelDigest:p.modelDigest,task:{kind:'consistency'}},'original'),taskId=started.receipt.result.taskId,a=await active(f,taskId,'dl',true);await killOwner(f,run,a);
+  // The committed outcome is visible before the supervisor finishes its final
+  // journal read. Let that exact producer exit before corrupting its evidence.
+  await until(()=>processPresent(a.supervisor.pid)===false);
   const db=new DatabaseSync(join(f.workRoot,'worker-journal.sqlite')),saved=db.prepare('SELECT outcome,outcome_digest FROM attempts WHERE id=?').get(a.reference.attemptId);
   try{
     db.prepare('UPDATE attempts SET outcome=NULL,outcome_digest=NULL WHERE id=?').run(a.reference.attemptId);
@@ -124,7 +127,7 @@ test('missing or changed exit proof and stale inspection cannot clear an interru
     assert.throws(()=>reconcileInstallationTask(f.setup.root,recoveryInput(taskId,missing.reportDigest)),{code:'TASK_RECOVERY_REQUIRED'});
     db.prepare('UPDATE attempts SET outcome=?,outcome_digest=? WHERE id=?').run(saved.outcome,hash('corrupt'),a.reference.attemptId);
     assert.equal(inspectInstallationTaskRecovery(f.setup.root,'demo',taskId).report.ready,false);
-  }finally{db.prepare('UPDATE attempts SET outcome=?,outcome_digest=? WHERE id=?').run(saved.outcome,saved.outcome_digest,a.reference.attemptId);db.close();}
+  }finally{try{db.prepare('UPDATE attempts SET outcome=?,outcome_digest=? WHERE id=?').run(saved.outcome,saved.outcome_digest,a.reference.attemptId);}finally{db.close();}}
   assert.throws(()=>reconcileInstallationTask(f.setup.root,recoveryInput(taskId,hash('stale'))),{code:'RECOVERY_CONFLICT'});
   const current=inspectInstallationTaskRecovery(f.setup.root,'demo',taskId);assert.equal(current.report.ready,true);assert.equal(current.report.state,'RUNNING');
   assert.throws(()=>inspectInstallationTaskRecovery(f.setup.root,'foreign',taskId),{code:'NOT_FOUND'});

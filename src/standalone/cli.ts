@@ -205,7 +205,7 @@ export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(realpathSync(process.argv[1])).href){
   main(process.argv.slice(2),result=>process.stdout.write(JSON.stringify({ok:true,result})+'\n')).catch(e=>{
-    const error=e instanceof ServiceError?{code:e.code,message:e.message}:{code:'LOCAL_FAILURE',message:'Inspect selected paths and service state; no implicit repair or redispatch'};
+    const error=e instanceof ServiceError?{code:e.code,message:e.message}:e&&typeof e==='object'&&e.code==='ENOSPC'?{code:'STORAGE_FULL',message:'Local storage is full; inspect retained operation state and available space before selecting recovery.'}:{code:'LOCAL_FAILURE',message:'Inspect selected paths and service state; no implicit repair or redispatch'};
     process.stdout.write(JSON.stringify({ok:false,error})+'\n');process.exitCode=1;
   });
 }
