@@ -3,6 +3,8 @@ import {isAbsolute,join,resolve,dirname} from 'node:path';
 import type {Stats} from 'node:fs';
 import {readInstallation,currentRun} from './manager.js';
 import {inspectRuntime,verifyRuntime} from './runtime.js';
+import type {RuntimeBinding} from './runtime.js';
+import type {Installation} from './installation-contract.js';
 import {operatorLock,assertSeparate,outsideSource} from './files.js';
 import {processPresent} from './control.js';
 import {requireSelectedRuntimeLocation} from './runtime-history.js';
@@ -17,7 +19,7 @@ import type {PluginResolution} from './plugin-merge.js';
 interface PluginNode {path:string;kind:'file'|'directory';mode:number;device:number;inode:number;bytes:number;digest:string|null;}
 interface PluginSnapshot {entries:PluginNode[];files:Map<string,Buffer>;}
 export interface PluginUpgradeInput {runtimeRoot:string;runtimeDigest:string;resolutionsFile?:string;}
-export interface PluginUpgradePreparation {report:Json;reportDigest:string;files:Map<string,Buffer>;}
+export interface PluginUpgradePreparation {report:Json;reportDigest:string;files:Map<string,Buffer>;runtime:RuntimeBinding;}
 function safeRelative(path:string):void {
   if(!path||path.length>4096||path.split('/').some(p=>!p||p==='.'||p==='..')||/[\x00-\x1f\x7f\\]/.test(path)||isAbsolute(path))fail('PLUGIN_PATH','Invalid relative plugin entry',409);
 }
@@ -73,10 +75,13 @@ function resolutions(file:string|undefined):PluginResolution[] {
 /** Preparation only. Runtime activation will have to revalidate this exact
  * report and stage its private buffers under the admitted upgrade transaction. */
 export function preparePluginUpgrade(path:string,input:PluginUpgradeInput):PluginUpgradePreparation {
+  const i=readInstallation(path),unlock=operatorLock(i.root);
+  try{return preparePluginUpgradeLocked(i,input);}finally{unlock();}
+}
+/** Internal composition entry: caller holds the exact installation lease. */
+export function preparePluginUpgradeLocked(i:Installation,input:PluginUpgradeInput):PluginUpgradePreparation {
   exact(input,['runtimeRoot','runtimeDigest'],['resolutionsFile']);digest(input.runtimeDigest);
   if(typeof input.runtimeRoot!=='string'||input.resolutionsFile!==undefined&&typeof input.resolutionsFile!=='string')fail('INVALID_INPUT','Explicit runtime and optional private resolution file required');
-  const i=readInstallation(path),unlock=operatorLock(i.root);
-  try{
     requireMaintenanceAvailable(i.root);requireMaintenanceAvailable(i.workspaceRoot);
     const run=currentRun(i);if(run&&!['STOPPED','FAILED'].includes(run.state)&&processPresent(run.pid)!==false)fail('INSTALLATION_RUNNING','Stop the exact owner before preparing a plugin upgrade',409);
     const identity:unknown=JSON.parse(privateRead(join(i.workspaceRoot,'identity.json'),4096));validateIdentity(identity);
@@ -103,8 +108,7 @@ export function preparePluginUpgrade(path:string,input:PluginUpgradeInput):Plugi
       files:merge.report as unknown as Json,directories:directories.map(p=>({path:p,mode:current.entries.find(e=>e.path===p&&e.kind==='directory')?.mode??0o700})),
       fileModes:[...merge.files.keys()].sort().map(p=>({path:p,mode:current.entries.find(e=>e.path===p&&e.kind==='file')?.mode??0o600})),treeConflicts,
       limits:{...PLUGIN_LIMITS},runtimeActivated:false,serviceStarted:false,toolchainsVerified:false,productAcceptance:'NOT_EVALUATED',authority:false};
-    return {report,reportDigest:hash(report),files:merge.files};
-  }finally{unlock();}
+    return {report,reportDigest:hash(report),files:merge.files,runtime:next};
 }
 export function inspectPluginUpgrade(path:string,input:PluginUpgradeInput):Json {
   const {report,reportDigest}=preparePluginUpgrade(path,input);return {report,reportDigest,authority:false};

@@ -665,3 +665,38 @@ exercise actual installed startup, formal Java/Python validation, historical
 receipt readback and lost/current-owner restoration. Such fixtures do not replace
 actual upgrade admission, interrupted activation, disk-full recovery, Codex Host
 journeys or MAINT-02 acceptance.
+
+## Inspecting the complete upgrade selection
+
+`evopilot-ontology upgrade-inspect --installation ABS --input ABS_JSON --json`
+now combines the candidate runtime, private plugin merge, stopped workspace
+snapshot and actual toolchain verification under the installation and workspace
+leases. The private input contains `requestId`, `upgradeRoot`, `runtimeRoot`,
+`runtimeDigest`, `toolchains` and optional `resolutionsFile`. `toolchains` contains
+the existing `dl`/`shacl` selections and optional exact `systemd` binding. Each tool
+selection names `toolchainFile` and `toolchainDigest`.
+
+The upgrade destination must be absent and a canonical sibling of the installation
+under its private parent, on the same filesystem. This reserves the location in
+the inspected plan for later atomic rename operations; inspection creates no
+destination or transaction. Existing owner/package/tool roots remain protected.
+The request must be fresh for the current recovery generation and must not reuse
+a retained runtime or toolchain request. Resolve unfinished formal tasks before
+inspection. Current installation, workspace, credentials, delivered assets,
+plugin customizations, original receipts and formal-work ownership stay intact.
+
+The report has a deterministic digest. A later candidate preparation can require
+that exact digest and rejects changed owner history, plugin files or selections.
+`PLUGIN_CONFLICT` remains a reviewable report and cannot pass admission preparation.
+The merged private buffers are returned only to the internal transaction planner;
+the CLI reports identities and digests, not private file contents.
+
+Toolchain preparation returns stable proposed binding content without recording a
+timestamp, appending a receipt or creating `formal-work`. A real binding timestamp
+belongs to admission. An unconfigured installation may select verified tools or
+retain `toolchains: null`; the latter explicitly reports `toolchainsVerified: false`
+and establishes no formal reasoning readiness. Configured tools cannot be removed.
+
+This command prepares a complete upgrade selection. Durable admission, staging,
+activation, abort/resume and failure recovery still need implementation and actual
+installed verification. It does not apply the prepared report or satisfy MAINT-02.

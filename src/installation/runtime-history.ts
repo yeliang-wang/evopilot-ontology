@@ -65,10 +65,20 @@ export function requireSelectedRuntimeLocation(i:Installation,runtime:RuntimeBin
   for(const root of [i.root,i.workspaceRoot])assertSeparate(runtime.root,root);
   for(const prior of installationRuntimeBindings(i))if(runtimeBindingDigest(prior)!==runtimeBindingDigest(runtime))assertSeparate(runtime.root,prior.root);
 }
+/** A ready upgrade must be representable by the immutable history contract. */
+export function requireRuntimeTransitionCandidate(i:Installation,runtime:RuntimeBinding):void {
+  validateRuntimeBinding(runtime);
+  if(i.schema==='ontology-installation/v2'&&i.runtimeHistory.records.length>=RUNTIME_HISTORY_LIMIT)fail('RUNTIME_HISTORY_LIMIT','Runtime history count budget reached',409);
+  const selected=runtimeBindingDigest(runtime);
+  if(selected===runtimeBindingDigest(i.runtime))fail('RUNTIME_HISTORY','Candidate runtime is already selected',409);
+  for(const prior of installationRuntimeBindings(i))if(prior.digest===runtime.digest&&runtimeBindingDigest(prior)!==selected)fail('RUNTIME_HISTORY','One package digest cannot name different retained runtime or Node bindings',409);
+  requireSelectedRuntimeLocation(i,runtime);
+}
 /** Constructs a prospective immutable history record only. The upgrade owner
  * must durably stage/admit and activate this together with plugin/toolchains. */
 export function appendRuntimeHistory(i:Installation,setupDigest:string,input:RuntimeTransitionInput):Installation&{schema:'ontology-installation/v2'} {
   exact(input,['requestId','planDigest','runtime','previousToolchainBindingDigest','toolchainBindingDigest','pluginPlanDigest','recordedAt']);digest(setupDigest);
+  requireRuntimeTransitionCandidate(i,input.runtime);
   const history:RuntimeHistory=i.schema==='ontology-installation/v2'?structuredClone(i.runtimeHistory):{schema:'ontology-runtime-history/v1',initial:structuredClone(i.runtime),initialInstallationDigest:valueHash(i),setupDigest,records:[]};
   if(history.setupDigest!==setupDigest)fail('RUNTIME_HISTORY','Original setup bytes differ from retained history',409);
   if(history.records.length>=RUNTIME_HISTORY_LIMIT)fail('RUNTIME_HISTORY_LIMIT','Runtime history count budget reached',409);

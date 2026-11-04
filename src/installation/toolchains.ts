@@ -23,6 +23,7 @@ export interface ManagedToolchains {
 }
 export interface ToolchainRecord {digest:string;binding:ManagedToolchains;}
 interface Ledger {schema:'ontology-managed-toolchain-ledger/v1';installationId:string;records:ToolchainRecord[];}
+export type ToolchainBindingDraft=Omit<ManagedToolchains,'recordedAt'>;
 const LIMIT=128;
 function selection(value:unknown):asserts value is ToolSelection {
   exact(value,['toolchainFile','toolchainDigest']);digest(value.toolchainDigest);text(value.toolchainFile,4096);
@@ -111,17 +112,25 @@ export function verifyManagedToolchains(i:Installation,record:ToolchainRecord|nu
   const isolated=record.binding.systemd?{systemd:structuredClone(record.binding.systemd)}:{};
   return {reasoning:{toolchainFile:record.binding.dl.toolchainFile,workRoot,...isolated},validation:{toolchainFile:record.binding.shacl.toolchainFile,workRoot,...isolated}};
 }
-/** Caller holds installation and workspace leases, and has excluded unresolved tasks. */
-export function recordToolchainBinding(i:Installation,input:BindToolchainsInput,ledger:Ledger):ToolchainRecord {
+/** Caller holds installation/workspace leases and has verified the old ledger.
+ * This checks the candidate executors and constructs stable binding content;
+ * it neither creates formal-work nor writes a receipt or changes current tools. */
+export function prepareToolchainBinding(i:Installation,input:BindToolchainsInput,ledger:Ledger):ToolchainBindingDraft {
   validateToolchainInput(input);const previous=ledger.records.at(-1)?.digest??null;
+  if(ledger.installationId!==i.installationId)fail('TOOLCHAIN_BINDING_CORRUPT','Toolchain ledger belongs to another installation',409);
+  if(ledger.records.some(r=>r.binding.requestId===input.requestId))fail('REQUEST_CONFLICT','Toolchain request already has a retained receipt; reconcile it before preparing new work',409);
   if(previous!==input.previousBindingDigest)fail('TOOLCHAIN_BINDING_CONFLICT','Current toolchain binding changed; inspect its original receipt',409);
   if(ledger.records.length>=LIMIT)fail('TOOLCHAIN_BINDING_LIMIT','Retained operator binding history reached its fixed budget',409);
   verifySelections(i,input);const workRoot=join(i.root,'formal-work');
   // Existing directories must be empty or prove their original owner before
   // committing. Creation after the receipt is resumable by an explicit start.
   if(existsSync(workRoot)){privatePath(workRoot,true);if(readdirSync(workRoot).length)workDirectory(i,false);}
-  const binding:ManagedToolchains={schema:input.systemd?'ontology-managed-toolchain-binding/v2':'ontology-managed-toolchain-binding/v1',...(input.systemd?{systemd:structuredClone(input.systemd)}:{}),installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,runtimeDigest:i.runtime.digest,
-    requestId:input.requestId,requestDigest:toolchainRequestDigest(i,input),previousDigest:previous,dl:{...input.dl},shacl:{...input.shacl},workRoot,recordedAt:new Date().toISOString()};
+  return {schema:input.systemd?'ontology-managed-toolchain-binding/v2':'ontology-managed-toolchain-binding/v1',...(input.systemd?{systemd:structuredClone(input.systemd)}:{}),installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,runtimeDigest:i.runtime.digest,
+    requestId:input.requestId,requestDigest:toolchainRequestDigest(i,input),previousDigest:previous,dl:{...input.dl},shacl:{...input.shacl},workRoot};
+}
+/** Caller holds installation and workspace leases, and has excluded unresolved tasks. */
+export function recordToolchainBinding(i:Installation,input:BindToolchainsInput,ledger:Ledger):ToolchainRecord {
+  const binding:ManagedToolchains={...prepareToolchainBinding(i,input,ledger),recordedAt:new Date().toISOString()};
   const record={digest:hash(binding as unknown as Json),binding},next:Ledger={...ledger,records:[...ledger.records,record]};
   if(Buffer.byteLength(JSON.stringify(next))>2*1024*1024)fail('TOOLCHAIN_BINDING_LIMIT','Toolchain history byte limit reached',409);
   writePrivate(join(i.root,'toolchain-bindings.json'),next,true);workDirectory(i,true);return record;
