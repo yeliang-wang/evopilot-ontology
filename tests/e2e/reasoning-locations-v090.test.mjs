@@ -51,20 +51,22 @@ function exactSlice(content,fragment){
   return slice.toString('utf8');
 }
 function verifyLocations(input,result){
-  assert.equal(result.result.sourceLocationVersion,2);assert.ok(Array.isArray(result.result.sourceLocationDocuments));
+  assert.equal(result.result.sourceLocationVersion,3);assert.ok(Array.isArray(result.result.sourceLocationDocuments));
   const tables=new Map(result.result.sourceLocationDocuments.map(t=>[t.documentId,t]));assert.equal(tables.size,result.result.sourceLocationDocuments.length);
   for(const table of tables.values()){
-    const doc=input.closure.documents.find(d=>d.id===table.documentId);assert.ok(doc);assert.equal(doc.format,'turtle');assert.equal(table.documentDigest,doc.digest);
-    assert.equal(table.schema,'ontology-rdf-source-document/v1');assert.equal(table.parserId,'owlapi-turtle-occurrences:1');
+    const doc=input.closure.documents.find(d=>d.id===table.documentId);assert.ok(doc);assert.equal(table.format,doc.format);assert.equal(table.documentDigest,doc.digest);
+    assert.ok(['turtle','rdfxml'].includes(doc.format));
+    assert.equal(table.schema,doc.format==='turtle'?'ontology-rdf-source-document/v1':'ontology-rdfxml-source-document/v1');assert.equal(table.parserId,doc.format==='turtle'?'owlapi-turtle-occurrences:1':'owlapi-rdfxml-occurrences:1');
     for(const source of table.sources)exactSlice(doc.content,source);
     const sources=new Set(table.sources.map(s=>s.id)),contexts=new Set(table.contexts.map(c=>c.id));
-    for(const c of table.contexts){if(c.sourceId===0)assert.ok(['DOCUMENT','BUILTIN'].includes(c.kind));else assert.ok(sources.has(c.sourceId));for(const id of c.dependencyContextIds)assert.ok(contexts.has(id)&&id<c.id);}
-    for(const o of table.occurrences)for(const term of [o.subject,o.predicate,o.object]){assert.ok(sources.has(term.sourceId));for(const id of term.contextIds)assert.ok(contexts.has(id));}
+    const xml=doc.format==='rdfxml',sets=new Set((table.sourceSets??[]).map(s=>s.id)),available=xml?sets:sources,field=xml?'sourceSetId':'sourceId';
+    if(xml)for(const set of table.sourceSets){assert.ok(set.sourceIds.length);for(const id of set.sourceIds)assert.ok(sources.has(id));}
+    for(const c of table.contexts){if(c[field]===0)assert.ok(['DOCUMENT','BUILTIN'].includes(c.kind));else assert.ok(available.has(c[field]));for(const id of c.dependencyContextIds)assert.ok(contexts.has(id)&&id<c.id);}
+    for(const o of table.occurrences)for(const term of [o.subject,o.predicate,o.object]){assert.ok(available.has(term[field]));for(const id of term.contextIds)assert.ok(contexts.has(id));}
   }
   for(const item of result.result.support)for(const origin of item.sources){
     const doc=input.closure.documents.find(d=>d.id===origin.documentId);assert.equal(origin.documentDigest,doc.digest);
-    if(doc.format==='rdfxml'){assert.equal(Object.hasOwn(origin,'sourceLocation'),false);assert.equal(tables.has(doc.id),false);continue;}
-    if(doc.format==='turtle'){
+    if(doc.format==='turtle'||doc.format==='rdfxml'){
       const location=origin.sourceLocation,table=tables.get(doc.id);assert.ok(table);assert.equal(location.schema,'ontology-axiom-source-location/v2');assert.equal(location.kind,'RDF_CONSTRUCTION');
       assert.ok(location.constructionOccurrenceIds.length);const available=new Set(table.occurrences.map(o=>o.id));
       for(const ids of [location.constructionOccurrenceIds,location.parserContextOccurrenceIds]){assert.deepEqual(ids,[...new Set(ids)].sort((a,b)=>a-b));for(const id of ids)assert.ok(available.has(id));}
@@ -117,21 +119,21 @@ test('the same anonymous label in different import documents does not establish 
   const result=await run(input,'INVALID_INPUT');assert.equal(result.error.code,'NO_EXPLANATION_TARGET');assert.equal(result.result.sourceLocationVersion,undefined);
 });
 
-test('Turtle is located, Functional plus Turtle is complete, and RDF/XML remains explicitly unavailable or partial',async()=>{
+test('Turtle, RDF/XML and imports mixed with Functional Syntax retain complete original-source locations',async()=>{
   const turtle='@prefix : <'+ns+'> . @prefix owl: <http://www.w3.org/2002/07/owl#> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :A a owl:Class ; rdfs:subClassOf :B . :B a owl:Class . :a a owl:NamedIndividual, :A .';
   const only=request([document(turtle,{format:'turtle'})]),plain=await run(only);verifyLocations(only,plain);
   const p=project(only,plain);assert.equal(p.axiomSourceLocationCoverage,'COMPLETE');assert.equal(p.sourceLocationDocuments.length,1);
   for(const ax of p.support)for(const d of ax.documents){assert.equal(d.axiomSourceLocation.kind,'RDF_CONSTRUCTION');assert.ok(d.axiomSourceLocation.constructionOccurrenceIds.length);}
   const xml='<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:owl="http://www.w3.org/2002/07/owl#"><owl:Class rdf:about="'+ns+'A"><rdfs:subClassOf rdf:resource="'+ns+'B"/></owl:Class><owl:Class rdf:about="'+ns+'B"/><owl:NamedIndividual rdf:about="'+ns+'a"><rdf:type rdf:resource="'+ns+'A"/></owl:NamedIndividual></rdf:RDF>';
-  const xmlInput=request([document(xml,{format:'rdfxml'})]),xmlResult=await run(xmlInput);verifyLocations(xmlInput,xmlResult);const xmlProjection=project(xmlInput,xmlResult);assert.equal(xmlProjection.axiomSourceLocationCoverage,'UNAVAILABLE');assert.deepEqual(xmlProjection.sourceLocationDocuments,[]);
-  for(const ax of xmlProjection.support)for(const d of ax.documents)assert.deepEqual(d.axiomSourceLocation,{status:'UNAVAILABLE',reason:'FORMAT_NOT_INSTRUMENTED'});
+  const xmlInput=request([document(xml,{format:'rdfxml'})]),xmlResult=await run(xmlInput);verifyLocations(xmlInput,xmlResult);const xmlProjection=project(xmlInput,xmlResult);assert.equal(xmlProjection.axiomSourceLocationCoverage,'COMPLETE');assert.equal(xmlProjection.sourceLocationDocuments.length,1);
+  for(const ax of xmlProjection.support)for(const d of ax.documents){assert.equal(d.axiomSourceLocation.kind,'RDF_CONSTRUCTION');assert.ok(d.axiomSourceLocation.constructionOccurrenceIds.length);}
   const functional=prefix+' Ontology(<urn:located:root> Import(<urn:located:child>) '+declarations+' ClassAssertion(:A :a))';
   const child=turtle.replace(':a a owl:NamedIndividual, :A .','<urn:located:child> a owl:Ontology .');
   const mixed=request([document(functional,{ontologyIri:'urn:located:root'}),document(child,{id:'child',documentIri:'urn:located:child:document',ontologyIri:'urn:located:child',format:'turtle'})],[{from:'root',iri:'urn:located:child',to:'child'}]);
   const result=await run(mixed);verifyLocations(mixed,result);assert.equal(project(mixed,result).axiomSourceLocationCoverage,'COMPLETE');
   const xmlChild=xml.replace('<owl:NamedIndividual rdf:about="'+ns+'a"><rdf:type rdf:resource="'+ns+'A"/></owl:NamedIndividual>','<owl:Ontology rdf:about="urn:located:child"/>');
   const mixedXML=request([document(functional,{ontologyIri:'urn:located:root'}),document(xmlChild,{id:'child',documentIri:'urn:located:child:document',ontologyIri:'urn:located:child',format:'rdfxml'})],[{from:'root',iri:'urn:located:child',to:'child'}]);
-  const xmlMixedResult=await run(mixedXML);verifyLocations(mixedXML,xmlMixedResult);assert.equal(project(mixedXML,xmlMixedResult).axiomSourceLocationCoverage,'PARTIAL');
+  const xmlMixedResult=await run(mixedXML);verifyLocations(mixedXML,xmlMixedResult);assert.equal(project(mixedXML,xmlMixedResult).axiomSourceLocationCoverage,'COMPLETE');
 });
 
 test('empty support is not applicable; malformed source never produces successful location evidence',async()=>{
@@ -162,7 +164,7 @@ test('exact source validation rejects altered ranges, hashes, lines and coverage
   const changed=mutate=>{const clone=structuredClone(result);mutate(clone.result);return clone;};
   const first=d=>d.support[0].sources[0].sourceLocation.occurrences[0].fragments[0];
   for(const mutate of [
-    d=>{d.sourceLocationVersion=3;},d=>{delete d.sourceLocationDocuments;},d=>{delete d.support[0].sources[0].sourceLocation;},
+    d=>{d.sourceLocationVersion=4;},d=>{delete d.sourceLocationDocuments;},d=>{delete d.support[0].sources[0].sourceLocation;},
     d=>{first(d).start=-1;},d=>{first(d).end=content.length+1000;},d=>{first(d).start+=0.5;},
     d=>{first(d).start=4;},d=>{first(d).fragmentDigest=hash('wrong');},d=>{first(d).startLine++;},d=>{first(d).endLine++;},
     d=>{d.support[0].sources[0].sourceLocation.occurrences=[];},

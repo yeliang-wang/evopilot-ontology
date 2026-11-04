@@ -30,6 +30,8 @@ import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFParser;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFParserException;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFProvenance;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.LocatedRDFConsumerAdapter;
+import org.semanticweb.owlapi.rdf.rdfxml.parser.LocatedRDFXMLParser;
+import org.semanticweb.owlapi.rdf.rdfxml.parser.IRIProvider;
 import org.semanticweb.owlapi.rdf.turtle.parser.TurtleOntologyParserFactory;
 import org.semanticweb.owlapi.rdf.turtle.parser.OWLRDFConsumerAdapter;
 import org.semanticweb.owlapi.rdf.turtle.parser.LocatedTurtleParser;
@@ -129,7 +131,7 @@ public final class Worker {
     final Set<IRI> expressions=new LinkedHashSet<>();
     final Set<OWLClassExpression> mapped=new HashSet<>();
     LocatedMappingConsumer(OWLOntology o,OWLOntologyLoaderConfiguration c,RDFProvenance p){super(o,c,p);}
-    void useParser(RDFParser parser){setIRIProvider(parser);}
+    void useParser(IRIProvider parser){setIRIProvider(parser);}
     void retainExpression(IRI iri,boolean explicit){if(explicit&&isAnonymousNode(iri)){expressions.add(iri);require(expressions.size()<=AXIOMS,"EXPRESSION_LIMIT","RDF class-expression budget exceeded");}}
     public void addClassExpression(IRI iri,boolean explicit){super.addClassExpression(iri,explicit);retainExpression(iri,explicit);}
     protected void addOWLRestriction(IRI iri,boolean explicit){super.addOWLRestriction(iri,explicit);retainExpression(iri,explicit);}
@@ -183,7 +185,8 @@ public final class Worker {
     }
   }
   record RDFLocations(LocatedTurtleParser.Result syntax,RDFProvenance.Index mapping){}
-  record Parsed(OWLOntology ontology,Set<OWLAxiom> syntaxAxioms,LocatedFunctionalParser.Result locations,RDFLocations rdfLocations){}
+  record XMLLocations(LocatedRDFXMLParser.Result syntax,RDFProvenance.Index mapping){}
+  record Parsed(OWLOntology ontology,Set<OWLAxiom> syntaxAxioms,LocatedFunctionalParser.Result locations,RDFLocations rdfLocations,XMLLocations xmlLocations){}
   static Parsed parse(OWLOntologyManager m,JsonNode doc,String base,Collection<String> imports)throws Exception {
     // Package-local compatibility for independent parser probes. Production
     // callers below always supply the original task deadline.
@@ -199,6 +202,7 @@ public final class Worker {
     if(f.equals("functional")&&!locate)LocatedFunctionalParser.verifyLexicalCompleteness(content);
     OWLOntology result;var syntaxAxioms=new HashSet<OWLAxiom>();LocatedFunctionalParser.Result locations=null;
     LocatedTurtleParser.Result turtleLocations=null;RDFProvenance provenance=null;RDFLocations rdfLocations=null;
+    LocatedRDFXMLParser.Result xmlSyntax=null;XMLLocations xmlLocations=null;
     if(f.equals("functional")&&locate){
       result=m.createOntology(new OWLOntologyID());m.setOntologyDocumentIRI(result,IRI.create(base));
       locations=LocatedFunctionalParser.parse(content,result,loader(imports),200000);m.setOntologyFormat(result,locations.format());
@@ -211,11 +215,19 @@ public final class Worker {
       // compatibility before OWLAPI's n-ary DataFactory rejects zero operands.
       // Located RDF documents share the task's original deadline and budget.
       // Ordinary parsing does not collect or claim source-location evidence.
-      provenance=locate&&f.equals("turtle")?new RDFProvenance(Objects.requireNonNull(locationBudget)):RDFProvenance.disabled();
+      provenance=locate?new RDFProvenance(Objects.requireNonNull(locationBudget)):RDFProvenance.disabled();
       var rdfFormat=format(f);var consumer=new LocatedMappingConsumer(result,loader(imports),provenance);consumer.configureDeadline(Objects.requireNonNull(locationBudget).deadlineNanos());consumer.setOntologyFormat((RDFDocumentFormat)rdfFormat);
       if(f.equals("rdfxml")){
-        var parser=new RDFParser();consumer.useParser(parser);
-        var input=new InputSource(new StringReader(content));input.setSystemId(base);parser.parse(input,consumer);
+        if(locate){
+          var observed=provenance;
+          var parser=new LocatedRDFXMLParser(content,IRI.create(base),new LocatedRDFXMLParser.OccurrenceObserver(){
+            public void beforeTriple(int id){observed.beforeTriple(id);}
+            public void afterTriple(){observed.afterTriple();}
+          },locationBudget);
+          consumer.useParser(parser);xmlSyntax=parser.parse(consumer);
+        }else{
+          var parser=new LocatedRDFXMLParser(content,IRI.create(base));consumer.useParser(parser);parser.parseUnlocated(consumer);
+        }
       }else if(locate){
         consumer.startModel(IRI.create(base));var observed=provenance;
         turtleLocations=LocatedTurtleParser.parse(content,IRI.create(base),consumer,new LocatedTurtleParser.OccurrenceObserver(){
@@ -237,9 +249,10 @@ public final class Worker {
       syntaxAxioms=new HashSet<>(syntax.getAxioms());m.removeOntology(syntax);
     }
     if(turtleLocations!=null)rdfLocations=new RDFLocations(turtleLocations,provenance.finish(result.getAxioms()));
-    return new Parsed(result,syntaxAxioms,locations,rdfLocations);
+    if(xmlSyntax!=null)xmlLocations=new XMLLocations(xmlSyntax,provenance.finish(result.getAxioms()));
+    return new Parsed(result,syntaxAxioms,locations,rdfLocations,xmlLocations);
   }
-  record Origin(JsonNode document,LocatedFunctionalParser.Result locations,RDFLocations rdfLocations){}
+  record Origin(JsonNode document,LocatedFunctionalParser.Result locations,RDFLocations rdfLocations,XMLLocations xmlLocations){}
   record Loaded(OWLOntologyManager manager,OWLOntology ontology,OWLOntology validationOntology,Map<OWLAxiom,List<Origin>> origins){}
   static OWLOntology anonymous(OWLOntologyManager manager,Collection<OWLAxiom> axioms)throws Exception {
     var ontology=manager.createOntology(new OWLOntologyID());manager.addAxioms(ontology,new HashSet<>(axioms));return ontology;
@@ -267,7 +280,7 @@ public final class Worker {
       require(Objects.equals(ontology,d.get("ontologyIri").isNull()?null:d.get("ontologyIri").asText())&&Objects.equals(version,d.get("versionIri").isNull()?null:d.get("versionIri").asText()),"ONTOLOGY_IDENTITY_MISMATCH","Parsed ontology identity differs from admitted identity");
       var actual=o.importsDeclarations().map(x->x.getIRI().toString()).collect(Collectors.toSet());
       if(!actual.equals(imports.keySet()))throw new Refusal("MISSING_IMPORT","IMPORT_CLOSURE_MISMATCH","Declared imports differ from pinned closure");
-      for(OWLAxiom ax:o.axioms().toList()){origins.computeIfAbsent(ax,k->new ArrayList<>()).add(new Origin(d,parsed.locations(),parsed.rdfLocations()));if(origins.size()>AXIOMS)throw invalid("AXIOM_LIMIT","Axiom budget exceeded");}
+      for(OWLAxiom ax:o.axioms().toList()){origins.computeIfAbsent(ax,k->new ArrayList<>()).add(new Origin(d,parsed.locations(),parsed.rdfLocations(),parsed.xmlLocations()));if(origins.size()>AXIOMS)throw invalid("AXIOM_LIMIT","Axiom budget exceeded");}
     }
     // OWL Direct Semantics applies to the union of the complete imports closure. Inputs
     // remain distinct in origins; this derived union never overwrites their original bytes.
@@ -507,6 +520,95 @@ public final class Worker {
       deadline(end);return out;
     }
   }
+  /** XML terms can span text, CDATA and entity declarations. Keep their
+   * interned source sets and lexical context edges separate from the mapper's
+   * construction/selection roles; never synthesize a single enclosing span. */
+  static final class XMLSourceTable {
+    final JsonNode document;final XMLLocations locations;final SourceBudget budget;
+    final Set<Integer> occurrenceIds=new TreeSet<>(),sourceIds=new TreeSet<>(),setIds=new TreeSet<>(),contextIds=new TreeSet<>();
+    final Map<Integer,LocatedRDFXMLParser.Source> sources=new HashMap<>();
+    final Map<Integer,LocatedRDFXMLParser.SourceSet> sourceSets=new HashMap<>();
+    final Map<Integer,LocatedRDFXMLParser.Context> contexts=new HashMap<>();
+    final Map<Integer,LocatedRDFXMLParser.Occurrence> occurrences=new HashMap<>();
+    final Map<OWLAxiom,RDFProvenance.Sources> selected=new HashMap<>();
+    XMLSourceTable(JsonNode document,XMLLocations locations,SourceBudget budget,long end){
+      this.document=document;this.locations=locations;this.budget=budget;
+      for(var s:locations.syntax().sources()){deadline(end);mapped(s.id()>0&&sources.putIfAbsent(s.id(),s)==null,"Duplicate or invalid XML source identity");}
+      for(var s:locations.syntax().sourceSets()){deadline(end);mapped(s.id()>0&&sourceSets.putIfAbsent(s.id(),s)==null,"Duplicate or invalid XML source-set identity");}
+      for(var c:locations.syntax().contexts()){deadline(end);mapped(c.id()>0&&contexts.putIfAbsent(c.id(),c)==null,"Duplicate or invalid XML context identity");}
+      for(var o:locations.syntax().occurrences()){deadline(end);mapped(o.id()>0&&occurrences.putIfAbsent(o.id(),o)==null,"Duplicate or invalid XML occurrence identity");}
+    }
+    static void mapped(boolean condition,String message){if(!condition)throw new Refusal("FAILED","SOURCE_LOCATION_MAPPING",message);}
+    static void ordered(List<Integer> ids,boolean nonempty){
+      mapped(!nonempty||!ids.isEmpty(),"Empty XML source reference list");int previous=0;
+      for(Integer id:ids){mapped(id!=null&&id>previous,"XML references are not unique ascending positive IDs");previous=id;}
+    }
+    void select(OWLAxiom ax,long end){
+      deadline(end);var roles=locations.mapping().sources(ax);mapped(!roles.constructionOccurrenceIds().isEmpty(),"XML axiom has no construction occurrence");
+      mapped(selected.putIfAbsent(ax,roles)==null,"XML supporting axiom was selected twice");
+      for(var ids:List.of(roles.constructionOccurrenceIds(),roles.parserContextOccurrenceIds()))for(int id:ids){
+        deadline(end);mapped(id>0&&occurrences.containsKey(id),"XML axiom occurrence is absent");if(occurrenceIds.add(id))budget.records(1);
+      }
+    }
+    ObjectNode origin(OWLAxiom ax){
+      var roles=selected.get(ax);mapped(roles!=null,"XML origin has no selected structural axiom");
+      budget.references(roles.constructionOccurrenceIds().size()+roles.parserContextOccurrenceIds().size());
+      ObjectNode out=JSON.createObjectNode();out.put("schema","ontology-axiom-source-location/v2");out.put("kind","RDF_CONSTRUCTION");
+      out.set("constructionOccurrenceIds",JSON.valueToTree(roles.constructionOccurrenceIds().stream().sorted().toList()));
+      out.set("parserContextOccurrenceIds",JSON.valueToTree(roles.parserContextOccurrenceIds().stream().sorted().toList()));return out;
+    }
+    void selectSet(int id,long end){
+      mapped(id>0&&sourceSets.containsKey(id),"XML term/context source set is absent");if(!setIds.add(id))return;
+      budget.records(1);var set=sourceSets.get(id);ordered(set.sourceIds(),true);budget.references(set.sourceIds().size());
+      for(int source:set.sourceIds()){deadline(end);mapped(sources.containsKey(source),"XML source-set member is absent");if(sourceIds.add(source))budget.records(1);}
+    }
+    boolean selectContext(int id){
+      mapped(id>0&&contexts.containsKey(id),"XML resolution context is absent");if(!contextIds.add(id))return false;budget.records(1);return true;
+    }
+    void selectTerm(LocatedRDFXMLParser.TermSource term,long end){
+      mapped(term!=null,"XML occurrence has no term origin");ordered(term.contextIds(),false);
+      budget.references(1+term.contextIds().size());selectSet(term.sourceSetId(),end);
+      for(int id:term.contextIds()){deadline(end);selectContext(id);}
+    }
+    ObjectNode term(LocatedRDFXMLParser.TermSource term){
+      ObjectNode out=JSON.createObjectNode();out.put("sourceSetId",term.sourceSetId());out.put("inherited",term.inherited());out.put("generated",term.generated());out.set("contextIds",JSON.valueToTree(term.contextIds()));return out;
+    }
+    ObjectNode table(long end)throws Exception {
+      for(int id:occurrenceIds){deadline(end);var o=occurrences.get(id);selectTerm(o.subject(),end);selectTerm(o.predicate(),end);selectTerm(o.object(),end);}
+      var pending=new ArrayDeque<>(contextIds);var seen=new HashSet<Integer>();var implicit=new HashSet<String>();
+      while(!pending.isEmpty()){
+        deadline(end);int id=pending.removeFirst();if(!seen.add(id))continue;var c=contexts.get(id);ordered(c.dependencyContextIds(),false);
+        boolean isImplicit=Set.of("DOCUMENT","BUILTIN").contains(c.kind());
+        mapped(isImplicit?c.sourceSetId()==0&&c.dependencyContextIds().isEmpty():c.sourceSetId()>0,"XML implicit/explicit context source differs");
+        if(isImplicit){
+          mapped(implicit.add(c.kind()),"Duplicate implicit XML context");
+          mapped(c.kind().equals("DOCUMENT")?c.name()==null&&Objects.equals(c.resolved(),str(document,"documentIri")):Objects.equals(c.name(),"xml")&&Objects.equals(c.resolved(),"http://www.w3.org/XML/1998/namespace"),"Implicit XML context identity differs");
+        }else selectSet(c.sourceSetId(),end);
+        budget.references((isImplicit?0:1)+c.dependencyContextIds().size());
+        for(int dependency:c.dependencyContextIds()){deadline(end);mapped(dependency<id,"XML context dependencies are not an earlier-ID DAG");if(selectContext(dependency))pending.add(dependency);}
+      }
+      var spans=sourceIds.stream().map(id->{var span=sources.get(id).span();return new LocatedFunctionalParser.Span(span.start(),span.end());}).toList();
+      var index=new SourceIndex(str(document,"content"),spans,end,budget);
+      ObjectNode out=JSON.createObjectNode();out.put("schema","ontology-rdfxml-source-document/v1");out.put("documentId",str(document,"id"));out.put("documentDigest",str(document,"digest"));out.put("format","rdfxml");out.put("parserId","owlapi-rdfxml-occurrences:1");
+      ArrayNode raw=out.putArray("sources");for(int id:sourceIds){deadline(end);var s=sources.get(id);ObjectNode value=raw.addObject();value.put("id",id);value.put("kind",s.kind());value.setAll(index.fragment(new LocatedFunctionalParser.Span(s.span().start(),s.span().end())));}
+      ArrayNode sets=out.putArray("sourceSets");var memberships=new HashSet<List<Integer>>();
+      for(int id:setIds){deadline(end);var s=sourceSets.get(id);mapped(memberships.add(s.sourceIds()),"XML source sets do not intern identical membership");var value=sets.addObject();value.put("id",id);value.set("sourceIds",JSON.valueToTree(s.sourceIds()));}
+      ArrayNode resolution=out.putArray("contexts");for(int id:contextIds){deadline(end);var c=contexts.get(id);var value=resolution.addObject();value.put("id",id);value.put("kind",c.kind());value.put("name",c.name());value.put("resolved",c.resolved());value.put("sourceSetId",c.sourceSetId());value.set("dependencyContextIds",JSON.valueToTree(c.dependencyContextIds()));}
+      ArrayNode input=out.putArray("occurrences");for(int id:occurrenceIds){
+        deadline(end);var o=occurrences.get(id);var t=o.triple();mapped(t!=null&&t.subject()!=null&&t.predicate()!=null&&(t.resourceObject()!=null)!=(t.lexicalObject()!=null),"XML callback has no unique RDF object");
+        mapped(o.generatedKind()==null||o.subject().generated()||o.predicate().generated()||o.object().generated(),"Generated XML occurrence lacks a generating source set");
+        ObjectNode value=input.addObject();value.put("id",id);var triple=value.putObject("triple");triple.put("subject",t.subject().toString());triple.put("predicate",t.predicate().toString());var object=triple.putObject("object");
+        if(t.resourceObject()!=null){object.put("kind","RESOURCE");object.put("value",t.resourceObject().toString());}
+        else{
+          // Preserve the actual callback. XML may carry inherited xml:lang
+          // beside rdf:datatype; the mapper's datatype precedence is separate.
+          object.put("kind","LITERAL");object.put("lexical",t.lexicalObject());object.put("language",t.language());object.put("datatype",t.datatype()==null?null:t.datatype().toString());
+        }
+        value.set("subject",term(o.subject()));value.set("predicate",term(o.predicate()));value.set("object",term(o.object()));value.put("generatedKind",o.generatedKind());
+      }
+      deadline(end);return out;
+    }
+  }
   enum CandidateProof { ESTABLISHED, NOT_ESTABLISHED, INELIGIBLE }
   static final class ExplanationSearch {
     final LinkedHashSet<OWLAxiom> support;
@@ -572,9 +674,10 @@ public final class Worker {
     }finally{rm.removeOntology(ro);}
     deadline(end);ObjectNode out=JSON.createObjectNode();out.put("status","COMPLETED");out.put("complete",true);ObjectNode result=out.putObject("result");
     result.put("target",str(task,"target"));result.put("method","DELETION_REPLAY");result.put("searchStrategy","BREADTH_FIRST_BLOCKS");result.put("allMinimalJustifications",false);result.put("replayVerified",true);
-    result.put("candidateChecks",search.candidateChecks);result.put("ineligibleCandidates",search.ineligibleCandidates);result.put("retainedDatatypeDefinitions",support.stream().filter(a->a instanceof OWLDatatypeDefinitionAxiom).count());engineEvidence(result);result.put("sourceLocationVersion",2);
+    result.put("candidateChecks",search.candidateChecks);result.put("ineligibleCandidates",search.ineligibleCandidates);result.put("retainedDatatypeDefinitions",support.stream().filter(a->a instanceof OWLDatatypeDefinitionAxiom).count());engineEvidence(result);result.put("sourceLocationVersion",3);
     var sourceBudget=new SourceBudget();ArrayNode sourceTables=result.putArray("sourceLocationDocuments");ArrayNode supporting=result.putArray("support");
     var rdfTables=new TreeMap<String,RDFSourceTable>();
+    var xmlTables=new TreeMap<String,XMLSourceTable>();
     var sourceSpans=new HashMap<String,List<LocatedFunctionalParser.Span>>();var sourceDocuments=new HashMap<String,JsonNode>();
     for(OWLAxiom ax:support)for(Origin origin:loaded.origins().get(ax))if(origin.locations()!=null){
       String id=str(origin.document(),"id");var spans=sourceSpans.get(id);
@@ -584,19 +687,33 @@ public final class Worker {
     for(OWLAxiom ax:support)for(Origin origin:loaded.origins().get(ax))if(origin.rdfLocations()!=null){
       var table=rdfTables.computeIfAbsent(str(origin.document(),"id"),id->new RDFSourceTable(origin.document(),origin.rdfLocations(),sourceBudget));table.select(ax);
     }
+    for(OWLAxiom ax:support)for(Origin origin:loaded.origins().get(ax))if(origin.xmlLocations()!=null){
+      var table=xmlTables.computeIfAbsent(str(origin.document(),"id"),id->new XMLSourceTable(origin.document(),origin.xmlLocations(),sourceBudget,end));table.select(ax,end);
+    }
     var indexes=new HashMap<String,SourceIndex>();for(String id:sourceSpans.keySet()){deadline(end);indexes.put(id,new SourceIndex(str(sourceDocuments.get(id),"content"),sourceSpans.get(id),end,sourceBudget));}
     for(OWLAxiom ax:support){ObjectNode item=supporting.addObject();item.put("axiom",ax.toString());item.put("axiomDigest",sha(ax.toString()));ArrayNode sources=item.putArray("sources");
       for(Origin origin:loaded.origins().get(ax)){JsonNode doc=origin.document();ObjectNode s=sources.addObject();s.put("documentId",str(doc,"id"));s.put("documentDigest",str(doc,"digest"));s.put("selectorKind","OWL_STRUCTURAL_AXIOM");s.put("axiomDigest",sha(ax.toString()));
         if(origin.locations()!=null)s.set("sourceLocation",indexes.get(str(doc,"id")).location(origin.locations(),ax,end));
         else if(origin.rdfLocations()!=null)s.set("sourceLocation",rdfTables.get(str(doc,"id")).origin(ax));
+        else if(origin.xmlLocations()!=null)s.set("sourceLocation",xmlTables.get(str(doc,"id")).origin(ax));
+        else throw new Refusal("FAILED","SOURCE_LOCATION_MAPPING","Supporting axiom has no actual parser source location");
       }
     }
-    for(var table:rdfTables.values())sourceTables.add(table.table(end));
+    var tableIds=new TreeSet<String>(rdfTables.keySet());
+    for(String id:xmlTables.keySet()){XMLSourceTable.mapped(tableIds.add(id),"Source document has conflicting parser tables");}
+    for(String id:tableIds)sourceTables.add(xmlTables.containsKey(id)?xmlTables.get(id).table(end):rdfTables.get(id).table(end));
     ObjectNode replayNode=result.putObject("replay");replayNode.put("format","functional");replayNode.put("content",replayText);replayNode.put("digest",replayDigest);deadline(end);return out;
   }
   static Refusal refusal(Throwable error){
     if(refusedImport!=null)return new Refusal("MISSING_IMPORT","MISSING_IMPORT","Unbound ontology import: "+refusedImport);
     for(Throwable e=error;e!=null;e=e.getCause())if(e instanceof Refusal)return (Refusal)e;
+    // SAX may wrap adapter/provenance failures. Preserve the real limit,
+    // deadline or correspondence refusal before the generic syntax mapping.
+    for(Throwable e=error;e!=null;e=e.getCause()){
+      if(e instanceof LocatedRDFXMLParser.LimitException||e instanceof RDFProvenance.LimitException)return new Refusal("FAILED","SOURCE_LOCATION_LIMIT",e.getMessage());
+      if(e instanceof LocatedRDFXMLParser.MappingException||e instanceof RDFProvenance.MappingException)return new Refusal("FAILED","SOURCE_LOCATION_MAPPING",e.getMessage());
+      if(e instanceof RDFProvenance.TimeoutException)return new Refusal("TIMEOUT","TASK_DEADLINE","RDF provenance deadline reached");
+    }
     for(Throwable e=error;e!=null;e=e.getCause()){
       if(e instanceof UnloadableImportException||e instanceof OWLOntologyFactoryNotFoundException)return new Refusal("MISSING_IMPORT","MISSING_IMPORT","An import has no admitted offline document");
       if(e instanceof XmlSchemaAutomata.Syntax)return invalid("XSD_REGEX",e.getMessage());
@@ -640,7 +757,8 @@ public final class Worker {
       require(ms>=1&&ms<=maximum,"INVALID_ENVELOPE","Task deadline outside fixed budget");
       long end=System.nanoTime()+ms*1000000;response.setAll(execute(request,end));
       if(!response.has("error"))response.putNull("error");
-      if(response.path("result").path("sourceLocationVersion").asInt()==2){sourceOutputEnvelope(response);deadline(end);}
+      int sourceVersion=response.path("result").path("sourceLocationVersion").asInt();
+      if(sourceVersion==2||sourceVersion==3){sourceOutputEnvelope(response);deadline(end);}
     }catch(Throwable e){Refusal r=refusal(e);response.put("status",r.status);response.put("complete",false);var result=JSON.createObjectNode();engineEvidence(result);response.set("result",result);response.putObject("error").put("code",r.code).put("message",r.getMessage());}
     byte[] output=JSON.writeValueAsBytes(response);
     if(output.length>OUTPUT_BYTES){response.put("status","FAILED");response.put("complete",false);response.set("result",JSON.createObjectNode());response.putObject("error").put("code","OUTPUT_LIMIT").put("message","Formal output exceeds fixed byte budget");output=JSON.writeValueAsBytes(response);}

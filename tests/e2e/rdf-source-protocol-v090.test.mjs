@@ -100,7 +100,7 @@ test('v2 explanation projection keeps one shared table and leaves business mappi
   assert.equal(p.support[0].documents[0].mappings[0].axiomByteSpanEstablished,false);
   assert.equal(p.businessMeaningProven,false);assert.equal(p.authority,false);assert.equal(p.sourceLinkPrecision,'DOCUMENT_MAPPING_NOT_AXIOM_BYTE_LOCATION');
   assert.equal(JSON.stringify(f.project()),JSON.stringify(p));
-  for(const change of [d=>{delete d.sourceLocationDocuments;},d=>{d.sourceLocationVersion=1;},d=>{delete d.sourceLocationVersion;},d=>{d.sourceLocationVersion=3;},d=>{delete d.support[0].sources[0].sourceLocation;}]){
+  for(const change of [d=>{delete d.sourceLocationDocuments;},d=>{d.sourceLocationVersion=1;},d=>{delete d.sourceLocationVersion;},d=>{d.sourceLocationVersion=4;},d=>{delete d.support[0].sources[0].sourceLocation;}]){
     const c=evidenceFixture();change(c.evidence.result.result);assert.throws(c.project);
   }
   const empty=evidenceFixture();empty.evidence.result.result.support=[];empty.evidence.result.result.sourceLocationDocuments=[];
@@ -131,6 +131,50 @@ test('v2 keeps Functional v1 groups intact and mixed RDF/XML support explicitly 
   mixed.evidence.result.closureDigest=mixed.model.closureDigest;mixed.evidence.result.requestDigest=hash(mixed.evidence.request);
   const entry=mixed.evidence.result.result.support[0];entry.sources.push({documentId:xml.id,documentDigest:xml.digest,selectorKind:'OWL_STRUCTURAL_AXIOM',axiomDigest:entry.axiomDigest});
   const p=mixed.project();assert.equal(p.axiomSourceLocationCoverage,'PARTIAL');assert.deepEqual(p.support[0].documents[1].axiomSourceLocation,{status:'UNAVAILABLE',reason:'FORMAT_NOT_INSTRUMENTED'});
+});
+
+// Synthetic retained envelopes establish protocol integrity only. The actual
+// parser, attribution and native delivery require the real XML worker suite.
+function mixedV3(){
+  const f=evidenceFixture(),content='<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="urn:A"><p:note xmlns:p="urn:p:">v</p:note></rdf:Description></rdf:RDF>';
+  const xml={id:'xml',documentIri:'urn:xml:document',ontologyIri:null,versionIri:null,format:'rdfxml',content,digest:hashBytes(content)};
+  const xmlTerm={sourceSetId:1,inherited:false,generated:false,contextIds:[]};
+  const table={schema:'ontology-rdfxml-source-document/v1',documentId:xml.id,documentDigest:xml.digest,format:'rdfxml',parserId:'owlapi-rdfxml-occurrences:1',
+    sources:[{id:1,kind:'ELEMENT',...fragment(content,content)}],sourceSets:[{id:1,sourceIds:[1]}],contexts:[],
+    occurrences:[{id:10,triple:{subject:'urn:A',predicate:'urn:p:note',object:{kind:'LITERAL',lexical:'v',language:null,datatype:null}},subject:{...xmlTerm},predicate:{...xmlTerm},object:{...xmlTerm},generatedKind:null}]};
+  f.model.draft.closure.documents.push(xml);f.model.draft.closure.imports.push({from:'model',iri:xml.documentIri,to:xml.id});
+  f.model.closureDigest=closureDigest(f.model.draft.closure);f.model.digest=hash(f.model.draft);
+  f.evidence.result.closureDigest=f.model.closureDigest;f.evidence.result.requestDigest=hash(f.evidence.request);
+  const data=f.evidence.result.result;data.sourceLocationVersion=3;data.sourceLocationDocuments.push(table);
+  const entry=data.support[0];entry.sources.push({documentId:xml.id,documentDigest:xml.digest,selectorKind:'OWL_STRUCTURAL_AXIOM',axiomDigest:entry.axiomDigest,sourceLocation:location([10],[])});
+  return f;
+}
+
+test('v3 projects mixed Turtle and multi-fragment XML tables without altering v2 or business authority',()=>{
+  const f=mixedV3(),p=f.project();assert.equal(p.sourceLocationVersion,3);assert.equal(p.axiomSourceLocationCoverage,'COMPLETE');
+  assert.deepEqual(p.sourceLocationDocuments,f.evidence.result.result.sourceLocationDocuments);assert.equal(p.businessMeaningProven,false);assert.equal(p.authority,false);
+  assert.deepEqual(p.support[0].documents[1].axiomSourceLocation,location([10],[]));
+  const older=mixedV3(),data=older.evidence.result.result;data.sourceLocationVersion=2;data.sourceLocationDocuments.pop();delete data.support[0].sources[1].sourceLocation;
+  const p2=older.project();assert.equal(p2.sourceLocationVersion,2);assert.equal(p2.axiomSourceLocationCoverage,'PARTIAL');
+  assert.deepEqual(p2.support[0].documents[1].axiomSourceLocation,{status:'UNAVAILABLE',reason:'FORMAT_NOT_INSTRUMENTED'});
+  const turtle=evidenceFixture(),before=turtle.project();turtle.evidence.result.result.sourceLocationVersion=3;
+  const expected=structuredClone(before);expected.sourceLocationVersion=3;expected.task.resultDigest=hash(turtle.evidence.result);
+  assert.equal(JSON.stringify(turtle.project()),JSON.stringify(expected),'Existing Turtle values and projection order remain intact');
+});
+
+test('v3 rejects cross-format table/order substitution, omitted XML locations and unreferenced sources',()=>{
+  const changes=[
+    d=>{d.sourceLocationDocuments.reverse();},d=>{d.sourceLocationDocuments.push(d.sourceLocationDocuments[1]);},
+    d=>{d.sourceLocationDocuments[1].documentId='model';},d=>{d.sourceLocationDocuments[1].format='turtle';},
+    d=>{d.sourceLocationDocuments[1].format='functional';},d=>{d.sourceLocationDocuments[1].parserId='unbound';},
+    d=>{d.sourceLocationDocuments.pop();},d=>{delete d.support[0].sources[1].sourceLocation;},
+    d=>{d.support[0].sources[1].sourceLocation.constructionOccurrenceIds=[20];},
+    d=>{d.sourceLocationDocuments[1].sourceSets.push({id:2,sourceIds:[1]});},
+    d=>{d.support[0].sources.pop();},d=>{d.sourceLocationVersion=2;},
+  ];
+  for(const [i,change] of changes.entries()){const f=mixedV3();change(f.evidence.result.result);assert.throws(f.project,undefined,'v3 mutation '+i);}
+  const empty=mixedV3();empty.evidence.result.result.support=[];empty.evidence.result.result.sourceLocationDocuments=[];
+  assert.equal(empty.project().axiomSourceLocationCoverage,'NOT_APPLICABLE');
 });
 
 test('shared tables retain JSON structure, reference and unique-range work limits',()=>{

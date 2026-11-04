@@ -64,7 +64,7 @@ test('actual replay metadata reaches public explanation and review preparation w
   for(const field of fields)assert.ok(Object.hasOwn(native,field),field+' must come from the actual worker');
   assert.equal(native.searchStrategy,'BREADTH_FIRST_BLOCKS');assert.equal(native.replayVerified,true);
   const projected=explainEvidence(actual.evidence,actual.model,actual.sources);
-  assert.equal(native.sourceLocationVersion,2);assert.equal(projected.sourceLocationVersion,2);assert.equal(projected.axiomSourceLocationCoverage,'COMPLETE');
+  assert.equal(native.sourceLocationVersion,3);assert.equal(projected.sourceLocationVersion,3);assert.equal(projected.axiomSourceLocationCoverage,'COMPLETE');
   assert.equal(native.sourceLocationDocuments.length,1);assert.deepEqual(projected.sourceLocationDocuments,native.sourceLocationDocuments);
   const table=native.sourceLocationDocuments[0],document=actual.model.draft.closure.documents.find(d=>d.id===table.documentId);
   assert.ok(document);assert.equal(table.documentDigest,document.digest);assert.equal(table.format,'turtle');assert.equal(table.parserId,'owlapi-turtle-occurrences:1');

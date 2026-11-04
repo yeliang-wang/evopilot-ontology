@@ -58,6 +58,14 @@ const additionalParserSpecs=[
       ['TripleHandlers.java','LocatedTripleHandlers.java','96877b272df96ee480b27a7fb1974744c2101bd00273ddeb6e8b6034d895f70a'],
       ['OptimisedListTranslator.java','LocatedOptimisedListTranslator.java','7f2f16421fecdc6688db09b9a32a43fc946348ce74cfb41eb3b53716a8b7a564'],
     ],owned:['LocatedRDFConsumerAdapter.java','RDFProvenance.java']},
+  {key:'rdfxmlPatch',file:'rdfxml-compat.json',parserId:'owlapi-rdfxml-occurrences:1',provenance:'rdfxml',notice:'EVOPILOT-RDFXML-MODIFICATION.txt',package:rdfPackage,
+    files:[
+      ['RDFParser.java','LocatedRDFXMLSyntaxParser.java','c756d2bfe0ff851c534f72b7e37a8741864c3622686e3efb77b5b2830a09b8b6'],
+      ['StartRDF.java','LocatedXMLStartRDF.java','17c2a6e67704e02f7a44a6f6ede656ab901c83141d210ba99a5690d581b447bf'],
+    ],owned:['LocatedRDFXMLParser.java','RDFXMLRawScanner.java'],
+    additionalClassRoots:['LocatedXMLAbstractState','LocatedXMLEmptyPropertyElement','LocatedXMLNodeElement','LocatedXMLNodeElementList',
+      'LocatedXMLParseTypeCollectionElement','LocatedXMLResourceOrLiteralElement','LocatedXMLParseTypeLiteralElement','LocatedXMLParseTypeResourceElement',
+      'LocatedXMLPropertyElementList','LocatedXMLReificationManager','LocatedXMLReifiedStatementBag']},
 ];
 // The approved entry/output sets live here, not in the supplied recipes. A
 // recipe hash alone cannot widen the source extraction or compiled class scope.
@@ -167,7 +175,9 @@ for(const adapter of additionalParsers){
 // HermiT class is separately identified by the engine label and source manifest.
 execFileSync(join(javaRoot,'bin/javac'),['--release','21','-classpath',classpath,'-d',classes,source,...modified],{env,stdio:'pipe',timeout:30000});
 const classRoots=['org/semanticweb/owlapi/functional/parser/LocatedTokenizer','org/semanticweb/owlapi/functional/parser/LocatedFunctionalParser',
-  ...additionalParsers.flatMap(adapter=>[...adapter.files.map(([,output])=>output),...adapter.owned].map(file=>adapter.package+file.slice(0,-5)))];
+  ...additionalParsers.flatMap(adapter=>[
+    ...[...adapter.files.map(([,output])=>output),...adapter.owned].map(file=>adapter.package+file.slice(0,-5)),
+    ...(adapter.additionalClassRoots??[]).map(name=>adapter.package+name)])];
 const compiledParserNames=[];
 function compiledParserFiles(path){
   for(const name of readdirSync(join(classes,path))){

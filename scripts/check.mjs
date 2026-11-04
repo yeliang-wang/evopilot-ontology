@@ -168,6 +168,11 @@ export async function checkSource() {
         ['TripleHandlers.java','LocatedTripleHandlers.java','96877b272df96ee480b27a7fb1974744c2101bd00273ddeb6e8b6034d895f70a'],
         ['OptimisedListTranslator.java','LocatedOptimisedListTranslator.java','7f2f16421fecdc6688db09b9a32a43fc946348ce74cfb41eb3b53716a8b7a564'],
       ],owned:['LocatedRDFConsumerAdapter.java','RDFProvenance.java']},
+    {key:'rdfxmlPatch',file:'rdfxml-compat.json',parserId:'owlapi-rdfxml-occurrences:1',package:'org/semanticweb/owlapi/rdf/rdfxml/parser/',
+      files:[
+        ['RDFParser.java','LocatedRDFXMLSyntaxParser.java','c756d2bfe0ff851c534f72b7e37a8741864c3622686e3efb77b5b2830a09b8b6'],
+        ['StartRDF.java','LocatedXMLStartRDF.java','17c2a6e67704e02f7a44a6f6ede656ab901c83141d210ba99a5690d581b447bf'],
+      ],owned:['LocatedRDFXMLParser.java','RDFXMLRawScanner.java']},
   ];
   for(const spec of additionalParsers){
     const binding=dl[spec.key];assert.deepEqual(Object.keys(binding).sort(),['file','sha256']);assert.equal(binding.file,spec.file);assert.match(binding.sha256,/^[a-f0-9]{64}$/);

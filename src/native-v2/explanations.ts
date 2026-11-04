@@ -6,7 +6,8 @@ import type {SourceAdmission} from './sources.js';
 import {loadTask,verifyTask,dlEvidence,taskBinding} from './task-evidence.js';
 import type {TaskEvidence} from './task-evidence.js';
 import {axiomLocationValidator,axiomLocationFormatInstrumented} from './axiom-locations.js';
-import {rdfAxiomLocationValidator} from './rdf-axiom-locations.js';
+import {rdfAxiomLocationValidator,rdfLocationBudget} from './rdf-axiom-locations.js';
+import {rdfxmlAxiomLocationValidator} from './rdfxml-axiom-locations.js';
 import {boundedJSON} from '../reasoning/request.js';
 import {DL_LIMITS} from '../reasoning/types.js';
 import {exact,id,digest,hashBytes,hash} from '../standalone/validation.js';
@@ -24,11 +25,24 @@ export function explainEvidence(e:TaskEvidence,model:ModelAdmission,sources:Sour
   const data=result.result;exact(data,['target','method','allMinimalJustifications','support','replay'],['reasoningEngine','engineSelectionPolicy','unknownUnicodeBlocks',...replayFields,'sourceLocationVersion','sourceLocationDocuments']);
   if(data.target!==request.task.target||data.method!=='DELETION_REPLAY'||data.allMinimalJustifications!==false||!Array.isArray(data.support))fail('EXPLANATION_PROTOCOL','Native explanation scope differs',409);
   const located=Object.hasOwn(data,'sourceLocationVersion'),locations=axiomLocationValidator();let locatedDocuments=0,unlocatedDocuments=0;
-  if(located&&data.sourceLocationVersion!==1&&data.sourceLocationVersion!==2)fail('EXPLANATION_PROTOCOL','Unsupported axiom source location version',409);
+  if(located&&data.sourceLocationVersion!==1&&data.sourceLocationVersion!==2&&data.sourceLocationVersion!==3)fail('EXPLANATION_PROTOCOL','Unsupported axiom source location version',409);
   const version2=located&&data.sourceLocationVersion===2;
-  if(Object.hasOwn(data,'sourceLocationDocuments')!==version2)fail('EXPLANATION_PROTOCOL','Shared source tables require exactly source location version 2',409);
-  if(version2)boundedJSON(data,DL_LIMITS.outputBytes);
-  const rdfLocations=version2?rdfAxiomLocationValidator(model.draft.closure.documents,data.sourceLocationDocuments):null;
+  const version3=located&&data.sourceLocationVersion===3,shared=version2||version3,budget=rdfLocationBudget();
+  if(Object.hasOwn(data,'sourceLocationDocuments')!==shared)fail('EXPLANATION_PROTOCOL','Shared source tables require exactly source location version 2 or 3',409);
+  if(shared)boundedJSON(data,DL_LIMITS.outputBytes);
+  let turtleTables:unknown=data.sourceLocationDocuments;const xmlTables:unknown[]=[];
+  if(version3){
+    if(!Array.isArray(data.sourceLocationDocuments)||data.sourceLocationDocuments.length>DL_LIMITS.documents)fail('EXPLANATION_PROTOCOL','Bounded shared source tables required',409);
+    const turtle:unknown[]=[];let previous:string|null=null;
+    for(const table of data.sourceLocationDocuments){
+      if(!table||typeof table!=='object'||Array.isArray(table)||typeof table.documentId!=='string'||previous!==null&&table.documentId<=previous)fail('EXPLANATION_PROTOCOL','Shared source documents must be unique and ordered',409);
+      previous=table.documentId;
+      if(table.format==='turtle')turtle.push(table);else if(table.format==='rdfxml')xmlTables.push(table);else fail('EXPLANATION_PROTOCOL','Unsupported shared source format',409);
+    }
+    turtleTables=turtle;
+  }
+  const rdfLocations=shared?rdfAxiomLocationValidator(model.draft.closure.documents,turtleTables,budget):null;
+  const xmlLocations=version3?rdfxmlAxiomLocationValidator(model.draft.closure.documents,xmlTables,budget):null;
   let replayEvidence:Record<string,Json>={};
   if(replayFields.some(field=>Object.hasOwn(data,field))){
     const {searchStrategy,replayVerified,candidateChecks,ineligibleCandidates,retainedDatatypeDefinitions}=data;
@@ -50,9 +64,12 @@ export function explainEvidence(e:TaskEvidence,model:ModelAdmission,sources:Sour
       if(!document||origin.selectorKind!=='OWL_STRUCTURAL_AXIOM'||origin.axiomDigest!==entry.axiomDigest||origins.has(document.id))fail('EXPLANATION_PROTOCOL','Axiom source is outside its exact model closure',409);origins.add(document.id);
       let sourceLocation:Record<string,Json>={};
       if(located){
-        if(version2&&document.format==='turtle'){
+        if(shared&&document.format==='turtle'){
           if(!Object.hasOwn(origin,'sourceLocation'))fail('EXPLANATION_PROTOCOL','Turtle axiom source location is missing',409);
           sourceLocation={axiomSourceLocation:rdfLocations!.validate(document,origin.sourceLocation) as unknown as Json};locatedDocuments++;
+        }else if(version3&&document.format==='rdfxml'){
+          if(!Object.hasOwn(origin,'sourceLocation'))fail('EXPLANATION_PROTOCOL','RDF/XML axiom source location is missing',409);
+          sourceLocation={axiomSourceLocation:xmlLocations!.validate(document,origin.sourceLocation) as unknown as Json};locatedDocuments++;
         }else if(axiomLocationFormatInstrumented(document.format)){
           if(!Object.hasOwn(origin,'sourceLocation'))fail('EXPLANATION_PROTOCOL','Functional axiom source location is missing',409);
           sourceLocation={axiomSourceLocation:(rdfLocations?rdfLocations.functional(document,origin.sourceLocation):locations.validate(document,origin.sourceLocation)) as unknown as Json};locatedDocuments++;
@@ -72,7 +89,9 @@ export function explainEvidence(e:TaskEvidence,model:ModelAdmission,sources:Sour
   });
   locations.finish();
   rdfLocations?.finish();
-  const locationEvidence:Record<string,Json>=located?{sourceLocationVersion:version2?2:1,axiomSourceLocationCoverage:!data.support.length?'NOT_APPLICABLE':!locatedDocuments?'UNAVAILABLE':unlocatedDocuments?'PARTIAL':'COMPLETE',...(rdfLocations?{sourceLocationDocuments:rdfLocations.tables as unknown as Json}:{})}:{};
+  xmlLocations?.finish();
+  const sourceTables=xmlLocations?[...rdfLocations!.tables,...xmlLocations.tables].sort((a,b)=>a.documentId<b.documentId?-1:a.documentId>b.documentId?1:0):rdfLocations?.tables;
+  const locationEvidence:Record<string,Json>=located?{sourceLocationVersion:version3?3:version2?2:1,axiomSourceLocationCoverage:!data.support.length?'NOT_APPLICABLE':!locatedDocuments?'UNAVAILABLE':unlocatedDocuments?'PARTIAL':'COMPLETE',...(rdfLocations?{sourceLocationDocuments:sourceTables as unknown as Json}:{})}:{};
   return {schema:'ontology-explanation-projection/v2',modelDigest:model.digest,sourceSetDigest:model.draft.sourceSetDigest,closureDigest:model.closureDigest,task:{...taskBinding(e)},target:request.task.target,query:request.task.query?{format:request.task.query.format,digest:request.task.query.digest}:null,method:'DELETION_REPLAY',...replayEvidence,...locationEvidence,support:support as unknown as Json,replay:data.replay as Json,sourceLinksComplete,sourceLinkPrecision:'DOCUMENT_MAPPING_NOT_AXIOM_BYTE_LOCATION',allMinimalJustifications:false,businessMeaningProven:false,authority:false};
 }
 export function explanationRead(db:DatabaseSync,projectId:string,input:unknown,toolchainDigest:string|null):Json {

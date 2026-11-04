@@ -1,6 +1,6 @@
 # Optional exact axiom source locations
 
-Version 1 identifies original Functional Syntax axiom occurrences. Version 2 adds shared Turtle source tables and distinguishes actual RDF construction inputs from parser-selection context. Neither version establishes RDF/XML source-location support, complete EXPLAIN-03 acceptance, business-source interpretation or a semantic decision. The existing explanation method, replay obligation, task deadlines and output budgets remain unchanged. RDF/XML instrumentation remains a required later part of the all-format delivery; the current implementation does not remove that obligation.
+Version 1 identifies original Functional Syntax axiom occurrences. Version 2 adds shared Turtle source tables and distinguishes actual RDF construction inputs from parser-selection context. Version 3 adds RDF/XML source sets and permits both RDF formats in the same explanation. No protocol version alone establishes complete EXPLAIN-03 acceptance, business-source interpretation or a semantic decision. The existing explanation method, replay obligation, task deadlines and output budgets remain unchanged; exact distribution and native journey evidence remain required.
 
 Functional Syntax is available in the internal DL request protocol, structural queries, replay documents and fixtures. Native business model authoring remains limited to Turtle and RDF/XML by the unchanged model schema. A version-1 native business explanation with supporting premises reports location coverage `UNAVAILABLE`; a premise-free explanation reports `NOT_APPLICABLE`. Functional location fixtures exercise the shared DL result protocol, not admission of a Functional business model. Version-2 native Turtle explanations can establish exact original-source sets under the additional rules below.
 
@@ -102,3 +102,41 @@ Every table contains exactly the dependency closure reached from the supporting 
 Version-2 validation shares a 200,000-record ceiling across RDF source/context/occurrence records and Functional fragment/context records. It also bounds all reference-list entries and source edges to 1,000,000, counting repeated origin references, and caps hashing of distinct source ranges at 64 MiB across the explanation. Nested spans therefore cannot cause unbounded repeated hashing. These are defensive ceilings, not a claim that every combination fits the output: the existing 30,000 JSON-node/depth-24 structure budget and 8 MiB DL result budget still apply first. The original 8 MiB document, 32 MiB closure, task deadline, 32 MiB review/delivery and 64 KiB page limits remain unchanged. Exhaustion yields an incomplete/failed result or rejects malformed retained metadata; it never silently removes records while claiming complete coverage.
 
 For version 2, coverage `COMPLETE` means every supporting origin has a validated Functional group or Turtle source set. `PARTIAL` means instrumented origins coexist with RDF/XML origins, which still project `{status:"UNAVAILABLE", reason:"FORMAT_NOT_INSTRUMENTED"}`. RDF/XML-only support is `UNAVAILABLE`; empty support is `NOT_APPLICABLE` and requires empty shared tables. Version 1 keeps its original Functional-only coverage semantics. The new formal-source evidence does not change author-declared business mappings, review authority, semantic approval or software-release authority.
+
+## Version 3: RDF/XML and mixed source tables
+
+`sourceLocationVersion: 3` requires a location group for every supporting origin. Functional Syntax keeps the version-1 group; Turtle and RDF/XML both use the version-2 `RDF_CONSTRUCTION` group with separate construction and parser-context role arrays. An RDF/XML origin resolves its occurrence IDs only against its own XML table. The single `sourceLocationDocuments` array contains Turtle and XML tables in ascending, unique `documentId` order. Functional documents do not acquire a shared table. Version-3 coverage is `COMPLETE` for nonempty support and `NOT_APPLICABLE` for empty support; missing XML attribution is a failed/incomplete result, never an `UNAVAILABLE` fallback.
+
+An XML table has exactly this shape:
+
+```text
+{
+  schema: "ontology-rdfxml-source-document/v1",
+  documentId, documentDigest,
+  format: "rdfxml", parserId: "owlapi-rdfxml-occurrences:1",
+  sources: [{ id, kind, start, end, fragmentDigest, startLine, endLine }],
+  sourceSets: [{ id, sourceIds: [positiveInteger, ...] }],
+  contexts: [{ id, kind, name, resolved, sourceSetId, dependencyContextIds }],
+  occurrences: [{ id, triple, subject, predicate, object, generatedKind }]
+}
+```
+
+IDs are positive, unique, and ascending within each array; retained parser IDs may have gaps. `sourceIds` is nonempty, unique and ascending. Equal memberships share one source-set ID. A term has exactly `{sourceSetId, inherited, generated, contextIds}`. Its source set is required and nonempty; its context list is unique and ascending. The `triple` resource/literal union is the same as Turtle. XML callbacks can retain both a language and a datatype; the mapper applies datatype precedence, and the table preserves the actual callback rather than rewriting its terms.
+
+XML source kinds are `ELEMENT_NAME`, `ATTRIBUTE`, `TEXT`, `CDATA`, `ELEMENT`, `ENTITY_REFERENCE`, `ENTITY_DECLARATION`, `DTD_ATTRIBUTE_DECLARATION`, `NAMESPACE`, `XML_BASE`, and `XML_LANG`. Fragments bind the original unexpanded UTF-8 document bytes with the existing exclusive-end and covered-character line rules. A multi-fragment source set can therefore retain both an entity declaration and its use without pretending that expanded text was literally present at one range. Overlapping spans are permitted and are hashed once per distinct range.
+
+Contexts form an earlier-ID dependency DAG. `DOCUMENT` binds the original parsing IRI; `BUILTIN` binds only the implicit `xml` namespace. These have source-set ID zero and no dependencies. All other contexts require a positive original source set:
+
+- `NAMESPACE`: prefix name and resolved namespace, each permitting an empty string.
+- `XML_BASE` and `XML_LANG`: null name and resolved base/language; language can be empty.
+- `ENTITY_DECLARATION` and `ENTITY_REFERENCE`: the general, parameter or character-reference name and null resolved value.
+- `DTD_ATTRIBUTE_DECLARATION` and `DTD_ATTRIBUTE_DEFAULT`: `elementQName@attributeQName` and respectively the declared type or normalized default value.
+- `RDF_LI_ORDER` and `REIFICATION_ORDER`: null name and a positive decimal position.
+
+`generatedKind` is null or one of `TYPED_NODE`, `PROPERTY_ATTRIBUTE`, `PARSE_TYPE_RESOURCE`, `COLLECTION_FIRST`, `COLLECTION_REST`, `COLLECTION_TYPE`, `RDF_LI`, `REIFICATION`, `ENTITY_EXPANSION`, `PARSE_TYPE_LITERAL`, and `REIFICATION_BAG`. A non-null kind requires a generated term with original generating sources. These labels describe parser production, not invented logical premises.
+
+Every table contains exactly the reachable occurrence → term → source-set/context → source/context-dependency closure. The owner rejects unused, missing or cross-document records, duplicate set membership, unknown keys, and inconsistent byte identities. XML source-set records and all membership/term/context/origin reference edges participate in the same version-2 budgets shared across both RDF formats and Functional locations. No table gets a separate allowance. Output size, JSON structure, source admission and deadline limits remain unchanged.
+
+The applicable syntax is [RDF 1.1 XML Syntax](https://www.w3.org/TR/rdf-syntax-grammar/), which normatively references XML 1.0 Fifth Edition and Namespaces in XML 1.0. The parser accepts XML 1.0 or an omitted XML declaration; XML 1.1 is explicitly refused. External entities and DTD retrieval remain disabled. Internal declarations/defaults are handled within the existing expansion, total entity-size and depth limits. This syntax boundary does not narrow the committed OWL 2 DL Direct Semantics constructs or datatype map.
+
+Historical unversioned, version-1 and version-2 evidence retain their original projection shape, field order and serialized bytes. In particular, historical version-2 XML origins keep their `UNAVAILABLE` interpretation. Version-3 tables never rewrite old review or delivery identities, and formal source coordinates do not establish business meaning or grant human approval.

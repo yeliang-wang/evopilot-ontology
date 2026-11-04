@@ -60,7 +60,7 @@ function originalSlice(content,source){
   return text;
 }
 function sourceTables(documents,data){
-  assert.equal(data.sourceLocationVersion,2);assert.ok(Array.isArray(data.sourceLocationDocuments));
+  assert.equal(data.sourceLocationVersion,3);assert.ok(Array.isArray(data.sourceLocationDocuments));
   const tableById=new Map(data.sourceLocationDocuments.map(t=>[t.documentId,t]));assert.equal(tableById.size,data.sourceLocationDocuments.length);
   const origins=data.support.flatMap(a=>a.sources??a.documents);
   for(const table of data.sourceLocationDocuments){
@@ -232,7 +232,7 @@ test('synthetic native Turtle admission retains exact source tables through revi
   const reviewerToken=readFileSync(grant.credentialFile,'utf8');let s=createStandaloneService(configuration(f));t.after(()=>s.close());
   const p=prepare(s,f),validation=write(s,f,'validation.start',{assetId:'services',modelDigest:p.modelDigest},'synthetic-rdf-validation');assert.equal((await terminal(s,f,validation.result.taskId)).formalStatus,'MATCHED');
   const taskId=await explanationTask(s,f,p),read=paged(s,f,'explanation.read',{assetId:'services',modelDigest:p.modelDigest,taskId},512),report=read.value;
-  assert.ok(read.pages>1);assert.equal(read.first.projectionDigest,hash(report));assert.equal(report.sourceLocationVersion,2);assert.equal(report.axiomSourceLocationCoverage,'COMPLETE');assert.equal(report.replayVerified,true);
+  assert.ok(read.pages>1);assert.equal(read.first.projectionDigest,hash(report));assert.equal(report.sourceLocationVersion,3);assert.equal(report.axiomSourceLocationCoverage,'COMPLETE');assert.equal(report.replayVerified,true);
   sourceTables(p.model.closure.documents,report);assert.equal(report.support.length,4,'The fixture has exactly the equivalence and three necessary assertion premises');
   assert.ok(report.sourceLocationDocuments[0].occurrences.some(o=>o.generatedKind==='COLLECTION_FIRST'));assert.ok(report.sourceLocationDocuments[0].occurrences.some(o=>o.generatedKind==='COLLECTION_REST'));
   assert.equal(report.sourceLinksComplete,true);assert.equal(report.businessMeaningProven,false);assert.equal(report.authority,false);

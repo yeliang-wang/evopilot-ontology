@@ -1,0 +1,381 @@
+{
+  "schema": "ontology-dl-parser-compat/v1",
+  "parserId": "owlapi-rdfxml-occurrences:1",
+  "upstreamParser": "net.sourceforge.owlapi:owlapi-parsers:5.5.1",
+  "sourceArchive": {
+    "url": "https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/owlapi-parsers/5.5.1/owlapi-parsers-5.5.1-sources.jar",
+    "sha256": "ca5ade39883033eb730faa86a8c3af1ad8ed6f0484384369b2e5f02af6af4293"
+  },
+  "files": [
+    {
+      "sourceEntry": "org/semanticweb/owlapi/rdf/rdfxml/parser/RDFParser.java",
+      "sourceSHA256": "c756d2bfe0ff851c534f72b7e37a8741864c3622686e3efb77b5b2830a09b8b6",
+      "outputFile": "LocatedRDFXMLSyntaxParser.java",
+      "changes": [
+        {
+          "find": "public class RDFParser extends DefaultHandler implements IRIProvider {",
+          "replace": "class LocatedRDFXMLSyntaxParser extends DefaultHandler implements IRIProvider {\n    LocatedRDFXMLParser bridge;",
+          "occurrences": 1
+        },
+        {
+          "find": "new StartRDF(this)",
+          "replace": "new LocatedXMLStartRDF(this)",
+          "occurrences": 1
+        },
+        {
+          "find": "    public void parse(InputSource source, RDFConsumer inputConsumer)\n        throws SAXException, IOException {\n        InputSource s = checkNotNull(source, \"source cannot be null\");\n        checkNotNull(inputConsumer, \"consumer cannot be null\");\n        String systemID = s.getSystemId();\n        try {\n            if (systemID == null) {\n                throw new SAXException(\n                    \"Supplied InputSource object myst have systemId property set, which is needed for IRI resolution.\");\n            }\n            baseIRI = IRI.create(new URI(source.getSystemId()));\n            consumer = inputConsumer;\n            inputConsumer.startModel(getBaseIRI());\n            DeclHandler handler = new DeclarationHandler();\n            SAXParsers.initParserWithOWLAPIStandards(handler,\n                inputConsumer.getConfiguration().getEntityExpansionLimit()).parse(source, this);\n            inputConsumer.endModel();\n        } catch (URISyntaxException e) {\n            throw new SAXException(\n                \"Invalid SystemID '\" + systemID + \"'of the supplied input source.\", e);\n        } finally {\n            state = null;\n            states.clear();\n            baseIRIs.clear();\n        }\n    }\n",
+          "replace": "    public void parse(InputSource source, RDFConsumer inputConsumer)\n        throws SAXException, IOException {\n        checkNotNull(source, \"source cannot be null\");\n        checkNotNull(inputConsumer, \"consumer cannot be null\");\n        String systemID = source.getSystemId();\n        if (systemID == null) throw new SAXException(\"XML document IRI required\");\n        org.semanticweb.owlapi.rdf.turtle.parser.RDFIRI.validateAbsolute(systemID);\n        try {\n            baseIRI = IRI.create(systemID);\n            consumer = inputConsumer;\n            inputConsumer.startModel(getBaseIRI());\n            bridge.parseXML(source, new DeclarationHandler());\n            inputConsumer.endModel();\n        } finally {\n            state = null; states.clear(); baseIRIs.clear(); languages.clear();\n        }\n    }\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    private IRI resolveFromDelegate(IRI iri, String value) {\n        checkNotNull(iri, \"iri cannot be null\");\n        checkNotNull(value, \"value cannot be null\");\n        if (NodeID.isAnonymousNodeIRI(value)) {\n            return IRI.create(value, null);\n        }\n        // cache the delegate URI if not there already\n        if (!baseURICache.containsKey(getBaseIRI())) {\n            baseURICache.put(getBaseIRI(), getBaseIRI().toURI());\n        }\n        // get hold of the delegate URI\n        URI delegateURI = baseURICache.get(getBaseIRI());\n        // resolve against delegate\n        URI resolve = delegateURI.resolve(value.replace(\" \", \"%20\"));\n        return IRI.create(resolve);\n    }\n",
+          "replace": "    private IRI resolveFromDelegate(IRI iri, String value) {\n        checkNotNull(iri, \"iri cannot be null\");\n        checkNotNull(value, \"value cannot be null\");\n        return IRI.create(org.semanticweb.owlapi.rdf.turtle.parser.RDFIRI.resolve(value, iri.toString()));\n    }\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    public String resolveIRI(String iri) {\n        checkNotNull(iri, \"uri cannot be null\");\n        if (iri.isEmpty()) {\n            // MH - Fix for resolving a \"This document\" reference against base\n            // IRIs.\n            String namespace = getBaseIRI().getNamespace();\n            if (namespace.charAt(namespace.length() - 1) == '#') {\n                return namespace.substring(0, namespace.length() - 1);\n            }\n            String base = getBaseIRI().toString();\n            int hashIndex = base.indexOf('#');\n            if (hashIndex != -1) {\n                return base.substring(0, hashIndex);\n            }\n            return base;\n        } else {\n            try {\n                String resolved = resolvedIRIs.get(iri);\n                if (resolved != null) {\n                    return resolved;\n                }\n                IRI theIRI = resolveFromDelegate(getBaseIRI(), iri);\n                String u = theIRI.toString();\n                uriCache.put(u, theIRI);\n                resolvedIRIs.put(iri, u);\n                return u;\n            } catch (IllegalArgumentException e) {\n                throw new RDFParserException(e,\n                    String.format(WRONGRESOLVE, iri, getBaseIRI(), e.getMessage()),\n                    getDocumentLocator());\n            }\n        }\n    }\n",
+          "replace": "    public String resolveIRI(String iri) {\n        IRI resolved = resolveFromDelegate(getBaseIRI(), checkNotNull(iri, \"iri cannot be null\"));\n        String value = resolved.toString();\n        uriCache.put(value, resolved);\n        return value;\n    }\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    public void statementWithResourceValue(String subject, String predicate, String object,\n        @Nullable String reificationID) {\n        String remappedSubject = getRDFConsumer().remapOnlyIfRemapped(subject);\n        getRDFConsumer().statementWithResourceValue(remappedSubject, predicate, object);\n        if (reificationID != null) {\n            getRDFConsumer().statementWithResourceValue(reificationID, RDF_TYPE, RDF_STATEMENT);\n            getRDFConsumer().statementWithResourceValue(reificationID, RDF_SUBJECT,\n                remappedSubject);\n            getRDFConsumer().statementWithResourceValue(reificationID, RDF_PREDICATE, predicate);\n            getRDFConsumer().statementWithResourceValue(reificationID, RDF_OBJECT, object);\n        }\n    }\n",
+          "replace": "    public void statementWithResourceValue(String subject, String predicate, String object,\n        @Nullable String reificationID) {\n        statementWithResourceValue(subject, predicate, object, reificationID, null);\n    }\n    public void statementWithResourceValue(String subject, String predicate, String object,\n        @Nullable String reificationID, LocatedRDFXMLParser.Emission source) {\n        bridge.emitResource(subject, predicate, object, reificationID, source);\n    }\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    public void statementWithLiteralValue(String subject, String predicate, String object,\n        @Nullable String dataType, @Nullable String reificationID) {\n        getRDFConsumer().statementWithLiteralValue(subject, predicate, object, language, dataType);\n        if (reificationID != null) {\n            getRDFConsumer().statementWithResourceValue(reificationID, RDF_TYPE, RDF_STATEMENT);\n            getRDFConsumer().statementWithResourceValue(reificationID, RDF_SUBJECT, subject);\n            getRDFConsumer().statementWithResourceValue(reificationID, RDF_PREDICATE, predicate);\n            getRDFConsumer().statementWithLiteralValue(reificationID, RDF_OBJECT, object, language,\n                dataType);\n        }\n    }\n",
+          "replace": "    public void statementWithLiteralValue(String subject, String predicate, String object,\n        @Nullable String dataType, @Nullable String reificationID) {\n        statementWithLiteralValue(subject, predicate, object, dataType, reificationID, null);\n    }\n    public void statementWithLiteralValue(String subject, String predicate, String object,\n        @Nullable String dataType, @Nullable String reificationID, LocatedRDFXMLParser.Emission source) {\n        bridge.emitLiteral(subject, predicate, object, dataType, reificationID, source);\n    }\n",
+          "occurrences": 1
+        },
+        {
+          "find": "String value = atts.getValue(XMLLANG);",
+          "replace": "String value = atts.getValue(XMLNS, \"lang\");",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "0472359580aeadd9dc302fda07aaef5281ffc080e0d3c361927fa52be825919e"
+    },
+    {
+      "sourceEntry": "org/semanticweb/owlapi/rdf/rdfxml/parser/StartRDF.java",
+      "sourceSHA256": "17c2a6e67704e02f7a44a6f6ede656ab901c83141d210ba99a5690d581b447bf",
+      "outputFile": "LocatedXMLStartRDF.java",
+      "changes": [
+        {
+          "find": " RDFParser ",
+          "replace": " LocatedRDFXMLSyntaxParser ",
+          "occurrences": 10
+        },
+        {
+          "find": "(RDFParser ",
+          "replace": "(LocatedRDFXMLSyntaxParser ",
+          "occurrences": 4
+        },
+        {
+          "find": " AbstractState ",
+          "replace": " LocatedXMLAbstractState ",
+          "occurrences": 10
+        },
+        {
+          "find": "(AbstractState.",
+          "replace": "(LocatedXMLAbstractState.",
+          "occurrences": 1
+        },
+        {
+          "find": " AbstractState(",
+          "replace": " LocatedXMLAbstractState(",
+          "occurrences": 1
+        },
+        {
+          "find": " EmptyPropertyElement ",
+          "replace": " LocatedXMLEmptyPropertyElement ",
+          "occurrences": 1
+        },
+        {
+          "find": " EmptyPropertyElement(",
+          "replace": " LocatedXMLEmptyPropertyElement(",
+          "occurrences": 2
+        },
+        {
+          "find": " NodeElementList(",
+          "replace": " LocatedXMLNodeElementList(",
+          "occurrences": 2
+        },
+        {
+          "find": " NodeElementList ",
+          "replace": " LocatedXMLNodeElementList ",
+          "occurrences": 1
+        },
+        {
+          "find": " NodeElement ",
+          "replace": " LocatedXMLNodeElement ",
+          "occurrences": 10
+        },
+        {
+          "find": "(NodeElement ",
+          "replace": "(LocatedXMLNodeElement ",
+          "occurrences": 6
+        },
+        {
+          "find": " NodeElement(",
+          "replace": " LocatedXMLNodeElement(",
+          "occurrences": 5
+        },
+        {
+          "find": " ParseTypeCollectionElement ",
+          "replace": " LocatedXMLParseTypeCollectionElement ",
+          "occurrences": 1
+        },
+        {
+          "find": " ParseTypeCollectionElement(",
+          "replace": " LocatedXMLParseTypeCollectionElement(",
+          "occurrences": 2
+        },
+        {
+          "find": " ResourceOrLiteralElement ",
+          "replace": " LocatedXMLResourceOrLiteralElement ",
+          "occurrences": 1
+        },
+        {
+          "find": " ResourceOrLiteralElement(",
+          "replace": " LocatedXMLResourceOrLiteralElement(",
+          "occurrences": 2
+        },
+        {
+          "find": " ParseTypeLiteralElement ",
+          "replace": " LocatedXMLParseTypeLiteralElement ",
+          "occurrences": 1
+        },
+        {
+          "find": " ParseTypeLiteralElement(",
+          "replace": " LocatedXMLParseTypeLiteralElement(",
+          "occurrences": 3
+        },
+        {
+          "find": " ParseTypeResourceElement ",
+          "replace": " LocatedXMLParseTypeResourceElement ",
+          "occurrences": 1
+        },
+        {
+          "find": " ParseTypeResourceElement(",
+          "replace": " LocatedXMLParseTypeResourceElement(",
+          "occurrences": 2
+        },
+        {
+          "find": " PropertyElementList(",
+          "replace": " LocatedXMLPropertyElementList(",
+          "occurrences": 3
+        },
+        {
+          "find": " PropertyElementList ",
+          "replace": " LocatedXMLPropertyElementList ",
+          "occurrences": 1
+        },
+        {
+          "find": " ReifiedStatementBag(",
+          "replace": " LocatedXMLReifiedStatementBag(",
+          "occurrences": 2
+        },
+        {
+          "find": " ReifiedStatementBag ",
+          "replace": " LocatedXMLReifiedStatementBag ",
+          "occurrences": 1
+        },
+        {
+          "find": " ReificationManager ",
+          "replace": " LocatedXMLReificationManager ",
+          "occurrences": 6
+        },
+        {
+          "find": " ReificationManager.",
+          "replace": " LocatedXMLReificationManager.",
+          "occurrences": 1
+        },
+        {
+          "find": " ReificationManager(",
+          "replace": " LocatedXMLReificationManager(",
+          "occurrences": 1
+        },
+        {
+          "find": " StartRDF ",
+          "replace": " LocatedXMLStartRDF ",
+          "occurrences": 1
+        },
+        {
+          "find": " StartRDF(",
+          "replace": " LocatedXMLStartRDF(",
+          "occurrences": 1
+        },
+        {
+          "find": "    protected final LocatedRDFXMLSyntaxParser parser;",
+          "replace": "    protected final LocatedRDFXMLSyntaxParser parser;\n    protected final LocatedRDFXMLParser.Frame source;",
+          "occurrences": 1
+        },
+        {
+          "find": "        this.parser = parser;",
+          "replace": "        this.parser = parser;\n        source = parser.bridge.frame();",
+          "occurrences": 1
+        },
+        {
+          "find": "void propertyAttributes(String subjectIRI, Attributes atts,",
+          "replace": "void propertyAttributes(String subjectIRI, LocatedRDFXMLParser.TermSource subjectSource, Attributes atts,",
+          "occurrences": 1
+        },
+        {
+          "find": "                parser.statementWithLiteralValue(subjectIRI, nsIRI + localName, value, null,\n                    reificationID);",
+          "replace": "                parser.statementWithLiteralValue(subjectIRI, nsIRI + localName, value, null,\n                    reificationID, parser.bridge.property(source, subjectSource, atts, i, false));",
+          "occurrences": 1
+        },
+        {
+          "find": "                parser.statementWithResourceValue(subjectIRI, nsIRI + localName, resolvedValue,\n                    reificationID);",
+          "replace": "                parser.statementWithResourceValue(subjectIRI, nsIRI + localName, resolvedValue,\n                    reificationID, parser.bridge.property(source, subjectSource, atts, i, true));",
+          "occurrences": 1
+        },
+        {
+          "find": "        parser.statementWithResourceValue(nodeElement.subjectIRI(), propertyIRI(), objectIRI,\n            reificationID);\n        propertyAttributes(objectIRI, atts, getReificationManager(atts));",
+          "replace": "        LocatedRDFXMLParser.TermSource objectSource = parser.bridge.resource(source);\n        parser.statementWithResourceValue(nodeElement.subjectIRI(), propertyIRI(), objectIRI,\n            reificationID, parser.bridge.emission(source, nodeElement.subjectSource, objectSource, null));\n        propertyAttributes(objectIRI, objectSource, atts, getReificationManager(atts));",
+          "occurrences": 1
+        },
+        {
+          "find": "    protected final AtomicLong nextLi = new AtomicLong(1);",
+          "replace": "    protected final AtomicLong nextLi = new AtomicLong(1);\n    protected LocatedRDFXMLParser.TermSource subjectSource;",
+          "occurrences": 1
+        },
+        {
+          "find": "        subjectIRI = NodeID.nextAnonymousIRI();\n        reificationManager = getReificationManager(atts);",
+          "replace": "        subjectIRI = NodeID.nextAnonymousIRI();\n        subjectSource = parser.bridge.subject(source, true);\n        reificationManager = getReificationManager(atts);",
+          "occurrences": 1
+        },
+        {
+          "find": "        return RDFNS + '_' + nextLi.getAndIncrement();",
+          "replace": "        long ordinal = nextLi.getAndIncrement();\n        parser.bridge.li(source, ordinal);\n        return RDFNS + '_' + ordinal;",
+          "occurrences": 1
+        },
+        {
+          "find": "        subjectIRI = getIDNodeIDAboutResourceIRI(atts);",
+          "replace": "        subjectIRI = getIDNodeIDAboutResourceIRI(atts);\n        subjectSource = parser.bridge.subject(source, false);",
+          "occurrences": 1
+        },
+        {
+          "find": "            parser.statementWithResourceValue(subjectIRI(), RDF_TYPE, namespaceIRI + localName,\n                verifyNotNull(\n                    reificationManager).getReificationID(null, parser));",
+          "replace": "            String locatedReification = verifyNotNull(reificationManager).getReificationID(null, parser);\n            parser.statementWithResourceValue(subjectIRI(), RDF_TYPE, namespaceIRI + localName,\n                locatedReification, parser.bridge.typed(source, subjectSource));",
+          "occurrences": 1
+        },
+        {
+          "find": "        propertyAttributes(subjectIRI(), atts, verifyNotNull(reificationManager));",
+          "replace": "        propertyAttributes(subjectIRI(), subjectSource, atts, verifyNotNull(reificationManager));",
+          "occurrences": 1
+        },
+        {
+          "find": "    protected String lastCellIRI;",
+          "replace": "    protected String lastCellIRI;\n    protected LocatedRDFXMLParser.TermSource lastCellSource;\n    protected LocatedRDFXMLParser.TermSource nextCellSource;",
+          "occurrences": 1
+        },
+        {
+          "find": "            String newListCellIRI = listCell(collectionNode.subjectIRI());",
+          "replace": "            nextCellSource = parser.bridge.collectionCell(source, collectionNode.source);\n            String newListCellIRI = listCell(collectionNode.subjectIRI(), collectionNode.subjectSource);",
+          "occurrences": 1
+        },
+        {
+          "find": "                parser.statementWithResourceValue(nodeElement.subjectIRI(), propertyIRI(),\n                    newListCellIRI,\n                    reificationID);",
+          "replace": "                parser.statementWithResourceValue(nodeElement.subjectIRI(), propertyIRI(),\n                    newListCellIRI, reificationID,\n                    parser.bridge.emission(source, nodeElement.subjectSource, nextCellSource, null));",
+          "occurrences": 1
+        },
+        {
+          "find": "                parser.statementWithResourceValue(lastCell(), RDF_REST, newListCellIRI, null);",
+          "replace": "                parser.statementWithResourceValue(lastCell(), RDF_REST, newListCellIRI, null,\n                    parser.bridge.synthetic(lastCellSource, parser.bridge.generated(source), nextCellSource, \"COLLECTION_REST\"));",
+          "occurrences": 1
+        },
+        {
+          "find": "            lastCellIRI = newListCellIRI;",
+          "replace": "            lastCellIRI = newListCellIRI;\n            lastCellSource = nextCellSource;",
+          "occurrences": 1
+        },
+        {
+          "find": "    String listCell(String valueIRI) {\n        String listCellIRI = NodeID.nextAnonymousIRI();\n        parser.statementWithResourceValue(listCellIRI, RDF_FIRST, valueIRI, null);\n        parser.statementWithResourceValue(listCellIRI, RDF_TYPE, RDF_LIST, null);\n        return listCellIRI;\n    }",
+          "replace": "    String listCell(String valueIRI, LocatedRDFXMLParser.TermSource valueSource) {\n        String listCellIRI = NodeID.nextAnonymousIRI();\n        parser.statementWithResourceValue(listCellIRI, RDF_FIRST, valueIRI, null,\n            parser.bridge.synthetic(nextCellSource, parser.bridge.generated(source), valueSource, \"COLLECTION_FIRST\"));\n        parser.statementWithResourceValue(listCellIRI, RDF_TYPE, RDF_LIST, null,\n            parser.bridge.synthetic(nextCellSource, parser.bridge.generated(source), parser.bridge.generated(source), \"COLLECTION_TYPE\"));\n        return listCellIRI;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "            parser.statementWithResourceValue(nodeElement.subjectIRI(), propertyIRI(), RDF_NIL,\n                reificationID);",
+          "replace": "            parser.statementWithResourceValue(nodeElement.subjectIRI(), propertyIRI(), RDF_NIL,\n                reificationID, parser.bridge.emission(source, nodeElement.subjectSource, parser.bridge.generated(source), null));",
+          "occurrences": 1
+        },
+        {
+          "find": "            parser.statementWithResourceValue(lastCell(), RDF_REST, RDF_NIL, null);",
+          "replace": "            parser.statementWithResourceValue(lastCell(), RDF_REST, RDF_NIL, null,\n                parser.bridge.synthetic(lastCellSource, parser.bridge.generated(source), parser.bridge.generated(source), \"COLLECTION_REST\"));",
+          "occurrences": 1
+        },
+        {
+          "find": "            datatype = atts.getValue(RDFNS, ATTR_DATATYPE);",
+          "replace": "            datatype = atts.getValue(RDFNS, ATTR_DATATYPE);\n            if (datatype != null) datatype = parser.resolveIRI(datatype);",
+          "occurrences": 1
+        },
+        {
+          "find": "            parser.statementWithResourceValue(nodeElement.subjectIRI(), propertyIRI(),\n                verifyNotNull(innerNode)\n                    .subjectIRI(), reificationID);",
+          "replace": "            parser.statementWithResourceValue(nodeElement.subjectIRI(), propertyIRI(),\n                verifyNotNull(innerNode).subjectIRI(), reificationID,\n                parser.bridge.emission(source, nodeElement.subjectSource, verifyNotNull(innerNode).subjectSource, null));",
+          "occurrences": 1
+        },
+        {
+          "find": "            parser.statementWithLiteralValue(nodeElement.subjectIRI(), propertyIRI(),\n                verifyNotNull(text).toString(),\n                datatype, reificationID);",
+          "replace": "            parser.statementWithLiteralValue(nodeElement.subjectIRI(), propertyIRI(),\n                verifyNotNull(text).toString(), datatype, reificationID,\n                parser.bridge.emission(source, nodeElement.subjectSource, parser.bridge.literal(source, false), null));",
+          "occurrences": 1
+        },
+        {
+          "find": "            parser.statementWithLiteralValue(nodeElement.subjectIRI(), propertyIRI(), content,\n                RDF_XMLLITERAL,\n                reificationID);",
+          "replace": "            parser.statementWithLiteralValue(nodeElement.subjectIRI(), propertyIRI(), content,\n                RDF_XMLLITERAL, reificationID,\n                parser.bridge.emission(source, nodeElement.subjectSource, parser.bridge.literal(source, true), \"PARSE_TYPE_LITERAL\"));",
+          "occurrences": 1
+        },
+        {
+          "find": "        parser.statementWithResourceValue(nodeElement.subjectIRI(), verifyNotNull(mpIRI),\n            anonymousNodeElement\n                .subjectIRI(), reificationID);",
+          "replace": "        parser.statementWithResourceValue(nodeElement.subjectIRI(), verifyNotNull(mpIRI),\n            anonymousNodeElement.subjectIRI(), reificationID,\n            parser.bridge.emission(source, nodeElement.subjectSource, anonymousNodeElement.subjectSource, \"PARSE_TYPE_RESOURCE\"));",
+          "occurrences": 1
+        },
+        {
+          "find": "        return reificationID;\n    }\n}\n\nclass LocatedXMLReifiedStatementBag",
+          "replace": "        parser.bridge.rememberReification(reificationID);\n        return reificationID;\n    }\n}\n\nclass LocatedXMLReifiedStatementBag",
+          "occurrences": 1
+        },
+        {
+          "find": "    protected final String iri;\n\n    LocatedXMLReifiedStatementBag",
+          "replace": "    protected final String iri;\n    protected final LocatedRDFXMLParser.TermSource bagSource;\n    protected int orderContext;\n\n    LocatedXMLReifiedStatementBag",
+          "occurrences": 1
+        },
+        {
+          "find": "        iri = uri;\n        parser.statementWithResourceValue(iri, RDF_TYPE, RDF_BAG, null);",
+          "replace": "        iri = uri;\n        bagSource = parser.bridge.bag(parser.bridge.frame());\n        parser.statementWithResourceValue(iri, RDF_TYPE, RDF_BAG, null,\n            parser.bridge.bagType(bagSource, parser.bridge.frame()));",
+          "occurrences": 1
+        },
+        {
+          "find": "        parser.statementWithResourceValue(iri, RDFNS + '_' + elements.getAndIncrement(), resultIRI,\n            null);",
+          "replace": "        parser.bridge.rememberReification(resultIRI);\n        long ordinal = elements.getAndIncrement();\n        orderContext = parser.bridge.bagOrder(parser.bridge.frame(), ordinal, orderContext);\n        parser.statementWithResourceValue(iri, RDFNS + '_' + ordinal, resultIRI,\n            null, parser.bridge.bagMember(bagSource, orderContext));",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "56b37a28482ce38f026ed13d92f464107ce84b0717d27b918c0c6a64774785c7"
+    }
+  ],
+  "ownedSources": [
+    {
+      "file": "LocatedRDFXMLParser.java",
+      "sha256": "b65006a385a92cff5a0444e9aada9ca777f8af4a20430b16ffb60deaa375aff8"
+    },
+    {
+      "file": "RDFXMLRawScanner.java",
+      "sha256": "7e6fd7dd56fec7c2c49726378654fe999a62ee10652073bf359afcf0eb73166b"
+    }
+  ],
+  "notice": "Identified EvoPilot modification of pinned OWLAPI 5.5.1 RDFParser and StartRDF sources. The complete upstream notices remain in both derived files. Classes are separately named and do not replace any original dependency class. Exact state callback order is retained; added hooks bind each actual RDF callback to independently reconciled raw XML source sets. IRI resolution uses the separately owned strict RFC resolver, correcting original context-insensitive cache and Java URI behavior; relative rdf:datatype values are resolved in their actual xml:base context. External retrieval and include-rdf are refused. Retain exact upstream source, generated source, recipe, package license and notice evidence. No completed license or formal standards acceptance is claimed. Semantic XML events use the already pinned Woodstox 4.1.4 SAX provider, preserving referenced internal-entity CRs instead of the pinned JDK normalization defect. The JDK independently performs bounded security preflight and supplies parsed-entity declaration prefix metadata absent from Woodstox 4.1.4. Namespace-aware xml:lang lookup avoids that provider's broken QName lookup. Generated reification uses normative rdf:Statement, correcting pinned RDFConstants' lowercase rdf:statement. Both providers refuse external retrieval; ordinary and located paths share the same parser policy. Both ordinary and located paths explicitly require XML 1.0 through the mature JDK Locator2 version at startElement, after its declaration has been parsed, following RDF 1.1 XML Syntax section 1 and normative XML10 reference. XML 1.1 is refused before semantic parsing or lexical indexing; no regular-expression version guess is used.",
+  "reason": "Exact original UTF-16 source sets for XML lexical events, entity/default declaration chains and actual RDF grammar construction callbacks, with shared deadline and internal source budgets. The pinned Woodstox SAX provider remains the XML grammar and normalization authority after an independent bounded JDK safety preflight; the lexical index never supplies RDF semantic values. Ordinary semantic parsing uses the same corrected derived grammar without a raw index or source-count limits.",
+  "acceptance": "Independent original parser callback parity for unchanged valid semantics, explicit RFC correction examples, all supported grammar/source mappings, resource failure tests and formal source-fragment acceptance remain required.",
+  "upstreamLicenseDeclarations": [
+    {
+      "name": "Apache License Version 2.0, January 2004",
+      "url": "http://www.apache.org/licenses/"
+    },
+    {
+      "name": "GNU LGPL Version 3.0",
+      "url": "http://www.gnu.org/licenses/lgpl.txt"
+    }
+  ],
+  "licenseDeclarationSource": "https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/owlapi-parent/5.5.1/owlapi-parent-5.5.1.pom"
+}

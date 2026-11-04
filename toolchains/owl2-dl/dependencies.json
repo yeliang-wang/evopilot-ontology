@@ -518,5 +518,9 @@
   "rdfMappingPatch": {
     "file": "rdf-mapping-compat.json",
     "sha256": "12110164611729580fe6c9102855c6d0ae0dd566098f9fbc0fce46af6cf049d6"
+  },
+  "rdfxmlPatch": {
+    "file": "rdfxml-compat.json",
+    "sha256": "d57f60658242604a3b32e93947b236416a29eb9c5b69e1d57218d70b0e4b1f05"
   }
 }
