@@ -1,0 +1,1492 @@
+{
+  "schema": "ontology-dl-parser-compat/v1",
+  "parserId": "owlapi-rdf-mapping-provenance:1",
+  "upstreamParser": "net.sourceforge.owlapi:owlapi-parsers:5.5.1",
+  "sourceArchive": {
+    "url": "https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/owlapi-parsers/5.5.1/owlapi-parsers-5.5.1-sources.jar",
+    "sha256": "ca5ade39883033eb730faa86a8c3af1ad8ed6f0484384369b2e5f02af6af4293"
+  },
+  "files": [
+    {
+      "sourceEntry": "org/semanticweb/owlapi/rdf/rdfxml/parser/OWLRDFConsumer.java",
+      "sourceSHA256": "cff71d016eab2e7b3f27920d83204f26e7fb6bfdcddc82ccdd06da7fc010567b",
+      "outputFile": "LocatedRDFConsumer.java",
+      "changes": [
+        {
+          "find": "import org.semanticweb.owlapi.rdf.rdfxml.parser.Translators.TranslatorAccessor;\n",
+          "replace": "import org.semanticweb.owlapi.rdf.rdfxml.parser.LocatedTranslators.TranslatorAccessor;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "import org.semanticweb.owlapi.rdf.rdfxml.parser.TripleHandlers.HandlerAccessor;\n",
+          "replace": "import org.semanticweb.owlapi.rdf.rdfxml.parser.LocatedTripleHandlers.HandlerAccessor;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "public class OWLRDFConsumer\n",
+          "replace": "public class LocatedRDFConsumer\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    private static final Logger LOGGER = LoggerFactory.getLogger(OWLRDFConsumer.class);\n",
+          "replace": "    private static final Logger LOGGER = LoggerFactory.getLogger(LocatedRDFConsumer.class);\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    public OWLRDFConsumer(OWLOntology ontology, OWLOntologyLoaderConfiguration configuration) {\n",
+          "replace": "    public LocatedRDFConsumer(OWLOntology ontology, OWLOntologyLoaderConfiguration configuration) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    public OWLRDFConsumer(OWLOntology ontology, AnonymousNodeChecker checker,\n",
+          "replace": "    public LocatedRDFConsumer(OWLOntology ontology, AnonymousNodeChecker checker,\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    final TranslatorAccessor translatorAccessor;",
+          "replace": "    final TranslatorAccessor translatorAccessor;\n    final RDFProvenance provenance;",
+          "occurrences": 1
+        },
+        {
+          "find": "public LocatedRDFConsumer(OWLOntology ontology, AnonymousNodeChecker checker,\n        OWLOntologyLoaderConfiguration configuration) {",
+          "replace": "public LocatedRDFConsumer(OWLOntology ontology, AnonymousNodeChecker checker,\n        OWLOntologyLoaderConfiguration configuration) {\n        this(ontology, checker, configuration, RDFProvenance.disabled());\n    }\n\n    public LocatedRDFConsumer(OWLOntology ontology, OWLOntologyLoaderConfiguration configuration,\n        RDFProvenance provenance) {\n        this(ontology, new AnonymousNodeCheckerImpl(), configuration, provenance);\n    }\n\n    public LocatedRDFConsumer(OWLOntology ontology, AnonymousNodeChecker checker,\n        OWLOntologyLoaderConfiguration configuration, RDFProvenance provenance) {\n        this.provenance = java.util.Objects.requireNonNull(provenance);\n        if (provenance.enabled() && (ontology.axioms().findAny().isPresent()\n            || ontology.importsDeclarations().findAny().isPresent()\n            || ontology.annotations().findAny().isPresent())) {\n            throw new RDFProvenance.MappingException(\"Located RDF mapping requires a fresh ontology\");\n        }",
+          "occurrences": 1
+        },
+        {
+          "find": "        tripleLogger = new TripleLogger();",
+          "replace": "        tripleLogger = new TripleLogger();\n        provenance.seedState(classIRIs);\n        provenance.seedState(objectPropertyIRIs);\n        provenance.seedState(dataPropertyIRIs);\n        provenance.seedState(propertyIRIs);\n        provenance.seedState(individualIRIs);\n        provenance.seedState(annPropertyIRIs);\n        provenance.seedState(annotationIRIs);\n        provenance.seedState(dataRangeIRIs);\n        provenance.seedState(ontologyIRIs);\n        provenance.seedState(restrictionIRIs);\n        provenance.seedState(axioms);\n        provenance.seedState(swrlRules);\n        provenance.seedState(swrlIndividualPropertyAtoms);\n        provenance.seedState(swrlDataValuedPropertyAtoms);\n        provenance.seedState(swrlClassAtoms);\n        provenance.seedState(swrlDataRangeAtoms);\n        provenance.seedState(swrlBuiltInAtoms);\n        provenance.seedState(swrlVariables);\n        provenance.seedState(swrlSameAsAtoms);\n        provenance.seedState(swrlDifferentFromAtoms);\n",
+          "occurrences": 1
+        },
+        {
+          "find": "protected final void importsClosureChanged() {\n        // NOTE: This method only gets called when the ontology being parsed\n        // adds a direct import. This is enough\n        // for resolving the imports closure.\n        // We cache IRIs of various entities here.\n        // We also mop up any triples that weren't parsed and consumed in the\n        // imports closure.\n        ontology.annotationPropertiesInSignature(INCLUDED)\n            .forEach(e -> annPropertyIRIs.add(e.getIRI()));\n        ontology.dataPropertiesInSignature(INCLUDED).forEach(e -> dataPropertyIRIs.add(e.getIRI()));\n        ontology.objectPropertiesInSignature(INCLUDED)\n            .forEach(e -> objectPropertyIRIs.add(e.getIRI()));\n        ontology.classesInSignature(INCLUDED).forEach(e -> classIRIs.add(e.getIRI()));\n        ontology.datatypesInSignature(INCLUDED).forEach(e -> dataRangeIRIs.add(e.getIRI()));\n        ontology.individualsInSignature(INCLUDED).forEach(e -> individualIRIs.add(e.getIRI()));\n    }",
+          "replace": "protected final void importsClosureChanged() {\n        if (provenance.enabled() && provenance.started()) {\n            throw new RDFProvenance.MappingException(\"External RDF import classification has no local provenance\");\n        }\n        // NOTE: This method only gets called when the ontology being parsed\n        // adds a direct import. This is enough\n        // for resolving the imports closure.\n        // We cache IRIs of various entities here.\n        // We also mop up any triples that weren't parsed and consumed in the\n        // imports closure.\n        ontology.annotationPropertiesInSignature(INCLUDED)\n            .forEach(e -> annPropertyIRIs.add(e.getIRI()));\n        ontology.dataPropertiesInSignature(INCLUDED).forEach(e -> dataPropertyIRIs.add(e.getIRI()));\n        ontology.objectPropertiesInSignature(INCLUDED)\n            .forEach(e -> objectPropertyIRIs.add(e.getIRI()));\n        ontology.classesInSignature(INCLUDED).forEach(e -> classIRIs.add(e.getIRI()));\n        ontology.datatypesInSignature(INCLUDED).forEach(e -> dataRangeIRIs.add(e.getIRI()));\n        ontology.individualsInSignature(INCLUDED).forEach(e -> individualIRIs.add(e.getIRI()));\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "objectPropertyIRIs.add(mainNode);",
+          "replace": "objectPropertyIRIs.add(mainNode);\n        provenance.stateAdded(objectPropertyIRIs, mainNode);",
+          "occurrences": 1
+        },
+        {
+          "find": "propertyIRIs.add(iri);",
+          "replace": "propertyIRIs.add(iri);\n        provenance.stateAdded(propertyIRIs, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "annotationIRIs.add(iri);",
+          "replace": "annotationIRIs.add(iri);\n        provenance.stateAdded(annotationIRIs, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "ontologyIRIs.add(iri);",
+          "replace": "ontologyIRIs.add(iri);\n        provenance.stateAdded(ontologyIRIs, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlRules.add(iri);",
+          "replace": "swrlRules.add(iri);\n        provenance.stateAdded(swrlRules, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlIndividualPropertyAtoms.add(iri);",
+          "replace": "swrlIndividualPropertyAtoms.add(iri);\n        provenance.stateAdded(swrlIndividualPropertyAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlDataValuedPropertyAtoms.add(iri);",
+          "replace": "swrlDataValuedPropertyAtoms.add(iri);\n        provenance.stateAdded(swrlDataValuedPropertyAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlClassAtoms.add(iri);",
+          "replace": "swrlClassAtoms.add(iri);\n        provenance.stateAdded(swrlClassAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlDataRangeAtoms.add(iri);",
+          "replace": "swrlDataRangeAtoms.add(iri);\n        provenance.stateAdded(swrlDataRangeAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlBuiltInAtoms.add(iri);",
+          "replace": "swrlBuiltInAtoms.add(iri);\n        provenance.stateAdded(swrlBuiltInAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlVariables.add(iri);",
+          "replace": "swrlVariables.add(iri);\n        provenance.stateAdded(swrlVariables, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlSameAsAtoms.add(iri);",
+          "replace": "swrlSameAsAtoms.add(iri);\n        provenance.stateAdded(swrlSameAsAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlDifferentFromAtoms.add(iri);",
+          "replace": "swrlDifferentFromAtoms.add(iri);\n        provenance.stateAdded(swrlDifferentFromAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "types.add(iri);",
+          "replace": "types.add(iri);\n        provenance.stateAdded(types, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "classIRIs.contains(iri)",
+          "replace": "provenance.stateContains(classIRIs, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "objectPropertyIRIs.contains(iri)",
+          "replace": "provenance.stateContains(objectPropertyIRIs, iri)",
+          "occurrences": 4
+        },
+        {
+          "find": "dataPropertyIRIs.contains(iri)",
+          "replace": "provenance.stateContains(dataPropertyIRIs, iri)",
+          "occurrences": 4
+        },
+        {
+          "find": "propertyIRIs.contains(iri)",
+          "replace": "provenance.stateContains(propertyIRIs, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "individualIRIs.contains(iri)",
+          "replace": "provenance.stateContains(individualIRIs, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "annPropertyIRIs.contains(iri)",
+          "replace": "provenance.stateContains(annPropertyIRIs, iri)",
+          "occurrences": 4
+        },
+        {
+          "find": "annotationIRIs.contains(iri)",
+          "replace": "provenance.stateContains(annotationIRIs, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "dataRangeIRIs.contains(iri)",
+          "replace": "provenance.stateContains(dataRangeIRIs, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "ontologyIRIs.contains(iri)",
+          "replace": "provenance.stateContains(ontologyIRIs, iri)",
+          "occurrences": 2
+        },
+        {
+          "find": "restrictionIRIs.contains(iri)",
+          "replace": "provenance.stateContains(restrictionIRIs, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "axioms.contains(iri)",
+          "replace": "provenance.stateContains(axioms, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlRules.contains(iri)",
+          "replace": "provenance.stateContains(swrlRules, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlIndividualPropertyAtoms.contains(iri)",
+          "replace": "provenance.stateContains(swrlIndividualPropertyAtoms, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlDataValuedPropertyAtoms.contains(iri)",
+          "replace": "provenance.stateContains(swrlDataValuedPropertyAtoms, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlClassAtoms.contains(iri)",
+          "replace": "provenance.stateContains(swrlClassAtoms, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlDataRangeAtoms.contains(iri)",
+          "replace": "provenance.stateContains(swrlDataRangeAtoms, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlBuiltInAtoms.contains(iri)",
+          "replace": "provenance.stateContains(swrlBuiltInAtoms, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlVariables.contains(iri)",
+          "replace": "provenance.stateContains(swrlVariables, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlSameAsAtoms.contains(iri)",
+          "replace": "provenance.stateContains(swrlSameAsAtoms, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlDifferentFromAtoms.contains(iri)",
+          "replace": "provenance.stateContains(swrlDifferentFromAtoms, iri)",
+          "occurrences": 1
+        },
+        {
+          "find": "        pendingAnnotations.addAll(annotations);",
+          "replace": "        provenance.pendingAdded(annotations);\n        pendingAnnotations.addAll(annotations);",
+          "occurrences": 1
+        },
+        {
+          "find": "        pendingAnnotations.clear();",
+          "replace": "        provenance.pendingTaken(annos);\n        pendingAnnotations.clear();",
+          "occurrences": 1
+        },
+        {
+          "find": "public void addAnnotatedSource(IRI annotatedAnonSource, IRI annotationMainNode) {\n        annotatedAnonSource2AnnotationMap\n            .computeIfAbsent(annotatedAnonSource, x -> createLinkedSet()).add(annotationMainNode);\n    }",
+          "replace": "public void addAnnotatedSource(IRI annotatedAnonSource, IRI annotationMainNode) {\n        annotatedAnonSource2AnnotationMap\n            .computeIfAbsent(annotatedAnonSource, x -> createLinkedSet()).add(annotationMainNode);\n    \n        provenance.relationAdded(\"ANNOTATED_SOURCE\", annotatedAnonSource, annotationMainNode);\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "public Set<IRI> getAnnotatedSourceAnnotationMainNodes(IRI source) {\n        return annotatedAnonSource2AnnotationMap.getOrDefault(source, Collections.emptySet());\n    }",
+          "replace": "public Set<IRI> getAnnotatedSourceAnnotationMainNodes(IRI source) {\n        Set<IRI> result = annotatedAnonSource2AnnotationMap.getOrDefault(source, Collections.emptySet());\n        provenance.relationUsed(\"ANNOTATED_SOURCE\", source, result);\n        return result;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected void addAxiom(OWLAxiom axiom) {\n        if (axiom.isAnnotationAxiom()) {\n            if (configuration.isLoadAnnotationAxioms()) {\n                parsedAnnotationAxioms.add((OWLAnnotationAxiom) axiom);\n            }\n        } else {\n            ontology.add(axiom);\n        }\n        lastAddedAxiom = axiom;\n    }",
+          "replace": "protected void addAxiom(OWLAxiom axiom) {\n        provenance.emit(axiom);\n        if (axiom.isAnnotationAxiom()) {\n            if (configuration.isLoadAnnotationAxioms()) {\n                parsedAnnotationAxioms.add((OWLAnnotationAxiom) axiom);\n            }\n        } else {\n            ontology.add(axiom);\n        }\n        lastAddedAxiom = axiom;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected void removeAxiom(OWLAxiom axiom) {\n        axiomsToBeRemoved.add(axiom);\n    }",
+          "replace": "protected void removeAxiom(OWLAxiom axiom) {\n        provenance.removed(axiom);\n        axiomsToBeRemoved.add(axiom);\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "        handlerAccessor.handleStreaming(subjectIRI, predicateIRI, objectIRI);",
+          "replace": "        try (RDFProvenance.Scope _evInput = provenance.input(RDFProvenance.FactKey.resource(subjectIRI, predicateIRI, objectIRI))) {\n            handlerAccessor.handleStreaming(subjectIRI, predicateIRI, objectIRI);\n        }",
+          "occurrences": 1
+        },
+        {
+          "find": "        handlerAccessor.handleStreaming(subject, getSynonym(predicate), getSynonym(object));",
+          "replace": "        IRI actualPredicate = getSynonym(predicate);\n        IRI actualObject = getSynonym(object);\n        try (RDFProvenance.Scope _evInput = provenance.input(RDFProvenance.FactKey.resource(subject, actualPredicate, actualObject))) {\n            handlerAccessor.handleStreaming(subject, actualPredicate, actualObject);\n        }",
+          "occurrences": 1
+        },
+        {
+          "find": "        handlerAccessor.handleStreaming(subjectIRI, predicateIRI, object,\n            datatype == null ? null : getIRI(datatype), language);",
+          "replace": "        IRI actualDatatype = datatype == null ? null : getIRI(datatype);\n        try (RDFProvenance.Scope _evInput = provenance.input(RDFProvenance.FactKey.literal(subjectIRI, predicateIRI, getOWLLiteral(object, actualDatatype, language)))) {\n            handlerAccessor.handleStreaming(subjectIRI, predicateIRI, object, actualDatatype, language);\n        }",
+          "occurrences": 1
+        },
+        {
+          "find": "        handlerAccessor.handleStreaming(subject, getSynonym(predicate), object, datatype, language);",
+          "replace": "        IRI actualPredicate = getSynonym(predicate);\n        try (RDFProvenance.Scope _evInput = provenance.input(RDFProvenance.FactKey.literal(subject, actualPredicate, getOWLLiteral(object, datatype, language)))) {\n            handlerAccessor.handleStreaming(subject, actualPredicate, object, datatype, language);\n        }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected IRI getResourceObject(IRI subject, IRI predicate, boolean consume) {\n        Map<IRI, IRI> subjPredMap = singleValuedResTriplesByPredicate.get(predicate);\n        if (subjPredMap != null) {\n            IRI obj = subjPredMap.get(subject);\n            if (consume) {\n                subjPredMap.remove(subject);\n            }\n            return obj;\n        }\n        Map<IRI, Collection<IRI>> predObjMap = resTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            Collection<IRI> objects = predObjMap.get(predicate);\n            if (objects != null && !objects.isEmpty()) {\n                IRI object = objects.iterator().next();\n                if (consume) {\n                    objects.remove(object);\n                }\n                if (objects.isEmpty()) {\n                    predObjMap.remove(predicate);\n                    if (predObjMap.isEmpty()) {\n                        resTriplesBySubject.remove(subject);\n                    }\n                }\n                return object;\n            }\n        }\n        return null;\n    }",
+          "replace": "protected IRI getResourceObject(IRI subject, IRI predicate, boolean consume) {\n        Map<IRI, IRI> subjPredMap = singleValuedResTriplesByPredicate.get(predicate);\n        if (subjPredMap != null) {\n            IRI obj = subjPredMap.get(subject);\n            provenance.readResource(subject, predicate, obj);\n            if (consume) {\n                subjPredMap.remove(subject);\n            }\n            return obj;\n        }\n        Map<IRI, Collection<IRI>> predObjMap = resTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            Collection<IRI> objects = predObjMap.get(predicate);\n            if (objects != null && !objects.isEmpty()) {\n                IRI object = objects.iterator().next();\n                provenance.readResource(subject, predicate, object);\n                if (consume) {\n                    objects.remove(object);\n                }\n                if (objects.isEmpty()) {\n                    predObjMap.remove(predicate);\n                    if (predObjMap.isEmpty()) {\n                        resTriplesBySubject.remove(subject);\n                    }\n                }\n                return object;\n            }\n        }\n        return null;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected boolean isTriplePresent(IRI subject, IRI predicate, IRI object, boolean consume) {\n        Map<IRI, IRI> subjPredMap = singleValuedResTriplesByPredicate.get(predicate);\n        if (subjPredMap != null) {\n            IRI obj = subjPredMap.get(subject);\n            if (consume) {\n                subjPredMap.remove(subject);\n            }\n            return obj != null;\n        }\n        Map<IRI, Collection<IRI>> predObjMap = resTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            Collection<IRI> objects = predObjMap.get(predicate);\n            if (objects != null && objects.contains(object)) {\n                if (consume) {\n                    objects.remove(object);\n                    if (objects.isEmpty()) {\n                        predObjMap.remove(predicate);\n                        if (predObjMap.isEmpty()) {\n                            resTriplesBySubject.remove(subject);\n                        }\n                    }\n                }\n                return true;\n            }\n        }\n        return false;\n    }",
+          "replace": "protected boolean isTriplePresent(IRI subject, IRI predicate, IRI object, boolean consume) {\n        Map<IRI, IRI> subjPredMap = singleValuedResTriplesByPredicate.get(predicate);\n        if (subjPredMap != null) {\n            IRI obj = subjPredMap.get(subject);\n            provenance.readResource(subject, predicate, obj);\n            if (consume) {\n                subjPredMap.remove(subject);\n            }\n            return obj != null;\n        }\n        Map<IRI, Collection<IRI>> predObjMap = resTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            Collection<IRI> objects = predObjMap.get(predicate);\n            if (objects != null && objects.contains(object)) {\n                provenance.readResource(subject, predicate, object);\n                if (consume) {\n                    objects.remove(object);\n                    if (objects.isEmpty()) {\n                        predObjMap.remove(predicate);\n                        if (predObjMap.isEmpty()) {\n                            resTriplesBySubject.remove(subject);\n                        }\n                    }\n                }\n                return true;\n            }\n        }\n        return false;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected Set<IRI> getResourceObjects(IRI subject, IRI predicate) {\n        Set<IRI> result = createLinkedSet();\n        Map<IRI, IRI> subjPredMap = singleValuedResTriplesByPredicate.get(predicate);\n        if (subjPredMap != null) {\n            IRI obj = subjPredMap.get(subject);\n            if (obj != null) {\n                result.add(obj);\n            }\n        }\n        Map<IRI, Collection<IRI>> predObjMap = resTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            Collection<IRI> objects = predObjMap.get(predicate);\n            if (objects != null) {\n                result.addAll(objects);\n            }\n        }\n        return result;\n    }",
+          "replace": "protected Set<IRI> getResourceObjects(IRI subject, IRI predicate) {\n        Set<IRI> result = createLinkedSet();\n        Map<IRI, IRI> subjPredMap = singleValuedResTriplesByPredicate.get(predicate);\n        if (subjPredMap != null) {\n            IRI obj = subjPredMap.get(subject);\n            if (obj != null) {\n                result.add(obj);\n            }\n        }\n        Map<IRI, Collection<IRI>> predObjMap = resTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            Collection<IRI> objects = predObjMap.get(predicate);\n            if (objects != null) {\n                result.addAll(objects);\n            }\n        }\n        result.forEach(value -> provenance.readResource(subject, predicate, value));\n        return result;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected OWLLiteral getLiteralObject(IRI subject, IRI predicate, boolean consume) {\n        Map<IRI, OWLLiteral> subjPredMap = singleValuedLitTriplesByPredicate.get(predicate);\n        if (subjPredMap != null) {\n            OWLLiteral obj = subjPredMap.get(subject);\n            if (consume) {\n                subjPredMap.remove(subject);\n            }\n            return obj;\n        }\n        Map<IRI, Collection<OWLLiteral>> predObjMap = litTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            Collection<OWLLiteral> objects = predObjMap.get(predicate);\n            if (objects != null && !objects.isEmpty()) {\n                OWLLiteral object = objects.iterator().next();\n                if (consume) {\n                    objects.remove(object);\n                }\n                if (objects.isEmpty()) {\n                    predObjMap.remove(predicate);\n                }\n                return object;\n            }\n        }\n        return null;\n    }",
+          "replace": "protected OWLLiteral getLiteralObject(IRI subject, IRI predicate, boolean consume) {\n        Map<IRI, OWLLiteral> subjPredMap = singleValuedLitTriplesByPredicate.get(predicate);\n        if (subjPredMap != null) {\n            OWLLiteral obj = subjPredMap.get(subject);\n            provenance.readLiteral(subject, predicate, obj);\n            if (consume) {\n                subjPredMap.remove(subject);\n            }\n            return obj;\n        }\n        Map<IRI, Collection<OWLLiteral>> predObjMap = litTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            Collection<OWLLiteral> objects = predObjMap.get(predicate);\n            if (objects != null && !objects.isEmpty()) {\n                OWLLiteral object = objects.iterator().next();\n                provenance.readLiteral(subject, predicate, object);\n                if (consume) {\n                    objects.remove(object);\n                }\n                if (objects.isEmpty()) {\n                    predObjMap.remove(predicate);\n                }\n                return object;\n            }\n        }\n        return null;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected boolean isTriplePresent(IRI subject, IRI predicate, OWLLiteral object,\n        boolean consume) {\n        Map<IRI, OWLLiteral> subjPredMap = singleValuedLitTriplesByPredicate.get(predicate);\n        if (subjPredMap != null) {\n            OWLLiteral obj = subjPredMap.get(subject);\n            if (consume) {\n                subjPredMap.remove(subject);\n            }\n            return obj != null;\n        }\n        Map<IRI, Collection<OWLLiteral>> predObjMap = litTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            Collection<OWLLiteral> objects = predObjMap.get(predicate);\n            if (objects != null && objects.contains(object)) {\n                if (consume) {\n                    objects.remove(object);\n                    if (objects.isEmpty()) {\n                        predObjMap.remove(predicate);\n                        if (predObjMap.isEmpty()) {\n                            litTriplesBySubject.remove(subject);\n                        }\n                    }\n                }\n                return true;\n            }\n        }\n        return false;\n    }",
+          "replace": "protected boolean isTriplePresent(IRI subject, IRI predicate, OWLLiteral object,\n        boolean consume) {\n        Map<IRI, OWLLiteral> subjPredMap = singleValuedLitTriplesByPredicate.get(predicate);\n        if (subjPredMap != null) {\n            OWLLiteral obj = subjPredMap.get(subject);\n            provenance.readLiteral(subject, predicate, obj);\n            if (consume) {\n                subjPredMap.remove(subject);\n            }\n            return obj != null;\n        }\n        Map<IRI, Collection<OWLLiteral>> predObjMap = litTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            Collection<OWLLiteral> objects = predObjMap.get(predicate);\n            if (objects != null && objects.contains(object)) {\n                provenance.readLiteral(subject, predicate, object);\n                if (consume) {\n                    objects.remove(object);\n                    if (objects.isEmpty()) {\n                        predObjMap.remove(predicate);\n                        if (predObjMap.isEmpty()) {\n                            litTriplesBySubject.remove(subject);\n                        }\n                    }\n                }\n                return true;\n            }\n        }\n        return false;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected Set<OWLLiteral> getLiteralObjects(IRI subject, IRI predicate) {\n        Set<OWLLiteral> result = createLinkedSet();\n        Map<IRI, OWLLiteral> subjPredMap = singleValuedLitTriplesByPredicate.get(predicate);\n        if (subjPredMap != null) {\n            OWLLiteral obj = subjPredMap.get(subject);\n            if (obj != null) {\n                result.add(obj);\n            }\n        }\n        Map<IRI, Collection<OWLLiteral>> predObjMap = litTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            Collection<OWLLiteral> objects = predObjMap.get(predicate);\n            if (objects != null) {\n                result.addAll(objects);\n            }\n        }\n        return result;\n    }",
+          "replace": "protected Set<OWLLiteral> getLiteralObjects(IRI subject, IRI predicate) {\n        Set<OWLLiteral> result = createLinkedSet();\n        Map<IRI, OWLLiteral> subjPredMap = singleValuedLitTriplesByPredicate.get(predicate);\n        if (subjPredMap != null) {\n            OWLLiteral obj = subjPredMap.get(subject);\n            if (obj != null) {\n                result.add(obj);\n            }\n        }\n        Map<IRI, Collection<OWLLiteral>> predObjMap = litTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            Collection<OWLLiteral> objects = predObjMap.get(predicate);\n            if (objects != null) {\n                result.addAll(objects);\n            }\n        }\n        result.forEach(value -> provenance.readLiteral(subject, predicate, value));\n        return result;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected IRI getFirstResource(IRI subject, boolean consume) {\n        if (consume) {\n            return listFirstResourceTripleMap.remove(subject);\n        }\n        return listFirstResourceTripleMap.get(subject);\n    }",
+          "replace": "protected IRI getFirstResource(IRI subject, boolean consume) {\n        IRI result = consume ? listFirstResourceTripleMap.remove(subject) : listFirstResourceTripleMap.get(subject);\n        provenance.readResource(subject, RDF_FIRST.getIRI(), result);\n        return result;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected OWLLiteral getFirstLiteral(IRI subject) {\n        return listFirstLiteralTripleMap.get(subject);\n    }",
+          "replace": "protected OWLLiteral getFirstLiteral(IRI subject) {\n        OWLLiteral result = listFirstLiteralTripleMap.get(subject);\n        provenance.readLiteral(subject, RDF_FIRST.getIRI(), result);\n        return result;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected IRI getRest(IRI subject, boolean consume) {\n        if (consume) {\n            return listRestTripleMap.remove(subject);\n        }\n        return listRestTripleMap.get(subject);\n    }",
+          "replace": "protected IRI getRest(IRI subject, boolean consume) {\n        IRI result = consume ? listRestTripleMap.remove(subject) : listRestTripleMap.get(subject);\n        provenance.readResource(subject, RDF_REST.getIRI(), result);\n        return result;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected Set<IRI> getPredicatesBySubject(IRI subject) {\n        Set<IRI> iris = createLinkedSet();\n        Map<IRI, Collection<IRI>> predObjMap = resTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            iris.addAll(predObjMap.keySet());\n        }\n        Map<IRI, Collection<OWLLiteral>> predObjMapLit = litTriplesBySubject.get(subject);\n        if (predObjMapLit != null) {\n            iris.addAll(predObjMapLit.keySet());\n        }\n        return iris;\n    }",
+          "replace": "protected Set<IRI> getPredicatesBySubject(IRI subject) {\n        Set<IRI> iris = createLinkedSet();\n        Map<IRI, Collection<IRI>> predObjMap = resTriplesBySubject.get(subject);\n        if (predObjMap != null) {\n            iris.addAll(predObjMap.keySet());\n            predObjMap.forEach((predicate, values) -> values.forEach(value -> provenance.readResource(subject, predicate, value)));\n        }\n        Map<IRI, Collection<OWLLiteral>> predObjMapLit = litTriplesBySubject.get(subject);\n        if (predObjMapLit != null) {\n            iris.addAll(predObjMapLit.keySet());\n            predObjMapLit.forEach((predicate, values) -> values.forEach(value -> provenance.readLiteral(subject, predicate, value)));\n        }\n        return iris;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected boolean hasPredicate(IRI subject, IRI predicate) {\n        Map<IRI, IRI> resPredMap = singleValuedResTriplesByPredicate.get(predicate);\n        if (resPredMap != null) {\n            return resPredMap.containsKey(subject);\n        }\n        Map<IRI, OWLLiteral> litPredMap = singleValuedLitTriplesByPredicate.get(predicate);\n        if (litPredMap != null) {\n            return litPredMap.containsKey(subject);\n        }\n        Map<IRI, Collection<IRI>> resPredObjMap = resTriplesBySubject.get(subject);\n        if (resPredObjMap != null && resPredObjMap.containsKey(predicate)) {\n            return true;\n        }\n        Map<IRI, Collection<OWLLiteral>> litPredObjMap = litTriplesBySubject.get(subject);\n        if (litPredObjMap != null) {\n            return litPredObjMap.containsKey(predicate);\n        }\n        return false;\n    }",
+          "replace": "protected boolean hasPredicate(IRI subject, IRI predicate) {\n        Map<IRI, IRI> resPredMap = singleValuedResTriplesByPredicate.get(predicate);\n        if (resPredMap != null) {\n            provenance.readResource(subject, predicate, resPredMap.get(subject));\n            return resPredMap.containsKey(subject);\n        }\n        Map<IRI, OWLLiteral> litPredMap = singleValuedLitTriplesByPredicate.get(predicate);\n        if (litPredMap != null) {\n            provenance.readLiteral(subject, predicate, litPredMap.get(subject));\n            return litPredMap.containsKey(subject);\n        }\n        Map<IRI, Collection<IRI>> resPredObjMap = resTriplesBySubject.get(subject);\n        if (resPredObjMap != null && resPredObjMap.containsKey(predicate)) {\n            resPredObjMap.get(predicate).forEach(value -> provenance.readResource(subject, predicate, value));\n            return true;\n        }\n        Map<IRI, Collection<OWLLiteral>> litPredObjMap = litTriplesBySubject.get(subject);\n        if (litPredObjMap != null) {\n            if (litPredObjMap.containsKey(predicate)) litPredObjMap.get(predicate).forEach(value -> provenance.readLiteral(subject, predicate, value));\n            return litPredObjMap.containsKey(predicate);\n        }\n        return false;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "        sharedAnonymousNodes.put(iri, translation);",
+          "replace": "        sharedAnonymousNodes.put(iri, translation);\n        provenance.cachePut(\"SHARED_NODE\", iri, translation);",
+          "occurrences": 1
+        },
+        {
+          "find": "protected Object getSharedAnonymousNode(IRI iri) {\n        return sharedAnonymousNodes.get(iri);\n    }",
+          "replace": "protected Object getSharedAnonymousNode(IRI iri) {\n        Object result = sharedAnonymousNodes.get(iri);\n        provenance.cacheUse(\"SHARED_NODE\", iri, result);\n        return result;\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "        OWLObjectPropertyExpression prop = translatedProperties.get(mainNode);",
+          "replace": "        OWLObjectPropertyExpression prop = translatedProperties.get(mainNode);\n        provenance.cacheUse(\"OBJECT_PROPERTY\", mainNode, prop);",
+          "occurrences": 1
+        },
+        {
+          "find": "translatedProperties.put(mainNode, prop);",
+          "replace": "translatedProperties.put(mainNode, prop);\n            provenance.cachePut(\"OBJECT_PROPERTY\", mainNode, prop);",
+          "occurrences": 2
+        },
+        {
+          "find": "public OWLDataRange translateDataRange(IRI n) {\n        if (!isDataRange(n) && configuration.isStrict()) {\n            // Can't translated ANY according to Table 12\n            return generateAndLogParseError(EntityType.DATATYPE, n);\n        }\n        if (!isAnonymousNode(n) && isDataRange(n)) {\n            return df.getOWLDatatype(n);\n        }\n        IRI and = getResourceObject(n, OWL_INTERSECTION_OF, true);\n        if (and != null) {\n            return df.getOWLDataIntersectionOf(translatorAccessor.translateToDataRangeSet(and));\n        }\n        IRI or = getResourceObject(n, OWL_UNION_OF, true);\n        if (or != null) {\n            return df.getOWLDataUnionOf(translatorAccessor.translateToDataRangeSet(or));\n        }\n        // The plain complement of triple predicate is in here for legacy\n        // reasons\n        IRI not = getResourceObject(n, OWL_DATATYPE_COMPLEMENT_OF, true);\n        if (!configuration.isStrict() && not == null) {\n            not = getResourceObject(n, OWL_COMPLEMENT_OF, true);\n        }\n        if (not != null) {\n            return df.getOWLDataComplementOf(translateDataRange(not));\n        }\n        IRI oneOfObject = getResourceObject(n, OWL_ONE_OF, true);\n        if (oneOfObject != null) {\n            return df.getOWLDataOneOf(translatorAccessor.translateToConstantSet(oneOfObject));\n        }\n        IRI onDt = getResourceObject(n, OWL_ON_DATA_TYPE, true);\n        if (onDt != null) {\n            if (isAnonymousNode(onDt)) {\n                // TODO LOG ERROR\n                return df.getOWLDatatype(n);\n            }\n            OWLDatatype dt = (OWLDatatype) translateDataRange(onDt);\n            // Now we have to get the restricted facets - there is some legacy\n            // translation code here... the current\n            // spec uses a list of triples where the predicate is a facet and\n            // the object a literal that is restricted\n            // by the facet. Originally, there just used to be multiple\n            // facet-\"facet value\" triples\n            Set<OWLFacetRestriction> restrictions = createLinkedSet();\n            IRI facets = getResourceObject(n, OWL_WITH_RESTRICTIONS, true);\n            if (facets != null) {\n                restrictions = translatorAccessor.translateToFacetRestrictionSet(facets);\n            } else if (!configuration.isStrict()) {\n                // Try the legacy encoding\n                for (IRI facetIRI : OWLFacet.getFacetIRIs()) {\n                    OWLLiteral val = getLiteralObject(n, facetIRI, true);\n                    while (val != null) {\n                        restrictions\n                            .add(df.getOWLFacetRestriction(OWLFacet.getFacet(facetIRI), val));\n                        val = getLiteralObject(n, facetIRI, true);\n                    }\n                }\n            }\n            return df.getOWLDatatypeRestriction(dt, restrictions);\n        }\n        // Could not translated ANYTHING!\n        return generateAndLogParseError(EntityType.DATATYPE, n);\n    }",
+          "replace": "public OWLDataRange translateDataRange(IRI n) {\n        try (RDFProvenance.Scope _evSourceScope = provenance.translation(\"DATA_RANGE\", n)) {\n        if (!isDataRange(n) && configuration.isStrict()) {\n            // Can't translated ANY according to Table 12\n            return generateAndLogParseError(EntityType.DATATYPE, n);\n        }\n        if (!isAnonymousNode(n) && isDataRange(n)) {\n            return df.getOWLDatatype(n);\n        }\n        IRI and = getResourceObject(n, OWL_INTERSECTION_OF, true);\n        if (and != null) {\n            return df.getOWLDataIntersectionOf(translatorAccessor.translateToDataRangeSet(and));\n        }\n        IRI or = getResourceObject(n, OWL_UNION_OF, true);\n        if (or != null) {\n            return df.getOWLDataUnionOf(translatorAccessor.translateToDataRangeSet(or));\n        }\n        // The plain complement of triple predicate is in here for legacy\n        // reasons\n        IRI not = getResourceObject(n, OWL_DATATYPE_COMPLEMENT_OF, true);\n        if (!configuration.isStrict() && not == null) {\n            not = getResourceObject(n, OWL_COMPLEMENT_OF, true);\n        }\n        if (not != null) {\n            return df.getOWLDataComplementOf(translateDataRange(not));\n        }\n        IRI oneOfObject = getResourceObject(n, OWL_ONE_OF, true);\n        if (oneOfObject != null) {\n            return df.getOWLDataOneOf(translatorAccessor.translateToConstantSet(oneOfObject));\n        }\n        IRI onDt = getResourceObject(n, OWL_ON_DATA_TYPE, true);\n        if (onDt != null) {\n            if (isAnonymousNode(onDt)) {\n                // TODO LOG ERROR\n                return df.getOWLDatatype(n);\n            }\n            OWLDatatype dt = (OWLDatatype) translateDataRange(onDt);\n            // Now we have to get the restricted facets - there is some legacy\n            // translation code here... the current\n            // spec uses a list of triples where the predicate is a facet and\n            // the object a literal that is restricted\n            // by the facet. Originally, there just used to be multiple\n            // facet-\"facet value\" triples\n            Set<OWLFacetRestriction> restrictions = createLinkedSet();\n            IRI facets = getResourceObject(n, OWL_WITH_RESTRICTIONS, true);\n            if (facets != null) {\n                restrictions = translatorAccessor.translateToFacetRestrictionSet(facets);\n            } else if (!configuration.isStrict()) {\n                // Try the legacy encoding\n                for (IRI facetIRI : OWLFacet.getFacetIRIs()) {\n                    OWLLiteral val = getLiteralObject(n, facetIRI, true);\n                    while (val != null) {\n                        restrictions\n                            .add(df.getOWLFacetRestriction(OWLFacet.getFacet(facetIRI), val));\n                        val = getLiteralObject(n, facetIRI, true);\n                    }\n                }\n            }\n            return df.getOWLDatatypeRestriction(dt, restrictions);\n        }\n        // Could not translated ANYTHING!\n        return generateAndLogParseError(EntityType.DATATYPE, n);\n    \n        }\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "public OWLObjectPropertyExpression translateObjectPropertyExpression(IRI mainNode) {\n        OWLObjectPropertyExpression prop = translatedProperties.get(mainNode);\n        provenance.cacheUse(\"OBJECT_PROPERTY\", mainNode, prop);\n        if (prop != null) {\n            return prop;\n        }\n        if (!isAnonymousNode(mainNode)) {\n            // Simple object property\n            prop = df.getOWLObjectProperty(mainNode);\n            translatedProperties.put(mainNode, prop);\n            provenance.cachePut(\"OBJECT_PROPERTY\", mainNode, prop);\n            return prop;\n        }\n        // Inverse of a property expression\n        IRI inverseOfObject = getResourceObject(mainNode, OWL_INVERSE_OF, true);\n        if (inverseOfObject != null) {\n            OWLObjectPropertyExpression otherProperty =\n                translateObjectPropertyExpression(inverseOfObject);\n            if (otherProperty.isAnonymous()) {\n                throw new OWLRuntimeException(\n                    \"Found nested object property expression but only object property allowed in inverseOf construct\");\n            }\n            prop = df.getOWLObjectInverseOf(otherProperty.asOWLObjectProperty());\n        } else {\n            prop = df.getOWLObjectInverseOf(df.getOWLObjectProperty(mainNode));\n        }\n        objectPropertyIRIs.add(mainNode);\n        provenance.stateAdded(objectPropertyIRIs, mainNode);\n        translatedProperties.put(mainNode, prop);\n            provenance.cachePut(\"OBJECT_PROPERTY\", mainNode, prop);\n        return prop;\n    }",
+          "replace": "public OWLObjectPropertyExpression translateObjectPropertyExpression(IRI mainNode) {\n        try (RDFProvenance.Scope _evSourceScope = provenance.translation(\"OBJECT_PROPERTY\", mainNode)) {\n        OWLObjectPropertyExpression prop = translatedProperties.get(mainNode);\n        provenance.cacheUse(\"OBJECT_PROPERTY\", mainNode, prop);\n        if (prop != null) {\n            return prop;\n        }\n        if (!isAnonymousNode(mainNode)) {\n            // Simple object property\n            prop = df.getOWLObjectProperty(mainNode);\n            translatedProperties.put(mainNode, prop);\n            provenance.cachePut(\"OBJECT_PROPERTY\", mainNode, prop);\n            return prop;\n        }\n        // Inverse of a property expression\n        IRI inverseOfObject = getResourceObject(mainNode, OWL_INVERSE_OF, true);\n        if (inverseOfObject != null) {\n            OWLObjectPropertyExpression otherProperty =\n                translateObjectPropertyExpression(inverseOfObject);\n            if (otherProperty.isAnonymous()) {\n                throw new OWLRuntimeException(\n                    \"Found nested object property expression but only object property allowed in inverseOf construct\");\n            }\n            prop = df.getOWLObjectInverseOf(otherProperty.asOWLObjectProperty());\n        } else {\n            prop = df.getOWLObjectInverseOf(df.getOWLObjectProperty(mainNode));\n        }\n        objectPropertyIRIs.add(mainNode);\n        provenance.stateAdded(objectPropertyIRIs, mainNode);\n        translatedProperties.put(mainNode, prop);\n            provenance.cachePut(\"OBJECT_PROPERTY\", mainNode, prop);\n        return prop;\n    \n        }\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "public Set<OWLAnnotation> translateAnnotations(IRI n) {\n        // Are we the subject of an annotation? If so, we need to ensure that\n        // the annotations annotate us. This\n        // will only happen if we are an annotation!\n        Map<IRI, Collection<OWLAnnotation>> anns = createMap();\n        getAnnotatedSourceAnnotationMainNodes(n)\n            .forEach(node -> anns.put(node, translateAnnotations(node)));\n        Set<OWLAnnotation> nodeAnns = createLinkedSet();\n        getPredicatesBySubject(n).stream().filter(this::isApLax)\n            .forEach(p -> mapAnnotation(n, anns, nodeAnns, p));\n        return nodeAnns;\n    }",
+          "replace": "public Set<OWLAnnotation> translateAnnotations(IRI n) {\n        try (RDFProvenance.Scope _evSourceScope = provenance.translation(\"ANNOTATIONS\", n)) {\n        // Are we the subject of an annotation? If so, we need to ensure that\n        // the annotations annotate us. This\n        // will only happen if we are an annotation!\n        Map<IRI, Collection<OWLAnnotation>> anns = createMap();\n        getAnnotatedSourceAnnotationMainNodes(n)\n            .forEach(node -> anns.put(node, translateAnnotations(node)));\n        Set<OWLAnnotation> nodeAnns = createLinkedSet();\n        getPredicatesBySubject(n).stream().filter(this::isApLax)\n            .forEach(p -> mapAnnotation(n, anns, nodeAnns, p));\n        return nodeAnns;\n    \n        }\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "propertyIRIs.add(iri);\n        provenance.stateAdded(propertyIRIs, iri);",
+          "replace": "provenance.stateAdd(propertyIRIs, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "types.add(iri);\n        provenance.stateAdded(types, iri);",
+          "replace": "provenance.stateAdd(types, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "annotationIRIs.add(iri);\n        provenance.stateAdded(annotationIRIs, iri);",
+          "replace": "provenance.stateAdd(annotationIRIs, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlRules.add(iri);\n        provenance.stateAdded(swrlRules, iri);",
+          "replace": "provenance.stateAdd(swrlRules, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlIndividualPropertyAtoms.add(iri);\n        provenance.stateAdded(swrlIndividualPropertyAtoms, iri);",
+          "replace": "provenance.stateAdd(swrlIndividualPropertyAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlDataValuedPropertyAtoms.add(iri);\n        provenance.stateAdded(swrlDataValuedPropertyAtoms, iri);",
+          "replace": "provenance.stateAdd(swrlDataValuedPropertyAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlClassAtoms.add(iri);\n        provenance.stateAdded(swrlClassAtoms, iri);",
+          "replace": "provenance.stateAdd(swrlClassAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlSameAsAtoms.add(iri);\n        provenance.stateAdded(swrlSameAsAtoms, iri);",
+          "replace": "provenance.stateAdd(swrlSameAsAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlDifferentFromAtoms.add(iri);\n        provenance.stateAdded(swrlDifferentFromAtoms, iri);",
+          "replace": "provenance.stateAdd(swrlDifferentFromAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlDataRangeAtoms.add(iri);\n        provenance.stateAdded(swrlDataRangeAtoms, iri);",
+          "replace": "provenance.stateAdd(swrlDataRangeAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlBuiltInAtoms.add(iri);\n        provenance.stateAdded(swrlBuiltInAtoms, iri);",
+          "replace": "provenance.stateAdd(swrlBuiltInAtoms, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "swrlVariables.add(iri);\n        provenance.stateAdded(swrlVariables, iri);",
+          "replace": "provenance.stateAdd(swrlVariables, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "objectPropertyIRIs.add(mainNode);\n        provenance.stateAdded(objectPropertyIRIs, mainNode);",
+          "replace": "provenance.stateAdd(objectPropertyIRIs, mainNode);",
+          "occurrences": 1
+        },
+        {
+          "find": "ontologyIRIs.add(iri);\n        provenance.stateAdded(ontologyIRIs, iri);",
+          "replace": "provenance.stateAdd(ontologyIRIs, iri);",
+          "occurrences": 1
+        },
+        {
+          "find": "axioms.add(axiomIRI);",
+          "replace": "provenance.stateAdd(axioms, axiomIRI);",
+          "occurrences": 1
+        },
+        {
+          "find": "if (!isTriplePresent(subject, predicate, object, true)) {",
+          "replace": "if (!isTriplePresent(subject, predicate, object, true)) {\n            provenance.consumedResource(subject, predicate, object);",
+          "occurrences": 1
+        },
+        {
+          "find": "if (!isTriplePresent(subject, predicate, literal, true)) {",
+          "replace": "if (!isTriplePresent(subject, predicate, literal, true)) {\n            provenance.consumedLiteral(subject, predicate, literal);",
+          "occurrences": 1
+        },
+        {
+          "find": "provenance.readResource(subject, RDF_FIRST.getIRI(), result);",
+          "replace": "provenance.readResource(subject, org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDF_FIRST.getIRI(), result);",
+          "occurrences": 1
+        },
+        {
+          "find": "provenance.readLiteral(subject, RDF_FIRST.getIRI(), result);",
+          "replace": "provenance.readLiteral(subject, org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDF_FIRST.getIRI(), result);",
+          "occurrences": 1
+        },
+        {
+          "find": "provenance.readResource(subject, RDF_REST.getIRI(), result);",
+          "replace": "provenance.readResource(subject, org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDF_REST.getIRI(), result);",
+          "occurrences": 1
+        },
+        {
+          "find": "provenance.readResource(subject, org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDF_REST.getIRI(), result);",
+          "replace": "provenance.restRead(subject, result, consume);",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "960f8aa1847049aad6cbac9cebf179de29ec29abc14773e587ec5d66a2222228"
+    },
+    {
+      "sourceEntry": "org/semanticweb/owlapi/rdf/rdfxml/parser/Translators.java",
+      "sourceSHA256": "16f0dcf7bb7e32e3880835c8d94626e4893a21725b443a3b8738e33b8c557b34",
+      "outputFile": "LocatedTranslators.java",
+      "changes": [
+        {
+          "find": "public class Translators {\n",
+          "replace": "public class LocatedTranslators {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    protected static final Logger LOGGER = LoggerFactory.getLogger(Translators.class);\n",
+          "replace": "    protected static final Logger LOGGER = LoggerFactory.getLogger(LocatedTranslators.class);\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    private Translators() {}\n",
+          "replace": "    private LocatedTranslators() {}\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    static OptimisedListTranslator<OWLPropertyExpression> getListTranslator(\n",
+          "replace": "    static LocatedOptimisedListTranslator<OWLPropertyExpression> getListTranslator(\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        OWLRDFConsumer consumer) {\n",
+          "replace": "        LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        return new OptimisedListTranslator<>(consumer, new HasKeyListItemTranslator(consumer));\n",
+          "replace": "        return new LocatedOptimisedListTranslator<>(consumer, new HasKeyListItemTranslator(consumer));\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        private final OptimisedListTranslator<OWLClassExpression> classExpressionListTranslator;\n",
+          "replace": "        private final LocatedOptimisedListTranslator<OWLClassExpression> classExpressionListTranslator;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        private final OptimisedListTranslator<OWLIndividual> individualListTranslator;\n",
+          "replace": "        private final LocatedOptimisedListTranslator<OWLIndividual> individualListTranslator;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        private final OptimisedListTranslator<OWLObjectPropertyExpression> objectPropertyListTranslator;\n",
+          "replace": "        private final LocatedOptimisedListTranslator<OWLObjectPropertyExpression> objectPropertyListTranslator;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        private final OptimisedListTranslator<OWLLiteral> constantListTranslator;\n",
+          "replace": "        private final LocatedOptimisedListTranslator<OWLLiteral> constantListTranslator;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        private final OptimisedListTranslator<OWLDataPropertyExpression> dataPropertyListTranslator;\n",
+          "replace": "        private final LocatedOptimisedListTranslator<OWLDataPropertyExpression> dataPropertyListTranslator;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        private final OptimisedListTranslator<OWLDataRange> dataRangeListTranslator;\n",
+          "replace": "        private final LocatedOptimisedListTranslator<OWLDataRange> dataRangeListTranslator;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        private final OptimisedListTranslator<OWLFacetRestriction> faceRestrictionListTranslator;\n",
+          "replace": "        private final LocatedOptimisedListTranslator<OWLFacetRestriction> faceRestrictionListTranslator;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        private final OWLRDFConsumer consumer;\n",
+          "replace": "        private final LocatedRDFConsumer consumer;\n",
+          "occurrences": 12
+        },
+        {
+          "find": "        TranslatorAccessor(OWLRDFConsumer r) {\n",
+          "replace": "        TranslatorAccessor(LocatedRDFConsumer r) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "                new OptimisedListTranslator<>(r, new ClassExpressionListItemTranslator(r, this));\n",
+          "replace": "                new LocatedOptimisedListTranslator<>(r, new ClassExpressionListItemTranslator(r, this));\n",
+          "occurrences": 1
+        },
+        {
+          "find": "                new OptimisedListTranslator<>(r, new IndividualListItemTranslator(r));\n",
+          "replace": "                new LocatedOptimisedListTranslator<>(r, new IndividualListItemTranslator(r));\n",
+          "occurrences": 1
+        },
+        {
+          "find": "                new OptimisedListTranslator<>(r, new TypedConstantListItemTranslator());\n",
+          "replace": "                new LocatedOptimisedListTranslator<>(r, new TypedConstantListItemTranslator());\n",
+          "occurrences": 1
+        },
+        {
+          "find": "                new OptimisedListTranslator<>(r, new ObjectPropertyListItemTranslator(r));\n",
+          "replace": "                new LocatedOptimisedListTranslator<>(r, new ObjectPropertyListItemTranslator(r));\n",
+          "occurrences": 1
+        },
+        {
+          "find": "                new OptimisedListTranslator<>(r, new DataPropertyListItemTranslator(r));\n",
+          "replace": "                new LocatedOptimisedListTranslator<>(r, new DataPropertyListItemTranslator(r));\n",
+          "occurrences": 1
+        },
+        {
+          "find": "                new OptimisedListTranslator<>(r, new DataRangeListItemTranslator(r));\n",
+          "replace": "                new LocatedOptimisedListTranslator<>(r, new DataRangeListItemTranslator(r));\n",
+          "occurrences": 1
+        },
+        {
+          "find": "                new OptimisedListTranslator<>(r, new OWLFacetRestrictionListItemTranslator(r));\n",
+          "replace": "                new LocatedOptimisedListTranslator<>(r, new OWLFacetRestrictionListItemTranslator(r));\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        protected AbstractClassExpressionTranslator(OWLRDFConsumer consumer,\n",
+          "replace": "        protected AbstractClassExpressionTranslator(LocatedRDFConsumer consumer,\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        protected OWLRDFConsumer getConsumer() {\n",
+          "replace": "        protected LocatedRDFConsumer getConsumer() {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ClassExpressionListItemTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ClassExpressionListItemTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        DataAllValuesFromTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        DataAllValuesFromTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        DataCardinalityTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        DataCardinalityTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        DataHasValueTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        DataHasValueTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        DataMaxCardinalityTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        DataMaxCardinalityTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        DataMaxQualifiedCardinalityTranslator(OWLRDFConsumer consumer,\n",
+          "replace": "        DataMaxQualifiedCardinalityTranslator(LocatedRDFConsumer consumer,\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        DataMinCardinalityTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        DataMinCardinalityTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        DataMinQualifiedCardinalityTranslator(OWLRDFConsumer consumer,\n",
+          "replace": "        DataMinQualifiedCardinalityTranslator(LocatedRDFConsumer consumer,\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        DataPropertyListItemTranslator(OWLRDFConsumer consumer) {\n",
+          "replace": "        DataPropertyListItemTranslator(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        DataQualifiedCardinalityTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        DataQualifiedCardinalityTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        DataRangeListItemTranslator(OWLRDFConsumer consumer) {\n",
+          "replace": "        DataRangeListItemTranslator(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        DataSomeValuesFromTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        DataSomeValuesFromTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        HasKeyListItemTranslator(OWLRDFConsumer consumer) {\n",
+          "replace": "        HasKeyListItemTranslator(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        IndividualListItemTranslator(OWLRDFConsumer consumer) {\n",
+          "replace": "        IndividualListItemTranslator(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        NamedClassTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        NamedClassTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        OWLFacetRestrictionListItemTranslator(OWLRDFConsumer consumer) {\n",
+          "replace": "        OWLFacetRestrictionListItemTranslator(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        OWLObjectPropertyExpressionListItemTranslator(OWLRDFConsumer consumer) {\n",
+          "replace": "        OWLObjectPropertyExpressionListItemTranslator(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectAllValuesFromTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ObjectAllValuesFromTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectCardinalityTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ObjectCardinalityTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectComplementOfTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ObjectComplementOfTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectHasSelfTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ObjectHasSelfTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectHasValueTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ObjectHasValueTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectIntersectionOfTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ObjectIntersectionOfTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectMaxCardinalityTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ObjectMaxCardinalityTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectMaxQualifiedCardinalityTranslator(OWLRDFConsumer consumer,\n",
+          "replace": "        ObjectMaxQualifiedCardinalityTranslator(LocatedRDFConsumer consumer,\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectMinCardinalityTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ObjectMinCardinalityTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectMinQualifiedCardinalityTranslator(OWLRDFConsumer consumer,\n",
+          "replace": "        ObjectMinQualifiedCardinalityTranslator(LocatedRDFConsumer consumer,\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectOneOfTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ObjectOneOfTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectPropertyListItemTranslator(OWLRDFConsumer consumer) {\n",
+          "replace": "        ObjectPropertyListItemTranslator(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectQualifiedCardinalityTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ObjectQualifiedCardinalityTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectSomeValuesFromTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ObjectSomeValuesFromTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        ObjectUnionOfTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        ObjectUnionOfTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        SWRLAtomListItemTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        SWRLAtomListItemTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "            OptimisedListTranslator<SWRLDArgument> listTranslator =\n",
+          "replace": "            LocatedOptimisedListTranslator<SWRLDArgument> listTranslator =\n",
+          "occurrences": 1
+        },
+        {
+          "find": "                new OptimisedListTranslator<>(consumer, new SWRLAtomDObjectListItemTranslator());\n",
+          "replace": "                new LocatedOptimisedListTranslator<>(consumer, new SWRLAtomDObjectListItemTranslator());\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        private final OptimisedListTranslator<SWRLAtom> listTranslator;\n",
+          "replace": "        private final LocatedOptimisedListTranslator<SWRLAtom> listTranslator;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        SWRLRuleTranslator(OWLRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "replace": "        SWRLRuleTranslator(LocatedRDFConsumer consumer, TranslatorAccessor accessor) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "            listTranslator = new OptimisedListTranslator<>(consumer,\n",
+          "replace": "            listTranslator = new LocatedOptimisedListTranslator<>(consumer,\n",
+          "occurrences": 1
+        },
+        {
+          "find": "            OWLClassExpression ce = translatedClassExpression.get(mainNode);",
+          "replace": "            OWLClassExpression ce = translatedClassExpression.get(mainNode);\n            consumer.provenance.cacheUse(\"CLASS_EXPRESSION\", mainNode, ce);",
+          "occurrences": 1
+        },
+        {
+          "find": "                translatedClassExpression.put(mainNode, ce);",
+          "replace": "                translatedClassExpression.put(mainNode, ce);\n                consumer.provenance.cachePut(\"CLASS_EXPRESSION\", mainNode, ce);",
+          "occurrences": 1
+        },
+        {
+          "find": "public OWLClassExpression getClassExpressionIfTranslated(IRI mainNode) {\n            return translatedClassExpression.get(mainNode);\n        }",
+          "replace": "public OWLClassExpression getClassExpressionIfTranslated(IRI mainNode) {\n            OWLClassExpression value = translatedClassExpression.get(mainNode);\n            consumer.provenance.cacheUse(\"CLASS_EXPRESSION\", mainNode, value);\n            return value;\n        }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected OWLClassExpression translateClassExpression(IRI mainNode) {\n            OWLClassExpression ce = translatedClassExpression.get(mainNode);\n            consumer.provenance.cacheUse(\"CLASS_EXPRESSION\", mainNode, ce);\n            if (ce == null) {\n                ce = translateClassExpressionInternal(mainNode);\n                translatedClassExpression.put(mainNode, ce);\n                consumer.provenance.cachePut(\"CLASS_EXPRESSION\", mainNode, ce);\n            }\n            return ce;\n        }",
+          "replace": "protected OWLClassExpression translateClassExpression(IRI mainNode) {\n        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.translation(\"CLASS_EXPRESSION\", mainNode)) {\n            OWLClassExpression ce = translatedClassExpression.get(mainNode);\n            consumer.provenance.cacheUse(\"CLASS_EXPRESSION\", mainNode, ce);\n            if (ce == null) {\n                ce = translateClassExpressionInternal(mainNode);\n                translatedClassExpression.put(mainNode, ce);\n                consumer.provenance.cachePut(\"CLASS_EXPRESSION\", mainNode, ce);\n            }\n            return ce;\n        \n        }\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "public void translateRule(IRI mainNode) {\n            IRI remappedNode = consumer.remapIRI(mainNode);\n            Set<OWLAnnotation> annotations = new HashSet<>();\n            Set<IRI> predicates = consumer.getPredicatesBySubject(remappedNode);\n            for (IRI i : predicates) {\n                if (consumer.isAnnotationProperty(i)) {\n                    OWLAnnotationProperty p = consumer.getDataFactory().getOWLAnnotationProperty(i);\n                    OWLLiteral literal = consumer.getLiteralObject(remappedNode, i, true);\n                    while (literal != null) {\n                        annotations.add(consumer.getDataFactory().getOWLAnnotation(p, literal));\n                        literal = consumer.getLiteralObject(remappedNode, i, true);\n                    }\n                }\n            }\n            Set<SWRLAtom> consequent = Collections.emptySet();\n            IRI ruleHeadIRI =\n                consumer.getResourceObject(remappedNode, SWRLVocabulary.HEAD.getIRI(), true);\n            if (ruleHeadIRI != null) {\n                consequent = listTranslator.translateToSet(ruleHeadIRI);\n            }\n            Set<SWRLAtom> antecedent = Collections.emptySet();\n            IRI ruleBodyIRI =\n                consumer.getResourceObject(remappedNode, SWRLVocabulary.BODY.getIRI(), true);\n            if (ruleBodyIRI != null) {\n                antecedent = listTranslator.translateToSet(ruleBodyIRI);\n            }\n            consumer.addAxiom(getRule(remappedNode, annotations, consequent, antecedent));\n        }",
+          "replace": "public void translateRule(IRI mainNode) {\n        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"SWRL\", RDFProvenance.FactKey.resource(mainNode, org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDF_TYPE.getIRI(), IRI.create(\"http://www.w3.org/2003/11/swrl#Imp\")))) {\n            IRI remappedNode = consumer.remapIRI(mainNode);\n            Set<OWLAnnotation> annotations = new HashSet<>();\n            Set<IRI> predicates = consumer.getPredicatesBySubject(remappedNode);\n            for (IRI i : predicates) {\n                if (consumer.isAnnotationProperty(i)) {\n                    OWLAnnotationProperty p = consumer.getDataFactory().getOWLAnnotationProperty(i);\n                    OWLLiteral literal = consumer.getLiteralObject(remappedNode, i, true);\n                    while (literal != null) {\n                        annotations.add(consumer.getDataFactory().getOWLAnnotation(p, literal));\n                        literal = consumer.getLiteralObject(remappedNode, i, true);\n                    }\n                }\n            }\n            Set<SWRLAtom> consequent = Collections.emptySet();\n            IRI ruleHeadIRI =\n                consumer.getResourceObject(remappedNode, SWRLVocabulary.HEAD.getIRI(), true);\n            if (ruleHeadIRI != null) {\n                consequent = listTranslator.translateToSet(ruleHeadIRI);\n            }\n            Set<SWRLAtom> antecedent = Collections.emptySet();\n            IRI ruleBodyIRI =\n                consumer.getResourceObject(remappedNode, SWRLVocabulary.BODY.getIRI(), true);\n            if (ruleBodyIRI != null) {\n                antecedent = listTranslator.translateToSet(ruleBodyIRI);\n            }\n            consumer.addAxiom(getRule(remappedNode, annotations, consequent, antecedent));\n        \n        }\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "consumer.provenance.dispatch(\"SWRL\", RDFProvenance.FactKey.resource(mainNode, org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDF_TYPE.getIRI(), IRI.create(\"http://www.w3.org/2003/11/swrl#Imp\")))",
+          "replace": "consumer.provenance.translation(\"SWRL\", mainNode)",
+          "occurrences": 1
+        },
+        {
+          "find": "            IRI remappedNode = consumer.remapIRI(mainNode);",
+          "replace": "            if (!consumer.isSWRLRule(mainNode)) throw new RDFProvenance.MappingException(\"SWRL rule has no classified root\");\n            IRI remappedNode = consumer.remapIRI(mainNode);",
+          "occurrences": 1
+        },
+        {
+          "find": "        public OWLObjectIntersectionOf translate(IRI mainNode) {\n            IRI listNode = getConsumer().getResourceObject(mainNode, OWL_INTERSECTION_OF, true);\n            Set<OWLClassExpression> classExpressions =\n                accessor.translateToClassExpressionSet(verifyNotNull(listNode));\n            return getDataFactory().getOWLObjectIntersectionOf(classExpressions);\n        }",
+          "replace": "        public OWLClassExpression translate(IRI mainNode) {\n            IRI listNode = getConsumer().getResourceObject(mainNode, OWL_INTERSECTION_OF, true);\n            // OWL 2 RDF Mapping Table 15: only the actual rdf:nil root is empty.\n            if (org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDF_NIL.getIRI().equals(listNode)) {\n                return getDataFactory().getOWLThing();\n            }\n            Set<OWLClassExpression> classExpressions =\n                accessor.translateToClassExpressionSet(verifyNotNull(listNode));\n            return getDataFactory().getOWLObjectIntersectionOf(classExpressions);\n        }",
+          "occurrences": 1
+        },
+        {
+          "find": "        public OWLObjectUnionOf translate(IRI mainNode) {\n            IRI listNode = getConsumer().getResourceObject(mainNode, OWL_UNION_OF, true);\n            Set<OWLClassExpression> classExpressions =\n                accessor.translateToClassExpressionSet(verifyNotNull(listNode));\n            return getDataFactory().getOWLObjectUnionOf(classExpressions);\n        }",
+          "replace": "        public OWLClassExpression translate(IRI mainNode) {\n            IRI listNode = getConsumer().getResourceObject(mainNode, OWL_UNION_OF, true);\n            // OWL 2 RDF Mapping Table 15: only the actual rdf:nil root is empty.\n            if (org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDF_NIL.getIRI().equals(listNode)) {\n                return getDataFactory().getOWLNothing();\n            }\n            Set<OWLClassExpression> classExpressions =\n                accessor.translateToClassExpressionSet(verifyNotNull(listNode));\n            return getDataFactory().getOWLObjectUnionOf(classExpressions);\n        }",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "37ec25e2dec8724c57563a707c98b1dad7da5c4baa0d84897a13bcd3ee15ff5b"
+    },
+    {
+      "sourceEntry": "org/semanticweb/owlapi/rdf/rdfxml/parser/TripleHandlers.java",
+      "sourceSHA256": "96877b272df96ee480b27a7fb1974744c2101bd00273ddeb6e8b6034d895f70a",
+      "outputFile": "LocatedTripleHandlers.java",
+      "changes": [
+        {
+          "find": "public class TripleHandlers {\n",
+          "replace": "public class LocatedTripleHandlers {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    static final Logger LOGGER = LoggerFactory.getLogger(TripleHandlers.class);\n",
+          "replace": "    static final Logger LOGGER = LoggerFactory.getLogger(LocatedTripleHandlers.class);\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    private TripleHandlers() {}\n",
+          "replace": "    private LocatedTripleHandlers() {}\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        protected final OWLRDFConsumer consumer;\n",
+          "replace": "        protected final LocatedRDFConsumer consumer;\n",
+          "occurrences": 2
+        },
+        {
+          "find": "        HandlerAccessor(OWLRDFConsumer r) {\n",
+          "replace": "        HandlerAccessor(LocatedRDFConsumer r) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        private static List<ResourceTripleHandler> getResourceTripleHandlers(OWLRDFConsumer r) {\n",
+          "replace": "        private static List<ResourceTripleHandler> getResourceTripleHandlers(LocatedRDFConsumer r) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        public static Map<IRI, BuiltInTypeHandler> getAxiomTypeHandlers(OWLRDFConsumer r) {\n",
+          "replace": "        public static Map<IRI, BuiltInTypeHandler> getAxiomTypeHandlers(LocatedRDFConsumer r) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        public static List<LiteralTripleHandler> getLiteralTripleHandlers(OWLRDFConsumer r) {\n",
+          "replace": "        public static List<LiteralTripleHandler> getLiteralTripleHandlers(LocatedRDFConsumer r) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        public static Map<IRI, BuiltInTypeHandler> getBasicTypeHandlers(OWLRDFConsumer r,\n",
+          "replace": "        public static Map<IRI, BuiltInTypeHandler> getBasicTypeHandlers(LocatedRDFConsumer r,\n",
+          "occurrences": 1
+        },
+        {
+          "find": "            if (OWLRDFConsumer.isGeneralPredicate(p)) {\n",
+          "replace": "            if (LocatedRDFConsumer.isGeneralPredicate(p)) {\n",
+          "occurrences": 2
+        },
+        {
+          "find": "        protected Map<IRI, TriplePredicateHandler> getPredicateHandlers(OWLRDFConsumer r) {\n",
+          "replace": "        protected Map<IRI, TriplePredicateHandler> getPredicateHandlers(LocatedRDFConsumer r) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        AbstractNamedEquivalentClassAxiomHandler(OWLRDFConsumer consumer, IRI predicateIRI) {\n",
+          "replace": "        AbstractNamedEquivalentClassAxiomHandler(LocatedRDFConsumer consumer, IRI predicateIRI) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        protected AbstractResourceTripleHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        protected AbstractResourceTripleHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        protected AbstractTripleHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        protected AbstractTripleHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        protected AbstractBuiltInTypeHandler(OWLRDFConsumer consumer, IRI typeIRI) {\n",
+          "replace": "        protected AbstractBuiltInTypeHandler(LocatedRDFConsumer consumer, IRI typeIRI) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        GTPAnnotationLiteralHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        GTPAnnotationLiteralHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        GTPAnnotationResourceTripleHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        GTPAnnotationResourceTripleHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        GTPDataPropertyAssertionHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        GTPDataPropertyAssertionHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        GTPLiteralTripleHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        GTPLiteralTripleHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        GTPObjectPropertyAssertionHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        GTPObjectPropertyAssertionHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        GTPResourceTripleHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        GTPResourceTripleHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        SKOSClassTripleHandler(OWLRDFConsumer consumer, SKOSVocabulary v) {\n",
+          "replace": "        SKOSClassTripleHandler(LocatedRDFConsumer consumer, SKOSVocabulary v) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPAllValuesFromHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPAllValuesFromHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPAnnotatedPropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPAnnotatedPropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPAnnotatedSourceHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPAnnotatedSourceHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPAnnotatedTargetHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPAnnotatedTargetHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPComplementOfHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPComplementOfHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPDatatypeComplementOfHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPDatatypeComplementOfHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPDeclaredAsHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPDeclaredAsHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPDifferentFromHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPDifferentFromHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPDisjointUnionHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPDisjointUnionHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPDisjointWithHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPDisjointWithHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPEquivalentClassHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPEquivalentClassHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPEquivalentPropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPEquivalentPropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPFirstLiteralHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPFirstLiteralHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPFirstResourceHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPFirstResourceHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        private final OptimisedListTranslator<OWLPropertyExpression> listTranslator;\n",
+          "replace": "        private final LocatedOptimisedListTranslator<OWLPropertyExpression> listTranslator;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPHasKeyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPHasKeyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "            listTranslator = Translators.getListTranslator(consumer);\n",
+          "replace": "            listTranslator = LocatedTranslators.getListTranslator(consumer);\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPHasValueHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPHasValueHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPImportsHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPImportsHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPIntersectionOfHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPIntersectionOfHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPInverseOfHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPInverseOfHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPOnClassHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPOnClassHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPOnDataRangeHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPOnDataRangeHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPOnPropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPOnPropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPOneOfHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPOneOfHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPPropertyChainAxiomHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPPropertyChainAxiomHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPPropertyDisjointWithHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPPropertyDisjointWithHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPPropertyDomainHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPPropertyDomainHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPPropertyRangeHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPPropertyRangeHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPRestHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPRestHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPSameAsHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPSameAsHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPSomeValuesFromHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPSomeValuesFromHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPSubClassOfHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPSubClassOfHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPSubPropertyOfHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPSubPropertyOfHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPTypeHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPTypeHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPUnionOfHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPUnionOfHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TPVersionIRIHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TPVersionIRIHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        AbstractTriplePredicateHandler(OWLRDFConsumer consumer, IRI predicateIRI) {\n",
+          "replace": "        AbstractTriplePredicateHandler(LocatedRDFConsumer consumer, IRI predicateIRI) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeAllDifferentHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeAllDifferentHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeAllDisjointClassesHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeAllDisjointClassesHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeAllDisjointPropertiesHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeAllDisjointPropertiesHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeAnnotationHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeAnnotationHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeAnnotationPropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeAnnotationPropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeAsymmetricPropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeAsymmetricPropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeAxiomHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeAxiomHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeAxiomHandler(OWLRDFConsumer consumer, IRI typeIRI) {\n",
+          "replace": "        TypeAxiomHandler(LocatedRDFConsumer consumer, IRI typeIRI) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeClassHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeClassHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeDataPropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeDataPropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeDataRangeHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeDataRangeHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeDatatypeHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeDatatypeHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeDeprecatedClassHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeDeprecatedClassHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeDeprecatedPropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeDeprecatedPropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeFunctionalPropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeFunctionalPropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeInverseFunctionalPropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeInverseFunctionalPropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeIrreflexivePropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeIrreflexivePropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeListHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeListHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeNamedIndividualHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeNamedIndividualHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeNegativeDataPropertyAssertionHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeNegativeDataPropertyAssertionHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeNegativePropertyAssertionHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeNegativePropertyAssertionHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeObjectPropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeObjectPropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeOntologyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeOntologyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeOntologyPropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeOntologyPropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypePropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypePropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeRDFSClassHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeRDFSClassHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeReflexivePropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeReflexivePropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeRestrictionHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeRestrictionHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSWRLAtomListHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSWRLAtomListHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSWRLBuiltInAtomHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSWRLBuiltInAtomHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSWRLBuiltInHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSWRLBuiltInHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSWRLClassAtomHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSWRLClassAtomHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSWRLDataRangeAtomHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSWRLDataRangeAtomHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSWRLDataValuedPropertyAtomHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSWRLDataValuedPropertyAtomHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSWRLDifferentIndividualsAtomHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSWRLDifferentIndividualsAtomHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSWRLImpHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSWRLImpHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSWRLIndividualPropertyAtomHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSWRLIndividualPropertyAtomHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSWRLSameIndividualAtomHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSWRLSameIndividualAtomHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSWRLVariableHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSWRLVariableHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSelfRestrictionHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSelfRestrictionHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeSymmetricPropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeSymmetricPropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "        TypeTransitivePropertyHandler(OWLRDFConsumer consumer) {\n",
+          "replace": "        TypeTransitivePropertyHandler(LocatedRDFConsumer consumer) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "void apply(IRI s, IRI p, OWLLiteral o) {\n            if (LocatedRDFConsumer.isGeneralPredicate(p)) {\n                for (LiteralTripleHandler lhandler : literals) {\n                    if (lhandler.canHandle(s, p, o)) {\n                        lhandler.handleTriple(s, p, o);\n                        return;\n                    }\n                }\n            }\n        }",
+          "replace": "void apply(IRI s, IRI p, OWLLiteral o) {\n        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"apply\", RDFProvenance.FactKey.literal(s, p, o))) {\n            if (LocatedRDFConsumer.isGeneralPredicate(p)) {\n                for (LiteralTripleHandler lhandler : literals) {\n                    if (lhandler.canHandle(s, p, o)) {\n                        lhandler.handleTriple(s, p, o);\n                        return;\n                    }\n                }\n            }\n        \n        }\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "void apply(IRI s, IRI p, IRI o) {\n            if (LocatedRDFConsumer.isGeneralPredicate(p)) {\n                for (ResourceTripleHandler handler : resources) {\n                    if (handler.canHandle(s, p, o)) {\n                        handler.handleTriple(s, p, o);\n                        return;\n                    }\n                }\n            }\n        }",
+          "replace": "void apply(IRI s, IRI p, IRI o) {\n        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"apply\", RDFProvenance.FactKey.resource(s, p, o))) {\n            if (LocatedRDFConsumer.isGeneralPredicate(p)) {\n                for (ResourceTripleHandler handler : resources) {\n                    if (handler.canHandle(s, p, o)) {\n                        handler.handleTriple(s, p, o);\n                        return;\n                    }\n                }\n            }\n        \n        }\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "void applyAnns(IRI s, IRI p, IRI o) {\n            BuiltInTypeHandler handler = axiomTypes.get(o);\n            if (handler != null && handler.canHandle(s, p, o)) {\n                handler.handleTriple(s, p, o);\n            }\n        }",
+          "replace": "void applyAnns(IRI s, IRI p, IRI o) {\n        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"applyAnns\", RDFProvenance.FactKey.resource(s, p, o))) {\n            BuiltInTypeHandler handler = axiomTypes.get(o);\n            if (handler != null && handler.canHandle(s, p, o)) {\n                handler.handleTriple(s, p, o);\n            }\n        \n        }\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "public void handleStreaming(IRI s, IRI p, IRI o) {\n            boolean consumed = false;\n            if (p.equals(RDF_TYPE.getIRI())) {\n                BuiltInTypeHandler handler = builtInTypes.get(o);\n                if (handler != null) {\n                    if (handler.canHandleStreaming(s, p, o)) {\n                        handler.handleTriple(s, p, o);\n                        consumed = true;\n                    }\n                } else if (axiomTypes.get(o) == null) {\n                    // Not a built in type\n                    consumer.addOWLNamedIndividual(s, false);\n                    if (nonBuiltInTypes.canHandleStreaming(s, p, o)) {\n                        nonBuiltInTypes.handleTriple(s, p, o);\n                        consumed = true;\n                    }\n                } else {\n                    consumer.addAxiom(s);\n                }\n            } else {\n                ResourceTripleHandler handler = predicates.get(p);\n                if (handler != null) {\n                    if (handler.canHandleStreaming(s, p, o)) {\n                        handler.handleTriple(s, p, o);\n                        consumed = true;\n                    }\n                } else {\n                    for (ResourceTripleHandler r : resources) {\n                        if (r.canHandleStreaming(s, p, o)) {\n                            r.handleTriple(s, p, o);\n                            consumed = true;\n                            break;\n                        }\n                    }\n                }\n            }\n            if (!consumed) {\n                // Not consumed, so add the triple\n                consumer.addTriple(s, p, o);\n            }\n        }",
+          "replace": "public void handleStreaming(IRI s, IRI p, IRI o) {\n        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"stream\", RDFProvenance.FactKey.resource(s, p, o))) {\n            boolean consumed = false;\n            if (p.equals(RDF_TYPE.getIRI())) {\n                BuiltInTypeHandler handler = builtInTypes.get(o);\n                if (handler != null) {\n                    if (handler.canHandleStreaming(s, p, o)) {\n                        handler.handleTriple(s, p, o);\n                        consumed = true;\n                    }\n                } else if (axiomTypes.get(o) == null) {\n                    // Not a built in type\n                    consumer.addOWLNamedIndividual(s, false);\n                    if (nonBuiltInTypes.canHandleStreaming(s, p, o)) {\n                        nonBuiltInTypes.handleTriple(s, p, o);\n                        consumed = true;\n                    }\n                } else {\n                    consumer.addAxiom(s);\n                }\n            } else {\n                ResourceTripleHandler handler = predicates.get(p);\n                if (handler != null) {\n                    if (handler.canHandleStreaming(s, p, o)) {\n                        handler.handleTriple(s, p, o);\n                        consumed = true;\n                    }\n                } else {\n                    for (ResourceTripleHandler r : resources) {\n                        if (r.canHandleStreaming(s, p, o)) {\n                            r.handleTriple(s, p, o);\n                            consumed = true;\n                            break;\n                        }\n                    }\n                }\n            }\n            if (!consumed) {\n                // Not consumed, so add the triple\n                consumer.addTriple(s, p, o);\n            }\n        \n        }\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "private void handleStreaming(IRI s, IRI p, OWLLiteral con) {\n            for (LiteralTripleHandler handler : literals) {\n                if (handler.canHandleStreaming(s, p, con)) {\n                    handler.handleTriple(s, p, con);\n                    return;\n                }\n            }\n            consumer.addTriple(s, p, con);\n        }",
+          "replace": "private void handleStreaming(IRI s, IRI p, OWLLiteral con) {\n        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"stream\", RDFProvenance.FactKey.literal(s, p, con))) {\n            for (LiteralTripleHandler handler : literals) {\n                if (handler.canHandleStreaming(s, p, con)) {\n                    handler.handleTriple(s, p, con);\n                    return;\n                }\n            }\n            consumer.addTriple(s, p, con);\n        \n        }\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected void handle(IRI s, IRI p, IRI o) {\n            if (p.equals(OWLRDFVocabulary.RDF_TYPE.getIRI())) {\n                BuiltInTypeHandler typeHandler = builtInTypes.get(o);\n                if (typeHandler != null) {\n                    typeHandler.handleTriple(s, p, o);\n                } else if (axiomTypes.get(o) == null) {\n                    // C(a)\n                    OWLIndividual ind = consumer.translateIndividual(s);\n                    OWLClassExpression ce = consumer.translatorAccessor.translateClassExpression(o);\n                    consumer.addAxiom(consumer.getDataFactory().getOWLClassAssertionAxiom(ce, ind,\n                        consumer.getPendingAnnotations()));\n                    consumer.consumeTriple(s, p, o);\n                }\n            } else {\n                TriplePredicateHandler handler = predicates.get(p);\n                if (handler != null && handler.canHandle(s, p, o)) {\n                    handler.handleTriple(s, p, o);\n                } else {\n                    for (ResourceTripleHandler resHandler : resources) {\n                        if (resHandler.canHandle(s, p, o)) {\n                            resHandler.handleTriple(s, p, o);\n                            break;\n                        }\n                    }\n                }\n            }\n            // Clears pending annotations; if this triple represents an annotated axiom, then if an axiom was created to annotate,\n            // pending will already be cleared. However, if an axiom was not created (e.g. invalid triple such as misuse of reserved\n            // vocabulary) if annotations are left they will be placed on an incorrect axiom.\n            consumer.getPendingAnnotations();\n        }",
+          "replace": "protected void handle(IRI s, IRI p, IRI o) {\n        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"handle\", RDFProvenance.FactKey.resource(s, p, o))) {\n            if (p.equals(OWLRDFVocabulary.RDF_TYPE.getIRI())) {\n                BuiltInTypeHandler typeHandler = builtInTypes.get(o);\n                if (typeHandler != null) {\n                    typeHandler.handleTriple(s, p, o);\n                } else if (axiomTypes.get(o) == null) {\n                    // C(a)\n                    OWLIndividual ind = consumer.translateIndividual(s);\n                    OWLClassExpression ce = consumer.translatorAccessor.translateClassExpression(o);\n                    consumer.addAxiom(consumer.getDataFactory().getOWLClassAssertionAxiom(ce, ind,\n                        consumer.getPendingAnnotations()));\n                    consumer.consumeTriple(s, p, o);\n                }\n            } else {\n                TriplePredicateHandler handler = predicates.get(p);\n                if (handler != null && handler.canHandle(s, p, o)) {\n                    handler.handleTriple(s, p, o);\n                } else {\n                    for (ResourceTripleHandler resHandler : resources) {\n                        if (resHandler.canHandle(s, p, o)) {\n                            resHandler.handleTriple(s, p, o);\n                            break;\n                        }\n                    }\n                }\n            }\n            // Clears pending annotations; if this triple represents an annotated axiom, then if an axiom was created to annotate,\n            // pending will already be cleared. However, if an axiom was not created (e.g. invalid triple such as misuse of reserved\n            // vocabulary) if annotations are left they will be placed on an incorrect axiom.\n            consumer.getPendingAnnotations();\n        \n        }\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "protected void handle(IRI s, IRI p, OWLLiteral o) {\n            for (LiteralTripleHandler handler : literals) {\n                if (handler.canHandle(s, p, o)) {\n                    handler.handleTriple(s, p, o);\n                    break;\n                }\n            }\n        }",
+          "replace": "protected void handle(IRI s, IRI p, OWLLiteral o) {\n        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"handle\", RDFProvenance.FactKey.literal(s, p, o))) {\n            for (LiteralTripleHandler handler : literals) {\n                if (handler.canHandle(s, p, o)) {\n                    handler.handleTriple(s, p, o);\n                    break;\n                }\n            }\n        \n        }\n    }",
+          "occurrences": 1
+        },
+        {
+          "find": "            consumer.iterateResources((s, p, o) -> {\n                if (propertyRangeHandler.canHandle(s, p, o)) {\n                    propertyRangeHandler.handleTriple(s, p, o);\n                }\n            });",
+          "replace": "            consumer.iterateResources((s, p, o) -> {\n                try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"rangeMopUp\", RDFProvenance.FactKey.resource(s, p, o))) {\n                    if (propertyRangeHandler.canHandle(s, p, o)) {\n                        propertyRangeHandler.handleTriple(s, p, o);\n                    }\n                }\n            });",
+          "occurrences": 1
+        },
+        {
+          "find": "            consumer.iterateResources((s, p, o) -> {\n                if (inverseOf.canHandle(s, p, o)) {\n                    inverseOf.handleTriple(s, p, o);\n                }\n            });",
+          "replace": "            consumer.iterateResources((s, p, o) -> {\n                try (RDFProvenance.Scope _evSourceScope = consumer.provenance.dispatch(\"inverseMopUp\", RDFProvenance.FactKey.resource(s, p, o))) {\n                    if (inverseOf.canHandle(s, p, o)) {\n                        inverseOf.handleTriple(s, p, o);\n                    }\n                }\n            });",
+          "occurrences": 1
+        },
+        {
+          "find": "        public void handleTriple(IRI s, IRI p, IRI o) {\n            if (!o.equals(RDF_NIL.getIRI())) {\n                consumer.addRest(s, o);\n            }\n            consume(s, p, o);\n        }",
+          "replace": "        public void handleTriple(IRI s, IRI p, IRI o) {\n            consumer.provenance.restObserved(s, o);\n            if (!o.equals(RDF_NIL.getIRI())) {\n                consumer.addRest(s, o);\n            }\n            consume(s, p, o);\n        }",
+          "occurrences": 1
+        },
+        {
+          "find": "        protected OWLClassExpression translateEquivalentClass(IRI mainNode) {\n            return df.getOWLObjectIntersectionOf(\n                consumer.translatorAccessor.translateToClassExpressionSet(mainNode));\n        }",
+          "replace": "        protected OWLClassExpression translateEquivalentClass(IRI mainNode) {\n            // The named-class shorthand follows the same Table 15 empty-list rule.\n            if (org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDF_NIL.getIRI().equals(mainNode)) {\n                return df.getOWLThing();\n            }\n            return df.getOWLObjectIntersectionOf(\n                consumer.translatorAccessor.translateToClassExpressionSet(mainNode));\n        }",
+          "occurrences": 1
+        },
+        {
+          "find": "        protected OWLClassExpression translateEquivalentClass(IRI mainNode) {\n            return df.getOWLObjectUnionOf(\n                consumer.translatorAccessor.translateToClassExpressionSet(mainNode));\n        }",
+          "replace": "        protected OWLClassExpression translateEquivalentClass(IRI mainNode) {\n            // The named-class shorthand follows the same Table 15 empty-list rule.\n            if (org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDF_NIL.getIRI().equals(mainNode)) {\n                return df.getOWLNothing();\n            }\n            return df.getOWLObjectUnionOf(\n                consumer.translatorAccessor.translateToClassExpressionSet(mainNode));\n        }",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "9365fdf760328a633d781907d01c5fe5eb0f54b2d495410039c29e99a92133eb"
+    },
+    {
+      "sourceEntry": "org/semanticweb/owlapi/rdf/rdfxml/parser/OptimisedListTranslator.java",
+      "sourceSHA256": "7f2f16421fecdc6688db09b9a32a43fc946348ce74cfb41eb3b53716a8b7a564",
+      "outputFile": "LocatedOptimisedListTranslator.java",
+      "changes": [
+        {
+          "find": "import org.semanticweb.owlapi.rdf.rdfxml.parser.Translators.ListItemTranslator;\n",
+          "replace": "import org.semanticweb.owlapi.rdf.rdfxml.parser.LocatedTranslators.ListItemTranslator;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "class OptimisedListTranslator<O extends OWLObject> {\n",
+          "replace": "class LocatedOptimisedListTranslator<O extends OWLObject> {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    private static final Logger LOGGER = LoggerFactory.getLogger(OptimisedListTranslator.class);\n",
+          "replace": "    private static final Logger LOGGER = LoggerFactory.getLogger(LocatedOptimisedListTranslator.class);\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    private final OWLRDFConsumer consumer;\n",
+          "replace": "    private final LocatedRDFConsumer consumer;\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    protected OptimisedListTranslator(OWLRDFConsumer consumer, ListItemTranslator<O> translator) {\n",
+          "replace": "    protected LocatedOptimisedListTranslator(LocatedRDFConsumer consumer, ListItemTranslator<O> translator) {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "    protected OWLRDFConsumer getConsumer() {\n",
+          "replace": "    protected LocatedRDFConsumer getConsumer() {\n",
+          "occurrences": 1
+        },
+        {
+          "find": "public List<O> translateList(IRI mainNode) {\n        boolean shared = consumer.isAnonymousSharedNode(mainNode.toString());\n        List<O> list;\n        if (shared) {\n            Object o = consumer.getSharedAnonymousNode(mainNode);\n            if (o instanceof List) {\n                list = (List<O>) o;\n            } else {\n                list = new ArrayList<>();\n                translateList(mainNode, list);\n                consumer.addSharedAnonymousNode(mainNode, list);\n            }\n        } else {\n            list = new ArrayList<>();\n            translateList(mainNode, list);\n        }\n        return list;\n    }",
+          "replace": "public List<O> translateList(IRI mainNode) {\n        try (RDFProvenance.Scope _evSourceScope = consumer.provenance.translation(\"LIST\", mainNode)) {\n        boolean shared = consumer.isAnonymousSharedNode(mainNode.toString());\n        List<O> list;\n        if (shared) {\n            Object o = consumer.getSharedAnonymousNode(mainNode);\n            if (o instanceof List) {\n                list = (List<O>) o;\n            } else {\n                list = new ArrayList<>();\n                translateList(mainNode, list);\n                consumer.addSharedAnonymousNode(mainNode, list);\n            }\n        } else {\n            list = new ArrayList<>();\n            translateList(mainNode, list);\n        }\n        return list;\n    \n        }\n    }",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "37a31768c06819821fcf6d00a5f352dbe8a03e4284aa631f7978852379f0256d"
+    }
+  ],
+  "ownedSources": [
+    {
+      "file": "LocatedRDFConsumerAdapter.java",
+      "sha256": "a6ba0f559683235b6bdfa1034304af5caa3603ddb1314279da5d18965b44dec4"
+    },
+    {
+      "file": "RDFProvenance.java",
+      "sha256": "2bbbf64ae77b55c041b118669fd490f00570b2a4898e0902892199bffc854f0f"
+    }
+  ],
+  "notice": "Identified EvoPilot modification of four OWLAPI 5.5.1 RDF mapping source files: rename the coupled consumer, translators, handlers and list translator; retain original package access and original dependency classes; add bounded actual mapping-input provenance for syntax events, selected facts, classification, cached translations, annotations, dispatch and deferred axiom construction. Original parser classes are not replaced. Keep upstream sources, exact transformation recipe and generated sources with the worker. Mapping-input sources include positive typing/parser-decision context, not minimal semantic support. No original source span is fabricated by this layer. Additional identified compatibility correction: for actual rdf:nil class-list roots only, anonymous ObjectIntersectionOf/ObjectUnionOf translators and their existing named-class shorthand handlers produce owl:Thing/owl:Nothing before the upstream nonempty-operand factory rejects them. Non-nil lists retain their original construction/error path; no arbitrary empty set is repaired.",
+  "reason": "Preserve original RDF-to-OWL mapping decisions while carrying occurrence references across destructive reads, deduplication, cached/shared structures and axiom construction; fail explicitly on missing provenance, budget or deadline rather than substitute whole-document attribution. Worker normalization must transfer the references before finish. Exact Turtle/RDFXML lexical instrumentation and public location projection are separate capabilities. The four exact-rdf:nil branches implement the already-supported OWL 2 RDF Mapping Table 15 empty class-expression rules before factory construction; ObjectOneOf keeps its upstream empty-capable construction and existing Worker post-normalization.",
+  "acceptance": "Static recipe replay only at author freeze; actual compilation, original-parser parity, malformed inputs, source-set completeness, resource limits and formal acceptance remain required.",
+  "upstreamLicenseDeclarations": [
+    {
+      "name": "Apache License Version 2.0, January 2004",
+      "url": "http://www.apache.org/licenses/"
+    },
+    {
+      "name": "GNU LGPL Version 3.0",
+      "url": "http://www.gnu.org/licenses/lgpl.txt"
+    }
+  ],
+  "licenseDeclarationSource": "https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/owlapi-parent/5.5.1/owlapi-parent-5.5.1.pom"
+}

@@ -154,6 +154,43 @@ export async function checkSource() {
     assert.equal(createHash('sha256').update(await readFile(source)).digest('hex'),file.sha256);
   }
   assert(typeof parser.notice==='string'&&parser.notice.trim()&&Buffer.byteLength(parser.notice)<=16384);
+  const additionalParsers=[
+    {key:'turtlePatch',file:'turtle-compat.json',parserId:'owlapi-turtle-occurrences:1',package:'org/semanticweb/owlapi/rdf/turtle/parser/',
+      files:[
+        ['TurtleParser.java','LocatedTurtleSyntaxParser.java','3a1d6dc6f2b02fe8963fc65f22faa3b2c8a5234b90471691942eee33e019a8fd'],
+        ['JavaCharStream.java','LocatedTurtleCharStream.java','ddd395b54f835a6d5c8ca31c9c7141c8ddc3ca6db6b0ee54bdfe79f607918fc6'],
+        ['TurtleParserTokenManager.java','LocatedTurtleTokenManager.java','190b0a01242d12aaa42e77b059dfc4b555e6a666f5dad212a25a23de4178e7d6'],
+      ],owned:['LocatedTurtleParser.java']},
+    {key:'rdfMappingPatch',file:'rdf-mapping-compat.json',parserId:'owlapi-rdf-mapping-provenance:1',package:'org/semanticweb/owlapi/rdf/rdfxml/parser/',
+      files:[
+        ['OWLRDFConsumer.java','LocatedRDFConsumer.java','cff71d016eab2e7b3f27920d83204f26e7fb6bfdcddc82ccdd06da7fc010567b'],
+        ['Translators.java','LocatedTranslators.java','16f0dcf7bb7e32e3880835c8d94626e4893a21725b443a3b8738e33b8c557b34'],
+        ['TripleHandlers.java','LocatedTripleHandlers.java','96877b272df96ee480b27a7fb1974744c2101bd00273ddeb6e8b6034d895f70a'],
+        ['OptimisedListTranslator.java','LocatedOptimisedListTranslator.java','7f2f16421fecdc6688db09b9a32a43fc946348ce74cfb41eb3b53716a8b7a564'],
+      ],owned:['LocatedRDFConsumerAdapter.java','RDFProvenance.java']},
+  ];
+  for(const spec of additionalParsers){
+    const binding=dl[spec.key];assert.deepEqual(Object.keys(binding).sort(),['file','sha256']);assert.equal(binding.file,spec.file);assert.match(binding.sha256,/^[a-f0-9]{64}$/);
+    const recipeBytes=await readFile(resolve(ROOT,'toolchains/owl2-dl',spec.file));
+    assert.equal(createHash('sha256').update(recipeBytes).digest('hex'),binding.sha256);
+    const recipe=JSON.parse(recipeBytes);assert.equal(recipe.schema,'ontology-dl-parser-compat/v1');assert.equal(recipe.parserId,spec.parserId);
+    assert.equal(recipe.sourceArchive.url,parser.sourceArchive.url);assert.equal(recipe.sourceArchive.sha256,parser.sourceArchive.sha256);
+    assert.deepEqual(recipe.files.map(f=>[f.sourceEntry,f.outputFile,f.sourceSHA256]).sort(),spec.files.map(([entry,output,sourceSHA256])=>[spec.package+entry,output,sourceSHA256]).sort());
+    for(const file of recipe.files){
+      assert.match(file.patchedSourceSHA256,/^[a-f0-9]{64}$/);
+      assert(Array.isArray(file.changes)&&file.changes.length>0);
+      assert(file.changes.every(c=>typeof c.find==='string'&&c.find&&typeof c.replace==='string'&&Number.isSafeInteger(c.occurrences)&&c.occurrences>0));
+    }
+    assert.deepEqual(recipe.ownedSources.map(f=>f.file).sort(),[...spec.owned].sort());
+    for(const file of recipe.ownedSources){
+      assert.match(file.sha256,/^[a-f0-9]{64}$/);
+      const source=resolve(ROOT,'toolchains/owl2-dl',file.file),node=await lstat(source),bytes=await readFile(source);
+      assert(node.isFile()&&node.nlink===1&&node.size<=2*1024*1024);
+      assert.equal(createHash('sha256').update(bytes).digest('hex'),file.sha256);
+      assert(bytes.toString('utf8').split(/\r?\n/).some(line=>line.trim()==='package '+spec.package.slice(0,-1).replaceAll('/','.')+';'),'Owned parser helper must keep its approved package');
+    }
+    assert(typeof recipe.notice==='string'&&recipe.notice.trim()&&Buffer.byteLength(recipe.notice)<=16384);
+  }
   assert(dl.files.length>0&&new Set(dl.files.map(f=>f.file)).size===dl.files.length);
   for(const f of dl.files){assert.match(f.file,/^[A-Za-z0-9._-]+\.jar$/);assert.match(f.sha256,/^[a-f0-9]{64}$/);assert(!f.repositoryPath.split('/').some(x=>['','..','.'].includes(x)));assert.equal(f.url,'https://repo.maven.apache.org/maven2/'+f.repositoryPath);assert(f.repositoryPath.endsWith('/'+f.file));}
   assert((await lstat(resolve(ROOT,'toolchains/owl2-dl/Worker.java'))).isFile());

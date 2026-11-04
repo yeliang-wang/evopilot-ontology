@@ -28,6 +28,8 @@ import org.semanticweb.owlapi.functional.parser.LocatedFunctionalParser;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFXMLParserFactory;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFParser;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFParserException;
+import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFProvenance;
+import org.semanticweb.owlapi.rdf.rdfxml.parser.LocatedRDFConsumerAdapter;
 import org.semanticweb.owlapi.rdf.turtle.parser.TurtleOntologyParserFactory;
 import org.semanticweb.owlapi.rdf.turtle.parser.OWLRDFConsumerAdapter;
 import org.semanticweb.owlapi.rdf.turtle.parser.TurtleParser;
@@ -117,6 +119,26 @@ public final class Worker {
       super.endModel();
     }
   }
+  // The located mapper keeps the same eager expression/profile projection as
+  // MappingConsumer. It is a separate class so original-parser comparisons do
+  // not accidentally compare the adapter against itself.
+  static final class LocatedMappingConsumer extends LocatedRDFConsumerAdapter {
+    boolean inputComplete=false;
+    public boolean isParsedAllTriples(){return inputComplete||super.isParsedAllTriples();}
+    final Set<IRI> expressions=new LinkedHashSet<>();
+    final Set<OWLClassExpression> mapped=new HashSet<>();
+    LocatedMappingConsumer(OWLOntology o,OWLOntologyLoaderConfiguration c,RDFProvenance p){super(o,c,p);}
+    void useParser(RDFParser parser){setIRIProvider(parser);}
+    void retainExpression(IRI iri,boolean explicit){if(explicit&&isAnonymousNode(iri)){expressions.add(iri);require(expressions.size()<=AXIOMS,"EXPRESSION_LIMIT","RDF class-expression budget exceeded");}}
+    public void addClassExpression(IRI iri,boolean explicit){super.addClassExpression(iri,explicit);retainExpression(iri,explicit);}
+    protected void addOWLRestriction(IRI iri,boolean explicit){super.addOWLRestriction(iri,explicit);retainExpression(iri,explicit);}
+    public <E extends OWLEntity> E generateAndLogParseError(EntityType<E> type,IRI iri){throw invalid("RDF_EXPRESSION","RDF expression could not be mapped to OWL");}
+    public void endModel(){
+      inputComplete=true;
+      for(IRI iri:new ArrayList<>(expressions))mapped.add(translateClassExpression(iri));
+      super.endModel();
+    }
+  }
   static boolean annotationResidualsMapped(OWLOntology o,List<RDFTriple> triples){
     if(triples.isEmpty())return true;
     // OWLAPI 5.5.1 mapAnnotation retains these three reification triples even
@@ -144,6 +166,10 @@ public final class Worker {
   }
   @SuppressWarnings("unchecked")
   static void normalizeRDFClassExpressions(OWLOntology o){
+    normalizeRDFClassExpressions(o,null);
+  }
+  @SuppressWarnings("unchecked")
+  static void normalizeRDFClassExpressions(OWLOntology o,RDFProvenance provenance){
     // OWL 2 RDF Mapping, Table 15: OWL 1 empty/singleton class intersections,
     // unions and empty enumerations have defined OWL 2 structural projections.
     // Preserve source bytes; normalize only the separate parsed RDF projection.
@@ -161,7 +187,12 @@ public final class Worker {
       // Transform axiom content only. change(ontology) also emits annotation/ID
       // replacement operations even when they are unchanged, preventing a fixed point.
       var changes=new ArrayList<OWLOntologyChange>();
-      for(var ax:o.axioms().toList())for(var change:transformer.change(ax))changes.add(change.createOntologyChange(o));
+      for(var ax:o.axioms().toList())for(var change:transformer.change(ax)){
+        var operation=change.createOntologyChange(o);changes.add(operation);
+        // Preserve each original construction before set membership collapses
+        // equal normalized axioms. Syntax-only validation calls use no trace.
+        if(provenance!=null&&operation instanceof AddAxiom addition)provenance.transfer(ax,addition.getAxiom());
+      }
       if(changes.isEmpty())break;m.applyChanges(changes);
       if(iteration==255)throw invalid("NORMALIZATION_DEPTH","RDF expression projection exceeds its depth budget");
     }
@@ -170,7 +201,9 @@ public final class Worker {
     // expression and annotations in an equivalent, well-formed tautology.
     for(var ax:o.axioms(AxiomType.EQUIVALENT_CLASSES).toList()){
       var args=ax.classExpressions().toList();if(args.size()!=1)continue;
-      m.removeAxiom(o,ax);m.addAxiom(o,d.getOWLSubClassOfAxiom(args.get(0),args.get(0),ax.getAnnotations()));
+      var normalized=d.getOWLSubClassOfAxiom(args.get(0),args.get(0),ax.getAnnotations());
+      if(provenance!=null)provenance.transfer(ax,normalized);
+      m.removeAxiom(o,ax);m.addAxiom(o,normalized);
     }
   }
   record Parsed(OWLOntology ontology,Set<OWLAxiom> syntaxAxioms,LocatedFunctionalParser.Result locations){}
@@ -194,7 +227,10 @@ public final class Worker {
     else if(f.equals("functional"))result=m.loadOntologyFromOntologyDocument(new StringDocumentSource(content,IRI.create(base),format(f),null),loader(imports));
     else{
       result=m.createOntology(new OWLOntologyID());m.setOntologyDocumentIRI(result,IRI.create(base));
-      var rdfFormat=format(f);var consumer=new MappingConsumer(result,loader(imports));consumer.setOntologyFormat((RDFDocumentFormat)rdfFormat);
+      // The separately named mapper applies legal empty class-expression RDF
+      // compatibility before OWLAPI's n-ary DataFactory rejects zero operands.
+      // Ordinary parsing does not collect or claim source-location evidence.
+      var rdfFormat=format(f);var consumer=new LocatedMappingConsumer(result,loader(imports),RDFProvenance.disabled());consumer.setOntologyFormat((RDFDocumentFormat)rdfFormat);
       if(f.equals("rdfxml")){
         var parser=new RDFParser();consumer.useParser(parser);
         var input=new InputSource(new StringReader(content));input.setSystemId(base);parser.parse(input,consumer);
@@ -503,6 +539,9 @@ public final class Worker {
       if(e instanceof XmlSchemaAutomata.Syntax)return invalid("XSD_REGEX",e.getMessage());
       if(e instanceof XmlSchemaAutomata.ResourceLimit)return new Refusal("FAILED","REGEX_RESOURCE_LIMIT",e.getMessage());
       if(e instanceof LocatedFunctionalParser.LimitException)return new Refusal("FAILED","SOURCE_LOCATION_LIMIT",e.getMessage());
+      if(e instanceof RDFProvenance.TimeoutException)return new Refusal("TIMEOUT","TASK_DEADLINE","RDF provenance deadline reached");
+      if(e instanceof RDFProvenance.LimitException)return new Refusal("FAILED","SOURCE_LOCATION_LIMIT",e.getMessage());
+      if(e instanceof RDFProvenance.MappingException)return new Refusal("FAILED","SOURCE_LOCATION_MAPPING",e.getMessage());
       if(e instanceof TimeOutException)return new Refusal("TIMEOUT","ENGINE_TIMEOUT","Formal engine deadline reached");
       // The pinned Turtle parser's generated syntax exception/token error are
       // package-private. Match their exact classes, never human-readable messages.

@@ -510,5 +510,13 @@
   "parserPatch": {
     "file": "parser-compat.json",
     "sha256": "8ee25b235350012d07cb5b6102a8b67f14eb3cc32a641db778804da146133f72"
+  },
+  "turtlePatch": {
+    "file": "turtle-compat.json",
+    "sha256": "b7f5f352efdb323f8334b5a93eba7e038afa967ae3d10d5ba5e2529aa0d10cf9"
+  },
+  "rdfMappingPatch": {
+    "file": "rdf-mapping-compat.json",
+    "sha256": "769c42e808506cf5c999fe81b953d564e9f1b1843153c6228a93fdb9e42d1a1b"
   }
 }

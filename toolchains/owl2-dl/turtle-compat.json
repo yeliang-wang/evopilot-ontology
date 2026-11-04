@@ -1,0 +1,360 @@
+{
+  "schema": "ontology-dl-parser-compat/v1",
+  "parserId": "owlapi-turtle-occurrences:1",
+  "upstreamParser": "net.sourceforge.owlapi:owlapi-parsers:5.5.1",
+  "sourceArchive": {
+    "url": "https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/owlapi-parsers/5.5.1/owlapi-parsers-5.5.1-sources.jar",
+    "sha256": "ca5ade39883033eb730faa86a8c3af1ad8ed6f0484384369b2e5f02af6af4293"
+  },
+  "files": [
+    {
+      "sourceEntry": "org/semanticweb/owlapi/rdf/turtle/parser/TurtleParser.java",
+      "sourceSHA256": "3a1d6dc6f2b02fe8963fc65f22faa3b2c8a5234b90471691942eee33e019a8fd",
+      "outputFile": "LocatedTurtleSyntaxParser.java",
+      "changes": [
+        {
+          "find": "TurtleParserTokenManager",
+          "replace": "LocatedTurtleTokenManager",
+          "occurrences": 6
+        },
+        {
+          "find": "JavaCharStream",
+          "replace": "LocatedTurtleCharStream",
+          "occurrences": 3
+        },
+        {
+          "find": "public class TurtleParser implements TurtleParserConstants {",
+          "replace": "class LocatedTurtleSyntaxParser implements TurtleParserConstants {\n    LocatedTurtleParser.Collector locations;",
+          "occurrences": 1
+        },
+        {
+          "find": "public TurtleParser(",
+          "replace": "public LocatedTurtleSyntaxParser(",
+          "occurrences": 5
+        },
+        {
+          "find": "IRI iri = string2IRI.get(s);\n        if(iri == null)",
+          "replace": "IRI iri = string2IRI.get(s);\n        boolean locatedCreated = iri == null;\n        if(iri == null)",
+          "occurrences": 1
+        },
+        {
+          "find": "            string2IRI.put(s, iri);\n        }\n        return iri;",
+          "replace": "            string2IRI.put(s, iri);\n        }\n        if (locations != null) locations.rememberIri(s, locatedCreated);\n        return iri;",
+          "occurrences": 1
+        },
+        {
+          "find": "        parseDirective();\n        jj_consume_token(DOT);",
+          "replace": "        parseDirective();\n        jj_consume_token(DOT);\n        locations.closeDirective(token);",
+          "occurrences": 1
+        },
+        {
+          "find": "void parsePrefixDirective() throws ParseException {Token t;",
+          "replace": "void parsePrefixDirective() throws ParseException {Token t;\n    int locatedDirective = locations.open(getToken(1), \"PREFIX\");",
+          "occurrences": 1
+        },
+        {
+          "find": "pm.setPrefix(t.image, ns.toString());",
+          "replace": "pm.setPrefix(t.image, ns.toString());\n        locations.prefix(locatedDirective, t.image, ns);",
+          "occurrences": 1
+        },
+        {
+          "find": "void parseBaseDirective() throws ParseException {Token t;",
+          "replace": "void parseBaseDirective() throws ParseException {Token t;\n    int locatedDirective = locations.open(getToken(1), \"BASE\");",
+          "occurrences": 1
+        },
+        {
+          "find": "base = IRI.create(t.image.substring(1, t.image.length() - 1));",
+          "replace": "base = IRI.create(t.image.substring(1, t.image.length() - 1));\nlocations.base(locatedDirective, base);",
+          "occurrences": 1
+        },
+        {
+          "find": "return getIRIFromQName(t.image);",
+          "replace": "return locations.qnameTerm(t, getIRIFromQName(t.image));",
+          "occurrences": 2
+        },
+        {
+          "find": "return getIRI(t.image);",
+          "replace": "return locations.iriTerm(t, getIRI(t.image));",
+          "occurrences": 1
+        },
+        {
+          "find": "return getNextBlankNode(t.image);",
+          "replace": "return locations.tokenTerm(t, getNextBlankNode(t.image));",
+          "occurrences": 1
+        },
+        {
+          "find": "IRI parseBlankNode() throws ParseException {IRI iri = null;",
+          "replace": "IRI parseBlankNode() throws ParseException {IRI iri = null;\n    int locatedBlank = -1;",
+          "occurrences": 1
+        },
+        {
+          "find": "      jj_consume_token(EMPTY_BLANK_NODE);\nif(iri==null){iri = getNextBlankNode(null);}",
+          "replace": "      jj_consume_token(EMPTY_BLANK_NODE);\n      locations.last = locations.generated(locations.range(token, token, \"PROPERTY_LIST\", java.util.List.of()).sourceId());\nif(iri==null){iri = getNextBlankNode(null);}",
+          "occurrences": 1
+        },
+        {
+          "find": "      jj_consume_token(OPEN_SQUARE_BRACKET);",
+          "replace": "      jj_consume_token(OPEN_SQUARE_BRACKET);\n      locatedBlank = locations.open(token, \"PROPERTY_LIST\");\n      locations.last = locations.generated(locatedBlank);",
+          "occurrences": 1
+        },
+        {
+          "find": "      jj_consume_token(CLOSE_SQUARE_BRACKET);",
+          "replace": "      jj_consume_token(CLOSE_SQUARE_BRACKET);\n      locations.close(locatedBlank, token);\n      locations.last = locations.generated(locatedBlank);",
+          "occurrences": 1
+        },
+        {
+          "find": "void parsePredicateObjectList(IRI subject) throws ParseException {IRI predicate;",
+          "replace": "void parsePredicateObjectList(IRI subject) throws ParseException {IRI predicate;\n    LocatedTurtleParser.TermSource locatedSubject = locations.last, locatedPredicate;",
+          "occurrences": 1
+        },
+        {
+          "find": "predicate = parseVerb();",
+          "replace": "predicate = parseVerb();\n    locatedPredicate = locations.last;",
+          "occurrences": 2
+        },
+        {
+          "find": "parseObjectList(subject, predicate);",
+          "replace": "parseObjectList(subject, predicate, locatedSubject, locatedPredicate);",
+          "occurrences": 2
+        },
+        {
+          "find": "      jj_consume_token(SEMICOLON);\n      predicate = parseVerb();",
+          "replace": "      jj_consume_token(SEMICOLON);\n      locatedSubject = locations.inherit(locatedSubject);\n      predicate = parseVerb();",
+          "occurrences": 1
+        },
+        {
+          "find": "iri = OWLRDFVocabulary.RDF_TYPE.getIRI();",
+          "replace": "iri = OWLRDFVocabulary.RDF_TYPE.getIRI();\nlocations.last = locations.token(token);",
+          "occurrences": 1
+        },
+        {
+          "find": "void parseObjectList(IRI subject, IRI predicate) throws ParseException {",
+          "replace": "void parseObjectList(IRI subject, IRI predicate, LocatedTurtleParser.TermSource locatedSubject, LocatedTurtleParser.TermSource locatedPredicate) throws ParseException {",
+          "occurrences": 1
+        },
+        {
+          "find": "parseObject(subject, predicate);",
+          "replace": "parseObject(subject, predicate, locatedSubject, locatedPredicate, null);",
+          "occurrences": 2
+        },
+        {
+          "find": "      jj_consume_token(COMMA);",
+          "replace": "      jj_consume_token(COMMA);\n      locatedSubject = locations.inherit(locatedSubject);\n      locatedPredicate = locations.inherit(locatedPredicate);",
+          "occurrences": 1
+        },
+        {
+          "find": "void parseObject(IRI subject, IRI predicate) throws ParseException {IRI resObject;",
+          "replace": "void parseObject(IRI subject, IRI predicate, LocatedTurtleParser.TermSource locatedSubject, LocatedTurtleParser.TermSource locatedPredicate, String locatedKind) throws ParseException {IRI resObject;",
+          "occurrences": 1
+        },
+        {
+          "find": "parseLiteral(subject, predicate);",
+          "replace": "parseLiteral(subject, predicate, locatedSubject, locatedPredicate, locatedKind);",
+          "occurrences": 1
+        },
+        {
+          "find": "handler.handleTriple(subject, predicate, resObject);",
+          "replace": "locations.resource(handler, subject, predicate, resObject, locatedSubject, locatedPredicate, locations.last, locatedKind);",
+          "occurrences": 1
+        },
+        {
+          "find": "    jj_consume_token(OPENPAR);\n    iri = parseItemList();\n    jj_consume_token(CLOSEPAR);",
+          "replace": "    jj_consume_token(OPENPAR);\n    int locatedCollection = locations.open(token, \"COLLECTION\");\n    iri = parseItemList(locatedCollection);\n    jj_consume_token(CLOSEPAR);\n    locations.close(locatedCollection, token);\n    locations.last = locations.generated(locatedCollection);",
+          "occurrences": 1
+        },
+        {
+          "find": "IRI parseItemList() throws ParseException {",
+          "replace": "IRI parseItemList(int locatedCollection) throws ParseException {",
+          "occurrences": 1
+        },
+        {
+          "find": "    IRI subject = null;",
+          "replace": "    IRI subject = null;\n    LocatedTurtleParser.TermSource locatedCell = null;\n    LocatedTurtleParser.TermSource locatedVocabulary = locations.generated(locatedCollection);",
+          "occurrences": 1
+        },
+        {
+          "find": "IRI prevSubject = subject;\n        subject=getNextBlankNode(null);",
+          "replace": "IRI prevSubject = subject;\n        LocatedTurtleParser.TermSource locatedPrevious = locatedCell;\n        int locatedItem = locations.open(getToken(1), \"ITEM\");\n        locatedCell = locations.generated(locatedItem);\n        subject=getNextBlankNode(null);",
+          "occurrences": 1
+        },
+        {
+          "find": "handler.handleTriple(prevSubject, rest, subject);",
+          "replace": "locations.resource(handler, prevSubject, rest, subject, locatedPrevious, locatedVocabulary, locatedCell, \"COLLECTION_REST\");",
+          "occurrences": 1
+        },
+        {
+          "find": "handler.handleTriple(subject, type, list);",
+          "replace": "locations.resource(handler, subject, type, list, locatedCell, locatedVocabulary, locatedVocabulary, \"COLLECTION_TYPE\");",
+          "occurrences": 1
+        },
+        {
+          "find": "      parseObject(subject, first);",
+          "replace": "      parseObject(subject, first, locatedCell, locatedVocabulary, \"COLLECTION_FIRST\");\n      locations.close(locatedItem, token);",
+          "occurrences": 1
+        },
+        {
+          "find": "handler.handleTriple(subject, rest, nil);",
+          "replace": "locations.resource(handler, subject, rest, nil, locatedCell, locatedVocabulary, locatedVocabulary, \"COLLECTION_REST\");",
+          "occurrences": 1
+        },
+        {
+          "find": "void parseLiteral(IRI subject, IRI predicate) throws ParseException {String literal;",
+          "replace": "void parseLiteral(IRI subject, IRI predicate, LocatedTurtleParser.TermSource locatedSubject, LocatedTurtleParser.TermSource locatedPredicate, String locatedKind) throws ParseException {String literal;\n    Token locatedStart = getToken(1);\n    java.util.List<Integer> locatedContexts = java.util.List.of();",
+          "occurrences": 1
+        },
+        {
+          "find": "          datatype = parseResource();",
+          "replace": "          datatype = parseResource();\n          locatedContexts = locations.last.contextIds();",
+          "occurrences": 1
+        },
+        {
+          "find": "handler.handleTriple(subject, predicate, literal, datatype);",
+          "replace": "locations.datatype(handler, subject, predicate, literal, datatype, locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "occurrences": 1
+        },
+        {
+          "find": "handler.handleTriple(subject, predicate, literal, lang);",
+          "replace": "locations.language(handler, subject, predicate, literal, lang, locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "occurrences": 1
+        },
+        {
+          "find": "handler.handleTriple(subject, predicate, literal);",
+          "replace": "locations.plain(handler, subject, predicate, literal, locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "occurrences": 1
+        },
+        {
+          "find": "handler.handleTriple(subject, predicate, literal, XSDVocabulary.INTEGER.getIRI());",
+          "replace": "locations.datatype(handler, subject, predicate, literal, XSDVocabulary.INTEGER.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "occurrences": 1
+        },
+        {
+          "find": "handler.handleTriple(subject, predicate, literal, XSDVocabulary.DOUBLE.getIRI());",
+          "replace": "locations.datatype(handler, subject, predicate, literal, XSDVocabulary.DOUBLE.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "occurrences": 1
+        },
+        {
+          "find": "handler.handleTriple(subject, predicate, literal, XSDVocabulary.DECIMAL.getIRI());",
+          "replace": "locations.datatype(handler, subject, predicate, literal, XSDVocabulary.DECIMAL.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "occurrences": 1
+        },
+        {
+          "find": "handler.handleTriple(subject, predicate, literal, XSDVocabulary.BOOLEAN.getIRI());",
+          "replace": "locations.datatype(handler, subject, predicate, literal, XSDVocabulary.BOOLEAN.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "e1e4f790b0b6b5d807f51a5c9f906843e41121764d61ca55c9d5d97237f2f7ee"
+    },
+    {
+      "sourceEntry": "org/semanticweb/owlapi/rdf/turtle/parser/JavaCharStream.java",
+      "sourceSHA256": "ddd395b54f835a6d5c8ca31c9c7141c8ddc3ca6db6b0ee54bdfe79f607918fc6",
+      "outputFile": "LocatedTurtleCharStream.java",
+      "changes": [
+        {
+          "find": "JavaCharStream",
+          "replace": "LocatedTurtleCharStream",
+          "occurrences": 5
+        },
+        {
+          "find": "  protected int bufcolumn[];",
+          "replace": "  protected int bufcolumn[];\n  protected int rawStart[];\n  protected int rawEnd[];\n  protected int rawCursor;\n  public int getRawStart() { return rawStart[tokenBegin]; }\n  public int getRawEnd() { return rawEnd[bufpos]; }\n  public int getRawCursor() { return rawCursor; }",
+          "occurrences": 1
+        },
+        {
+          "find": "    int newbufcolumn[] = new int[bufsize + 2048];",
+          "replace": "    int newbufcolumn[] = new int[bufsize + 2048];\n    int newRawStart[] = new int[bufsize + 2048];\n    int newRawEnd[] = new int[bufsize + 2048];",
+          "occurrences": 1
+        },
+        {
+          "find": "        System.arraycopy(bufline, tokenBegin, newbufline, 0, bufsize - tokenBegin);\n        System.arraycopy(bufline, 0, newbufline, bufsize - tokenBegin, bufpos);",
+          "replace": "        System.arraycopy(rawStart, tokenBegin, newRawStart, 0, bufsize - tokenBegin);\n        System.arraycopy(rawStart, 0, newRawStart, bufsize - tokenBegin, bufpos);\n        System.arraycopy(rawEnd, tokenBegin, newRawEnd, 0, bufsize - tokenBegin);\n        System.arraycopy(rawEnd, 0, newRawEnd, bufsize - tokenBegin, bufpos);\n        rawStart = newRawStart; rawEnd = newRawEnd;\n        System.arraycopy(bufline, tokenBegin, newbufline, 0, bufsize - tokenBegin);\n        System.arraycopy(bufline, 0, newbufline, bufsize - tokenBegin, bufpos);",
+          "occurrences": 1
+        },
+        {
+          "find": "        System.arraycopy(bufline, tokenBegin, newbufline, 0, bufsize - tokenBegin);\n        bufline = newbufline;",
+          "replace": "        System.arraycopy(rawStart, tokenBegin, newRawStart, 0, bufsize - tokenBegin);\n        System.arraycopy(rawEnd, tokenBegin, newRawEnd, 0, bufsize - tokenBegin);\n        rawStart = newRawStart; rawEnd = newRawEnd;\n        System.arraycopy(bufline, tokenBegin, newbufline, 0, bufsize - tokenBegin);\n        bufline = newbufline;",
+          "occurrences": 1
+        },
+        {
+          "find": "    return nextCharBuf[nextCharInd];",
+          "replace": "    rawCursor++;\n    return nextCharBuf[nextCharInd];",
+          "occurrences": 1
+        },
+        {
+          "find": "    if ((buffer[bufpos] = c = ReadByte()) == '\\\\')",
+          "replace": "    c = ReadByte(); buffer[bufpos] = c;\n    rawStart[bufpos] = rawCursor - 1; rawEnd[bufpos] = rawCursor;\n    if (c == '\\\\')",
+          "occurrences": 1
+        },
+        {
+          "find": "          if ((buffer[bufpos] = c = ReadByte()) != '\\\\')",
+          "replace": "          c = ReadByte(); buffer[bufpos] = c;\n          rawStart[bufpos] = rawCursor - 1; rawEnd[bufpos] = rawCursor;\n          if (c != '\\\\')",
+          "occurrences": 1
+        },
+        {
+          "find": "        column += 4;",
+          "replace": "        rawEnd[bufpos] = rawCursor;\n        column += 4;",
+          "occurrences": 1
+        },
+        {
+          "find": "    bufcolumn = new int[buffersize];",
+          "replace": "    bufcolumn = new int[buffersize];\n    rawStart = new int[buffersize]; rawEnd = new int[buffersize];",
+          "occurrences": 2
+        },
+        {
+          "find": "    prevCharIsLF = prevCharIsCR = false;",
+          "replace": "    rawCursor = 0;\n    prevCharIsLF = prevCharIsCR = false;",
+          "occurrences": 1
+        },
+        {
+          "find": "    bufcolumn = null;",
+          "replace": "    bufcolumn = null;\n    rawStart = rawEnd = null;",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "c5b125c941205f78ac8358baf6cc21a8440aa9473ac405e7f78a08b63e943702"
+    },
+    {
+      "sourceEntry": "org/semanticweb/owlapi/rdf/turtle/parser/TurtleParserTokenManager.java",
+      "sourceSHA256": "190b0a01242d12aaa42e77b059dfc4b555e6a666f5dad212a25a23de4178e7d6",
+      "outputFile": "LocatedTurtleTokenManager.java",
+      "changes": [
+        {
+          "find": "TurtleParserTokenManager",
+          "replace": "LocatedTurtleTokenManager",
+          "occurrences": 5
+        },
+        {
+          "find": "JavaCharStream",
+          "replace": "LocatedTurtleCharStream",
+          "occurrences": 6
+        },
+        {
+          "find": "   t = Token.newToken(jjmatchedKind, curTokenImage);",
+          "replace": "   t = new LocatedTurtleParser.LocatedToken(jjmatchedKind, curTokenImage,\n       jjmatchedKind == 0 ? input_stream.getRawCursor() : input_stream.getRawStart(),\n       jjmatchedKind == 0 ? input_stream.getRawCursor() : input_stream.getRawEnd());",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "e869e303f89f0350e0c373b0299ffc727eb8f55a434f2f79cd7ad38b53a5d9a3"
+    }
+  ],
+  "ownedSources": [
+    {
+      "file": "LocatedTurtleParser.java",
+      "sha256": "cc6a1138549dc37e7b46f307e60b70ec78e43e0c42207e48b274ecd2f5256ca4"
+    }
+  ],
+  "notice": "EvoPilot identified modifications of OWLAPI 5.5.1 TurtleParser, JavaCharStream and TurtleParserTokenManager: rename only the derived classes, instrument existing grammar semantic actions with raw source handles, and preserve original callback payload/order, lexer DFA, token images and Unicode decoding while retaining raw UTF-16 interval sidecars across read-ahead/backups. Original class files and parser factories are not replaced. Original source comments and notices are retained outside the exact changes listed here. Retain the exact source archive, recipe and generated sources with source/license evidence. This is not an unmodified upstream release or a completed license acceptance.",
+  "reason": "Capture exact raw Turtle triple occurrences, inherited terms, generated blank/list structure and actual prefix/base/IRI-cache dependencies. These records alone do not establish complete RDF-to-OWL axiom provenance. No grammar repair, resolution correction or semantic expansion is intended.",
+  "acceptance": "Actual parser event/ontology parity, exact Unicode offsets, resource limits, source-set mapper integration and formal source-fragment acceptance remain required.",
+  "upstreamLicenseDeclarations": [
+    {
+      "name": "Apache License Version 2.0, January 2004",
+      "url": "http://www.apache.org/licenses/"
+    },
+    {
+      "name": "GNU LGPL Version 3.0",
+      "url": "http://www.gnu.org/licenses/lgpl.txt"
+    }
+  ],
+  "licenseDeclarationSource": "https://repo.maven.apache.org/maven2/net/sourceforge/owlapi/owlapi-parent/5.5.1/owlapi-parent-5.5.1.pom"
+}
