@@ -612,9 +612,9 @@ stale digests and resolutions that break the owned launcher remain refused.
 ```
 
 The caller must inspect a fresh plan after editing any input. Runtime/toolchain
-lineage and internal admission are described below; atomic activation and actual
-interruption/storage-failure recovery remain separate obligations. These
-preparation checks do not establish MAINT-02, actual Codex Host behavior or v0.9
+lineage, internal admission, staging and forward activation are described below;
+installed interruption/storage-failure verification remains a separate obligation.
+These preparation checks do not establish MAINT-02, actual Codex Host behavior or v0.9
 acceptance. Installed source tests use two isolated offline installs and clearly
 labeled synthetic upstream templates; they do not impersonate a released upgrade.
 
@@ -658,12 +658,13 @@ Node bindings. Backup validation checks that the setup file in its inventory
 matches the runtime history, and both restoration modes preserve that history.
 
 These are implemented storage, reader and execution guards. The history builder
-only constructs a prospective record; there is still no fault-safe product command
-that atomically activates a runtime, toolchain and merged plugin together. Tests
-explicitly construct versioned metadata fixtures under the owner leases, then
+constructs a prospective record; the internal activation protocol described below
+uses it to verify the selected installation before committing completion. There
+is no public upgrade activation command yet. The earlier lineage tests explicitly
+construct versioned metadata fixtures under the owner leases, then
 exercise actual installed startup, formal Java/Python validation, historical
 receipt readback and lost/current-owner restoration. Such fixtures do not replace
-actual upgrade admission, interrupted activation, disk-full recovery, Codex Host
+installed activation and interruption verification, disk-full recovery, Codex Host
 journeys or MAINT-02 acceptance.
 
 ## Inspecting the complete upgrade selection
@@ -697,9 +698,9 @@ transaction durably records the actual binding timestamp before activation. An u
 retain `toolchains: null`; the latter explicitly reports `toolchainsVerified: false`
 and establishes no formal reasoning readiness. Configured tools cannot be removed.
 
-This command prepares a complete upgrade selection. Internal admission and
-pre-switch abort and staging are described below. Activation and actual
-crash/storage failure recovery still need implementation and installed verification. Inspection
+This command prepares a complete upgrade selection. Internal admission,
+pre-switch abort, staging and activation are described below. Actual
+crash/storage-failure recovery still requires installed verification. Inspection
 does not apply the prepared report or satisfy MAINT-02.
 
 
@@ -742,8 +743,9 @@ silently pruned. An aborted request ID cannot be reused for a new upgrade inspec
 
 This is an internal implementation stage, with no public admission command yet.
 Admission alone does not create the sibling staging directory or activate a runtime.
-Atomic switching, real restart, SIGKILL/ENOSPC recovery and full maintenance
-acceptance remain required. Tests that reconstruct
+The internal component-switch protocol below is a separate step. Its installed
+restart and SIGKILL checks, ENOSPC recovery and full maintenance acceptance remain
+evidence obligations. Tests that reconstruct
 partial protocol files are synthetic interruption evidence, not actual crash or
 disk-full acceptance. Product acceptance and release authority remain unchanged.
 
@@ -763,9 +765,10 @@ prospective toolchain ledger. A first tool binding also stages its logical worke
 owner and maintenance barrier. The new first-tool worker directory uses mode `0700`, so a read-only original
 empty directory cannot prevent subsequent worker writes. The original empty
 directory and its mode remain unchanged during staging. Existing configured
-worker histories remain in their original location. An unconfigured empty directory is preserved until a later explicitly
-implemented switch. Original runtime selection, plugin files, credentials, business
-state, toolchain ledger and worker journals remain unchanged during staging.
+worker histories remain in their original location. An unconfigured empty directory
+is preserved until the internal switch described below. Original runtime selection,
+plugin files, credentials, business state, toolchain ledger and worker journals
+remain unchanged during staging.
 
 The binding and runtime transition use one durably committed timestamp. Retries
 reuse it and preserve uncommitted timestamp attempts as inert evidence, bounded to
@@ -785,14 +788,16 @@ binding identity and prepared digest when the original image is unchanged.
 The candidate image is bounded to 2,048 entries, depth 28, 2 MiB per file and 24 MiB
 in total, in addition to the stricter plugin limits. Pending payloads must be exact
 prefixes of the same bounded planned files. Stage metadata permits only the defined
-layout; unknown switch or other top-level material blocks continuation and abort.
+layout. The activation protocol separately owns `previous/` and the installation-side
+switch record; foreign or unrecognized top-level material blocks continuation.
 
 Pre-switch abort retains the staged payloads and records the stage-owner digest in
 its released receipt before ordinary owner use resumes. Historical replay validates
 that retained receipt without requiring the external staged directory to remain
-available. This evidence proves staging and pre-switch abort only. No public
-activation command, runtime rename/switch, automatic start, actual crash/disk-full
-acceptance, or product/release acceptance is established by this implementation.
+available. Staging evidence proves staging and pre-switch abort only; the internal
+component-switch implementation below has separate verification obligations.
+Neither step establishes a public activation command, automatic start, actual
+crash/disk-full acceptance or product/release acceptance.
 
 
 Installed development verification additionally kills an owned staging child with
@@ -800,3 +805,98 @@ Installed development verification additionally kills an owned staging child wit
 then resumes the same request. This single real interruption does not establish
 switch-phase crash recovery, ENOSPC behavior, Linux parity or formal maintenance
 acceptance. Reconstructed partial payload/metadata cases remain separately labeled.
+
+## Internal activation and forward recovery
+
+The internal `activateInstallationUpgrade` entry requires an admitted, sealed stage
+and its exact `expectedPreparedDigest`. It does not implicitly prepare or rebuild a candidate.
+Before switching, it verifies the admission, stage owner, prepared image, original
+owner roots and unchanged source snapshot. It reconstructs the prospective runtime
+transition and toolchain ledger from the admitted original installation and ledger,
+and checks them against the staged installation. The transition and binding use
+the stage's committed `recordedAt`; activation does not invent a new completion
+timestamp.
+
+Before the first component rename, activation records
+`ontology-upgrade-switch/v1` in the installation's request directory. The record
+binds the request, admission, inspected report, stage owner and prepared digests,
+the physical identity of the stage's `previous/` directory, and each selected
+component's original and candidate physical identities. The selected components
+are the plugin and installation metadata, the toolchain ledger when tools are
+selected, and a new `formal-work` directory only for a first tool binding. Existing
+configured worker directories and their histories are not switched.
+
+Each component with an original permits exactly three arrangements:
+
+| Arrangement | Installation location | Stage `previous/` | Stage `next/` |
+| --- | --- | --- | --- |
+| Ready | Original | Absent | Candidate |
+| Original retained | Absent | Original | Candidate |
+| Installed | Candidate | Original | Absent |
+
+Components that had no original permit only the ready and installed arrangements,
+with their `previous/` location always absent. For example, a first binding can
+introduce a previously absent ledger or worker directory. An existing empty worker
+directory is retained as the original, while the staged replacement uses mode
+`0700`. Every location is checked against its bound physical identity, bytes and
+canonical modes, subject only to the directory-mode transition below. Duplicate,
+missing, replaced or foreign material is preserved and refused.
+Individual renames advance these arrangements under the owner leases and durable
+maintenance barriers. The component set is not presented as one atomic filesystem
+rename.
+
+On macOS, moving a read-only directory between parents may require owner-write on
+that directory. Only after the switch record is fully durable and validated may
+a selected component root directory temporarily use `canonicalMode | 0200`. The
+directory must retain its bound device and inode; a pending switch write alone
+does not permit this transition. Mode and directory changes are synchronized before
+and after the rename. Resume recognizes only the canonical mode or this exact
+temporary mode at the proven component location. The retained original and
+installed candidate both regain their canonical modes, durably, before completion
+is recorded. Child entries, existing configured worker directories and other roots
+keep their original modes.
+
+Once a switch record or its pending write exists, recovery is forward-only and
+pre-switch abort is refused. Resume continues the same admitted request from its
+proven arrangement; it does not silently roll back or overwrite an unexpected
+location. Original components remain in `previous/`. Until completion is recorded,
+each continuation verifies unchanged business data, credentials and other owner
+history as well as the original and candidate component images. A changed source
+cannot be accepted by merely retrying the request.
+
+After all selected components are installed and verified, activation durably writes
+`ontology-upgrade-completed/v1`. This receipt binds the admitted request and report,
+prepared and stage-owner digests, switch digest, selected installation and runtime
+identities, toolchain binding and transition digest. It records
+`runtimeActivated: true`, `serviceStarted: false` and `authority: false`. The exact
+completion reservation is released immediately before this write to make its
+reserved space available. Durable completion precedes cleanup of the transaction's
+exact remaining maintenance markers; cleanup also requires the reservation to be
+absent. Only then is `ontology-upgrade-released/v2` written.
+
+If cleanup is interrupted after completion, continuation validates the physical
+owner and current installation identity, the bound completion envelope and each
+remaining exact marker. It does not compare the old business or credential snapshot
+again: completion has already established the new selection, and released owners
+may have resumed writes during partial cleanup. Unknown markers remain a refusal;
+their presence cannot be treated as successful cleanup.
+
+Ordinary owner use remains blocked by pending switch/completion records or an
+unreleased request. A completed release is recognized only from exactly the five
+installation-side admission, stage, switch, completed and released records, with
+no pending, reservation or aborted leftovers. Historical replay verifies their
+digest and request bindings without requiring the external candidate runtime or
+stage directory to remain available. It does not establish current runtime health
+or the continuing availability of retained originals.
+
+This contract is implemented internally; no public activation CLI or automatic
+service start is provided yet. Installed development verification covers actual
+restart with the selected runtime and binding, actual `SIGKILL` recovery, and
+preservation of a read-only original worker directory during a first binding.
+It also exercises exact partial-record recovery, overlapping-maintenance refusal,
+changed evidence, terminal history and backup/restore materialization.
+Reconstructed transitional-mode and interrupted-rename cases are labeled synthetic
+and remain distinct from actual process restart and `SIGKILL` scenarios. ENOSPC
+recovery, Linux parity, actual Codex Host journeys and full MAINT-02 acceptance
+remain unproven. Code implementation and any later source-test results do not
+approve product acceptance or release.

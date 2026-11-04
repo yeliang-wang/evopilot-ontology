@@ -1,6 +1,6 @@
 import {mkdirSync,readdirSync,lstatSync,unlinkSync,openSync,closeSync,fsyncSync} from 'node:fs';
 import {dirname,join} from 'node:path';
-import {operatorLock} from './files.js';
+import {operatorLock,outsideSource} from './files.js';
 import {readInstallation} from './manager.js';
 import type {Installation} from './manager.js';
 import {prepareInstallationUpgradeLocked,validateInstallationUpgradeInput} from './upgrade-plan.js';
@@ -12,7 +12,7 @@ import {admittedUpgradeStageNode,preserveUpgradeStageForAbort,readUpgradeStageOw
 import {workerFilePresent} from './worker-archives.js';
 import {privatePath,privateRead,openWorkspace,requireMaintenanceAvailable,upgradeControlNames,upgradeControlKey,UPGRADE_BARRIER,UPGRADE_RECORDS} from '../standalone/workspace.js';
 import type {UpgradeBarrier,MaintenancePermit,WorkspaceStore} from '../standalone/workspace.js';
-import {exact,digest} from '../standalone/validation.js';
+import {exact,digest,id} from '../standalone/validation.js';
 import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
 
@@ -89,10 +89,35 @@ function released(a:UpgradeAdmission):boolean {
   return true;
 }
 
+export function readUpgradeAdmissionAtRoot(path:string,requestId:string):UpgradeAdmission {
+  id(requestId);privatePath(path,true);const root=outsideSource(path);
+  const v:unknown=JSON.parse(privateRead(join(root,UPGRADE_RECORDS,upgradeControlKey(requestId)+'.json'),BACKUP_LIMITS.manifestBytes));
+  exact(v,['schema','input','report','reportDigest','requestDigest','controlNode']);
+  const p=v.report;exact(p,['schema','status','requestId','upgradeRoot','ownerSnapshot','pluginPlan','pluginPlanDigest','toolchainDraft','toolchainsVerified','runtimeActivated','serviceStarted','productAcceptance','authority']);validateBackupPlan(p.ownerSnapshot);
+  validateAdmission(v,p.ownerSnapshot.installation);
+  if(p.ownerSnapshot.installation.root!==root||v.input.requestId!==requestId)fail('UPGRADE_EVIDENCE','Retained admission belongs to another root or request',409);return v;
+}
+export const upgradeControlFile=(a:UpgradeAdmission,suffix:string):string=>file(a.report.ownerSnapshot.installation,a.input.requestId,suffix);
+export const upgradePermit=permit;
+export const upgradeMarker=marker;
+export function assertUpgradeReserve(a:UpgradeAdmission,required=false):void {
+  const path=upgradeControlFile(a,'.reserve'),full=workerFilePresent(path),partial=workerFilePresent(path+'.pending'),expected=JSON.stringify(reserveValue(a))+'\n';
+  if(full&&partial||required&&!full||full&&privateRead(path,BACKUP_LIMITS.manifestBytes)!==expected||partial&&!expected.startsWith(privateRead(path+'.pending',BACKUP_LIMITS.manifestBytes)))fail('UPGRADE_EVIDENCE','Completion reservation is missing or contains foreign control material',409);
+}
+export function releaseUpgradeReserve(a:UpgradeAdmission):void {
+  assertUpgradeReserve(a);
+  removeExact(upgradeControlFile(a,'.reserve'),reserveValue(a));removeExact(upgradeControlFile(a,'.reserve.pending'),reserveValue(a),true);
+}
+export function clearUpgradeMarker(a:UpgradeAdmission,root:string):void {assertMarker(a,root);removeExact(join(root,UPGRADE_BARRIER),marker(a,root));removeExact(join(root,UPGRADE_BARRIER)+'.pending',marker(a,root),true);}
+function requireNoUpgradeSwitch(path:string,requestId:string):void {
+  privatePath(path,true);const root=outsideSource(path),key=upgradeControlKey(requestId);
+  if(['.switch.json','.switch.json.pending'].some(s=>workerFilePresent(join(root,UPGRADE_RECORDS,key+s))))fail('UPGRADE_SWITCH_PENDING','An admitted switch requires exact forward recovery; pre-switch operations are unavailable',409);
+}
+
 /** Internal transaction admission, deliberately not a public CLI command until
  * staging and activation are implemented. No runtime or tool ledger is changed. */
 export function withInstallationUpgradeAdmission<T>(path:string,input:InstallationUpgradeInput,expectedReportDigest:string,work:(a:UpgradeAdmission,prepared:InstallationUpgradePreparation,store:WorkspaceStore,replayed:boolean)=>T,aborted:(a:UpgradeAdmission)=>T):T {
-  validateInstallationUpgradeInput(input);digest(expectedReportDigest);const i=readInstallation(path),unlock=operatorLock(i.root);
+  validateInstallationUpgradeInput(input);digest(expectedReportDigest);requireNoUpgradeSwitch(path,input.requestId);const i=readInstallation(path),unlock=operatorLock(i.root);
   try{
     const names=upgradeControlNames(i.root),key=upgradeControlKey(input.requestId),saved=workerFilePresent(file(i,input.requestId))?readAdmission(i,input.requestId):null;
     for(const suffix of ['.json','.aborted.json','.released.json'])if(workerFilePresent(file(i,input.requestId,suffix))&&workerFilePresent(file(i,input.requestId,suffix)+'.pending'))fail('UPGRADE_EVIDENCE','Ambiguous complete and partial upgrade records were preserved',409);
@@ -119,7 +144,7 @@ export function admitInstallationUpgrade(path:string,input:InstallationUpgradeIn
 /** Explicit pre-switch abort. Original request/report may reconstruct an exact
  * interrupted admission prefix; it never grants permission to activate it. */
 export function abortInstallationUpgrade(path:string,input:InstallationUpgradeInput,expectedReportDigest:string,retainedReport?:InstallationUpgradePlan):Json {
-  validateInstallationUpgradeInput(input);digest(expectedReportDigest);const i=readInstallation(path),unlock=operatorLock(i.root);
+  validateInstallationUpgradeInput(input);digest(expectedReportDigest);requireNoUpgradeSwitch(path,input.requestId);const i=readInstallation(path),unlock=operatorLock(i.root);
   try{
     upgradeControlNames(i.root);
     for(const suffix of ['.json','.aborted.json','.released.json'])if(workerFilePresent(file(i,input.requestId,suffix))&&workerFilePresent(file(i,input.requestId,suffix)+'.pending'))fail('UPGRADE_EVIDENCE','Ambiguous complete and partial upgrade records were preserved',409);

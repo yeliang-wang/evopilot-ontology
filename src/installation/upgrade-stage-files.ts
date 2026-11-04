@@ -38,29 +38,30 @@ export function admittedUpgradeStageNode(a:UpgradeAdmission):NodeIdentity|undefi
   if(workerFilePresent(file+'.pending')&&!(JSON.stringify(proposed)+'\n').startsWith(privateRead(file+'.pending',65536)))fail('UPGRADE_STAGE_EVIDENCE','Foreign stage ownership prefix was preserved',409);
   return proposed.node;
 }
-export function upgradeStageLayout(a:UpgradeAdmission):void {
+export function upgradeStageLayout(a:UpgradeAdmission,allowPrevious=false):void {
   const saved=readUpgradeStageOwner(a);if(!saved||!eq(backupNode(saved.root),saved.node))fail('UPGRADE_STAGE_EVIDENCE','Original stage root is required',409);
   const names=readdirSync(saved.root);let timestamps=0;
   for(const name of names){
-    const directory=['next','pending'].includes(name),temporary=/^recorded-at\.json\.pending-[a-f0-9-]{36}$/.test(name);
+    const directory=['next','pending',...(allowPrevious?['previous']:[])].includes(name),temporary=/^recorded-at\.json\.pending-[a-f0-9-]{36}$/.test(name);
     if(!directory&&!temporary&&!['recorded-at.json','prepared.json','prepared.json.pending'].includes(name))fail('UPGRADE_PHASE_UNKNOWN','Unrecognized staging or switch material was preserved',409);
     const path=join(saved.root,name);privatePath(path,directory);
     if(temporary&&++timestamps>16||!directory&&lstatSync(path).size>(name.startsWith('prepared.')?BACKUP_LIMITS.manifestBytes:65536))fail('UPGRADE_STAGE_LIMIT','Stage control material exceeds its fixed budget',409);
   }
 }
-export function ensureUpgradeStage(a:UpgradeAdmission):UpgradeStageOwner {
+export function ensureUpgradeStage(a:UpgradeAdmission,allowPrevious=false):UpgradeStageOwner {
   if(!workerFilePresent(a.input.upgradeRoot)){
     if(readUpgradeStageOwner(a)||workerFilePresent(upgradeStageFile(a)+'.pending'))fail('UPGRADE_STAGE_EVIDENCE','Original stage root is missing; no replacement was created',409);
     mkdirSync(a.input.upgradeRoot,{mode:0o700});syncUpgradeDirectory(dirname(a.input.upgradeRoot));
   }
   admittedUpgradeStageNode(a);const saved=readUpgradeStageOwner(a)??owner(a);
-  writeBackupJSON(upgradeStageFile(a),saved);syncUpgradeDirectory(dirname(upgradeStageFile(a)));upgradeStageLayout(a);return saved;
+  writeBackupJSON(upgradeStageFile(a),saved);syncUpgradeDirectory(dirname(upgradeStageFile(a)));upgradeStageLayout(a,allowPrevious);return saved;
 }
 /** Abort preserves all staged payloads. Root ownership and the absence of any
  * later switch protocol must be proven before releasing original owner barriers. */
 export function preserveUpgradeStageForAbort(a:UpgradeAdmission):void {
   if(!workerFilePresent(a.input.upgradeRoot)&&!readUpgradeStageOwner(a)&&!workerFilePresent(upgradeStageFile(a)+'.pending'))return;
-  ensureUpgradeStage(a);upgradeStageLayout(a);
+  ensureUpgradeStage(a,true);upgradeStageLayout(a,true);
+  const previous=join(a.input.upgradeRoot,'previous');if(workerFilePresent(previous)&&readdirSync(previous).length)fail('UPGRADE_PHASE_UNKNOWN','Preserved component material requires exact forward recovery',409);
 }
 const stamp=(s:BigIntStats)=>[s.dev,s.ino,s.mode,s.size,s.mtimeNs,s.ctimeNs].join(':');
 function held(fd:number):BigIntStats {

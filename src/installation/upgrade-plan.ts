@@ -97,7 +97,7 @@ export function prepareInstallationUpgradeLocked(i:Installation,store:WorkspaceS
 /** Current request control files are covered by their own exact protocol.
  * Historical request files remain part of the stopped-owner snapshot. */
 export function upgradeOwnerSnapshot(plan:BackupPlan,requestId:string):BackupPlan {
-  const own=new Set(['.json','.json.pending','.reserve','.reserve.pending','.aborted.json','.aborted.json.pending','.released.json','.released.json.pending','.stage.json','.stage.json.pending'].map(s=>'upgrade-requests/'+upgradeControlKey(requestId)+s));
+  const own=new Set(['.json','.json.pending','.reserve','.reserve.pending','.aborted.json','.aborted.json.pending','.released.json','.released.json.pending','.stage.json','.stage.json.pending','.switch.json','.switch.json.pending','.completed.json','.completed.json.pending'].map(s=>'upgrade-requests/'+upgradeControlKey(requestId)+s));
   return {...plan,entries:plan.entries.filter(e=>e.scope!=='installation'||e.path!=='upgrade-requests'&&!own.has(e.path))};
 }
 export function prepareInstallationUpgrade(path:string,input:InstallationUpgradeInput,expectedReportDigest?:string):InstallationUpgradePreparation {

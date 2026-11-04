@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+import {validateUpgradeCompletionEnvelope} from '../installation/upgrade-receipt.js';
 import { constants, openSync, closeSync, readFileSync, lstatSync, realpathSync, readdirSync, fstatSync } from 'node:fs';
 import { resolve, join, isAbsolute, dirname } from 'node:path';
 import { fail, LIMITS } from './types.js';
@@ -33,7 +34,7 @@ export function readMaintenanceBarrier(root:string):MaintenanceBarrier|null {
 /** The installation anchor closes the admission-to-barrier crash window.
  * Exact terminal receipts remain readable after backups relocate their files. */
 export const upgradeControlKey=(requestId:string):string=>{id(requestId);return Buffer.from(requestId,'utf8').toString('hex');};
-const controlName=/^([a-f0-9]{2,192})(\.aborted\.json|\.released\.json|\.stage\.json|\.reserve|\.json)(\.pending)?$/;
+const controlName=/^([a-f0-9]{2,192})(\.aborted\.json|\.released\.json|\.stage\.json|\.switch\.json|\.completed\.json|\.reserve|\.json)(\.pending)?$/;
 export function upgradeControlNames(root:string):string[] {
   const directory=join(root,UPGRADE_RECORDS);
   if(!readdirSync(root).includes(UPGRADE_RECORDS))return [];
@@ -60,6 +61,14 @@ function requireUpgradeAvailable(root:string,permit?:MaintenancePermit):void {
     const a:unknown=JSON.parse(privateRead(join(directory,key+'.json'),8*1024*1024));
     exact(a,['schema','input','report','reportDigest','requestDigest','controlNode']);
     const r:unknown=JSON.parse(privateRead(join(directory,key+'.released.json'),65536));
+    if(r&&typeof r==='object'&&!Array.isArray(r)&&'schema' in r&&r.schema==='ontology-upgrade-released/v2'){
+      const stage:unknown=JSON.parse(privateRead(join(directory,key+'.stage.json'),65536));
+      const switched:unknown=JSON.parse(privateRead(join(directory,key+'.switch.json'),65536));
+      const completed:unknown=JSON.parse(privateRead(join(directory,key+'.completed.json'),65536));
+      validateUpgradeCompletionEnvelope(a,stage,switched,completed,r);
+      if(completed.requestId!==requestId||names.some(n=>controlName.exec(n)![1]===key&&!['.json','.stage.json','.switch.json','.completed.json','.released.json'].some(s=>n===key+s)))fail('UPGRADE_EVIDENCE','Released upgrade has unresolved or foreign control material',409);
+      continue;
+    }
     exact(r,['schema','requestId','requestDigest','reportDigest','admissionDigest','abortDigest','authority'],['stageDigest']);
     const aborted:unknown=JSON.parse(privateRead(join(directory,key+'.aborted.json'),65536));
     exact(aborted,['schema','requestId','requestDigest','reportDigest','upgradeRoot','runtimeActivated','serviceStarted','partialMaterialRetained','authority']);
