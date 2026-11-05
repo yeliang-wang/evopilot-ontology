@@ -92,7 +92,7 @@ for(const mode of ['legacy','auto'])test('installed private bridge '+mode+' shar
   const again=await f.start();assert.equal(again.reused,true);assert.equal(again.run.runId,first.run.runId);assert.equal(again.run.pid,first.run.pid);
   const client=await f.connect(mode),list=await client.listTools(undefined,{cacheMode:'bypass',timeout:10000});
   assert.deepEqual(list.tools.map(x=>x.name).sort(),['ontology_context','ontology_read','ontology_write']);
-  const context=value(await f.call(client,'ontology_context'));assert.equal(context.serviceId,f.installation.serviceId);assert.equal(context.reasoningReady,false);
+  const context=value(await f.call(client,'ontology_context'));assert.equal(context.serviceId,f.installation.serviceId);assert.equal(context.acceptanceStatus,'EXTERNAL_EVIDENCE_REQUIRED');
   if(mode==='auto')assert.ok(client.getDiscoverResult());
   const write=f.request('project.create',{label:'Installed bridge project'},{requestId:'create',expectedRevision:0});
   const receipt=value(await f.call(client,'ontology_write',write));assert.equal(receipt.revision,1);

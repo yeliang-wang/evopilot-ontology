@@ -219,7 +219,7 @@ export async function main(argv: string[],emit:(value:Json)=>void):Promise<void>
     const validation=f.has('--shacl-toolchain')?{toolchainFile:f.get('--shacl-toolchain')!,workRoot:f.get('--shacl-work-root')!,...(systemd?{systemd}:{})}:undefined;
     const reasoning=f.has('--dl-toolchain')?{toolchainFile:f.get('--dl-toolchain')!,workRoot:f.get('--dl-work-root')!,...(systemd?{systemd}:{})}:undefined;
     const server=await listenStandalone({root:f.get('--root')!,workspaceId:f.get('--workspace')!,serviceId:f.get('--service')!,port:f.has('--port')?integer(f.get('--port')!):0,reasoning,validation});
-    emit({status:'LISTENING',origin:server.origin,mcpUrl:server.origin+'/mcp',identity:{...server.identity},implementationStage:'P3_IMPLEMENTATION'});
+    emit({status:'LISTENING',origin:server.origin,mcpUrl:server.origin+'/mcp',identity:{...server.identity},productVersion:'0.9.0',capabilityProfile:'ONTOLOGY_NATIVE_V2',acceptanceStatus:'EXTERNAL_EVIDENCE_REQUIRED'});
     await new Promise<void>(resolve=>{const stop=()=>{process.off('SIGTERM',stop);process.off('SIGINT',stop);resolve();};process.once('SIGTERM',stop);process.once('SIGINT',stop);});
     await server.close();return;
   }

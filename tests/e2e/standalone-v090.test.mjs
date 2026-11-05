@@ -27,7 +27,7 @@ const definition={purpose:'Determine which services process sensitive data',mode
 
 test('independent workspace persists intent and idempotent receipts without parent/Runtime/Harness',t=>{
   const f=fixture(t);let s=createStandaloneService(f.setup);t.after(()=>s.close());
-  assert.equal(s.request(f.read('service.inspect'),f.token).reasoningReady,false);
+  const initial=s.request(f.read('service.inspect'),f.token);assert.equal(initial.acceptanceStatus,'EXTERNAL_EVIDENCE_REQUIRED');assert.equal(initial.reasoningExecutionConfigured,false);assert.equal(initial.nativeAuthoringImplemented,true);assert.equal(initial.productVersion,'0.9.0');
   const create=f.write('project.create',{label:'Synthetic demo'},'create',0);
   const receipt=s.request(create,f.token);assert.equal(receipt.revision,1);
   const recorded=s.request(f.write('intent.record',{definition,previousDigest:null},'intent',1),f.token);

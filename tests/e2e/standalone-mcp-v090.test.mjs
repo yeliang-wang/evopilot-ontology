@@ -33,7 +33,7 @@ for(const mode of ['legacy','auto'])test('official MCP client '+mode+' discovers
   assert.equal(list.tools.find(x=>x.name==='ontology_read').annotations.readOnlyHint,true);
   const context=value(await f.call(c,'ontology_context'));
   assert.equal(context.serviceId,f.setup.serviceId);assert.equal(context.workspaceId,'isolated');assert.deepEqual(context.projectIds,['demo']);
-  assert.equal(context.reasoningReady,false);assert.equal(context.authority,false);
+  assert.equal(context.acceptanceStatus,'EXTERNAL_EVIDENCE_REQUIRED');assert.equal(context.authority,false);
   if(mode==='auto')assert.ok(c.getDiscoverResult(),'modern discovery must actually negotiate');
   const create=f.write('project.create',{label:'Synthetic MCP'},'create',0);
   const first=value(await f.call(c,'ontology_write',create));assert.equal(first.revision,1);

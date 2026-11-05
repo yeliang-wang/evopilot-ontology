@@ -106,7 +106,7 @@ export function expertGuide(topic:string):Json{
   if(topic.startsWith('contract:'))return operationContract(topic.slice('contract:'.length));
   if(topic==='contracts')return {schema:'ontology-operation-contract-index/v1',operations:OPERATION_CONTRACT_NAMES.map(operation=>({operation,input:{topic:'contract:'+operation}})),readThrough:'guide.read',authority:false};
   if(!Object.hasOwn(guides,topic))fail('NOT_FOUND','Unknown Expert topic',404);
-  return {schema:'ontology-expert-guide/v1',topic,implementationStage:'P3_IMPLEMENTATION',...structuredClone(guides[topic]),
+  return {schema:'ontology-expert-guide/v1',topic,productVersion:'0.9.0',capabilityProfile:'ONTOLOGY_NATIVE_V2',acceptanceStatus:'EXTERNAL_EVIDENCE_REQUIRED',...structuredClone(guides[topic]),
     inputContracts:guides[topic].operations.map(operation=>({operation,guideInput:{topic:'contract:'+operation}})),
     protocol:'Before calling an unfamiliar operation, read its exact input contract using guide.read and the listed guideInput. Do not guess wrapper names or current digests.',authority:false};
 }

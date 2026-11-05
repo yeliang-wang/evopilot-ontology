@@ -34,7 +34,7 @@ test('source admission survives restart and exact replay without reactivating st
   s.close();s=createStandaloneService(f.setup);
   assert.deepEqual(s.request({...request,expectedRevision:999},f.token),receipt);
   const inspected=s.request(f.read('source.inspect',{sourceSetDigest:null}),f.token);assert.equal(inspected.current,true);assert.equal(inspected.sourceSetDigest,d);
-  assert.equal(s.request(f.read('service.inspect'),f.token).nativeV2Ready,false);
+  assert.equal(s.request(f.read('service.inspect'),f.token).acceptanceStatus,'EXTERNAL_EVIDENCE_REQUIRED');
   const next=s.request(f.write('intent.record',{definition:{...definition,scope:'Changed declared scope'},previousDigest:intentDigest},'intent-next',3),f.token);
   assert.equal(s.request(f.read('project.inspect'),f.token).sourceAdmission.status,'STALE');
   assert.equal(s.request(f.read('source.inspect',{sourceSetDigest:d}),f.token).current,false);

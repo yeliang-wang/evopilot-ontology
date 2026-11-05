@@ -71,7 +71,7 @@ test('official MCP client performs independent expectation authoring, model bind
  const f=fixture(t),server=await listenStandalone(configuration(f)),client=new Client({name:'native-v2-validation-probe',version:'0.0.0'},{versionNegotiation:{mode:'auto'}});t.after(async()=>{await client.close();await server.close();});
  await client.connect(new StreamableHTTPClientTransport(new URL(server.origin+'/mcp'),{requestInit:{headers:{authorization:'Bearer '+f.token}}}),{timeout:5000});
  const call=async(name,args={})=>{const r=await client.callTool({name,arguments:args},{timeout:5000});assert.notEqual(r.isError,true,JSON.stringify(r));return r.structuredContent.result;};
- const context=await call('ontology_context');assert.equal(context.validationExecutionConfigured,true);assert.equal(context.nativeV2Ready,false);
+ const context=await call('ontology_context');assert.equal(context.validationExecutionConfigured,true);assert.equal(context.acceptanceStatus,'EXTERNAL_EVIDENCE_REQUIRED');
  await call('ontology_write',f.write('project.create',{label:'MCP validation journey'},'create',0));
  const intent=await call('ontology_write',f.write('intent.record',{definition,previousDigest:null},'intent',1));
  const source=await call('ontology_write',f.write('source.admit',{intentDigest:intent.result.intentDigest,sourceSet},'sources',2));

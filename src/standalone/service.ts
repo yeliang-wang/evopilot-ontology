@@ -61,12 +61,12 @@ export function createStandaloneService(options: {root: string; workspaceId: str
   const context = (token: string): Json => {
     const grant=credential(token);
     if (!grant.permissions.includes('read')) fail('FORBIDDEN','Read permission required for service discovery',403);
-    return {product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P3_IMPLEMENTATION',
+    return {product:'evopilot-ontology',productVersion:'0.9.0',capabilityProfile:'ONTOLOGY_NATIVE_V2',
       workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,
       ...(identity.schema==='ontology-workspace/v2'?{recovery:recoveryContext(identity)}:{}),
       principalId:grant.principalId,projectIds:[...grant.projectIds],permissions:[...grant.permissions],
       readOperations:[...READ_OPERATIONS],writeOperations:allowedWrites(grant),
-      reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,shaclExecutionConfigured:tasks.shaclConfigured,shaclToolchainDigest:tasks.shaclToolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
+      nativeAuthoringImplemented:true,acceptanceStatus:'EXTERNAL_EVIDENCE_REQUIRED',reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,shaclExecutionConfigured:tasks.shaclConfigured,shaclToolchainDigest:tasks.shaclToolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
   };
   function request(value: unknown, token: string): Json {
     if(closing)fail('CLOSED','Service is closing',503);
@@ -96,7 +96,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
       let result: Json;let afterCommit:(()=>void)|undefined;
       if (operation==='service.inspect') {
         exact(input,[]);
-        result={product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P3_IMPLEMENTATION',workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,...(identity.schema==='ontology-workspace/v2'?{recovery:recoveryContext(identity)}:{}),project:current as unknown as Json,readOperations:[...READ_OPERATIONS],writeOperations:allowedWrites(grant),reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,shaclExecutionConfigured:tasks.shaclConfigured,shaclToolchainDigest:tasks.shaclToolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
+        result={product:'evopilot-ontology',productVersion:'0.9.0',capabilityProfile:'ONTOLOGY_NATIVE_V2',workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,...(identity.schema==='ontology-workspace/v2'?{recovery:recoveryContext(identity)}:{}),project:current as unknown as Json,readOperations:[...READ_OPERATIONS],writeOperations:allowedWrites(grant),nativeAuthoringImplemented:true,acceptanceStatus:'EXTERNAL_EVIDENCE_REQUIRED',reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,shaclExecutionConfigured:tasks.shaclConfigured,shaclToolchainDigest:tasks.shaclToolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
       } else if (operation==='guide.read') {
         exact(input,['topic']);text(input.topic,96);result=expertGuide(input.topic);
       } else if (operation==='project.list') {

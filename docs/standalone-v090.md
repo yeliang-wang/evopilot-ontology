@@ -72,3 +72,9 @@ The [managed toolchain operator](managed-toolchains-v090.md) adds `toolchains-bi
 [Owned worker recovery](worker-recovery-v090.md) adds a compiled independent process supervisor and private attempt/exit journal. `task-recovery-inspect` and `task-reconcile` are separate stopped-owner commands. Confirmed exits or atomic no-launch fences can close only the original interrupted task as incomplete `FAILED`; missing evidence retains the barrier. The original business receipt remains unchanged and no task is redispatched. Supervisor-loss recovery and platform-enforced resource limits are described in the worker recovery guide; their required acceptance remains candidate-bound.
 
 Independent raw graph inspection is available through `reasoning.start` with an `rdfGraph` task and through `shacl.start/list/inspect/result.read/cancel`. The `shacl-graph` guide explains graph-only results: they do not replace fixed-expectation `validation.*` or semantic review. See the [SHACL contract](../specifications/v2/shacl.md).
+
+## Service identity and configured capabilities
+
+`ontology_context` and `service.inspect` report `productVersion: "0.9.0"`, the `ONTOLOGY_NATIVE_V2` capability profile and implemented authoring operations. `reasoningExecutionConfigured`, `shaclExecutionConfigured` and `validationExecutionConfigured` describe the selected executor configuration. A false configuration flag identifies a missing prerequisite; configured executors still enforce their current pinned bytes and each request's bounds.
+
+`acceptanceStatus: "EXTERNAL_EVIDENCE_REQUIRED"` states that the service cannot attest its own full product acceptance. Read the separately retained candidate-bound standards, user-review, product-acceptance and release records for those decisions. This replaces the unconditional development `reasoningReady` / `nativeV2Ready` placeholders; a configuration result is neither business approval nor software release evidence.
