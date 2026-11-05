@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,realpathSync,existsSync,rmSync} from 'node:fs';
+import {mkdtempSync,realpathSync,existsSync,rmSync,mkdirSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join,dirname} from 'node:path';
 import {collectorArguments,openCollector,verifyArtifactChunks} from '../acceptance/v090/public-collector.mjs';
 import {hashBytes} from '../../scripts/standards-gate.mjs';
+import {verifyRuntimePayload,verifyRelocatedPython} from '../acceptance/v090/published-installation.mjs';
 test('formal collector refuses a missing report approval before creating an output or installation',async t=>{
   const root=realpathSync(mkdtempSync(join(tmpdir(),'ontology-collector-gate-')));t.after(()=>rmSync(root,{recursive:true,force:true}));const output=join(root,'must-not-exist');
   await assert.rejects(openCollector('AUTH',new URL('../acceptance/v090/auth.mjs',import.meta.url),['--evidence',root,'--request','product-e2e-request.json','--output',output]));assert.equal(existsSync(output),false);
@@ -21,4 +22,26 @@ test('large artifact evidence cannot omit, reorder, substitute or duplicate byte
   for(const changed of [{...manifest,chunks:refs.slice(0,1)},{...manifest,chunks:[...refs].reverse()},{...manifest,chunks:[refs[0],refs[0]]},{...manifest,bytes:content.length+1},{...manifest,digest:hashBytes('other archive')}])assert.throws(()=>verifyArtifactChunks(changed,read));
   assert.throws(()=>verifyArtifactChunks(manifest,()=>Buffer.alloc(16*1024*1024+1)));
   chunks.set('second',Buffer.from('different archive suffix'));assert.throws(()=>verifyArtifactChunks(manifest,read));
+});
+test('fresh installation permits only npm archive/name metadata differences and rejects executable, dependency and inventory drift',t=>{
+  const root=realpathSync(mkdtempSync(join(tmpdir(),'ontology-fresh-binding-')));t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const write=(base,path,value)=>{const p=join(base,path);mkdirSync(dirname(p),{recursive:true,mode:0o700});writeFileSync(p,typeof value==='string'?value:JSON.stringify(value),{mode:0o600});};
+  const before=join(root,'before'),after=join(root,'after');
+  for(const [base,name,archive] of [[before,'runtime','file:../package/evopilot-next-ontology-0.9.0.tgz'],[after,'published-runtime','file:/download/evopilot-next-ontology-0.9.0.tgz']]){
+    const dependencies={'@evopilot-next/ontology':archive},own={version:'0.9.0',resolved:archive,integrity:'same-original-archive'},packages={'':{dependencies},'node_modules/@evopilot-next/ontology':own};
+    write(base,'package.json',{dependencies});write(base,'package-lock.json',{name,lockfileVersion:3,packages});write(base,'node_modules/.package-lock.json',{name,lockfileVersion:3,packages:{'node_modules/@evopilot-next/ontology':own}});write(base,'node_modules/@evopilot-next/ontology/dist/cli.js','original executable');write(base,'node_modules/dependency/index.js','original dependency');
+  }
+  assert.equal(verifyRuntimePayload(before,after).metadataPathDifferences.length,3);
+  write(after,'node_modules/dependency/index.js','substituted dependency');assert.throws(()=>verifyRuntimePayload(before,after),/Executable or dependency bytes changed/);write(after,'node_modules/dependency/index.js','original dependency');
+  write(after,'node_modules/@evopilot-next/ontology/dist/cli.js','substituted executable');assert.throws(()=>verifyRuntimePayload(before,after),/Executable or dependency bytes changed/);write(after,'node_modules/@evopilot-next/ontology/dist/cli.js','original executable');
+  write(after,'unexpected.js','extra');assert.throws(()=>verifyRuntimePayload(before,after),/inventory differs/);rmSync(join(after,'unexpected.js'));
+  write(after,'package.json',{dependencies:{'@evopilot-next/ontology':'file:/download/evopilot-next-ontology-0.9.0.tgz'},scripts:{postinstall:'unexpected'}});assert.throws(()=>verifyRuntimePayload(before,after),/npm dependency lock differs/);
+});
+test('native relocation permits exact generated venv roots but rejects code changes and unrelated native payload drift',t=>{
+  const root=realpathSync(mkdtempSync(join(tmpdir(),'ontology-native-relocation-')));t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const before=join(root,'before'),after=join(root,'after'),make=(base,text,path='venv/bin/pyshacl')=>{const p=join(base,path);mkdirSync(dirname(p),{recursive:true,mode:0o700});writeFileSync(p,text,{mode:0o600});return {schema:'fixture',root:base+'-adapter',runtimeRoot:base,python:join(base,'venv/bin/python3.12'),adapterDigest:hashBytes('same adapter'),digest:hashBytes(base),runtimeFiles:[{path,kind:'file',mode:0o600,digest:hashBytes(text)}]};};
+  const reference=make(before,'#!'+before+'/venv/bin/python3.12\nprint("verified")\n'),actual=make(after,'#!'+after+'/venv/bin/python3.12\nprint("verified")\n');
+  assert.deepEqual(verifyRelocatedPython(reference,actual),['venv/bin/pyshacl']);
+  assert.throws(()=>verifyRelocatedPython(reference,make(after,'#!'+after+'/venv/bin/python3.12\nprint("changed")\n')),/Only the exact Python installation root/);
+  const left=make(before,'original native bytes','venv/lib/payload.py'),right=make(after,'changed native bytes','venv/lib/payload.py');assert.throws(()=>verifyRelocatedPython(left,right),/outside generated venv paths/);
 });
