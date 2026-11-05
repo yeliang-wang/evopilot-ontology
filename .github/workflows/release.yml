@@ -1,92 +1,56 @@
-name: Preview release preparation
+name: Independent v0.9 source artifact preparation
 on:
   workflow_dispatch:
     inputs:
       expected_commit:
-        description: Exact source commit (40 lowercase hex)
+        description: Exact Ontology source commit (40 lowercase hex)
         required: true
         type: string
       source_run_id:
-        description: Own repository successful ci.yml run ID
+        description: Successful own-repository ci.yml run ID
         required: true
         type: string
       expected_digest:
-        description: SHA256 of parent CI ZIP or child component tarball
+        description: SHA256 of the exact v0.9.0 package tarball
         required: true
         type: string
-      publish:
-        description: Publish only after exact-candidate v0.8 acceptance and explicit human decision
-        type: boolean
-        default: false
-      decision_ref:
-        description: Reviewed external authorization reference (required for publication)
-        type: string
-        default: ''
 permissions:
   contents: read
   actions: read
 concurrency:
-  group: ${{ github.repository }}-v0.8.3
+  group: ontology-v0.9-source-preparation
   cancel-in-progress: false
-env:
-  GH_TOKEN: ${{ github.token }}
-  EXPECTED_COMMIT: ${{ inputs.expected_commit }}
-  SOURCE_RUN_ID: ${{ inputs.source_run_id }}
-  EXPECTED_DIGEST: ${{ inputs.expected_digest }}
-  PUBLISH: ${{ inputs.publish }}
-  DECISION_REF: ${{ inputs.decision_ref }}
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    outputs:
-      artifactName: ${{ steps.prepare.outputs.artifactName }}
-      expectedCommit: ${{ steps.prepare.outputs.expectedCommit }}
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+      SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+      EXPECTED_DIGEST: ${{ inputs.expected_digest }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.expected_commit }}
-          submodules: ${{ github.repository == 'yeliang-wang/evopilot' && 'recursive' || false }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24.14.0'
-      - name: Validate source and prepare distribution
-        id: prepare
-        run: node scripts/release-gate.mjs prepare
-      - uses: actions/upload-artifact@v4
+      - name: Verify original independent source CI artifact without rebuilding
+        run: node scripts/prepare-release-v090.mjs "$RUNNER_TEMP/ontology-release-source"
+      - name: Retain verified source preparation (no publication authority)
+        uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.prepare.outputs.artifactName }}
-          path: ${{ runner.temp }}/release-assets/
+          name: ontology-v090-source-prepared-${{ inputs.expected_commit }}
+          path: ${{ runner.temp }}/ontology-release-source/assets/
           if-no-files-found: error
           retention-days: 14
-      - uses: actions/upload-artifact@v4
-        if: failure()
+      - name: Retain acquisition evidence
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: release-preparation-failure-${{ github.run_id }}
-          path: |
-            ${{ runner.temp }}/release-evidence/
-            ${{ runner.temp }}/release-assets/
-            ${{ runner.temp }}/child-pack/
+          name: ontology-v090-source-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/ontology-release-source/evidence/
           if-no-files-found: warn
           retention-days: 14
-  publish:
-    if: ${{ inputs.publish }}
-    needs: prepare
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      actions: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.expected_commit }}
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24.14.0'
-      - uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.prepare.outputs.artifactName }}
-          path: ${{ runner.temp }}/release-assets/
-      - name: Publish once after external decision
-        run: node scripts/release-gate.mjs publish
