@@ -6,14 +6,14 @@ These operations verify selected local components. They do not download a JDK/Py
 
 ## Inspect a distribution candidate
 
-The installed operator now has a read-only `distribution-inspect --input ABS_JSON --json` command. It selects an exact manifest from the executing product's compiled catalog and verifies the local artifact bytes. A user-provided manifest, digest or environment variable cannot replace that catalog. The current `linux-arm64-temurin21-pbs20260211-candidate5` entry binds single-definition datatype enforcement and the corrected RDF/SHACL adapters and complete Java source/notice companions. Historical candidate1, candidate2, candidate3 and candidate4 identities remain immutable. A catalog entry is not a published distribution or a supported-platform acceptance claim.
+The installed operator now has a read-only `distribution-inspect --input ABS_JSON --json` command. It selects an exact manifest from the executing product's compiled catalog and verifies the local artifact bytes. A user-provided manifest, digest or environment variable cannot replace that catalog. The current `linux-arm64-temurin21-pbs20260211-candidate6` entry binds corrected base64Binary value-space identity, single-definition datatype enforcement and the corrected RDF/SHACL adapters and complete Java source/notice companions. Historical candidate1, candidate2, candidate3, candidate4 and candidate5 identities remain immutable. A catalog entry is not a published distribution or a supported-platform acceptance claim.
 
 The input uses this exact shape, with absolute canonical paths substituted for every `ABS_*` value:
 
 ```json
 {
   "schema": "ontology-distribution-inspect-input/v1",
-  "bundleId": "linux-arm64-temurin21-pbs20260211-candidate5",
+  "bundleId": "linux-arm64-temurin21-pbs20260211-candidate6",
   "bundleRoot": "ABS_PRIVATE_ARTIFACT_DIRECTORY",
   "runtimeRoot": "ABS_INSTALLED_NPM_RUNTIME",
   "runtimeDigest": "sha256:EXACT_RUNTIME_DIGEST",
@@ -23,7 +23,7 @@ The input uses this exact shape, with absolute canonical paths substituted for e
 }
 ```
 
-Run the command from that exact installed runtime. Keep the artifact directory private and include exactly the thirteen flat files named in the selected packaged `governance/distribution-linux-arm64-v090-candidate5.json`. The selected bundle includes the prebuilt DL payload, SHACL adapter, Java runtime/source/metadata, Python runtime/build material and pinned wheel payload. It contains no workspace or credentials. Roots must be separate; planned destination parents must already exist and be private. Inspection does not create them.
+Run the command from that exact installed runtime. Keep the artifact directory private and include exactly the thirteen flat files named in the selected packaged `governance/distribution-linux-arm64-v090-candidate6.json`. The selected bundle includes the prebuilt DL payload, SHACL adapter, Java runtime/source/metadata, Python runtime/build material and pinned wheel payload. It contains no workspace or credentials. Roots must be separate; planned destination parents must already exist and be private. Inspection does not create them.
 
 The report binds the runtime/Node and raw manifest identities, observed artifact hashes, declared execution platform, packaged worker/lock compatibility, proposed four component roots and a fresh capacity observation. `PLAN_VERIFIED` means these inspection conditions hold. `BLOCKED` lists a platform mismatch, package incompatibility, an occupied tool destination, insufficient byte capacity or a reported inode shortage. Malformed manifests, unexpected files, changed bytes, unsafe files and observed filesystem races produce structured errors. An unknown catalog ID returns `NO_DISTRIBUTION_CANDIDATE`.
 
@@ -57,7 +57,7 @@ First retain the complete successful JSON output from `distribution-inspect` or 
   "inspectionDigest": "sha256:EXACT_SAVED_REPORT_DIGEST",
   "distribution": {
     "schema": "ontology-distribution-inspect-input/v1",
-    "bundleId": "linux-arm64-temurin21-pbs20260211-candidate5",
+    "bundleId": "linux-arm64-temurin21-pbs20260211-candidate6",
     "bundleRoot": "ABS_PRIVATE_ARTIFACT_DIRECTORY",
     "runtimeRoot": "ABS_INSTALLED_NPM_RUNTIME",
     "runtimeDigest": "sha256:EXACT_RUNTIME_DIGEST",
