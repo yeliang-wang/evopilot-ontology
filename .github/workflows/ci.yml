@@ -16,6 +16,21 @@ jobs:
         with:
           node-version: '24.14.0'
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Prepare locked npm metadata for offline installation tests
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          import {spawnSync} from 'node:child_process';
+          const lock=JSON.parse(readFileSync('package-lock.json','utf8'));
+          const specs=Object.entries(lock.packages)
+            .filter(([path,pkg])=>path&&!pkg.dev)
+            .map(([path,pkg])=>path.split('node_modules/').at(-1)+'@'+pkg.version);
+          // npm ci caches locked tarballs, but fresh offline installs also need
+          // registry metadata. Fetch it before the unchanged offline tests.
+          const result=spawnSync('npm',['cache','add',...specs,'--ignore-scripts'],{stdio:'inherit',timeout:300000});
+          if(result.error)throw result.error;
+          process.exit(result.status??1);
+          JS
       - run: npm run build
       - run: npm run check
       - name: Verify frozen governance and review-gate refusal paths
