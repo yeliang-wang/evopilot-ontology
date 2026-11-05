@@ -9,6 +9,7 @@ permissions:
 jobs:
   source:
     runs-on: macos-15
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,33 +22,25 @@ jobs:
         run: |
           node scripts/roadmap.mjs --check
           npm run test:governance
-      - name: Prepare locked native validators for the supported platform
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21.0.2+13'
+          architecture: aarch64
+      - name: Prepare locked source-test validators
         shell: bash
         run: |
           set -euo pipefail
           node -e "if(process.platform !== 'darwin' || process.arch !== 'arm64') process.exit(1)"
-          node vendor/compatibility/v1/toolchain/cli.js prepare --cache "$RUNNER_TEMP/evopilot-native-cache" > "$RUNNER_TEMP/native-toolchain.json"
-          echo "EVOPILOT_TEST_NATIVE_TOOLCHAIN=$RUNNER_TEMP/native-toolchain.json" >> "$GITHUB_ENV"
-      - run: npm test
+          node scripts/prepare-ci-toolchains-v090.mjs "$RUNNER_TEMP/ontology-ci-tools" "$JAVA_HOME"
+      - name: Run source regression checks with bounded concurrency
+        run: node --test --test-concurrency=2 tests/e2e/*.test.mjs
 
       - name: Pack exact candidate (not a Release)
         shell: bash
         run: |
           set -euo pipefail
-          package_dir="$RUNNER_TEMP/evopilot-package"
-          mkdir "$package_dir"
-          npm pack --ignore-scripts --json --pack-destination "$package_dir" > "$package_dir/pack.json"
-          node --input-type=module - "$package_dir" ontology <<'JS'
-          import fs from 'node:fs';
-          import path from 'node:path';
-          import { createHash } from 'node:crypto';
-          import { validatePack } from './scripts/release-gate.mjs';
-          const [directory, owner] = process.argv.slice(2);
-          const filename = validatePack(JSON.parse(fs.readFileSync(path.join(directory, 'pack.json'), 'utf8')), owner);
-          const sha = createHash('sha256').update(fs.readFileSync(path.join(directory, filename))).digest('hex');
-          fs.writeFileSync(path.join(directory, 'SHA256SUMS'), sha + '  ' + filename + '\n');
-          JS
-          git rev-parse HEAD > "$package_dir/source-revision.txt"
+          node scripts/pack-candidate-v090.mjs "$RUNNER_TEMP/evopilot-package"
       - name: Retain independently built candidate package
         uses: actions/upload-artifact@v4
         with:
