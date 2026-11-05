@@ -60,7 +60,8 @@ export async function openCollector(group,entry,args=process.argv.slice(2),depen
     for(const taskId of f.tasks){const plan=ok(['worker-maintenance-inspect','--installation',f.installation,'--project','demo','--task',taskId]);if(plan.status==='COMPLETED'||plan.status==='NOT_NEEDED')continue;ok(['worker-maintenance-apply','--installation',f.installation,'--project','demo','--task',taskId,'--request-id',plan.requestId??'maint-'+taskId,'--expected-report',plan.reportDigest]);}
     f.cleaned=true;
   }
-  return {root,repository,admission,config,cases,put,command,ok,fixture,
+  return {root,repository,admission,config,toolchains:tools,cases,put,command,ok,fixture,closeFixture,
+    evidenceReference(ref){const bytes=reader.ref(ref);trace.push({kind:"REFERENCED_EVIDENCE",file:ref});return bytes;},
     frozen(name){const ref=evaluator.files.find(f=>f.path===name);assert(ref,'Input must belong to the frozen evaluator inventory');return reader.refJson(ref);},
     support(name){const manifest=reader.json('product-inputs.json');assert.equal(manifest.schema,'ontology-private-product-support/v1');assert(Array.isArray(manifest.files)&&manifest.files.length<=1000);const refs=manifest.files.filter(f=>f.id===name);assert.equal(refs.length,1,'Exact supplemental evidence required');const value=reader.refJson(refs[0].file);trace.push({kind:'SUPPORTING_EVIDENCE',id:name,file:refs[0].file,value});return value;},
     observe(value){trace.push(value);},

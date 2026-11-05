@@ -1,10 +1,36 @@
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {once} from 'node:events';
+import {spawnSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import {openBusinessCollector} from './business-public.mjs';
 import {hashBytes} from '../../../scripts/standards-gate.mjs';
 
-const c=await openBusinessCollector('SHACL',import.meta.url);let problem=null;
+const comparator=new URL('./shacl-upstream-compare.py',import.meta.url),c=await openBusinessCollector('SHACL',import.meta.url,[comparator]);let problem=null;
+const officialWitnesses={
+  'SHACL-01':['core/property/minCount-001'],
+  'SHACL-02':['core/targets/targetClassImplicit-001'],
+  'SHACL-03':['core/property/minCount-001','core/property/minCount-002'],
+  'SHACL-04':['core/misc/deactivated-001','core/misc/deactivated-002'],
+  'SHACL-05':['core/targets/targetClass-001'],
+  'SHACL-06':['core/property/minCount-002'],
+  'SHACL-07':['core/property/datatype-001'],
+  'SHACL-08':['sparql/pre-binding/unsupported-sparql-001']
+};
+const jobs=c.frozen('jobs.json').filter(j=>j.kind==='shacl'),profile=c.frozen('shacl-corpus-profile-01.json'),runCase=c.case.bind(c);
+c.case=(id,body)=>runCase(id,async()=>{
+  const upstream=[];
+  for(const [index,suffix] of officialWitnesses[id].entries()){
+    const matches=jobs.filter(j=>j.upstreamId.endsWith('/'+suffix));assert.equal(matches.length,1);const job=matches[0],original=profile.cases[job.originalIndex];assert.equal(original.id,job.upstreamId);assert.equal(original.required,true);
+    const f=await c.upstreamSHACL(id.toLowerCase()+'-official-'+index,job),actual=await f.execute('shacl');
+    const manifest=c.evidenceReference({path:original.manifest.file,digest:original.manifest.digest}).toString('utf8'),input={original,manifest,formal:actual.formal};
+    c.put(id+'/upstream-'+index+'.json',input);
+    const p=spawnSync(c.toolchains.shacl.python,['-B',fileURLToPath(comparator)],{input:JSON.stringify(input),env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'},encoding:'utf8',timeout:30000,maxBuffer:1024*1024});
+    c.observe({kind:'INDEPENDENT_UPSTREAM_SHACL_REPORT_COMPARISON',upstreamId:job.upstreamId,comparatorDigest:hashBytes(readFileSync(comparator)),status:p.status,stdout:p.stdout,stderr:p.stderr});assert.ifError(p.error);assert.equal(p.status,0,p.stderr);const comparison=JSON.parse(p.stdout);assert.equal(comparison.booleanStatus,'PASS');assert.equal(comparison.reportStatus,'PASS');upstream.push({caseKey:job.caseKey,...comparison});c.closeFixture(f);
+  }
+  const integration=await body();return {...integration,upstream,scope:'Unchanged upstream witnesses plus separately identified synthetic product lifecycle guards; repeated witnesses do not increase the prerequisite standards denominator'};
+});
 const type='http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const check=(result,id)=>{const item=result.formal.result.checks.find(x=>x.id===id);assert(item,'Missing independently required check '+id);return item;};
 function shape(draft,text){const d=draft.shapes[0];d.content=text;d.digest=hashBytes(text);for(const m of draft.mappings)for(const a of m.anchors)if(a.documentId===d.id){a.documentDigest=d.digest;a.end=Buffer.byteLength(text);a.fragmentDigest=d.digest;}}
