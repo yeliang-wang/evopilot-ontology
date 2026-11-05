@@ -42,9 +42,10 @@ export async function openCollector(group,entry,args=process.argv.slice(2),depen
   }
   const ok=args=>{const r=command(args);assert.equal(r.status,0);assert.equal(r.body.ok,true,JSON.stringify(r.body));return r.body.result;};
   const runtime=ok(['runtime-inspect','--runtime-root',config.runtimeRoot]);assert.equal(runtime.digest,config.runtimeDigest);assert.equal(runtime.version,'0.9.0');
-  function fixture(name,native=false){
+  function fixture(name,native=false,runtimeBase=null){
     assert.match(name,/^[a-z][a-z0-9-]+$/u);const directory=join(root,name);mkdirSync(directory,{mode:0o700});const installation=join(directory,'installation'),workspace=join(directory,'workspace');
-    ok(['install','--root',installation,'--workspace-root',workspace,'--workspace',name,'--project','demo','--principal','evaluator','--runtime-root',config.runtimeRoot,'--runtime-digest',config.runtimeDigest,'--mode','create']);
+    const selected=runtimeBase??{root:config.runtimeRoot,digest:config.runtimeDigest};if(runtimeBase){assert.notEqual(selected.digest,config.runtimeDigest);const inspected=ok(['runtime-inspect','--runtime-root',selected.root]);assert.equal(inspected.digest,selected.digest);assert.equal(inspected.version,'0.9.0');trace.push({kind:'EXPLICIT_UPGRADE_BASE',runtime:inspected});}
+    ok(['install','--root',installation,'--workspace-root',workspace,'--workspace',name,'--project','demo','--principal','evaluator','--runtime-root',selected.root,'--runtime-digest',selected.digest,'--mode','create']);
     if(native)ok(['toolchains-bind','--installation',installation,'--request-id','bind','--previous-binding','none','--dl-toolchain',config.dl.path,'--dl-digest',config.dl.digest,'--shacl-toolchain',config.shacl.path,'--shacl-digest',config.shacl.digest,'--systemd-digest',config.systemdDigest]);
     const f={installation,workspace,connection:null,token:null,running:false,tasks:[],cleaned:false,
       start(){ok(['start','--installation',installation]);this.running=true;this.connection=JSON.parse(readFileSync(join(installation,'connection.json')));this.token=readFileSync(this.connection.credentialFile,'utf8');},
@@ -53,7 +54,7 @@ export async function openCollector(group,entry,args=process.argv.slice(2),depen
         const c=this.connection;assert(c);const body={workspaceId:c.workspaceId,serviceId:c.serviceId,projectId:c.projectId,operation,input,...(write??{}),...overrides};
         const response=await fetch(c.origin+'/v1/request',{method:'POST',headers:{authorization:'Bearer '+(credential??this.token),'content-type':'application/json',connection:'close'},body:JSON.stringify(body),signal:AbortSignal.timeout(65000)});
         const text=await response.text();assert(Buffer.byteLength(text)<=32*1024*1024);const value=JSON.parse(text);trace.push({kind:'HTTP',request:body,status:response.status,body:value});return {status:response.status,body:value};
-      }};fixtures.push(f);f.start();return f;
+      }};fixtures.push(f);f.startOwner=f.start.bind(f);f.start();return f;
   }
   function closeFixture(f){
     f.stop();if(f.cleaned)return;

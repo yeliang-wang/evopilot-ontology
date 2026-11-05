@@ -29,7 +29,7 @@ export async function openNativeCollector(group,entry,dependencies=[]){
       f.reject=async(operation,input,code)=>{const r=await f.request(operation,input,{requestId:'refused-'+(++serial),expectedRevision:revision});assert.notEqual(r.status,200);assert.equal(r.body.ok,false);assert.equal(r.body.error.code,code);assert.equal((await f.read('project.inspect')).revision,revision);return r.body.error;};
       f.reason=async(task,options={})=>{
         const receipt=await f.write('reasoning.start',{assetId:'official',modelDigest,task,...options}),taskId=receipt.result.taskId;f.tasks.push(taskId);const end=performance.now()+180000;let inspected;
-        for(;;){inspected=await f.read('reasoning.inspect',{taskId});if(inspected.state==='FINISHED')break;assert(performance.now()<end,'Original task did not finish; retain receipt and reconcile without redispatch');await delay(100);}
+        for(;;){inspected=await f.read('reasoning.inspect',{taskId});if(inspected.state==='FINISHED')break;assert.notEqual(inspected.state,'INTERRUPTED','Original task interrupted; retain its exact receipt and reconcile without redispatch');assert(performance.now()<end,'Original task did not finish; retain receipt and reconcile without redispatch');await delay(100);}
         let formal=inspected.result;if(!formal){let content='',offset=0;for(;;){const page=await f.read('reasoning.result.read',{taskId,offset,maxBytes:65536});content+=page.content;if(page.complete)break;offset=page.nextOffset;}formal=JSON.parse(content);}
         assert.deepEqual(await f.read('receipt.read',{requestId:receipt.requestId}),receipt);
         f.lastReasoning={taskId,receipt,inspected,formal};return formal;
