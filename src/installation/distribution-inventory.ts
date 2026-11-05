@@ -12,7 +12,7 @@ import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
 
 const PACKAGE_ROOT=fileURLToPath(new URL('../../',import.meta.url));
-const BUNDLE='linux-arm64-temurin21-pbs20260211-candidate1';
+const BUNDLES=['linux-arm64-temurin21-pbs20260211-candidate1','linux-arm64-temurin21-pbs20260211-candidate2'];
 // These transforms are product code, never inferred from an archive or supplied
 // by an operator. The outer wheel tar is inventoried; its ZIP members are not.
 const RECIPES=Object.freeze([
@@ -33,7 +33,7 @@ export interface PayloadArchiveInventory {
  * catalog before reaching it. No caller-defined preparation recipes exist. */
 export async function inspectPayloadArchiveInventories(bundleRoot:string,manifest:DistributionManifest):Promise<PayloadArchiveInventory[]> {
   validateDistributionManifest(manifest);
-  if(manifest.id!==BUNDLE)fail('NO_DISTRIBUTION_RECIPE','No product-owned payload recipe matches this distribution',404);
+  if(!BUNDLES.includes(manifest.id))fail('NO_DISTRIBUTION_RECIPE','No product-owned payload recipe matches this distribution',404);
   const results:PayloadArchiveInventory[]=[],deadline=performance.now()+60000;
   for(const recipe of RECIPES){
     const artifact=manifest.artifacts.find(a=>a.id===recipe.artifactId),component=manifest.components.find(c=>c.role===recipe.role);
@@ -69,7 +69,7 @@ export async function inspectDistributionInventory(value:unknown):Promise<Json> 
   const final=inspectDistribution(value);object(final);object(final.report);
   if(final.report.manifestDigest!==selected.manifestDigest||final.report.nodeDigest!==initial.report.nodeDigest)fail('DISTRIBUTION_INSPECTION_CHANGED','Runtime or catalog changed during payload inventory',409);
   const archiveInventories=inventories as unknown as Json;
-  const recipe={schema:'ontology-distribution-payload-recipes/v1',bundleId:BUNDLE,recipes:RECIPES} as unknown as Json;
+  const recipe={schema:'ontology-distribution-payload-recipes/v1',bundleId:selected.manifest.id,recipes:RECIPES} as unknown as Json;
   const report={
     ...final.report,schema:'ontology-distribution-inventory-report/v1',
     rawInspectionDigest:final.reportDigest,

@@ -85,3 +85,19 @@ test('compiled catalog pins exact raw manifest bytes and cannot be replaced by a
   assert.equal(selectedDistribution(fake,id).manifestDigest,selected.manifestDigest);
   writeFileSync(target,readFileSync(target,'utf8')+' ');assert.throws(()=>selectedDistribution(fake,id),{code:'DISTRIBUTION_CATALOG_CHANGED'});
 });
+
+test('current catalog binds XML worker source closure while retaining the historical candidate identity',()=>{
+  const old=selectedDistribution(source,'linux-arm64-temurin21-pbs20260211-candidate1');
+  const current=selectedDistribution(source,'linux-arm64-temurin21-pbs20260211-candidate2'),m=current.manifest;
+  assert.equal(old.manifestDigest,'sha256:3bfb22e341764e0995b9c3cbf3f788aee6377e9b74664c332b9008efa83afe78');
+  assert.equal(current.manifestDigest,hashBytes(readFileSync(join(source,current.catalogEntry))));
+  assert.equal(m.compatibility.workerSourceDigest,hashBytes(readFileSync(join(source,'toolchains/owl2-dl/Worker.java'))));
+  assert.equal(m.compatibility.dependencyLockDigest,hashBytes(readFileSync(join(source,'toolchains/owl2-dl/dependencies.json'))));
+  assert.equal(m.compatibility.shaclAdapterDigest,hashBytes(readFileSync(join(source,'src/native-v2/shacl-worker.py'))));
+  assert.equal(m.artifacts.length,13);
+  const dl=m.components.find(c=>c.role==='dl');
+  assert.deepEqual(dl.provenanceArtifactIds,['dl-payload','dl-sources']);assert.deepEqual(dl.noticeArtifactIds,['dl-payload','dl-notices']);
+  assert.equal(dl.declaredEntries,256);
+  for(const artifact of old.manifest.artifacts.filter(a=>a.id!=='dl-payload'))assert.deepEqual(m.artifacts.find(a=>a.id===artifact.id),artifact);
+  for(const id of ['dl-sources','dl-notices'])assert.equal(m.artifacts.find(a=>a.id===id).format,'tar.gz');
+});

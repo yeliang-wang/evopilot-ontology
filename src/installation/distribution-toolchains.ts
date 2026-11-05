@@ -18,7 +18,7 @@ import {validateDistributionManifest} from './distribution-contract.js';
 import type {DistributionManifest} from './distribution-contract.js';
 
 const PACKAGE_ROOT=fileURLToPath(new URL('../../',import.meta.url));
-const BUNDLE='linux-arm64-temurin21-pbs20260211-candidate1';
+const BUNDLES=['linux-arm64-temurin21-pbs20260211-candidate1','linux-arm64-temurin21-pbs20260211-candidate2'];
 const ENGINE='hermit:1.4.5.519+evopilot.2;jfact:5.0.3;structural-alc:1',OWLAPI='owlapi-distribution:5.5.1';
 const VERSION={dl:ENGINE+';'+OWLAPI,java:'Temurin 21.0.13+9',python:'CPython 3.12.12;pySHACL 0.40.1;RDFLib 7.6.0',shacl:'pySHACL adapter v2'};
 const stamp=(s:BigIntStats):string=>[s.dev,s.ino,s.uid,s.mode,s.nlink,s.size,s.mtimeNs,s.ctimeNs].join(':');
@@ -96,7 +96,7 @@ export function buildPreparedToolchains(value:{controlRoot:string;toolRoot:strin
   canonical(value.controlRoot);canonical(value.toolRoot);validateRuntimeBinding(value.runtime);validateDistributionManifest(value.manifest);
   const {controlRoot,toolRoot,runtime,manifest}=value;
   assertSeparate(toolRoot,controlRoot);assertSeparate(toolRoot,runtime.root);assertSeparate(controlRoot,runtime.root);
-  if(manifest.id!==BUNDLE||manifest.platform.os!=='linux'||manifest.platform.arch!=='arm64'||process.platform!=='linux'||process.arch!=='arm64')fail('DISTRIBUTION_PLATFORM_MISMATCH','This prepared tool recipe requires the selected Linux arm64 platform',409);
+  if(!BUNDLES.includes(manifest.id)||manifest.platform.os!=='linux'||manifest.platform.arch!=='arm64'||process.platform!=='linux'||process.arch!=='arm64')fail('DISTRIBUTION_PLATFORM_MISMATCH','This prepared tool recipe requires the selected Linux arm64 platform',409);
   if(realpathSync(runtime.packageRoot)!==runtime.packageRoot||runtime.packageRoot!==realpathSync(PACKAGE_ROOT))fail('DISTRIBUTION_PACKAGE_MISMATCH','Run tool preparation through the selected installed package',409);
   verifyRuntime(runtime);
   const selected=selectedDistribution(runtime.packageRoot,manifest.id);
