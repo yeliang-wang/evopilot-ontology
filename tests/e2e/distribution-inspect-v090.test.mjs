@@ -92,8 +92,10 @@ test('current catalog binds corrected RDF and SHACL source closure while retaini
   assert.equal(previous.manifestDigest,'sha256:907114f83a3d1db711e4cc66d8ad7387150d01f9d025297a9feceae008e069e6');
   const retained=selectedDistribution(source,'linux-arm64-temurin21-pbs20260211-candidate3');
   assert.equal(retained.manifestDigest,'sha256:a233094a462f4e290349ff79bdee97d1e34fe9f0ac1374dc868a8f90e3e19f19');
-  const current=selectedDistribution(source,'linux-arm64-temurin21-pbs20260211-candidate4');
-  assert.equal(current.manifest.components.find(c=>c.role==='dl').declaredExpandedBytes,36848364);
+  const fourth=selectedDistribution(source,'linux-arm64-temurin21-pbs20260211-candidate4');
+  assert.equal(fourth.manifestDigest,'sha256:88ec62e5335c1e384475a3f498c07215572b4c048c45a23189f448683c80a175');
+  const current=selectedDistribution(source,'linux-arm64-temurin21-pbs20260211-candidate5');
+  assert.equal(current.manifest.components.find(c=>c.role==='dl').declaredExpandedBytes,36848748);
   const m=current.manifest;
   assert.equal(old.manifestDigest,'sha256:3bfb22e341764e0995b9c3cbf3f788aee6377e9b74664c332b9008efa83afe78');
   assert.equal(current.manifestDigest,hashBytes(readFileSync(join(source,current.catalogEntry))));

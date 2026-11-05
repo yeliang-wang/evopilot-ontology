@@ -1,0 +1,263 @@
+{
+  "schema": "ontology-tool-distribution/v1",
+  "id": "linux-arm64-temurin21-pbs20260211-candidate5",
+  "platform": {
+    "os": "linux",
+    "arch": "arm64",
+    "libc": "glibc",
+    "minimumLibc": "2.28"
+  },
+  "compatibility": {
+    "nodeVersion": "24.14.0",
+    "workerSourceDigest": "sha256:230a126d55299fab195fcf51c8cec00a22613d9b270b6e12c259cf1f5f7ef8c7",
+    "dependencyLockDigest": "sha256:ec389a562f65e4941e6e846da126ad20444c984f7bd292f3a22b2b3b010d4bdc",
+    "shaclAdapterDigest": "sha256:221b94994ed49be7a6f9bc27b4e272dd7aed5c3a7bfd2cfe0aaab3aba6a51428"
+  },
+  "artifacts": [
+    {
+      "id": "dl-payload",
+      "filename": "ontology-dl-payload-v090-datatype.tar.gz",
+      "bytes": 32176082,
+      "digest": "sha256:ca5c77a5b01446aa4822df72ac3d652a7c93de9b8260a363d58adc351d08dcf1",
+      "format": "tar.gz",
+      "origin": {
+        "kind": "PRODUCT",
+        "reference": "toolchains/owl2-dl/Worker.java",
+        "revision": "sha256:230a126d55299fab195fcf51c8cec00a22613d9b270b6e12c259cf1f5f7ef8c7"
+      }
+    },
+    {
+      "id": "shacl-worker",
+      "filename": "shacl-worker.py",
+      "bytes": 19678,
+      "digest": "sha256:221b94994ed49be7a6f9bc27b4e272dd7aed5c3a7bfd2cfe0aaab3aba6a51428",
+      "format": "file",
+      "origin": {
+        "kind": "PRODUCT",
+        "reference": "src/native-v2/shacl-worker.py",
+        "revision": "sha256:221b94994ed49be7a6f9bc27b4e272dd7aed5c3a7bfd2cfe0aaab3aba6a51428"
+      }
+    },
+    {
+      "id": "java-runtime",
+      "filename": "OpenJDK21U-jre_aarch64_linux_hotspot_21.0.13_9.tar.gz",
+      "bytes": 51266660,
+      "digest": "sha256:b1734db7ade49c3f6acc6ae06233b8c2dd90e3e2f00f67000ae1c972aaa64d8c",
+      "format": "tar.gz",
+      "origin": {
+        "kind": "UPSTREAM",
+        "reference": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jre_aarch64_linux_hotspot_21.0.13_9.tar.gz",
+        "revision": "jdk-21.0.13+9"
+      }
+    },
+    {
+      "id": "java-source",
+      "filename": "OpenJDK21U-jdk-sources_21.0.13_9.tar.gz",
+      "bytes": 115231532,
+      "digest": "sha256:b5232c9980d8a0f0459676c084c41c6e2c771ed9e785890b03c6a438406ad1ca",
+      "format": "tar.gz",
+      "origin": {
+        "kind": "UPSTREAM",
+        "reference": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk-sources_21.0.13_9.tar.gz",
+        "revision": "jdk-21.0.13+9"
+      }
+    },
+    {
+      "id": "java-runtime-metadata",
+      "filename": "OpenJDK21U-jre_aarch64_linux_hotspot_21.0.13_9.tar.gz.json",
+      "bytes": 32393,
+      "digest": "sha256:c8a71f365ada77c75876375d7552d183db8c851554c4cde170c398df51e5a35c",
+      "format": "json",
+      "origin": {
+        "kind": "UPSTREAM",
+        "reference": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jre_aarch64_linux_hotspot_21.0.13_9.tar.gz.json",
+        "revision": "jdk-21.0.13+9"
+      }
+    },
+    {
+      "id": "java-source-metadata",
+      "filename": "OpenJDK21U-jdk-sources_21.0.13_9.tar.gz.json",
+      "bytes": 32193,
+      "digest": "sha256:861168ce2bc2d2e1aff09823d749d6cd961380a5db524220ec963b2efd25739d",
+      "format": "json",
+      "origin": {
+        "kind": "UPSTREAM",
+        "reference": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk-sources_21.0.13_9.tar.gz.json",
+        "revision": "jdk-21.0.13+9"
+      }
+    },
+    {
+      "id": "java-sbom",
+      "filename": "OpenJDK21U-sbom_aarch64_linux_hotspot_21.0.13_9.json",
+      "bytes": 178142,
+      "digest": "sha256:69be8a60391c6aad34a8c507d2fc068f3de23d7cdb809f489ae7acdf8cc5a2a9",
+      "format": "json",
+      "origin": {
+        "kind": "UPSTREAM",
+        "reference": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-sbom_aarch64_linux_hotspot_21.0.13_9.json",
+        "revision": "jdk-21.0.13+9"
+      }
+    },
+    {
+      "id": "java-sbom-metadata",
+      "filename": "OpenJDK21U-sbom_aarch64_linux_hotspot_21.0.13_9-metadata.json",
+      "bytes": 32394,
+      "digest": "sha256:adc773bee82d041f6d0ec84ffbd21fa0b82a6fade52d971a17d7ee857026f08a",
+      "format": "json",
+      "origin": {
+        "kind": "UPSTREAM",
+        "reference": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-sbom_aarch64_linux_hotspot_21.0.13_9-metadata.json",
+        "revision": "jdk-21.0.13+9"
+      }
+    },
+    {
+      "id": "python-runtime",
+      "filename": "cpython-3.12.12+20260211-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz",
+      "bytes": 29408570,
+      "digest": "sha256:85fdc64fe672de7337198a63d89918037bf93bdb03480404d90f8f601abef1dd",
+      "format": "tar.gz",
+      "origin": {
+        "kind": "UPSTREAM",
+        "reference": "https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-3.12.12%2B20260211-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz",
+        "revision": "6b6905a3fe672117cff7563e2c0a375a92fd1c5a"
+      }
+    },
+    {
+      "id": "python-build-material",
+      "filename": "cpython-3.12.12+20260211-aarch64-unknown-linux-gnu-pgo+lto-full.tar.zst",
+      "bytes": 86718957,
+      "digest": "sha256:48cccc8970f32586b60125199c955da870c5b9c52c05afb2bce28714eeb17cc6",
+      "format": "tar.zst",
+      "origin": {
+        "kind": "UPSTREAM",
+        "reference": "https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-3.12.12%2B20260211-aarch64-unknown-linux-gnu-pgo%2Blto-full.tar.zst",
+        "revision": "6b6905a3fe672117cff7563e2c0a375a92fd1c5a"
+      }
+    },
+    {
+      "id": "python-wheels",
+      "filename": "python-wheels.tar",
+      "bytes": 2703360,
+      "digest": "sha256:088d95fca8fdcead9e60fe8f8c07208b5183c1684bd57ede7458d99b40b39de1",
+      "format": "tar",
+      "origin": {
+        "kind": "PRODUCT",
+        "reference": "vendor/compatibility/v1/toolchain/toolchain.lock.json",
+        "revision": "sha256:4b0f4a4d71d426a56ca791b1583e2764d49ce7bf785bdc4c8daa7f5fc61c4e33"
+      }
+    },
+    {
+      "id": "dl-sources",
+      "filename": "ontology-dl-sources-v090-datatype.tar.gz",
+      "bytes": 25638934,
+      "digest": "sha256:8a0b1f8aa72b03c50663445f6bd0276eb21cc8ee7b84a34cedcfb5e66a55f537",
+      "format": "tar.gz",
+      "origin": {
+        "kind": "PRODUCT",
+        "reference": "toolchains/owl2-dl/dependencies.json",
+        "revision": "8e93308f596e71fb969593a20b439c64f38803ca"
+      }
+    },
+    {
+      "id": "dl-notices",
+      "filename": "ontology-dl-notices-v090-datatype.tar.gz",
+      "bytes": 346462,
+      "digest": "sha256:f63d95f8f80d3e6bf6893f1d317424685f06f31a74b6e03719c561279908d276",
+      "format": "tar.gz",
+      "origin": {
+        "kind": "PRODUCT",
+        "reference": "toolchains/owl2-dl/dependencies.json",
+        "revision": "8e93308f596e71fb969593a20b439c64f38803ca"
+      }
+    }
+  ],
+  "components": [
+    {
+      "role": "dl",
+      "version": "hermit:1.4.5.519+evopilot.2;jfact:5.0.3;structural-alc:1;owlapi-distribution:5.5.1",
+      "artifactIds": [
+        "dl-payload"
+      ],
+      "provenanceArtifactIds": [
+        "dl-payload",
+        "dl-sources"
+      ],
+      "noticeArtifactIds": [
+        "dl-payload",
+        "dl-notices"
+      ],
+      "declaredExpandedBytes": 36848748,
+      "declaredEntries": 256,
+      "preparation": "EXTRACT"
+    },
+    {
+      "role": "java",
+      "version": "Temurin 21.0.13+9",
+      "artifactIds": [
+        "java-runtime"
+      ],
+      "provenanceArtifactIds": [
+        "java-source",
+        "java-runtime-metadata",
+        "java-source-metadata",
+        "java-sbom",
+        "java-sbom-metadata"
+      ],
+      "noticeArtifactIds": [
+        "java-runtime",
+        "java-source"
+      ],
+      "declaredExpandedBytes": 165361369,
+      "declaredEntries": 512,
+      "preparation": "EXTRACT"
+    },
+    {
+      "role": "python",
+      "version": "CPython 3.12.12;pySHACL 0.40.1;RDFLib 7.6.0",
+      "artifactIds": [
+        "python-runtime",
+        "python-wheels"
+      ],
+      "provenanceArtifactIds": [
+        "python-build-material",
+        "python-wheels"
+      ],
+      "noticeArtifactIds": [
+        "python-build-material",
+        "python-runtime",
+        "python-wheels"
+      ],
+      "declaredExpandedBytes": 93361772,
+      "declaredEntries": 10000,
+      "preparation": "FINAL_PATH_VENV"
+    },
+    {
+      "role": "shacl",
+      "version": "pySHACL adapter v2",
+      "artifactIds": [
+        "shacl-worker"
+      ],
+      "provenanceArtifactIds": [
+        "shacl-worker"
+      ],
+      "noticeArtifactIds": [
+        "shacl-worker"
+      ],
+      "declaredExpandedBytes": 39356,
+      "declaredEntries": 16,
+      "preparation": "COPY"
+    }
+  ],
+  "limitations": [
+    "Experimental tool distribution candidate; not a published or supported-platform release.",
+    "Raw artifact verification does not inspect archive expansion or prove executable loadability.",
+    "Python requires controlled virtual-environment assembly at final absolute paths.",
+    "Declared payload space excludes separately selected Node/product runtime, existing generations and acquisition storage.",
+    "Source and notice references preserve selected materials; redistribution sufficiency and build provenance require separate review.",
+    "Linux glibc 2.28 is a declared prerequisite; this inspection does not verify ABI, systemd, cgroup, Host integration or complete OWL 2 DL conformance.",
+    "DL source and notice companions are inert distribution materials; the executable payload recipe does not extract or run their rebuild script.",
+    "Complete locked Java dependencies, exact source archives, transformation recipes, offline rebuild helper and original notices accompany the DL payload. No private workspace or credentials are included.",
+    "This development candidate binds corrected RDF 1.1/Turtle/RDFXML graph semantics and independently scoped SHACL graph inspection. Component diagnostics do not establish installed standards acceptance, Host approval or release authority.",
+    "Complete locked Java dependencies, exact source archives, transformation recipes, offline rebuild helper and original notices accompany the DL payload. No private workspace or credentials are included."
+  ]
+}
