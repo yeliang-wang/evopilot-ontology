@@ -28,13 +28,17 @@ raise RuntimeError('The 2 GiB group did not enforce its memory ceiling')
 export async function injectWorkerMemoryFault(c,f,taskId){
   const path=join(c.config.runtimeRoot,'node_modules/@evopilot-next/ontology/dist/installation/worker-journal.js');
   const {taskWorkerReferences,readWorkerAttempt}=await import(pathToFileURL(path).href);
+  const {inspectSystemdTermination}=await import(pathToFileURL(join(c.config.runtimeRoot,'node_modules/@evopilot-next/ontology/dist/installation/systemd-worker.js')).href);
   const root=join(f.installation,'formal-work'),end=performance.now()+10000;let reference,attempt;
   for(;;){
     const refs=taskWorkerReferences(root,taskId);assert(refs.length<=1);
     if(refs.length){reference=refs[0];attempt=readWorkerAttempt(reference);if(attempt.unit&&attempt.worker)break;assert.equal(attempt.outcome,null,'Original task ended before fault injection; do not redispatch');}
     assert(performance.now()<end,'Exact owned worker was not observed');await delay(10);
   }
-  const unit=attempt.unit;assert.equal(unit.configurationDigest,attempt.intent.configurationDigest);
+  // The unit-definition digest and reasoning-policy digest cover different
+  // objects. Validate the actual manager invocation with the installed reader.
+  assert.equal(attempt.intent.requestId,taskId);assert.equal(inspectSystemdTermination(reference),null,'Original worker ended before the kernel fault');
+  const unit=attempt.unit;
   assert(unit.unitName.startsWith('ontology-worker-')&&unit.unitName.endsWith('.service'));
   assert(unit.controlGroup.startsWith('/user.slice/')&&unit.controlGroup.endsWith('/'+unit.unitName));
   const python='/usr/bin/python3',args=['-B','-c',program,'/sys/fs/cgroup'+unit.controlGroup,unit.device,unit.inode,unit.controlGroup];
