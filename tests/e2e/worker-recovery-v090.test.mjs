@@ -75,9 +75,9 @@ async function killOwner(f,run,a){
 function recoveryInput(taskId,reportDigest){return {projectId:'demo',taskId,requestId:'recover-original',expectedReportDigest:reportDigest};}
 async function installedRecovery(f,input){return JSON.parse(await execute(process.execPath,[cli,'task-reconcile','--installation',f.setup.root,'--project',input.projectId,'--task',input.taskId,'--request-id',input.requestId,'--expected-report',input.expectedReportDigest,'--json'],{cwd:base})).result;}
 
-for(const kind of ['dl','shacl'])test('actual '+kind+' worker exits after managed owner death; compiled operator closes only the original incomplete task',async t=>{
+for(const kind of ['dl','shacl','shacl-graph'])test('actual '+kind+' worker exits after managed owner death; compiled operator closes only the original incomplete task',async t=>{
   const f=fixture(t,'crash-'+kind),run=await f.start(),p=await seed(f);
-  const started=await p.write(kind==='dl'?'reasoning.start':'validation.start',{assetId:'services',modelDigest:p.modelDigest,...(kind==='dl'?{task:{kind:'consistency'}}:{})},'original');
+  const started=await p.write(kind==='dl'?'reasoning.start':kind==='shacl-graph'?'shacl.start':'validation.start',{assetId:'services',modelDigest:p.modelDigest,...(kind==='dl'?{task:{kind:'consistency'}}:{})},'original');
   const taskId=started.receipt.result.taskId,a=await active(f,taskId,kind,true);
   assert.throws(()=>inspectInstallationTaskRecovery(f.setup.root,'demo',taskId),{code:'INSTALLATION_RUNNING'});
   await killOwner(f,run,a);
@@ -86,8 +86,9 @@ for(const kind of ['dl','shacl'])test('actual '+kind+' worker exits after manage
   const input=recoveryInput(taskId,inspected.reportDigest),recovered=await installedRecovery(f,input);assert.equal(recovered.replayed,false);
   assert.deepEqual(reconcileInstallationTask(f.setup.root,input).receipt,recovered.receipt);
   assert.throws(()=>reconcileInstallationTask(f.setup.root,{...input,expectedReportDigest:hash('changed')}),{code:'REQUEST_CONFLICT'});
-  await f.start();const operation=kind==='dl'?'reasoning.inspect':'validation.inspect',result=await f.http(f.request(operation,{taskId}));
+  await f.start();const operation=kind==='dl'?'reasoning.inspect':kind==='shacl-graph'?'shacl.inspect':'validation.inspect',result=await f.http(f.request(operation,{taskId}));
   assert.equal(result.state,'FINISHED');assert.equal(result.complete,false);assert.equal(result.formalStatus,'FAILED');assert.equal(result.result.error.code,'OWNER_INTERRUPTED');
+  if(kind==='shacl-graph'){assert.equal(result.result.schema,'ontology-shacl-result/v2');assert.equal(result.result.expectationsDigest,null);assert.equal(result.kind,'shacl');}
   const attemptCount=taskWorkerReferences(f.workRoot,taskId).length;assert.deepEqual(await f.http(started.request),started.receipt);assert.equal(taskWorkerReferences(f.workRoot,taskId).length,attemptCount);
   const next=await p.write('reasoning.start',{assetId:'services',modelDigest:p.modelDigest,task:{kind:'consistency'}},'explicit-new-task');
   const completed=await until(async()=>{const r=await f.http(f.request('reasoning.inspect',{taskId:next.receipt.result.taskId}));return r.state==='FINISHED'&&r;});assert.equal(completed.formalStatus,'COMPLETED');

@@ -6,6 +6,7 @@ import {hash,id,digest,canonical,exact} from '../standalone/validation.js';
 import {readWorkerAttempt,taskWorkerReferences,sealWorkerNotStarted,WORKER_PROTOCOL,ISOLATED_WORKER_PROTOCOL} from '../installation/worker-journal.js';
 import type {WorkerReference} from '../installation/worker-journal.js';
 import {inspectSystemdTermination,reconcileSystemdWorker} from '../installation/systemd-worker.js';
+import type {SHACLGraphRequest} from './shacl-graph-request.js';
 import {shaclIdentities} from './shacl-request.js';
 import type {ValidationPlan} from './validation-runner.js';
 
@@ -51,7 +52,7 @@ function reportFor(store:EvidenceStore,r:Row,roots:string[]){
     try{
       const a=readWorkerAttempt(reference);
       if(a.intent.schema!==q.workerProtocol||isolated&&a.intent.systemd?.binding.digest!==q.workerIsolationDigest)fail('RECOVERY_EVIDENCE_INVALID','Worker isolation differs from its original queued identity',409);
-      if(r.task_kind==='dl'?(a.intent.requestId!==r.id||a.intent.requestDigest!==r.request_digest||a.intent.configurationDigest!==r.configuration_digest||a.intent.toolchainDigest!==r.toolchain_digest):!a.intent.requestId.startsWith(String(r.id)+'-'))fail('RECOVERY_EVIDENCE_INVALID','Worker attempt belongs to another task',409);
+      if(r.task_kind!=='validation'?(a.intent.requestId!==r.id||a.intent.requestDigest!==r.request_digest||a.intent.configurationDigest!==r.configuration_digest||a.intent.toolchainDigest!==r.toolchain_digest):!a.intent.requestId.startsWith(String(r.id)+'-'))fail('RECOVERY_EVIDENCE_INVALID','Worker attempt belongs to another task',409);
       if(!a.supervisor&&!a.worker){
         // Stable before/after the no-launch fence, so a crash after fencing but
         // before the owner transaction commits can replay the same request.
@@ -123,7 +124,7 @@ export function reconcileTask(store:WorkspaceStore,input:{installationId:string;
     });
     const base={requestId:String(r.id),requestDigest:String(r.request_digest),closureDigest:String(r.closure_digest),configurationDigest:String(r.configuration_digest),toolchainDigest:String(r.toolchain_digest),status:'FAILED',complete:false,elapsedMs:0,result:{recoveryReportDigest:reportDigest,workerEvidence},error:{code:'OWNER_INTERRUPTED',message:'Original owner execution was interrupted; worker exits or no-launch fences are confirmed, formal result is unavailable and no work was redispatched'}};
     const plan=r.task_kind==='validation'?JSON.parse(String(r.request)) as ValidationPlan:null;
-    const result=plan?{schema:'ontology-validation-result/v2',...base,viewKind:plan.view.kind,viewDigest:shaclIdentities({schema:'ontology-shacl-request/v2',requestId:plan.requestId,modelDigest:plan.modelDigest,view:plan.view,shapes:plan.model.shapes,expectations:{digest:sha(plan.expectations.requiredShapes),requiredShapes:plan.expectations.requiredShapes}}).viewDigest,modelDigest:String(r.model_digest),expectationsDigest:String(r.expectations_digest)}:{schema:'ontology-dl-result/v1',...base};
+    const result=r.task_kind==='shacl'?{schema:'ontology-shacl-result/v2',...base,...shaclIdentities(JSON.parse(String(r.request)) as SHACLGraphRequest)}:plan?{schema:'ontology-validation-result/v2',...base,viewKind:plan.view.kind,viewDigest:shaclIdentities({schema:'ontology-shacl-request/v2',requestId:plan.requestId,modelDigest:plan.modelDigest,view:plan.view,shapes:plan.model.shapes,expectations:{digest:sha(plan.expectations.requiredShapes),requiredShapes:plan.expectations.requiredShapes}}).viewDigest,modelDigest:String(r.model_digest),expectationsDigest:String(r.expectations_digest)}:{schema:'ontology-dl-result/v1',...base};
     const resultDigest=sha(result),recordedAt=new Date().toISOString(),receipt={schema:'ontology-task-recovery-receipt/v1',installationId:input.installationId,workspaceId:store.identity.workspaceId,serviceId:store.identity.serviceId,projectId:input.projectId,taskId:input.taskId,requestId:input.requestId,requestDigest,reportDigest,resultDigest,recordedAt,authority:false};
     store.db.prepare("UPDATE native_reasoning_tasks SET state='FINISHED',result=?,result_digest=?,updated_at=? WHERE id=?").run(canonical(result as unknown as Json),resultDigest,recordedAt,input.taskId);
     append(store,input.taskId,'OPERATOR_RECOVERED',{receipt,report});append(store,input.taskId,'FINISHED',{status:'FAILED',complete:false,resultDigest});

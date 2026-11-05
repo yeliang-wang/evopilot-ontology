@@ -349,22 +349,37 @@
           "find": "        parser.statementWithResourceValue(iri, RDFNS + '_' + elements.getAndIncrement(), resultIRI,\n            null);",
           "replace": "        parser.bridge.rememberReification(resultIRI);\n        long ordinal = elements.getAndIncrement();\n        orderContext = parser.bridge.bagOrder(parser.bridge.frame(), ordinal, orderContext);\n        parser.statementWithResourceValue(iri, RDFNS + '_' + ordinal, resultIRI,\n            null, parser.bridge.bagMember(bagSource, orderContext));",
           "occurrences": 1
+        },
+        {
+          "find": "    public void startElement(String namespaceIRI, String localName, String qName, Attributes atts) {\n        parser.verify(!RDFNS.equals(namespaceIRI) || !ELT_RDF.equals(localName), RDF_RDF);",
+          "replace": "    public void startElement(String namespaceIRI, String localName, String qName, Attributes atts) throws SAXException {\n        if (!RDFNS.equals(namespaceIRI) || !ELT_RDF.equals(localName)) {\n            parser.getRDFConsumer().logicalURI(parser.getBaseIRI());\n            parser.popState();\n            parser.pushState(new LocatedXMLNodeElement(parser));\n            verifyNotNull(parser.state).startElement(namespaceIRI, localName, qName, atts);\n            return;\n        }",
+          "occurrences": 1
+        },
+        {
+          "find": "            if (objectIRI != null) {\n                parser.pushState(new LocatedXMLEmptyPropertyElement(node, parser));",
+          "replace": "            if (objectIRI != null || LocatedRDFXMLParser.hasPropertyAttributes(atts)) {\n                parser.pushState(new LocatedXMLEmptyPropertyElement(node, parser));",
+          "occurrences": 1
+        },
+        {
+          "find": "        parser.statementWithResourceValue(listCellIRI, RDF_TYPE, RDF_LIST, null,\n            parser.bridge.synthetic(nextCellSource, parser.bridge.generated(source), parser.bridge.generated(source), \"COLLECTION_TYPE\"));\n",
+          "replace": "",
+          "occurrences": 1
         }
       ],
-      "patchedSourceSHA256": "56b37a28482ce38f026ed13d92f464107ce84b0717d27b918c0c6a64774785c7"
+      "patchedSourceSHA256": "10d3ef2ab7ea02d8d4adc669798a89c3a70dcf481294681cf3fc1e85457024ba"
     }
   ],
   "ownedSources": [
     {
       "file": "LocatedRDFXMLParser.java",
-      "sha256": "b65006a385a92cff5a0444e9aada9ca777f8af4a20430b16ffb60deaa375aff8"
+      "sha256": "e025cd42a47df48b84f6d6d6aad7de3e8e95b3efd064e2d3dea59825cae9b15c"
     },
     {
       "file": "RDFXMLRawScanner.java",
       "sha256": "7e6fd7dd56fec7c2c49726378654fe999a62ee10652073bf359afcf0eb73166b"
     }
   ],
-  "notice": "Identified EvoPilot modification of pinned OWLAPI 5.5.1 RDFParser and StartRDF sources. The complete upstream notices remain in both derived files. Classes are separately named and do not replace any original dependency class. Exact state callback order is retained; added hooks bind each actual RDF callback to independently reconciled raw XML source sets. IRI resolution uses the separately owned strict RFC resolver, correcting original context-insensitive cache and Java URI behavior; relative rdf:datatype values are resolved in their actual xml:base context. External retrieval and include-rdf are refused. Retain exact upstream source, generated source, recipe, package license and notice evidence. No completed license or formal standards acceptance is claimed. Semantic XML events use the already pinned Woodstox 4.1.4 SAX provider, preserving referenced internal-entity CRs instead of the pinned JDK normalization defect. The JDK independently performs bounded security preflight and supplies parsed-entity declaration prefix metadata absent from Woodstox 4.1.4. Namespace-aware xml:lang lookup avoids that provider's broken QName lookup. Generated reification uses normative rdf:Statement, correcting pinned RDFConstants' lowercase rdf:statement. Both providers refuse external retrieval; ordinary and located paths share the same parser policy. Both ordinary and located paths explicitly require XML 1.0 through the mature JDK Locator2 version at startElement, after its declaration has been parsed, following RDF 1.1 XML Syntax section 1 and normative XML10 reference. XML 1.1 is refused before semantic parsing or lexical indexing; no regular-expression version guess is used.",
+  "notice": "Identified EvoPilot modification of pinned OWLAPI 5.5.1 RDFParser and StartRDF sources. The complete upstream notices remain in both derived files. Classes are separately named and do not replace any original dependency class. Exact state callback order is retained; added hooks bind each actual RDF callback to independently reconciled raw XML source sets. IRI resolution uses the separately owned strict RFC resolver, correcting original context-insensitive cache and Java URI behavior; relative rdf:datatype values are resolved in their actual xml:base context. External retrieval and include-rdf are refused. Retain exact upstream source, generated source, recipe, package license and notice evidence. No completed license or formal standards acceptance is claimed. Semantic XML events use the already pinned Woodstox 4.1.4 SAX provider, preserving referenced internal-entity CRs instead of the pinned JDK normalization defect. The JDK independently performs bounded security preflight and supplies parsed-entity declaration prefix metadata absent from Woodstox 4.1.4. Namespace-aware xml:lang lookup avoids that provider's broken QName lookup. Generated reification uses normative rdf:Statement, correcting pinned RDFConstants' lowercase rdf:statement. Both providers refuse external retrieval; ordinary and located paths share the same parser policy. Both ordinary and located paths explicitly require XML 1.0 through the mature JDK Locator2 version at startElement, after its declaration has been parsed, following RDF 1.1 XML Syntax section 1 and normative XML10 reference. XML 1.1 is refused before semantic parsing or lexical indexing; no regular-expression version guess is used. RDF4J 5.0.2 now validates RDF/XML grammar after bounded XML safety preflight. The owned semantic grammar additionally admits an optional rdf:RDF wrapper and empty property attributes, and omits nonasserted rdf:List type statements. Located and ordinary semantic paths remain identical.",
   "reason": "Exact original UTF-16 source sets for XML lexical events, entity/default declaration chains and actual RDF grammar construction callbacks, with shared deadline and internal source budgets. The pinned Woodstox SAX provider remains the XML grammar and normalization authority after an independent bounded JDK safety preflight; the lexical index never supplies RDF semantic values. Ordinary semantic parsing uses the same corrected derived grammar without a raw index or source-count limits.",
   "acceptance": "Independent original parser callback parity for unchanged valid semantics, explicit RFC correction examples, all supported grammar/source mappings, resource failure tests and formal source-fragment acceptance remain required.",
   "upstreamLicenseDeclarations": [

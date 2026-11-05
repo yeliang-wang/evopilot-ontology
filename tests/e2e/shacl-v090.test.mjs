@@ -17,7 +17,7 @@ function runner(t){const root=realpathSync(mkdtempSync(join(tmpdir(),'ontology-s
 function expect(result,status){assert.equal(result.status,status,JSON.stringify(result));assert.equal(result.complete,['CONFORMS','NONCONFORMING'].includes(status));}
 test('actual SHACL Core preserves exact asserted-view identities and reports both conformance and violations',async t=>{
  const r=runner(t),input=request(),ok=await r.run(input);expect(ok,'CONFORMS');
- assert.equal(ok.requestDigest,shaclIdentities(input).requestDigest);assert.equal(ok.viewDigest,shaclIdentities(input).viewDigest);assert.equal(ok.result.viewKind,'asserted');assert.equal(ok.result.coverage[0].actualFocusNodes[0],'<urn:demo:svc>');assert.match(ok.result.reportTurtle,/conforms true/);
+ assert.equal(ok.requestDigest,shaclIdentities(input).requestDigest);assert.equal(ok.viewDigest,shaclIdentities(input).viewDigest);assert.equal(ok.result.viewKind,'asserted');assert.equal(ok.result.coverage[0].actualFocusNodes[0],'<urn:demo:svc>');assert.match(ok.result.reportTurtle,/<http:\/\/www\.w3\.org\/ns\/shacl#conforms> \"true\"\^\^<http:\/\/www\.w3\.org\/2001\/XMLSchema#boolean>/);
  const missing=request(data.replace(' ; :owner "operations"','')),bad=await r.run(missing);expect(bad,'NONCONFORMING');assert.notEqual(ok.viewDigest,bad.viewDigest);assert(bad.result.results.some(r=>r.properties.some(p=>p.object==='<http://www.w3.org/ns/shacl#MinCountConstraintComponent>')));
  const datatype=await r.run(request(data.replace('"operations"','42')));expect(datatype,'NONCONFORMING');assert(datatype.result.results.some(r=>r.properties.some(p=>p.object==='<http://www.w3.org/ns/shacl#DatatypeConstraintComponent>')));
 });

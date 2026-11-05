@@ -1,6 +1,7 @@
-/* EvoPilot source-location adapter for the pinned OWLAPI 5.5.1 Turtle parser.
- * The exact upstream-derived sources and their notices are retained through
- * turtle-compat.json. This class does not replace an original OWLAPI class. */
+/* EvoPilot Turtle 1.1 semantic/source-location adapter using pinned RDF4J 5.0.2
+ * lexical parsing and the OWLAPI callback interface. Exact owned sources and
+ * historical OWLAPI-derived helpers remain bound by turtle-compat.json.
+ * This class does not replace an upstream RDF4J or OWLAPI class. */
 package org.semanticweb.owlapi.rdf.turtle.parser;
 
 import java.io.IOException;
@@ -64,11 +65,7 @@ public final class LocatedTurtleParser {
         if (maximumOccurrences < 1 || maximumOccurrences > 200000)
             throw new IllegalArgumentException("Occurrence limit must be 1..200000");
         Collector collector = new Collector(content.length(), documentIri, observer, maximumOccurrences);
-        LocatedTurtleSyntaxParser parser = new LocatedTurtleSyntaxParser(
-                new StringReader(content), semanticSink, documentIri);
-        parser.sourceContent = content;
-        parser.locations = collector;
-        parser.parseDocument();
+        new Rio(content, documentIri, semanticSink, collector).run();
         return collector.seal();
     }
 
@@ -81,10 +78,189 @@ public final class LocatedTurtleParser {
         Objects.requireNonNull(documentIri);
         Objects.requireNonNull(semanticSink);
         RDFIRI.validateAbsolute(documentIri.toString());
-        LocatedTurtleSyntaxParser parser = new LocatedTurtleSyntaxParser(
-                new StringReader(content), semanticSink, documentIri);
-        parser.sourceContent = content;
-        parser.parseDocument();
+        new Rio(content, documentIri, semanticSink, null).run();
+    }
+
+    /** RDF4J 5.0.2 supplies the Turtle 1.1 lexical grammar. This adapter retains
+     * original character intervals while emitting the same semantic callbacks
+     * for located and ordinary parsing. It does not modify upstream classes. */
+    static final class Rio extends org.eclipse.rdf4j.rio.turtle.TurtleParser {
+        final String content;
+        final TripleHandler sink;
+        final Collector locations;
+        final String documentIri;
+        final Map<org.eclipse.rdf4j.model.BNode,IRI> blankNodes=new java.util.LinkedHashMap<>();
+        String base;
+        int offset, depth, statementStart, directiveSource;
+        List<Integer> valueDependencies = List.of();
+        record Term(org.eclipse.rdf4j.model.Value value, TermSource source, boolean nonemptyPropertyList) {}
+
+        Rio(String content, IRI documentIri, TripleHandler sink, Collector locations) {
+            this.content=content;this.documentIri=documentIri.toString();this.sink=sink;this.locations=locations;
+            var config=getParserConfig();
+            config.set(org.eclipse.rdf4j.rio.helpers.BasicParserSettings.VERIFY_DATATYPE_VALUES,false);
+            config.set(org.eclipse.rdf4j.rio.helpers.BasicParserSettings.NORMALIZE_DATATYPE_VALUES,false);
+            config.set(org.eclipse.rdf4j.rio.helpers.BasicParserSettings.FAIL_ON_UNKNOWN_DATATYPES,false);
+            config.set(org.eclipse.rdf4j.rio.helpers.BasicParserSettings.VERIFY_LANGUAGE_TAGS,true);
+            config.set(org.eclipse.rdf4j.rio.helpers.BasicParserSettings.FAIL_ON_UNKNOWN_LANGUAGES,false);
+            config.set(org.eclipse.rdf4j.rio.helpers.BasicParserSettings.NORMALIZE_LANGUAGE_TAGS,false);
+            config.set(org.eclipse.rdf4j.rio.helpers.BasicParserSettings.NAMESPACES,java.util.Set.of());
+            config.set(org.eclipse.rdf4j.rio.turtle.TurtleParserSettings.ACCEPT_TURTLESTAR,false);
+            config.set(org.eclipse.rdf4j.rio.turtle.TurtleParserSettings.CASE_INSENSITIVE_DIRECTIVES,false);
+        }
+        void run() throws IOException, ParseException {
+            try { parse(new StringReader(content),documentIri);sink.handleEnd(); }
+            catch(org.eclipse.rdf4j.rio.RDFParseException e){throw new ParseException(e.getMessage());}
+        }
+        @Override protected int readCodePoint() throws IOException {
+            int c=super.readCodePoint();if(c!=-1)offset+=Character.charCount(c);return c;
+        }
+        @Override protected void unread(int c) throws IOException {
+            super.unread(c);if(c!=-1)offset-=Character.charCount(c);
+        }
+        @Override protected void unread(String text) throws IOException {super.unread(text);offset-=text.length();}
+        @Override protected void setBaseURI(String iri){super.setBaseURI(iri);base=iri;}
+        @Override protected org.eclipse.rdf4j.model.IRI createURI(String iri) {
+            RDFIRI.validateAbsolute(iri);return super.createURI(iri);
+        }
+        int end(){int end=offset;while(end>0&&" \t\r\n".indexOf(content.charAt(end-1))>=0)end--;return end;}
+        TermSource source(int start,int end,String kind,List<Integer> dependencies){
+            return locations==null?null:new TermSource(locations.add(start,end,kind),false,false,dependencies);
+        }
+        TermSource inherit(TermSource source){return source==null?null:locations.inherit(source);}
+        TermSource generated(int id){return locations==null?null:locations.generated(id);}
+        int open(int start,String kind){return locations==null?0:locations.add(start,-1,kind);}
+        void close(int id){if(locations!=null)locations.sources.get(id-1).end=offset;}
+        @Override protected void parseStatement() throws IOException {
+            statementStart=offset;directiveSource=0;super.parseStatement();
+            if(directiveSource!=0)close(directiveSource);
+        }
+        @Override protected org.eclipse.rdf4j.model.IRI parseURI() throws IOException {
+            int start=offset;verifyCharacterOrFail(readCodePoint(),"<");
+            while(true){int c=readCodePoint();if(c==-1)throwEOFException();if(c=='>')break;if(c=='\\'&&readCodePoint()==-1)throwEOFException();}
+            LocatedToken token=new LocatedToken(1,content.substring(start,offset),start,offset);
+            final String reference;
+            try {reference=decodeIri(content,token);}catch(ParseException e){throw new org.eclipse.rdf4j.rio.RDFParseException(e.getMessage());}
+            valueDependencies=locations==null||RDFIRI.hasScheme(reference)?List.of():List.of(locations.baseContext);
+            return createURI(RDFIRI.resolve(reference,base));
+        }
+        @Override protected String parseQuotedString() throws IOException {
+            int start=offset;super.parseQuotedString();
+            try{return decodeString(content,new LocatedToken(1,content.substring(start,offset),start,offset));}
+            catch(ParseException e){throw new org.eclipse.rdf4j.rio.RDFParseException(e.getMessage());}
+        }
+        @Override protected org.eclipse.rdf4j.model.Literal parseNumber() throws IOException {
+            int start=offset;var value=super.parseNumber();String raw=content.substring(start,Math.max(start,end()));
+            if(!raw.matches("[+-]?(?:[0-9]+|[0-9]*\\.[0-9]+|(?:[0-9]+\\.[0-9]*|\\.[0-9]+|[0-9]+)[eE][+-]?[0-9]+)"))
+                reportFatalError("Invalid Turtle numeric token");
+            return value;
+        }
+        @Override protected void parsePrefixID() throws IOException {
+            skipWSC();int start=offset;
+            super.parsePrefixID();
+            int colon=content.indexOf(':',start);String name=content.substring(start,colon).trim()+":";
+            String iri=getNamespace(name.substring(0,name.length()-1));
+            if(locations!=null){
+                if(++locations.explicitContexts>10000)throw new LimitException("Turtle directive budget exceeded");
+                directiveSource=open(statementStart,"PREFIX");
+                locations.prefixes.put(name,locations.context("PREFIX",name,IRI.create(iri),directiveSource,valueDependencies));
+            }
+            sink.handlePrefixDirective(name,iri);
+        }
+        @Override protected void parseBase() throws IOException {
+            super.parseBase();
+            if(locations!=null){
+                if(++locations.explicitContexts>10000)throw new LimitException("Turtle directive budget exceeded");
+                directiveSource=open(statementStart,"BASE");
+                locations.baseContext=locations.context("BASE",null,IRI.create(base),directiveSource,valueDependencies);
+            }
+            sink.handleBaseDirective(IRI.create(base));
+        }
+        @Override protected org.eclipse.rdf4j.model.Value parseQNameOrBoolean() throws IOException {
+            int start=offset;var value=super.parseQNameOrBoolean();
+            if(locations!=null&&value instanceof org.eclipse.rdf4j.model.IRI){
+                String raw=content.substring(start,offset);int colon=raw.indexOf(':');
+                Integer id=colon<0?null:locations.prefixes.get(raw.substring(0,colon+1));
+                if(id==null)throw new IllegalStateException("Resolved QName has no declared prefix context");
+                valueDependencies=List.of(id);
+            }
+            return value;
+        }
+        @Override protected void parseTriples() throws IOException {
+            Term subject=term();if(!(subject.value() instanceof org.eclipse.rdf4j.model.Resource))reportFatalError("Illegal RDF subject");
+            int next=skipWSC();if(!(subject.nonemptyPropertyList()&&next=='.'))predicates(subject);
+        }
+        void predicates(Term subject) throws IOException {
+            boolean inherited=false;
+            while(true){
+                skipWSC();int start=offset;valueDependencies=List.of();var predicate=super.parsePredicate();
+                Term p=new Term(predicate,source(start,end(),"TOKEN",valueDependencies),false);
+                Term s=inherited?new Term(subject.value(),inherit(subject.source()),false):subject;
+                while(true){
+                    skipWSC();Term object=term();emit(s,p,object,null);
+                    int c=skipWSC();if(c!=',')break;readCodePoint();
+                    s=new Term(s.value(),inherit(s.source()),false);p=new Term(p.value(),inherit(p.source()),false);
+                }
+                if(skipWSC()!=';')break;
+                do{readCodePoint();}while(skipWSC()==';');
+                int c=skipWSC();if(c=='.'||c==']')break;
+                inherited=true;
+            }
+        }
+        Term term() throws IOException {
+            if(++depth>512)throw new LimitException("Turtle source nesting budget exceeded");
+            try{
+                int start=offset,c=peekCodePoint();
+                if(c=='['){
+                    readCodePoint();int id=open(start,"PROPERTY_LIST");var node=createNode();Term result=new Term(node,generated(id),false);
+                    boolean nonempty=skipWSC()!=']';if(nonempty)predicates(result);
+                    verifyCharacterOrFail(readCodePoint(),"]");close(id);return new Term(node,result.source(),nonempty);
+                }
+                if(c=='('){
+                    readCodePoint();int id=open(start,"COLLECTION");TermSource generated=generated(id);
+                    var nil=org.eclipse.rdf4j.model.vocabulary.RDF.NIL;
+                    if(skipWSC()==')'){readCodePoint();close(id);return new Term(nil,generated,false);}
+                    var first=createNode();var current=first;
+                    while(true){
+                        skipWSC();Term object=term();Term cell=new Term(current,generated,false);
+                        emit(cell,new Term(org.eclipse.rdf4j.model.vocabulary.RDF.FIRST,generated,false),object,"COLLECTION_FIRST");
+                        if(skipWSC()==')'){
+                            readCodePoint();emit(cell,new Term(org.eclipse.rdf4j.model.vocabulary.RDF.REST,generated,false),new Term(nil,generated,false),"COLLECTION_REST");break;
+                        }
+                        var next=createNode();emit(cell,new Term(org.eclipse.rdf4j.model.vocabulary.RDF.REST,generated,false),new Term(next,generated,false),"COLLECTION_REST");current=next;
+                    }
+                    close(id);return new Term(first,generated,false);
+                }
+                valueDependencies=List.of();var value=super.parseValue();
+                return new Term(value,source(start,end(),"TOKEN",valueDependencies),false);
+            }finally{depth--;}
+        }
+        IRI iri(org.eclipse.rdf4j.model.Value value){
+            // OWLAPI's consumer recognizes only its internal genid convention.
+            // Keep a bijection; never expose an RDF blank node as a named IRI
+            // or strip user labels in a way that can merge distinct nodes.
+            if(value instanceof org.eclipse.rdf4j.model.BNode node)
+                return blankNodes.computeIfAbsent(node,k->IRI.create("_:genid-nodeid-rio"+blankNodes.size()));
+            return IRI.create(value.stringValue());
+        }
+        void emit(Term subject,Term predicate,Term object,String kind){
+            IRI s=iri(subject.value()),p=iri(predicate.value());var value=object.value();
+            TermSource ss=subject.source(),ps=predicate.source(),os=object.source();
+            if(value instanceof org.eclipse.rdf4j.model.Literal literal){
+                String lexical=literal.getLabel();
+                if(literal.getLanguage().isPresent()){
+                    String language=literal.getLanguage().get();
+                    if(locations==null)sink.handleTriple(s,p,lexical,language);else locations.language(sink,s,p,lexical,language,ss,ps,os,kind);
+                }else if(literal.getDatatype().equals(org.eclipse.rdf4j.model.vocabulary.XSD.STRING)){
+                    if(locations==null)sink.handleTriple(s,p,lexical);else locations.plain(sink,s,p,lexical,ss,ps,os,kind);
+                }else{
+                    IRI datatype=iri(literal.getDatatype());
+                    if(locations==null)sink.handleTriple(s,p,lexical,datatype);else locations.datatype(sink,s,p,lexical,datatype,ss,ps,os,kind);
+                }
+            }else{
+                IRI o=iri(value);if(locations==null)sink.handleTriple(s,p,o);else locations.resource(sink,s,p,o,ss,ps,os,kind);
+            }
+        }
     }
 
     /** RDF string escapes belong to the original lexical form, not Java's or

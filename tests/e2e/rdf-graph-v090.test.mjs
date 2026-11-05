@@ -42,6 +42,19 @@ test('RDF/XML callbacks expose the asserted graph with xml:base, language and no
   assert.equal(g.tripleCount,4);assert.equal(g.inputFormat,'rdfxml');
 });
 
+test('RDF/XML optional root and empty property attributes produce the asserted graph; invalid RDF grammar is refused',async()=>{
+  const root=await graph(request('<Book xmlns="urn:books:"><title>Dogs in Hats</title></Book>','rdfxml'));
+  assert.deepEqual(lines(root),['_:b0 <'+RDF+'type> <urn:books:Book> .','_:b0 <urn:books:title> "Dogs in Hats"^^<'+XSD+'string> .'].sort());
+  const header='<rdf:RDF xmlns:rdf="'+RDF+'" xmlns:e="urn:example:">';
+  const attrs=await graph(request(header+'<rdf:Description rdf:about="urn:s"><e:p e:name="value"/></rdf:Description></rdf:RDF>','rdfxml'));
+  assert.deepEqual(lines(attrs),['<urn:s> <urn:example:p> _:b0 .','_:b0 <urn:example:name> "value"^^<'+XSD+'string> .'].sort());
+  const legacy=await graph(request(header+'<rdf:Description about="urn:s" type="urn:Kind"><e:p resource="urn:o"/><e:label xmlnewthing="ignored">text</e:label></rdf:Description></rdf:RDF>','rdfxml'));
+  assert.deepEqual(lines(legacy),['<urn:s> <'+RDF+'type> <urn:Kind> .','<urn:s> <urn:example:p> <urn:o> .','<urn:s> <urn:example:label> "text"^^<'+XSD+'string> .'].sort());
+  for(const body of ['<rdf:Description rdf:ID="1bad"/>','<rdf:Description rdf:about="urn:s" rdf:bagID="old"/>','<rdf:Description rdf:about="urn:s"><rdf:about>bad</rdf:about></rdf:Description>']){
+    const result=await runner.run(request(header+body+'</rdf:RDF>','rdfxml'));assert.equal(result.status,'INVALID_INPUT',JSON.stringify(result));assert.equal(result.error.code,'ONTOLOGY_PARSE');
+  }
+});
+
 test('RDF-valid graphs are inspectable independently of OWL datatype legality',async()=>{
   const input=request('@prefix owl: <http://www.w3.org/2002/07/owl#> . <urn:p> a owl:DatatypeProperty . <urn:s> <urn:p> "not-an-integer"^^<'+XSD+'integer> .');
   assert.equal((await graph(input)).tripleCount,2);
@@ -102,5 +115,19 @@ test('Turtle original strings decode all ECHARs and UCHARs once and reject illeg
   for(const source of [String.raw`"bad\q"`,String.raw`"\U00110000"`,String.raw`"\uD800"`]){
     const result=await runner.run(request('<urn:s> <urn:p> '+source+' .'));
     assert.equal(result.status,'INVALID_INPUT',source+' '+JSON.stringify(result));assert.equal(result.complete,false);
+  }
+});
+
+test('Turtle 1.1 directives, collection graphs and blank labels retain standard semantics',async()=>{
+  const g=await graph(request('BASE <https://graph.example/> PREFIX ex: <urn:graph:> ex:s ex:p (ex:o) .'));
+  assert.equal(g.tripleCount,3);assert.deepEqual(lines(g),[
+    '<urn:graph:s> <urn:graph:p> _:b0 .',
+    '_:b0 <'+RDF+'first> <urn:graph:o> .',
+    '_:b0 <'+RDF+'rest> <'+RDF+'nil> .',
+  ].sort());
+  const labels=await graph(request('_:a <urn:p> _:genida . _:genida <urn:p> _:a .'));
+  assert.deepEqual(lines(labels),['_:b0 <urn:p> _:b1 .','_:b1 <urn:p> _:b0 .']);
+  for(const source of ['owl:A owl:p owl:B .','<urn:s> <urn:p> 123e .','<urn:s> <urn:p> "x"@1 .']){
+    const result=await runner.run(request(source));assert.equal(result.status,'INVALID_INPUT',JSON.stringify(result));assert.equal(result.error.code,'ONTOLOGY_PARSE');
   }
 });

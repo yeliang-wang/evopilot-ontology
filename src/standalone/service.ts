@@ -19,8 +19,8 @@ import { LIMITS, fail } from './types.js';
 import type { Json, Receipt, Project, Grant } from './types.js';
 import { canonical, exact, hash, hashBytes, id, text, digest, validateIntent, validateRequest } from './validation.js';
 
-export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','project.list','project.inspect','intent.read','receipt.read','source.inspect','source.metadata.read','source.read','source.fragment.read','model.list','model.inspect','model.metadata.read','model.document.read','model.compare.read','reasoning.list','reasoning.inspect','reasoning.result.read','expectations.list','expectations.inspect','expectations.metadata.read','expectations.read','validation.list','validation.inspect','validation.result.read','view.list','view.inspect','view.read','view.query','explanation.read','review.list','review.inspect','review.report.read','delivery.list','delivery.inspect','delivery.export.read']);
-export const WRITE_OPERATIONS = Object.freeze(['project.create','intent.record','source.admit','model.record','reasoning.start','reasoning.cancel','expectations.record','validation.start','validation.cancel','view.record','review.prepare','review.decide','delivery.record']);
+export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','project.list','project.inspect','intent.read','receipt.read','source.inspect','source.metadata.read','source.read','source.fragment.read','model.list','model.inspect','model.metadata.read','model.document.read','model.compare.read','reasoning.list','reasoning.inspect','reasoning.result.read','expectations.list','expectations.inspect','expectations.metadata.read','expectations.read','validation.list','validation.inspect','validation.result.read','shacl.list','shacl.inspect','shacl.result.read','view.list','view.inspect','view.read','view.query','explanation.read','review.list','review.inspect','review.report.read','delivery.list','delivery.inspect','delivery.export.read']);
+export const WRITE_OPERATIONS = Object.freeze(['project.create','intent.record','source.admit','model.record','reasoning.start','reasoning.cancel','expectations.record','validation.start','validation.cancel','shacl.start','shacl.cancel','view.record','review.prepare','review.decide','delivery.record']);
 export function createStandaloneService(options: {root: string; workspaceId: string; serviceId: string;reasoning?:ReasoningConfiguration;validation?:ReasoningConfiguration}) {
   const store=openWorkspace(options.root,options), {db,identity}=store;
   const sources=sourceStore(db);
@@ -64,7 +64,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
       ...(identity.schema==='ontology-workspace/v2'?{recovery:recoveryContext(identity)}:{}),
       principalId:grant.principalId,projectIds:[...grant.projectIds],permissions:[...grant.permissions],
       readOperations:[...READ_OPERATIONS],writeOperations:allowedWrites(grant),
-      reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
+      reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,shaclExecutionConfigured:tasks.shaclConfigured,shaclToolchainDigest:tasks.shaclToolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
   };
   function request(value: unknown, token: string): Json {
     if(closing)fail('CLOSED','Service is closing',503);
@@ -93,7 +93,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
       let result: Json;let afterCommit:(()=>void)|undefined;
       if (operation==='service.inspect') {
         exact(input,[]);
-        result={product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P3_IMPLEMENTATION',workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,...(identity.schema==='ontology-workspace/v2'?{recovery:recoveryContext(identity)}:{}),project:current as unknown as Json,readOperations:[...READ_OPERATIONS],writeOperations:allowedWrites(grant),reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
+        result={product:'evopilot-ontology',developmentTarget:'0.9.0',implementationStage:'P3_IMPLEMENTATION',workspaceId:identity.workspaceId,serviceId:identity.serviceId,stateVersion:identity.stateVersion,...(identity.schema==='ontology-workspace/v2'?{recovery:recoveryContext(identity)}:{}),project:current as unknown as Json,readOperations:[...READ_OPERATIONS],writeOperations:allowedWrites(grant),reasoningReady:false,nativeV2Ready:false,reasoningExecutionConfigured:tasks.configured,toolchainDigest:tasks.toolchainDigest,shaclExecutionConfigured:tasks.shaclConfigured,shaclToolchainDigest:tasks.shaclToolchainDigest,validationExecutionConfigured:tasks.validationConfigured,validationToolchainDigest:tasks.validationToolchainDigest,authority:false};
       } else if (operation==='guide.read') {
         exact(input,['topic']);text(input.topic,96);result=expertGuide(input.topic);
       } else if (operation==='project.list') {
@@ -129,9 +129,9 @@ export function createStandaloneService(options: {root: string; workspaceId: str
         const row=db.prepare('SELECT document,revision,created_at FROM intents WHERE project_id=? AND digest=?').get(projectId,input.digest);
         if (!row) fail('NOT_FOUND','Intent not found in selected project',404);
         result={digest:input.digest,...JSON.parse(String(row.document)),revision:Number(row.revision),createdAt:String(row.created_at),sourceVerification:'NOT_EVALUATED',businessConfirmed:false};
-      } else if(operation.startsWith('reasoning.')||operation.startsWith('validation.')) {
+      } else if(operation.startsWith('reasoning.')||operation.startsWith('validation.')||operation.startsWith('shacl.')) {
         if(!current)fail('NOT_FOUND','Project not initialized',404);
-        const kind=operation.startsWith('validation.')?'validation':'dl',action=operation.slice(operation.indexOf('.')+1);
+        const kind=operation.startsWith('validation.')?'validation':operation.startsWith('shacl.')?'shacl':'dl',action=operation.slice(operation.indexOf('.')+1);
         if(action==='start'){
           result=tasks.start(projectId,grant.principalId,value.requestId!,input,kind);
           const taskId=(result as {taskId:string}).taskId;afterCommit=()=>tasks.kick(taskId);

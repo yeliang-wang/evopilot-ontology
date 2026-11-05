@@ -181,7 +181,7 @@ test('duplicate RDF events keep original non-BMP and escaped UTF-8 tokens, hashe
 });
 
 test('retained lexical contexts bind each relative occurrence to its current BASE while prefix bindings retain their declaration context',async()=>{
-  const content='@base <https://first.example/> .\n@prefix ex: <relative/> .\n<subject> a owl:NamedIndividual .\n<object> a owl:NamedIndividual .\nex:p a owl:ObjectProperty .\n<subject> ex:p <object> .\n@base <https://second.example/> .\n<subject> ex:p <object> .\n@prefix ex: <https://changed.example/> .\nex:p a owl:ObjectProperty .\n<new> a owl:NamedIndividual .\n<fresh> a owl:NamedIndividual .\n<new> ex:p <fresh> .\n@prefix unused: <https://unrelated.example/> .\n';
+  const content='@prefix owl: <'+OWL+'> .\n@base <https://first.example/> .\n@prefix ex: <relative/> .\n<subject> a owl:NamedIndividual .\n<object> a owl:NamedIndividual .\nex:p a owl:ObjectProperty .\n<subject> ex:p <object> .\n@base <https://second.example/> .\n<subject> ex:p <object> .\n@prefix ex: <https://changed.example/> .\nex:p a owl:ObjectProperty .\n<new> a owl:NamedIndividual .\n<fresh> a owl:NamedIndividual .\n<new> ex:p <fresh> .\n@prefix unused: <https://unrelated.example/> .\n';
   const target=query('ObjectPropertyAssertion(<https://first.example/relative/p> <https://first.example/subject> <https://first.example/object>) ObjectPropertyAssertion(<https://first.example/relative/p> <https://second.example/subject> <https://second.example/object>) ObjectPropertyAssertion(<https://changed.example/p> <https://second.example/new> <https://second.example/fresh>)');
   const {data,table}=await explain(content,target);assert.equal(data.support.length,3);
   const byId=new Map(table.occurrences.map(o=>[o.id,o])),contexts=new Map(table.contexts.map(c=>[c.id,c]));
@@ -230,7 +230,7 @@ async function explanationTask(s,f,p){
 test('synthetic native Turtle admission retains exact source tables through review, private immutable delivery and offline integrity verification',async t=>{
   const f=fixture(t),grant=grantReviewer({root:f.root,workspaceId:f.setup.workspaceId,serviceId:f.setup.serviceId,projectId:'demo',principalId:'synthetic-rdf-reviewer',grantId:'rdf-reviewer-test',expiresAt:new Date(Date.now()+86400000).toISOString()});
   const reviewerToken=readFileSync(grant.credentialFile,'utf8');let s=createStandaloneService(configuration(f));t.after(()=>s.close());
-  const p=prepare(s,f),validation=write(s,f,'validation.start',{assetId:'services',modelDigest:p.modelDigest},'synthetic-rdf-validation');assert.equal((await terminal(s,f,validation.result.taskId)).formalStatus,'MATCHED');
+  const p=prepare(s,f),validation=write(s,f,'validation.start',{assetId:'services',modelDigest:p.modelDigest},'synthetic-rdf-validation');const validationResult=await terminal(s,f,validation.result.taskId);assert.equal(validationResult.formalStatus,'MATCHED',JSON.stringify(validationResult));
   const taskId=await explanationTask(s,f,p),read=paged(s,f,'explanation.read',{assetId:'services',modelDigest:p.modelDigest,taskId},512),report=read.value;
   assert.ok(read.pages>1);assert.equal(read.first.projectionDigest,hash(report));assert.equal(report.sourceLocationVersion,3);assert.equal(report.axiomSourceLocationCoverage,'COMPLETE');assert.equal(report.replayVerified,true);
   sourceTables(p.model.closure.documents,report);assert.equal(report.support.length,4,'The fixture has exactly the equivalence and three necessary assertion premises');

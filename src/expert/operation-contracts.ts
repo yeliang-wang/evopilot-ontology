@@ -53,9 +53,10 @@ const task:Schema={oneOf:[object({kind:enumeration('legality','consistency')}),
   object({kind:enumeration('explanation'),target:enumeration('entailment'),query})]};
 put(['reasoning.start'],object({...model,task,timeoutMs:integer(1,120000)},['timeoutMs']));
 put(['validation.start'],object({...model,timeoutMs:integer(1,120000),view:{oneOf:[object({kind:enumeration('asserted')}),object({kind:enumeration('derived'),viewDigest:digest})]}},['timeoutMs','view']));
-put(['reasoning.inspect','validation.inspect','reasoning.cancel','validation.cancel'],object({taskId:identifier}));
-put(['reasoning.result.read','validation.result.read'],object({taskId:identifier,...page}));
-put(['reasoning.list','validation.list'],object({assetId:nullable(identifier),afterTaskId:nullable(identifier),limit:integer(1,100)}));
+put(['shacl.start'],object({...model,timeoutMs:integer(1,60000),view:{oneOf:[object({kind:enumeration('asserted')}),object({kind:enumeration('derived'),viewDigest:digest})]}},['timeoutMs','view']));
+put(['shacl.inspect','shacl.cancel','reasoning.inspect','validation.inspect','reasoning.cancel','validation.cancel'],object({taskId:identifier}));
+put(['shacl.result.read','reasoning.result.read','validation.result.read'],object({taskId:identifier,...page}));
+put(['shacl.list','reasoning.list','validation.list'],object({assetId:nullable(identifier),afterTaskId:nullable(identifier),limit:integer(1,100)}));
 put(['view.record'],object({...model,taskIds:{...array(identifier,1,8),uniqueItems:true}}));
 put(['view.inspect'],object({...asset,viewDigest:digest}));
 put(['view.read'],object({...asset,viewDigest:digest,format:enumeration('json','turtle'),...page}));
@@ -71,7 +72,7 @@ put(['review.decide'],object({...asset,candidateDigest:digest,reportDigest:diges
 put(['delivery.record'],object({...asset,candidateDigest:digest,reviewDigest:digest}));
 put(['delivery.inspect'],object({...asset,deliveryDigest:digest}));
 put(['delivery.export.read'],object({...asset,deliveryDigest:digest,...page}));
-const writes=new Set(['project.create','intent.record','source.admit','expectations.record','model.record','reasoning.start','reasoning.cancel','validation.start','validation.cancel','view.record','review.prepare','review.decide','delivery.record']);
+const writes=new Set(['project.create','intent.record','source.admit','expectations.record','model.record','reasoning.start','reasoning.cancel','validation.start','validation.cancel','shacl.start','shacl.cancel','view.record','review.prepare','review.decide','delivery.record']);
 const references:Record<string,Json[]>={
   'source.admit':[{digest:SOURCE_SCHEMA_DIGEST,value:SOURCE_SCHEMA as unknown as Json}],
   'model.record':[{digest:MODEL_SCHEMA_DIGEST,value:MODEL_SCHEMA as unknown as Json}],
@@ -90,6 +91,7 @@ export function operationContract(operation:string):Json {
       'Raw content digests are sha256 of exact UTF-8 bytes, without normalization or added newline. UTF-8 fragment ranges have exclusive end. Structured owner hashes use recursively sorted JSON object keys, unchanged array order and JSON.stringify primitives.',
       'An uncertain write requires receipt.read with its original requestId before retry. Explicit schema rejection is not successful authoring. Keep the original request identity if the exact request will be retried.',
       'Examples are fictional protocol illustrations. They are not current project records, business approval, authority to call an operation, or release evidence.'],
+    ...(operation==='shacl.start'?{taskLimits:{maximumMs:60000},validationScope:'GRAPH_ONLY',lifecycleCoverage:false}:{}),
     ...(operation==='reasoning.start'?{taskLimits:{maximumMs:120000,explanationMaximumMs:30000}}:{}),
     ...(operation==='review.decide'?{requires:'Separately authorized reviewer credential and actual user decision bound to this candidate/report. An author or Host model cannot approve itself.'}:{}),
     exampleInput:examples[operation]??null,exampleBindings:'Every all-zero digest is a placeholder for the exact identity returned by the selected owner. Example source/query/document content hashes are real hashes of their fictional bytes.',authority:false};

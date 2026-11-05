@@ -128,6 +128,30 @@ public final class LocatedRDFXMLParser extends LocatedRDFXMLSyntaxParser {
             };
             reader.setContentHandler(guard);reader.setEntityResolver(guard);reader.setErrorHandler(guard);
             reader.setProperty("http://xml.org/sax/properties/lexical-handler",guard);reader.setProperty("http://xml.org/sax/properties/declaration-handler",guard);reader.parse(input);
+            // The historical OWLAPI grammar deliberately tolerates several
+            // malformed RDF/XML constructs. Validate RDF grammar independently
+            // with the already pinned RDF4J parser before any semantic callback.
+            // Reuse the secured reader and immutable bytes. This pass supplies
+            // no graph or source locations and must not duplicate declarations.
+            reader.setProperty("http://xml.org/sax/properties/declaration-handler",new DefaultHandler2());
+            var syntax=new org.eclipse.rdf4j.rio.rdfxml.RDFXMLParser(){
+                @Override protected XMLReader getXMLReader(){return reader;}
+            };
+            var syntaxConfig=syntax.getParserConfig();
+            syntaxConfig.set(org.eclipse.rdf4j.rio.helpers.BasicParserSettings.VERIFY_DATATYPE_VALUES,false);
+            syntaxConfig.set(org.eclipse.rdf4j.rio.helpers.BasicParserSettings.NORMALIZE_DATATYPE_VALUES,false);
+            syntaxConfig.set(org.eclipse.rdf4j.rio.helpers.BasicParserSettings.FAIL_ON_UNKNOWN_DATATYPES,false);
+            syntaxConfig.set(org.eclipse.rdf4j.rio.helpers.BasicParserSettings.VERIFY_LANGUAGE_TAGS,false);
+            syntaxConfig.set(org.eclipse.rdf4j.rio.helpers.XMLParserSettings.FAIL_ON_NON_STANDARD_ATTRIBUTES,true);
+            syntaxConfig.set(org.eclipse.rdf4j.rio.helpers.XMLParserSettings.FAIL_ON_INVALID_NCNAME,true);
+            syntaxConfig.set(org.eclipse.rdf4j.rio.helpers.XMLParserSettings.FAIL_ON_INVALID_QNAME,true);
+            syntaxConfig.set(org.eclipse.rdf4j.rio.helpers.XMLParserSettings.FAIL_ON_DUPLICATE_RDF_ID,true);
+            syntaxConfig.set(org.eclipse.rdf4j.rio.helpers.XMLParserSettings.PARSE_STANDALONE_DOCUMENTS,true);
+            syntax.setRDFHandler(new org.eclipse.rdf4j.rio.helpers.AbstractRDFHandler(){
+                @Override public void handleStatement(org.eclipse.rdf4j.model.Statement statement){if(store!=null)store.check();}
+            });
+            try{syntax.parse(new StringReader(content),document.toString());}
+            catch(org.eclipse.rdf4j.rio.RDFParseException e){throw new SAXException("Invalid RDF/XML grammar",e);}
             // Index only after the shared safety/version preflight has passed;
             // ordinary parsing never creates a lexical/source index.
             if(store!=null)scanner=new RDFXMLRawScanner(content,store);
@@ -151,10 +175,26 @@ public final class LocatedRDFXMLParser extends LocatedRDFXMLSyntaxParser {
             InputSource sameInput=new InputSource(new StringReader(content));semantic.parse(sameInput);
         }catch(javax.xml.parsers.ParserConfigurationException e){throw new SAXException("Secure XML parser configuration unavailable",e);}
     }
+    static boolean hasPropertyAttributes(Attributes attributes){
+        for(int i=0;i<attributes.getLength();i++){
+            String ns=attributes.getURI(i),name=attributes.getLocalName(i);
+            if(!attributes.getQName(i).toLowerCase(Locale.ROOT).startsWith("xml")&&!XML.equals(ns)&&!XMLNS.equals(ns)
+                &&(!RDF.equals(ns)||!Set.of("ID","about","resource","nodeID","parseType","datatype").contains(name)))return true;
+        }
+        return false;
+    }
+    static String attributeName(String namespace,String local){
+        return namespace.isEmpty()&&Set.of("ID","about","resource","parseType","type").contains(local)?RDF+local:namespace+local;
+    }
+    static Attributes semanticAttributes(Attributes attributes){
+        org.xml.sax.helpers.AttributesImpl result=new org.xml.sax.helpers.AttributesImpl(attributes);
+        for(int i=0;i<result.getLength();i++)if(result.getURI(i).isEmpty()&&attributeName("",result.getLocalName(i)).startsWith(RDF))result.setURI(i,RDF);
+        return result;
+    }
     @Override public void processingInstruction(String target,String data){if("include-rdf".equals(target))throw new MappingException("External RDF inclusion is not an admitted closure operation");super.processingInstruction(target,data);}
     int xmlDepth;
     @Override public void startElement(String uri,String local,String qname,Attributes attributes)throws SAXException {
-        if(++xmlDepth>256)throw new LimitException("XML depth budget");if(store!=null)open(uri,local,qname,attributes);super.startElement(uri,local,qname,attributes);
+        if(++xmlDepth>256)throw new LimitException("XML depth budget");if(store!=null)open(uri,local,qname,attributes);super.startElement(uri,local,qname,state instanceof LocatedXMLParseTypeLiteralElement?attributes:semanticAttributes(attributes));
     }
     @Override public void endElement(String uri,String local,String qname)throws SAXException {
         super.endElement(uri,local,qname);if(store!=null){Frame f=frames.pop();if(!f.raw.qname.equals(qname)||!f.text.toString().equals(f.raw.textValue.toString()))throw new MappingException("SAX text/end event differs from original XML");store.check();}xmlDepth--;
@@ -162,6 +202,7 @@ public final class LocatedRDFXMLParser extends LocatedRDFXMLSyntaxParser {
     @Override public void characters(char[] chars,int start,int length)throws SAXException {if(store!=null&&!frames.isEmpty()){frames.peek().text.append(chars,start,length);store.check();}super.characters(chars,start,length);}
     @Override public void ignorableWhitespace(char[] chars,int start,int length)throws SAXException {if(store!=null&&!frames.isEmpty())frames.peek().text.append(chars,start,length);super.ignorableWhitespace(chars,start,length);}
     void open(String uri,String local,String qname,Attributes attributes){
+        boolean literalContent=state instanceof LocatedXMLParseTypeLiteralElement;
         store.check();if(nextNode>=scanner.preorder.size())throw new MappingException("SAX element has no original source");RDFXMLRawScanner.Node raw=scanner.preorder.get(nextNode++);Frame parent=frames.peek();
         if(!raw.qname.equals(qname)||raw.parent!=(parent==null?null:parent.raw))throw new MappingException("SAX element order differs from original XML");
         Map<String,Binding> ns=new LinkedHashMap<>();if(parent!=null)ns.putAll(parent.namespaces);else ns.put("xml",new Binding(XML,xmlContext));
@@ -176,10 +217,10 @@ public final class LocatedRDFXMLParser extends LocatedRDFXMLSyntaxParser {
         Frame f=new Frame(raw,parent,ns,base,baseCtx,lang,langCtx);if(parent!=null)parent.children.add(f);
         if(!expanded(qname,false,ns).equals(uri+local))throw new MappingException("SAX element namespace differs from original XML");
         for(var attr:raw.attributes.values())if(!attr.name.equals("xmlns")&&!attr.name.startsWith("xmlns:")){
-            String expanded=expanded(attr.name,true,ns);if(f.expandedAttributes.putIfAbsent(expanded,attr)!=null)throw new MappingException("Duplicate expanded original XML attribute");
+            String expanded=!literalContent&&!attr.name.contains(":")?attributeName("",attr.name):expanded(attr.name,true,ns);if(f.expandedAttributes.putIfAbsent(expanded,attr)!=null)throw new MappingException("Duplicate expanded original XML attribute");
         }
         Set<String> seen=new HashSet<>();for(int i=0;i<attributes.getLength();i++){
-            if(XMLNS.equals(attributes.getURI(i)))continue;String key=attributes.getURI(i)+attributes.getLocalName(i);var indexed=f.expandedAttributes.get(key);
+            if(XMLNS.equals(attributes.getURI(i)))continue;String key=literalContent?attributes.getURI(i)+attributes.getLocalName(i):attributeName(attributes.getURI(i),attributes.getLocalName(i));var indexed=f.expandedAttributes.get(key);
             if(indexed==null||!indexed.name.equals(attributes.getQName(i))||!indexed.value.equals(attributes.getValue(i))||!seen.add(key))throw new MappingException("SAX attribute differs from original XML/DTD normalization");
         }
         if(seen.size()!=f.expandedAttributes.size())throw new MappingException("Original XML attribute missing from actual SAX event");frames.push(f);

@@ -513,7 +513,7 @@
   },
   "turtlePatch": {
     "file": "turtle-compat.json",
-    "sha256": "05c78eb5e2cb80696c92d4b5c55e53e39d39abdf800b84215e5c902716204cca"
+    "sha256": "d1e92ada811280dc0d3a0590ad283a15f2fd6a9f0cc2f1929c1e4741c917f9bd"
   },
   "rdfMappingPatch": {
     "file": "rdf-mapping-compat.json",
@@ -521,6 +521,6 @@
   },
   "rdfxmlPatch": {
     "file": "rdfxml-compat.json",
-    "sha256": "d57f60658242604a3b32e93947b236416a29eb9c5b69e1d57218d70b0e4b1f05"
+    "sha256": "ed3ef8d42fda3590ae93b17b63af1424c066cc7dccbca4a05a2a5a59b9f362f6"
   }
 }

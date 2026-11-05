@@ -112,8 +112,8 @@ async function inspect(...cases){
 }
 const prefix='@prefix : <urn:located:> .\n';
 const triples=result=>result.locatedEvents.filter(e=>['RESOURCE','STRING','LANGUAGE','TYPED'].includes(e.kind));
-function parity(result,content){
-  assert.equal(result.originalStatus,'PARSED',JSON.stringify(result));assert.equal(result.locatedStatus,'PARSED',JSON.stringify(result));assert.equal(result.unlocatedStatus,'PARSED',JSON.stringify(result));assert.equal(result.returned,true);assert.equal(result.observerActive,0);assert.deepEqual(result.locatedEvents,result.originalEvents);assert.deepEqual(result.unlocatedEvents,result.locatedEvents);
+function parity(result,content,compareOriginal=true){
+  assert.equal(result.originalStatus,'PARSED',JSON.stringify(result));assert.equal(result.locatedStatus,'PARSED',JSON.stringify(result));assert.equal(result.unlocatedStatus,'PARSED',JSON.stringify(result));assert.equal(result.returned,true);assert.equal(result.observerActive,0);if(compareOriginal)assert.deepEqual(result.locatedEvents,result.originalEvents);assert.deepEqual(result.unlocatedEvents,result.locatedEvents);
   const sources=new Map(result.sources.map(s=>[s.id,s]));assert.equal(sources.size,result.sources.length);const contexts=new Map(result.contexts.map(c=>[c.id,c]));assert.equal(contexts.size,result.contexts.length);
   for(const s of sources.values()){assert.ok(s.id>0&&s.start>=0&&s.end>s.start&&s.end<=content.length);assert.equal(content.slice(s.start,s.end),s.text);assert.ok(!(s.start>0&&/[\uDC00-\uDFFF]/.test(content[s.start])));}
   assert.deepEqual(result.occurrences.map(o=>o.id),result.observedIds);assert.equal(result.occurrences.length,triples(result).length);
@@ -140,7 +140,9 @@ test('semicolon and comma events retain the exact inherited subject and predicat
 
 test('nested blank property lists and collections retain generated triples and sealed real construct ranges',async()=>{
   const nested='[ :p ( :one [ :q "nested" ] ( :two ) ) ; :empty () ]',content=prefix+':s :has '+nested+' .\n_:shared :p :one . :s :shares _:shared .';
-  const [r]=await inspect({content});const sources=parity(r,content);assert.ok(r.occurrences.length>10);
+  const [r]=await inspect({content});const sources=parity(r,content,false);assert.ok(r.occurrences.length>10);
+  assert.equal(r.occurrences.filter(o=>o.triple.predicate==='http://www.w3.org/1999/02/22-rdf-syntax-ns#type').length,0,'Turtle collections emit first/rest, not an extra rdf:List type');
+  const shared=r.occurrences.find(o=>o.triple.predicate==='urn:located:shares').triple.resource;assert.match(shared,/^_:/);assert.ok(r.occurrences.some(o=>o.triple.subject===shared&&o.triple.predicate==='urn:located:p'));
   const outer=r.occurrences.find(o=>o.triple.predicate==='urn:located:has');assert.equal(sources.get(outer.object.sourceId).text,nested);assert.equal(outer.object.generated,true);
   const generated=r.occurrences.filter(o=>o.generatedKind!==null);assert.ok(generated.length>0);assert.ok(generated.some(o=>o.triple.predicate==='http://www.w3.org/1999/02/22-rdf-syntax-ns#first'));assert.ok(generated.some(o=>o.triple.predicate==='http://www.w3.org/1999/02/22-rdf-syntax-ns#rest'));
   assert.ok(r.sources.some(s=>s.kind==='COLLECTION'&&s.text==='()'));
@@ -150,7 +152,9 @@ test('raw source coordinates survive Unicode escapes, supplementary characters, 
   const slash=String.fromCharCode(92),lexical='"escaped '+slash+'" quote and '+slash+slash+' slash; '+slash+'u96EA '+slash+'U0001F600"';
   const long='"'+('a'.repeat(9000))+'😀\\nend"';
   const content=prefix+'@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\r\n:s :p '+lexical+' ; :long '+long+' ; :number 12.5e2 ; :typed "1"^^xsd:integer ; :bool true ; :iri <urn:escaped:\\u0041> .';
-  const [r]=await inspect({content});const sources=parity(r,content);
+  const [r]=await inspect({content});const sources=parity(r,content,false);
+  assert.equal(r.occurrences.find(o=>o.triple.predicate==='urn:located:p').triple.literal,'escaped " quote and \\ slash; 雪 😀');
+  assert.equal(r.occurrences.find(o=>o.triple.predicate==='urn:located:long').triple.literal,'a'.repeat(9000)+'😀\nend');
   for(const [predicate,expected] of [['p',lexical],['long',long]]){const o=r.occurrences.find(o=>o.triple.predicate==='urn:located:'+predicate);assert.equal(sources.get(o.object.sourceId).text,expected);}
   assert.ok(r.sources.some(s=>s.text.includes('\\u0041')),'The original escape spelling must not be replaced with the decoded IRI');
 });
@@ -223,11 +227,13 @@ test('ordinary parsing does not acquire located occurrence or directive capacity
   assert.deepEqual(r.unlocatedCounts,r.originalCounts);assert.deepEqual(r.unlocatedCounts,{resources:count,plain:0,languages:0,datatypes:0,prefixes:directives,bases:0,ends:1});
 });
 
-test('upstream builtin prefixes retain explicit context identities without fabricated source spans',async()=>{
+test('Turtle requires explicit prefix declarations and binds them to original source spans',async()=>{
   const content=prefix+':A rdf:type owl:Class . :A rdfs:label "A"^^xsd:string . :A xml:lang "en" .';
-  const [r]=await inspect({content});parity(r,content);const contexts=new Map(r.contexts.map(c=>[c.id,c]));
-  const seen=new Set();for(const o of r.occurrences)for(const t of [o.subject,o.predicate,o.object])for(const id of t.contextIds){const c=contexts.get(id);if(c.kind==='BUILTIN'){assert.equal(c.sourceId,0);seen.add(c.prefixName);}}
-  for(const name of ['rdf:','owl:','rdfs:','xsd:','xml:'])assert.ok(seen.has(name),name+' actual builtin dependency');
+  const [bad]=await inspect({content});assert.equal(bad.originalStatus,'PARSED','Historical implicit-prefix extension is separately observed');assert.equal(bad.locatedStatus,'PARSE_ERROR');assert.equal(bad.unlocatedStatus,'PARSE_ERROR');assert.equal(bad.returned,false);
+  const declarations=[['rdf','http://www.w3.org/1999/02/22-rdf-syntax-ns#'],['owl','http://www.w3.org/2002/07/owl#'],['rdfs','http://www.w3.org/2000/01/rdf-schema#'],['xsd','http://www.w3.org/2001/XMLSchema#'],['xml','http://www.w3.org/XML/1998/namespace']].map(([name,iri])=>'@prefix '+name+': <'+iri+'> .\n').join('');
+  const fixed=declarations+content,[r]=await inspect({content:fixed});parity(r,fixed,false);const contexts=new Map(r.contexts.map(c=>[c.id,c]));
+  const seen=new Set();for(const o of r.occurrences)for(const t of [o.subject,o.predicate,o.object])for(const id of t.contextIds){const c=contexts.get(id);assert.equal(c.kind,'PREFIX');assert.ok(c.sourceId>0);seen.add(c.prefixName);}
+  for(const name of ['rdf:','owl:','rdfs:','xsd:','xml:'])assert.ok(seen.has(name),name+' declared dependency');
 });
 
 test('duplicate triples remain distinct occurrences and limits or malformed input return no partial result',async()=>{
