@@ -6,6 +6,13 @@ import {join,dirname} from 'node:path';
 import {collectorArguments,openCollector,verifyArtifactChunks} from '../acceptance/v090/public-collector.mjs';
 import {hashBytes} from '../../scripts/standards-gate.mjs';
 import {verifyRuntimePayload,verifyRelocatedPython} from '../acceptance/v090/published-installation.mjs';
+import {validateCompletedHostCall} from '../acceptance/v090/host-public.mjs';
+test('actual Host domain refusals retain structured errors while transport failures and unfinished calls cannot pass',()=>{
+  const refused={server:'evopilot-ontology',status:'failed',error:null,result:{structured_content:{error:{code:'NOT_FOUND',message:'Project not initialized'}}}};
+  assert.doesNotThrow(()=>validateCompletedHostCall(refused));
+  assert.doesNotThrow(()=>validateCompletedHostCall({...refused,status:'completed',result:{structured_content:{result:{authority:false}}}}));
+  for(const changed of [{...refused,status:'in_progress'},{...refused,error:{message:'Connection failed'}},{...refused,result:null},{...refused,result:{structured_content:{error:{message:'No typed code'}}}},{...refused,status:'completed'},{...refused,result:{structured_content:{...refused.result.structured_content,result:{}}}}])assert.throws(()=>validateCompletedHostCall(changed));
+});
 test('formal collector refuses a missing report approval before creating an output or installation',async t=>{
   const root=realpathSync(mkdtempSync(join(tmpdir(),'ontology-collector-gate-')));t.after(()=>rmSync(root,{recursive:true,force:true}));const output=join(root,'must-not-exist');
   await assert.rejects(openCollector('AUTH',new URL('../acceptance/v090/auth.mjs',import.meta.url),['--evidence',root,'--request','product-e2e-request.json','--output',output]));assert.equal(existsSync(output),false);
