@@ -32,7 +32,7 @@ export function serveBridge(connectionFile:string){
   const withClient=async<T>(use:(client:Client)=>Promise<T>,signal:AbortSignal):Promise<T>=>{
     signal.throwIfAborted();
     if(active>=4)fail('BRIDGE_BUSY','Bridge concurrency budget reached',429);active++;
-    const client=new Client({name:'evopilot-ontology-private-bridge',version:'0.9.0-dev.P1'});
+    const client=new Client({name:'evopilot-ontology-private-bridge',version:'0.9.0'});
     clients.add(client);
     let phase:BridgePhase='LOCAL_BINDING',failed=false;
     try{
@@ -58,7 +58,7 @@ export function serveBridge(connectionFile:string){
     }
   };
   const handle=serveStdio(()=>{
-    const server=new Server({name:'evopilot-ontology',version:'0.9.0-dev.P1'},{capabilities:{tools:{}},instructions:'Use ontology_context to inspect the actual connected service. This adapter forwards to authenticated HTTP MCP; it has no owner database fallback or installer tools. Reconcile uncertain writes by original request ID.'});
+    const server=new Server({name:'evopilot-ontology',version:'0.9.0'},{capabilities:{tools:{}},instructions:'Use ontology_context to inspect the actual connected service. This adapter forwards to authenticated HTTP MCP; it has no owner database fallback or installer tools. Reconcile uncertain writes by original request ID.'});
     server.setRequestHandler('tools/list',async(request,context)=>{
       try{return await withClient(client=>client.listTools(request.params,{timeout:5000,cacheMode:'bypass',signal:context.mcpReq.signal}),context.mcpReq.signal);}
       finally{if(context.mcpReq.signal.aborted)transport.releaseCancelledRequest(context.mcpReq.id);}
