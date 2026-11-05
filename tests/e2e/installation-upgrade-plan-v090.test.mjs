@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {execFile} from 'node:child_process';
-import {hashBytes} from '../../dist/standalone/validation.js';
+import {hash,hashBytes} from '../../dist/standalone/validation.js';
 import {PLUGIN_PATHS as P} from '../../dist/installation/plugin-content.js';
 
 const source=fileURLToPath(new URL('../..',import.meta.url));
@@ -35,6 +35,23 @@ function inventory(root){
   const result=[];const visit=(p,r)=>{const s=lstatSync(p);result.push([r,s.dev,s.ino,s.mode&0o777,s.isFile()?hashBytes(readFileSync(p)):null]);if(s.isDirectory())for(const n of readdirSync(p).sort())visit(join(p,n),r+'/'+n);};visit(root,'');return result;
 }
 const prepare=(f,expected)=>upgrade.prepareInstallationUpgrade(f.i.root,f.input,expected);
+
+test('upgrade binds each SHACL adapter to its own installed package, preserving strict execution and mismatch refusal',async()=>{
+  const f=fixture('adapter-transition'),candidateRoot=join(base,'adapter-next-runtime');cpSync(next.root,candidateRoot,{recursive:true,verbatimSymlinks:true});
+  const packageRoot=join(candidateRoot,'node_modules/@evopilot-next/ontology'),sourceFile=join(packageRoot,'src/native-v2/shacl-worker.py'),content=readFileSync(sourceFile,'utf8')+'\n# Synthetic adapter revision for upgrade binding regression\n';writeFileSync(sourceFile,content);
+  const workerRoot=join(base,'adapter-next-worker');mkdirSync(workerRoot,{mode:0o700});writeFileSync(join(workerRoot,'worker.py'),content,{mode:0o600});
+  const original=JSON.parse(readFileSync(tools.shacl.toolchainFile)),{digest:_,...identity}=original,selected={...identity,root:workerRoot,adapterDigest:hashBytes(content)};
+  const manifest={...selected,digest:hash(selected)},toolchainFile=join(workerRoot,'toolchain.json');writeFileSync(toolchainFile,JSON.stringify(manifest),{mode:0o600});
+  const r=await import(pathToFileURL(join(runtime.packageRoot,'dist/installation/runtime.js'))),reader=await import(pathToFileURL(join(runtime.packageRoot,'dist/native-v2/shacl-toolchain.js'))),candidate=r.inspectRuntime(candidateRoot);
+  assert.throws(()=>reader.readSHACLToolchain(toolchainFile),code('TOOLCHAIN_DRIFT'),'Execution must still bind to its own package');
+  reader.verifySHACLToolchain(reader.readSHACLToolchain(toolchainFile,candidate.packageRoot));
+  const input={...f.input,runtimeRoot:candidate.root,runtimeDigest:candidate.digest,toolchains:{...tools,shacl:{toolchainFile,toolchainDigest:manifest.digest}}};
+  const before=[inventory(f.i.root),inventory(f.i.workspaceRoot)],plan=upgrade.prepareInstallationUpgrade(f.i.root,input);assert.equal(plan.report.status,'READY');
+  assert.equal(plan.report.ownerSnapshot.toolchainBindingDigest,manager.inspectInstallationToolchains(f.i.root).bindingDigest);
+  assert.equal(plan.report.toolchainDraft.shacl.toolchainDigest,manifest.digest);assert.deepEqual([inventory(f.i.root),inventory(f.i.workspaceRoot)],before);
+  assert.throws(()=>upgrade.prepareInstallationUpgrade(f.i.root,{...input,toolchains:tools}),code('TOOLCHAIN_DRIFT'),'New package cannot retain an incompatible old adapter');
+  assert.throws(()=>reader.readSHACLToolchain(tools.shacl.toolchainFile,candidate.packageRoot),code('TOOLCHAIN_DRIFT'));
+});
 
 test('installed upgrade inspection binds one stable owner/plugin/tool plan without changing current installation',async()=>{
   const f=fixture('stable'),custom=join(f.i.root,'plugin/private.bin');writeFileSync(custom,Buffer.from('private-synthetic-sentinel'),{mode:0o600});

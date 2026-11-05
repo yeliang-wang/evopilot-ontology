@@ -75,7 +75,7 @@ export function prepareInstallationUpgradeLocked(i:Installation,store:WorkspaceS
   if(input.toolchains){
     const prospective={...i,runtime:plugin.runtime},bindingInput={...input.toolchains,requestId:input.requestId,previousBindingDigest:previous};
     toolchainDraft=prepareToolchainBinding(prospective,bindingInput,ledger);
-    const dl=readDLToolchain(input.toolchains.dl.toolchainFile),shacl=readSHACLToolchain(input.toolchains.shacl.toolchainFile);
+    const dl=readDLToolchain(input.toolchains.dl.toolchainFile),shacl=readSHACLToolchain(input.toolchains.shacl.toolchainFile,plugin.runtime.packageRoot);
     for(const root of [dl.root,dl.javaRoot,shacl.root,shacl.runtimeRoot])assertSeparate(input.upgradeRoot,root);
     if(backupHash(prepareToolchainBinding(prospective,bindingInput,ledger))!==backupHash(toolchainDraft))fail('UPGRADE_CHANGED','Toolchain preparation changed during inspection',409);
   }

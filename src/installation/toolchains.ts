@@ -95,7 +95,7 @@ export function verifySelections(i:Installation,input:Pick<BindToolchainsInput,'
   for(const selected of [input.dl,input.shacl]){
     selection(selected);if(realpathSync(selected.toolchainFile)!==selected.toolchainFile)fail('UNSAFE_PATH','Canonical toolchain file path required');
   }
-  const dl=readDLToolchain(input.dl.toolchainFile),shacl=readSHACLToolchain(input.shacl.toolchainFile);
+  const dl=readDLToolchain(input.dl.toolchainFile),shacl=readSHACLToolchain(input.shacl.toolchainFile,i.runtime.packageRoot);
   if(dl.digest!==input.dl.toolchainDigest||shacl.digest!==input.shacl.toolchainDigest)fail('TOOLCHAIN_BINDING_DRIFT','Selected toolchain differs from its pinned digest',409);
   for(const root of [dl.root,dl.javaRoot,shacl.root,shacl.runtimeRoot]){
     if(outsideSource(root)!==root)fail('UNSAFE_PATH','Installed executor roots must be canonical and outside source');

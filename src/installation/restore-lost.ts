@@ -43,7 +43,7 @@ function sourceTools(p:Plan,storage:string):void {
   if(run?.toolchainBindingDigest&&!ledger.records.some(r=>r.digest===run.toolchainBindingDigest))fail('TOOLCHAIN_BINDING_MISSING','Original run requires its retained binding',409);
   if(run&&!['STOPPED','FAILED'].includes(run.state)&&processPresent(run.pid)!==false)fail('LAUNCH_UNKNOWN','Snapshot launch is unresolved on this host; no PID was signalled',409);
   if(binding){
-    verifySelections(i,binding.binding);const dl=readDLToolchain(binding.binding.dl.toolchainFile),shacl=readSHACLToolchain(binding.binding.shacl.toolchainFile);
+    verifySelections(i,binding.binding);const dl=readDLToolchain(binding.binding.dl.toolchainFile),shacl=readSHACLToolchain(binding.binding.shacl.toolchainFile,i.runtime.packageRoot);
     for(const external of [dl.root,dl.javaRoot,shacl.root,shacl.runtimeRoot])assertSeparate(p.recoveryRoot,external);
   }
 }

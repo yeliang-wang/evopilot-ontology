@@ -75,7 +75,7 @@ export function inspectStoppedOwnerBackupPlan(i:Installation,store:WorkspaceStor
   if(binding){
     const b=binding.binding,root=b.workRoot;roots.push(root);privatePath(root,true);
     if(!equal(JSON.parse(privateRead(join(root,'owner.json'),4096)),{schema:'ontology-managed-work/v1',installationId:i.installationId,workspaceId:i.workspaceId,serviceId:i.serviceId,root}))fail('WORK_ROOT_CONFLICT','Foreign worker root',409);
-    const dl=readDLToolchain(b.dl.toolchainFile),shacl=readSHACLToolchain(b.shacl.toolchainFile);
+    const dl=readDLToolchain(b.dl.toolchainFile),shacl=readSHACLToolchain(b.shacl.toolchainFile,i.runtime.packageRoot);
     if(dl.digest!==b.dl.toolchainDigest||shacl.digest!==b.shacl.toolchainDigest)fail('TOOLCHAIN_BINDING_DRIFT','Original toolchain manifest differs',409);
     for(const external of [dl.root,dl.javaRoot,shacl.root,shacl.runtimeRoot])assertSeparate(backupRoot,external);
     requireWorkerMaintenanceComplete(root);

@@ -15,7 +15,7 @@ export interface SHACLToolchain {
   schema:'ontology-shacl-toolchain/v2';root:string;runtimeRoot:string;python:string;pythonVersion:'3.12.12';pyshacl:'0.40.1';rdflib:'7.6.0';platform:string;arch:string;adapterDigest:string;runtimeFiles:RuntimeFile[];digest:string;
 }
 export const shaclWorkerSource=()=>fileURLToPath(new URL('../../src/native-v2/shacl-worker.py',import.meta.url));
-export function readSHACLToolchain(file:string):SHACLToolchain {
+export function readSHACLToolchain(file:string,installedPackageRoot?:string):SHACLToolchain {
   if(!isAbsolute(file))fail('UNSAFE_PATH','Absolute private SHACL toolchain binding required');
   const v:unknown=JSON.parse(privateRead(file,4*1024*1024));
   exact(v,['schema','root','runtimeRoot','python','pythonVersion','pyshacl','rdflib','platform','arch','adapterDigest','runtimeFiles','digest']);
@@ -32,7 +32,13 @@ export function readSHACLToolchain(file:string):SHACLToolchain {
   boundedJSON({...v,runtimeFiles:[]},4*1024*1024);
   for(const f of v.runtimeFiles){boundedJSON(f,8192);exact(f,['path','kind','digest','mode']);digest(f.digest);if(typeof f.path!=='string'||!f.path.startsWith('python/')&&!f.path.startsWith('venv/')||f.path.split('/').some(p=>['','..','.'].includes(p))||!['file','link'].includes(f.kind as string)||!Number.isInteger(f.mode))fail('TOOLCHAIN_NOT_READY','Invalid Python runtime inventory');}
   const {digest:bound,...identity}=v;if(hash(identity as unknown as Json)!==bound)fail('TOOLCHAIN_DRIFT','SHACL toolchain identity differs');
-  if(v.adapterDigest!==fileDigest(shaclWorkerSource(),1024*1024))fail('TOOLCHAIN_DRIFT','Installed adapter differs from this package source');
+  // Execution uses this package by default. Stopped-owner maintenance can
+  // inspect another verified installed revision without confusing its adapter
+  // with the operator CLI's own revision. Callers bind the package via runtime
+  // inventory verification; a manifest cannot supply this selection itself.
+  if(installedPackageRoot!==undefined&&(!isAbsolute(installedPackageRoot)||realpathSync(installedPackageRoot)!==installedPackageRoot))fail('UNSAFE_PATH','Canonical installed product package required');
+  const source=installedPackageRoot===undefined?shaclWorkerSource():join(installedPackageRoot,'src/native-v2/shacl-worker.py');
+  if(v.adapterDigest!==fileDigest(source,1024*1024))fail('TOOLCHAIN_DRIFT','Installed adapter differs from the selected package source');
   return v as unknown as SHACLToolchain;
 }
 export function verifySHACLToolchain(v:SHACLToolchain):void {

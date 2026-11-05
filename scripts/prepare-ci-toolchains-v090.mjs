@@ -1,6 +1,6 @@
 // Source CI preparation only. Distribution installation uses the public installer.
 import assert from 'node:assert/strict';
-import {readFileSync,writeFileSync,mkdirSync,appendFileSync,realpathSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,appendFileSync,realpathSync,openSync,closeSync} from 'node:fs';
 import {join,resolve,isAbsolute} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
@@ -15,10 +15,14 @@ assert(!root.startsWith(source),'CI materials must remain outside the source che
 mkdirSync(root,{mode:0o700});
 const write=(name,value)=>writeFileSync(join(root,name),JSON.stringify(value,null,2)+'\n',{flag:'wx',mode:0o600});
 function run(label,args,timeout=300000){
-  const p=spawnSync(process.execPath,args,{cwd:source,env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'},encoding:'utf8',timeout,maxBuffer:16*1024*1024});
-  write(label+'.json',{args,stdout:p.stdout,stderr:p.stderr,status:p.status,error:p.error?.message??null});
+  const stdout=join(root,label+'.stdout'),stderr=join(root,label+'.stderr'),out=openSync(stdout,'wx',0o600),err=openSync(stderr,'wx',0o600);let p;
+  // The frozen legacy CLI exits explicitly; a file descriptor preserves its
+  // complete large JSON where a pipe may lose pending asynchronous stdout.
+  try{p=spawnSync(process.execPath,args,{cwd:source,env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'},stdio:['ignore',out,err],timeout});}
+  finally{closeSync(out);closeSync(err);}
+  write(label+'.json',{args,stdout,stderr,status:p.status,error:p.error?.message??null});
   assert.ifError(p.error);assert.equal(p.status,0,'Inspect retained '+label+'.json before retry');
-  return JSON.parse(p.stdout);
+  try{return JSON.parse(readFileSync(stdout,'utf8'));}catch{throw Error('Invalid JSON; inspect retained '+stdout);}
 }
 const native=run('native-prepare',['vendor/compatibility/v1/toolchain/cli.js','prepare','--cache',join(root,'native-cache')],600000);
 write('native-toolchain.json',native);
