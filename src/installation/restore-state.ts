@@ -1,4 +1,5 @@
 import {DatabaseSync} from 'node:sqlite';
+import {readResetRecords} from '../standalone/reset-records.js';
 import type {SQLInputValue,SQLOutputValue} from 'node:sqlite';
 import {mkdirSync,chmodSync,openSync,closeSync,readFileSync,writeSync,fsyncSync,lstatSync,fstatSync,readdirSync,constants} from 'node:fs';
 import {join,dirname,isAbsolute,resolve} from 'node:path';
@@ -70,6 +71,7 @@ function sources<T>(input:RestoreStateInput,use:(snapshot:Source,retained:Source
       const prefix='r'+input.generation+'.';
       if(s.identity.schema==='ontology-workspace/v2'&&s.identity.recovery.generation===input.generation||s.db.prepare('SELECT request_id FROM receipts WHERE substr(request_id,1,?)=? LIMIT 1').get(prefix.length,prefix))fail('RESTORE_GENERATION_CONFLICT','Recovery generation was already used',409);
     }
+    if(b&&backupHash(readResetRecords(a.root))!==backupHash(readResetRecords(b.root)))fail('RESTORE_RESET_CONFLICT','Selected snapshots cross an explicit asset deletion; choose a snapshot retaining the same reset tombstones',409);
     return use(a,b,layout,reference);
   }finally{reference?.close();b?.db.close();a.db.close();}
 }

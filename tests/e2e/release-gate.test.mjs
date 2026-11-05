@@ -109,14 +109,21 @@ test('child pack filenames are exact and notes contain only public references', 
   assert(!notes.includes('Historical specifications/v1, provenance and licenses remain unchanged'));
   assert(!notes.includes('27-scenario Expert catalogue'));
 });
-test('common workflow separates preparation from publication without inline input shell code', () => {
+test('independent workflow consumes exact source CI with read-only preparation and no publication', () => {
   const yaml = fs.readFileSync(new URL('../../.github/workflows/release.yml', import.meta.url), 'utf8');
-  assert.match(yaml, /name: Preview release preparation/);
+  assert.match(yaml, /name: Independent v0.9 source artifact preparation/);
   assert.match(yaml, /cancel-in-progress: false/);
-  assert.match(yaml, /publish:\n    if: \$\{\{ inputs.publish \}\}\n    needs: prepare/);
-  assert.equal((yaml.match(/contents: write/g) ?? []).length, 1);
+  assert.match(yaml, /contents: read/);
+  assert.match(yaml, /actions: read/);
+  assert.equal((yaml.match(/contents: write/g) ?? []).length, 0);
+  assert(!/^  publish:/m.test(yaml));
+  assert(!/gh release|npm publish|git push/.test(yaml));
   for (const line of yaml.split('\n').filter(l => /run:/.test(l))) assert(!line.includes('${{'));
-  assert.match(yaml, /actions\/download-artifact@v4/);
+  assert.match(yaml, /prepare-release-v090\.mjs/);
+  assert.match(yaml, /SOURCE_RUN_ID:/);
+  assert.match(yaml, /EXPECTED_COMMIT:/);
+  assert.match(yaml, /EXPECTED_DIGEST:/);
+  assert.match(yaml, /persist-credentials: false/);
 });
 test('remote mutations require definitive absence; existing and uncertain outcomes fail', () => {
   validateAbsence('HTTP/2.0 404 Not Found\n\n{"message":"Not Found"}', 1);

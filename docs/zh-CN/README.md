@@ -12,6 +12,7 @@
 | 评审和交付 | [生命周期合约（英文）](../../specifications/v2/lifecycle.md) |
 | 备份、恢复与升级 | [安装维护（英文）](../installation-maintenance-v090.md)、[worker 恢复（英文）](../worker-recovery-v090.md) |
 | 检查发布条件 | [标准评测](../standards-evaluation-v090.md)、[发布顺序](../release-v090.md) |
+| 显式清理指定测试资产 | [资产清理](../asset-reset_CN.md) |
 | 维护翻译或查阅完整参考 | [双语规则](documentation-languages.md)、[英文目录](../README.md) |
 
 Ontology 独立管理语义资产，Harness 管理质量及证据，Runtime 管理执行；后两者不是使用独立 Ontology 的前置依赖。私有来源、工作区及凭据不随源码发布。历史 v1 参考保留原义；选定旧测试资产待新版安装验收后清理，由用户之后手动重建业务资产。

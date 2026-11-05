@@ -7,9 +7,10 @@ state preparation reconciles selected history and credentials and installs
 request-generation guards. Retained-current restoration now verifies the stopped
 owner, activates reconciled drafts at the original workspace path and preserves
 current installation/worker storage. Missing-owner activation preserves copied
-historical worker storage through explicit lineage. Upgrade, customization merge,
-complete maintenance acceptance and selected test-asset reset remain required
-work. A verified backup or prepared database alone does not
+historical worker storage through explicit lineage. Upgrade and customization merge have installed operator paths.
+[Selected asset reset](asset-reset.md) now has an explicit inventory and resumable
+operator path; daily cleanup remains P6. Complete maintenance acceptance remains
+required. A verified backup or prepared database alone does not
 establish full restore capability.
 
 A killed formal worker may leave a journal for its empty `operator.sqlite`

@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { assertSeparate } from '../installation/files.js';
 import { openWorkspace } from './workspace.js';
+import {readResetRecords,guardResetRequest} from './reset-records.js';
 import {requireFreshRecoveryRequest,recoveryContext} from './recovery.js';
 import { expertGuide } from '../expert/guide.js';
 import { sourceStore } from '../native-v2/store.js';
@@ -23,6 +24,7 @@ export const READ_OPERATIONS = Object.freeze(['service.inspect','guide.read','pr
 export const WRITE_OPERATIONS = Object.freeze(['project.create','intent.record','source.admit','model.record','reasoning.start','reasoning.cancel','expectations.record','validation.start','validation.cancel','shacl.start','shacl.cancel','view.record','review.prepare','review.decide','delivery.record']);
 export function createStandaloneService(options: {root: string; workspaceId: string; serviceId: string;reasoning?:ReasoningConfiguration;validation?:ReasoningConfiguration}) {
   const store=openWorkspace(options.root,options), {db,identity}=store;
+  const resetHistory=readResetRecords(store.root);
   const sources=sourceStore(db);
   const models=modelStore(db),views=viewStore(db),expectations=expectationStore(db);
   let tasks:ReturnType<typeof reasoningTasks>;
@@ -77,6 +79,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
     if (value.workspaceId!==identity.workspaceId || value.serviceId!==identity.serviceId) fail('IDENTITY_MISMATCH','Selected service/workspace differs from request',403);
     if (!write && !READ_OPERATIONS.includes(value.operation)) fail('UNSUPPORTED_OPERATION','Operation is not implemented',404);
     const {projectId,operation,input}=value;
+    guardResetRequest(resetHistory,projectId,grant.principalId,value.requestId,operation,input);
     db.exec(write?'BEGIN IMMEDIATE':'BEGIN');
     try {
       const requestDigest=hash({workspaceId:identity.workspaceId,serviceId:identity.serviceId,projectId,operation,input});
@@ -190,6 +193,7 @@ export function createStandaloneService(options: {root: string; workspaceId: str
         result=JSON.parse(String(row.receipt));
       }
       if (write) {
+        guardResetRequest(resetHistory,projectId,grant.principalId,undefined,operation,input,result);
         if (Number(db.prepare('SELECT count(*) AS n FROM receipts').get()!.n)>=LIMITS.receipts) fail('STATE_LIMIT','Receipt budget reached',409);
         const revision=(current?.revision??0)+1;
         if (!Number.isSafeInteger(revision)) fail('STATE_LIMIT','Revision exhausted',409);

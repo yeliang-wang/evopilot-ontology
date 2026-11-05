@@ -15,6 +15,7 @@ English | [简体中文](zh-CN/README.md)
 | Validate asserted or explicit derived graphs | [SHACL](../specifications/v2/shacl.md), [named views](../specifications/v2/views.md) |
 | Review changes and deliver an immutable asset | [Comparison](../specifications/v2/comparison.md), [review/delivery](../specifications/v2/lifecycle.md) |
 | Back up, restore, upgrade and recover uncertain tasks | [Installation maintenance](installation-maintenance-v090.md), [worker recovery](worker-recovery-v090.md) |
+| Explicitly clear selected test assets | [Asset reset](asset-reset.md) |
 | Understand scope, acceptance and release order | [Approved plan](ontology-v090-plan.md), [standards evaluation](standards-evaluation-v090.md), [release sequence](release-v090.md), [Roadmap](roadmap.md) |
 | Contribute | [Contribution rules](../CONTRIBUTING.md), [language policy](language-policy-v090.md), [security](../SECURITY.md), [changelog](../CHANGELOG.md) |
 

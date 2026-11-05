@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+import {readResetRecords} from './reset-records.js';
 import {validateUpgradeCompletionEnvelope} from '../installation/upgrade-receipt.js';
 import { constants, openSync, closeSync, readFileSync, lstatSync, realpathSync, readdirSync, fstatSync } from 'node:fs';
 import { resolve, join, isAbsolute, dirname } from 'node:path';
@@ -13,7 +14,7 @@ export const RESTORE_STAGE_BARRIER='restore-stage-barrier.json';
 export const RESTORE_ACTIVATION_BARRIER='restore-activation-barrier.json';
 export const UPGRADE_BARRIER='upgrade-barrier.json';
 export const UPGRADE_RECORDS='upgrade-requests';
-export interface MaintenancePermit {requestId:string;requestDigest:string;operation?:'UPGRADE'|'BACKUP';}
+export interface MaintenancePermit {requestId:string;requestDigest:string;operation?:'UPGRADE'|'BACKUP'|'RESET';}
 export interface UpgradeBarrier {schema:'ontology-upgrade-barrier/v1';root:string;upgradeRoot:string;installationId:string;workspaceId:string;serviceId:string;requestId:string;requestDigest:string;reportDigest:string;}
 export interface RestoreActivationBarrier extends MaintenancePermit {schema:'ontology-restore-activation-barrier/v1';root:string;recoveryRoot:string;installationId:string;workspaceId:string;serviceId:string;}
 export function readRestoreActivationBarrier(root:string):RestoreActivationBarrier|null {
@@ -86,6 +87,7 @@ function requireUpgradeAvailable(root:string,permit?:MaintenancePermit):void {
   }
 }
 export function requireMaintenanceAvailable(root:string,permit?:MaintenancePermit):void {
+  readResetRecords(root,permit);
   requireUpgradeAvailable(root,permit);
   // A materialized snapshot is not an activated owner. Even an interrupted
   // barrier write must fail closed before identity/credentials or tasks open.
