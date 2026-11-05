@@ -19,6 +19,7 @@ import org.semanticweb.owlapi.io.*;
 import org.semanticweb.owlapi.profiles.OWL2DLProfile;
 import org.semanticweb.owlapi.profiles.OWLProfileViolation;
 import org.semanticweb.owlapi.profiles.violations.LexicalNotInLexicalSpace;
+import org.semanticweb.owlapi.profiles.violations.UseOfIllegalAxiom;
 import org.semanticweb.owlapi.util.AnnotationWalkingControl;
 import org.semanticweb.owlapi.util.OWLObjectWalker;
 import org.semanticweb.owlapi.util.OWLObjectTransformer;
@@ -314,6 +315,13 @@ public final class Worker {
     var violations=new ArrayList<OWLProfileViolation>();
     for(var v:new OWL2DLProfile().checkOntology(o).getViolations())
       if(!(v instanceof LexicalNotInLexicalSpace l)||correctedStringLexical(l.getExpression())==null)violations.add(v);
+    // Structural Specification §11.2: one definition per custom datatype in
+    // the axiom closure. OWLAPI 5.5.1 checks cycles but omits this cardinality.
+    // Sets preserve a repeated identical axiom as one definition.
+    var definitions=new HashMap<OWLDatatype,Set<OWLDatatypeDefinitionAxiom>>();
+    o.importsClosure().flatMap(x->x.axioms(AxiomType.DATATYPE_DEFINITION)).forEach(a->definitions.computeIfAbsent(a.getDatatype(),k->new HashSet<>()).add(a));
+    for(var entries:definitions.values())if(entries.size()>1)
+      for(var axiom:entries)violations.add(new UseOfIllegalAxiom(o,axiom));
     var walker=new OWLObjectWalker<OWLOntology>(List.of(o),false,AnnotationWalkingControl.WALK_ANNOTATIONS);
     walker.walkStructure(new OWLObjectVisitor(){
       public void visit(OWLFacetRestriction facet){if(facet.getFacet()==org.semanticweb.owlapi.vocab.OWLFacet.PATTERN)XmlSchemaAutomata.pattern(facet.getFacetValue().getLiteral());}

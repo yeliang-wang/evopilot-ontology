@@ -327,6 +327,23 @@ test('illegal global restrictions fail before ordinary reasoning',async()=>{
   const result=await run(body,{kind:'legality'},'INVALID_INPUT');assert.equal(result.error.code,'OWL2_DL_PROFILE');assert.ok(result.result.violations.length>0);
 });
 
+test('a custom datatype has one definition across the complete DL axiom closure',async()=>{
+  // W3C Structural Specification §11.2 requires a single definition, even
+  // when two individually acyclic definitions would describe the same set.
+  const base='Declaration(Datatype(:D)) DatatypeDefinition(:D xsd:integer)';
+  await run(base,{kind:'legality'});
+  for(const second of ['xsd:string','DataIntersectionOf(xsd:integer xsd:decimal)']){
+    const rejected=await run(base+' DatatypeDefinition(:D '+second+')',{kind:'legality'},'INVALID_INPUT');
+    assert.equal(rejected.error.code,'OWL2_DL_PROFILE');assert(rejected.result.violations.some(v=>v.type==='UseOfIllegalAxiom'));
+  }
+  // Repetition of the exact same axiom is still one member of the axiom set.
+  await run(base+' DatatypeDefinition(:D xsd:integer)',{kind:'legality'});
+  const input=request('',{kind:'legality'});
+  input.closure.documents=[document(ofn('Import(<'+ns+'definitions>) '+base).replace('Ontology(','Ontology(<'+ns+'root> '),{ontologyIri:ns+'root'}),document(ofn('Declaration(Datatype(:D)) DatatypeDefinition(:D xsd:decimal)').replace('Ontology(','Ontology(<'+ns+'definitions> '),{id:'definitions',documentIri:ns+'definitions',ontologyIri:ns+'definitions'})];
+  input.closure.imports=[{from:'root',iri:ns+'definitions',to:'definitions'}];
+  const imported=await runner.run(input);assert.equal(imported.status,'INVALID_INPUT');assert.equal(imported.error.code,'OWL2_DL_PROFILE');
+});
+
 test('joint anonymous-individual queries do not combine different witnesses into one',async()=>{
   const body=declaration({classes:['B'],objects:['p'],individuals:['a','x','y']})+'\nObjectPropertyAssertion(:p :a :x) ClassAssertion(:B :y)';
   const task={kind:'entailment',query:query('ObjectPropertyAssertion(:p :a _:shared) ClassAssertion(:B _:shared)')};
