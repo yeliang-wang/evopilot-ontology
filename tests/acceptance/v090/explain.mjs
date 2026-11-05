@@ -1,12 +1,9 @@
 import assert from 'node:assert/strict';
-import {readFileSync,writeFileSync} from 'node:fs';
-import {join} from 'node:path';
-import {fileURLToPath} from 'node:url';
-import {spawnSync} from 'node:child_process';
 import {openNativeCollector,query,expectFormal} from './native-public.mjs';
 import {hashBytes} from '../../../scripts/standards-gate.mjs';
+import {convertFunctional,converterSource} from './replay-conversion.mjs';
 
-const converter=new URL('./ReplayConvert.java',import.meta.url),c=await openNativeCollector('EXPLAIN',import.meta.url,[converter]);let problem=null;
+const c=await openNativeCollector('EXPLAIN',import.meta.url,[new URL('./replay-conversion.mjs',import.meta.url),converterSource]);let problem=null;
 const chain='New-Feature-ObjectPropertyChain-001',conflict='DisjointClasses-002';
 const originalJobs=c.frozen('owl-inputs.json').jobs;
 const conclusion=job=>{
@@ -36,14 +33,9 @@ function verifyFragments(item){
   assert(count>0);return count;
 }
 function convertReplay(item,name){
-  const tool=JSON.parse(readFileSync(c.config.dl.path));assert.equal(tool.digest,c.config.dl.digest);
-  const jars=tool.runtimeFiles.filter(f=>f.kind==='file'&&f.path.startsWith('dependencies/')&&f.path.endsWith('.jar')).map(f=>{const path=join(tool.root,f.path);assert.equal(hashBytes(readFileSync(path)),f.digest);return path;});assert(jars.length);
-  const java=join(tool.javaRoot,'bin/java'),javaFile=tool.javaFiles.find(f=>f.path==='bin/java');assert(javaFile);assert.equal(hashBytes(readFileSync(java)),javaFile.digest);
-  const input=join(c.root,name+'.ofn'),output=join(c.root,name+'.rdf');writeFileSync(input,item.data.replay.content,{flag:'wx',mode:0o600});
-  const converted=spawnSync(java,['-Xmx256m','--class-path',jars.join(':'),fileURLToPath(converter),input,output],{env:{PATH:join(tool.javaRoot,'bin'),LANG:'C.UTF-8',JAVA_TOOL_OPTIONS:'',JDK_JAVA_OPTIONS:'',_JAVA_OPTIONS:''},encoding:'utf8',timeout:30000,maxBuffer:1024*1024});
-  c.observe({kind:'EXTERNAL_ACCEPTANCE_REPLAY_CONVERTER',productCapability:false,inputDigest:item.data.replay.digest,converterDigest:hashBytes(readFileSync(converter)),toolchainDigest:tool.digest,status:converted.status,signal:converted.signal,stdout:converted.stdout,stderr:converted.stderr});assert.ifError(converted.error);assert.equal(converted.status,0,converted.stderr);
-  const content=readFileSync(output,'utf8');return {id:'replay',documentIri:'urn:acceptance:replay:'+name,ontologyIri:null,versionIri:null,format:'rdfxml',content,digest:hashBytes(content)};
+  const converted=convertFunctional(c,item.data.replay.content,name,'Independent explanation support replay; source-pinned external serialization only');return {id:'replay',documentIri:'urn:acceptance:replay:'+name,ontologyIri:null,versionIri:null,format:'rdfxml',content:converted.content,digest:converted.digest};
 }
+
 try{
   await c.case('EXPLAIN-01',async()=>{const x=await explain('explain-positive',chain),r=await x.f.reason({kind:'entailment',query:conclusion(x.job)});expectFormal(r,'ENTAILED');assert.equal(r.result.vacuous,false);return {expected:'Original W3C property-chain entailment has nonempty source-bound replayable supporting axioms',upstream:x.job.caseKey,supportCount:x.data.support.length};});
   await c.case('EXPLAIN-02',async()=>{const x=await explain('explain-conflict',conflict,'inconsistency');expectFormal(await x.f.reason({kind:'consistency'}),'INCONSISTENT');return {expected:'Original W3C disjoint-class inconsistency has nonempty replayable support',upstream:x.job.caseKey,supportCount:x.data.support.length};});
