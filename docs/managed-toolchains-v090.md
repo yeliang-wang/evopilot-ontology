@@ -6,14 +6,14 @@ These operations verify selected local components. They do not download a JDK/Py
 
 ## Inspect a distribution candidate
 
-The installed operator now has a read-only `distribution-inspect --input ABS_JSON --json` command. It selects an exact manifest from the executing product's compiled catalog and verifies the local artifact bytes. A user-provided manifest, digest or environment variable cannot replace that catalog. The initial `linux-arm64-temurin21-pbs20260211-candidate1` entry is experimental and is not a published distribution or supported-platform declaration.
+The installed operator now has a read-only `distribution-inspect --input ABS_JSON --json` command. It selects an exact manifest from the executing product's compiled catalog and verifies the local artifact bytes. A user-provided manifest, digest or environment variable cannot replace that catalog. The current `linux-arm64-temurin21-pbs20260211-candidate3` entry binds the corrected RDF/SHACL adapters and complete Java source/notice companions. Historical candidate1 and candidate2 identities remain immutable. A catalog entry is not a published distribution or a supported-platform acceptance claim.
 
 The input uses this exact shape, with absolute canonical paths substituted for every `ABS_*` value:
 
 ```json
 {
   "schema": "ontology-distribution-inspect-input/v1",
-  "bundleId": "linux-arm64-temurin21-pbs20260211-candidate1",
+  "bundleId": "linux-arm64-temurin21-pbs20260211-candidate3",
   "bundleRoot": "ABS_PRIVATE_ARTIFACT_DIRECTORY",
   "runtimeRoot": "ABS_INSTALLED_NPM_RUNTIME",
   "runtimeDigest": "sha256:EXACT_RUNTIME_DIGEST",
@@ -23,7 +23,7 @@ The input uses this exact shape, with absolute canonical paths substituted for e
 }
 ```
 
-Run the command from that exact installed runtime. Keep the artifact directory private and include exactly the eleven flat files named in the packaged `governance/distribution-linux-arm64-v090.json`. The selected bundle includes the prebuilt DL payload, SHACL adapter, Java runtime/source/metadata, Python runtime/build material and pinned wheel payload. It contains no workspace or credentials. Roots must be separate; planned destination parents must already exist and be private. Inspection does not create them.
+Run the command from that exact installed runtime. Keep the artifact directory private and include exactly the thirteen flat files named in the packaged `governance/distribution-linux-arm64-v090.json`. The selected bundle includes the prebuilt DL payload, SHACL adapter, Java runtime/source/metadata, Python runtime/build material and pinned wheel payload. It contains no workspace or credentials. Roots must be separate; planned destination parents must already exist and be private. Inspection does not create them.
 
 The report binds the runtime/Node and raw manifest identities, observed artifact hashes, declared execution platform, packaged worker/lock compatibility, proposed four component roots and a fresh capacity observation. `PLAN_VERIFIED` means these inspection conditions hold. `BLOCKED` lists a platform mismatch, package incompatibility, an occupied tool destination, insufficient byte capacity or a reported inode shortage. Malformed manifests, unexpected files, changed bytes, unsafe files and observed filesystem races produce structured errors. An unknown catalog ID returns `NO_DISTRIBUTION_CANDIDATE`.
 
@@ -45,7 +45,7 @@ This bounded reader supports regular files, directories and symbolic links in PO
 
 ## Prepare the offline candidate
 
-`distribution-prepare` materializes the selected candidate without launching Java, Python, a package manager or another child process. This recipe requires Linux ARM64, glibc 2.28 or newer, the exact selected installed Ontology package and Node 24.14.0. The eleven local artifacts described above must already be present. It is not a downloader or a general tar/wheel installer.
+`distribution-prepare` materializes the selected candidate without launching Java, Python, a package manager or another child process. This recipe requires Linux ARM64, glibc 2.28 or newer, the exact selected installed Ontology package and Node 24.14.0. The thirteen local artifacts described above must already be present. It is not a downloader or a general tar/wheel installer.
 
 First retain the complete successful JSON output from `distribution-inspect` or `distribution-inventory`. The prepare input nests that command's exact input under `distribution` and adds the request identity, a new private control directory and the saved `reportDigest`:
 
@@ -57,7 +57,7 @@ First retain the complete successful JSON output from `distribution-inspect` or 
   "inspectionDigest": "sha256:EXACT_SAVED_REPORT_DIGEST",
   "distribution": {
     "schema": "ontology-distribution-inspect-input/v1",
-    "bundleId": "linux-arm64-temurin21-pbs20260211-candidate1",
+    "bundleId": "linux-arm64-temurin21-pbs20260211-candidate3",
     "bundleRoot": "ABS_PRIVATE_ARTIFACT_DIRECTORY",
     "runtimeRoot": "ABS_INSTALLED_NPM_RUNTIME",
     "runtimeDigest": "sha256:EXACT_RUNTIME_DIGEST",
