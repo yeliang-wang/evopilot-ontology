@@ -45,3 +45,18 @@ test('documentation gate rejects missing required guides and package version dri
   const drift = sample(); drift.version = '0.8.0';
   assert.throws(() => validateDocumentation(drift), /README heading/);
 });
+
+function independentSource() {
+  const v=sample();v.owner='ontology';v.version='0.9.0';
+  for(const k of Object.keys(v.documents))v.documents[k]=v.documents[k].replaceAll('0.7.0','0.9.0').replaceAll('evopilot-runtime','evopilot-ontology').replaceAll('next-runtime','next-ontology').replaceAll('/releases/tag/v0.9.0','/releases');
+  v.documents['README.md']+='\n<!-- distribution-status: source -->\n';
+  v.documents['CHANGELOG.md']=v.documents['CHANGELOG.md'].replace('0.9.0 Preview — 2026-10-22','0.9.0 Preview — source changes');return v;
+}
+test('independent source documentation does not invent a published tag or suppress stale package checks',()=>{
+  const v=independentSource();assert.equal(validateDocumentation(v).publicationClaim,'NONE');
+  v.documents['README.md']+='\n[Download](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.9.0)';
+  assert.throws(()=>validateDocumentation(v),/cannot imply a verified current download/);
+  const stale=independentSource();stale.documents['README.md']=stale.documents['README.md'].replace('ontology-0.9.0.tgz','ontology-0.8.3.tgz');
+  assert.throws(()=>validateDocumentation(stale),/package version is stale/);
+  const foreign=independentSource();foreign.owner='runtime';assert.throws(()=>validateDocumentation(foreign),/scoped to independent/);
+});

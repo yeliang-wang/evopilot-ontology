@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 Preview — source changes
+
+Independent Ontology Expert, local CLI/HTTP/MCP service and private workspaces now own the native v2 modeling lifecycle. The scope covers source-bound intent, fixed independent expectations, RDF/OWL models, complete OWL 2 DL reasoning, source-grounded explanations, SHACL inspection and business validation, explicit graph views, exact semantic review and immutable delivery. Runtime and Harness are optional consumers.
+
+The independent operator provides pinned offline native distribution preparation, worker isolation/recovery and controlled installation maintenance. Java runtime, Python dependencies, original source archives, reproducible owned transformations and notices are bound separately from business assets. Historical v1/vendor/compatibility bytes retain their meaning; selected historical test-asset removal follows installation acceptance and never rebuilds business assets automatically.
+
+This source entry does not establish publication or acceptance. See the [release index](https://github.com/yeliang-wang/evopilot-ontology/releases) and [mandatory v0.9 sequence](docs/release-v090.md). Full installed standards evaluation, actual user report approval, all original 143 product variants and a separate release decision remain candidate-bound obligations.
+
 ## 0.8.3 Preview — 2026-10-27
 
 [Versioned Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.3).

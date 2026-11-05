@@ -15,17 +15,26 @@ export function validateDocumentation({ version, owner, documents }) {
     assert(typeof documents[name] === 'string' && documents[name].trim(), 'Missing current document: ' + name);
   }
   const readme = documents['README.md'];
+  const sourceOnly = readme.includes('<!-- distribution-status: source -->');
+  if (sourceOnly) assert(owner === 'ontology' && version === '0.9.0', 'Source publication status is scoped to independent v0.9 Ontology');
   assert(readme.split('\n')[0].includes('v' + version + ' Preview'), 'README heading must identify the current Preview');
   const introduction = documents['docs/README.md'].split(/\n\s*\n/).find(p => !p.startsWith('#'));
   assert(introduction?.includes('v' + version + ' Preview'), 'Documentation introduction must identify the current Preview');
   const sections = documents['CHANGELOG.md'].split(/^## /m).slice(1);
   const current = sections.find(s => s.startsWith(version + ' '));
   assert(current && sections[0] === current, 'Current changelog release must be first');
-  assert(!/\bcandidate\b|\bunreleased\b/i.test(current.split('\n')[0]), 'Current changelog must not claim an unreleased candidate');
+  if (!sourceOnly) assert(!/\bcandidate\b|\bunreleased\b/i.test(current.split('\n')[0]), 'Current changelog must not claim an unreleased candidate');
   const repository = 'evopilot' + (owner === 'stack' ? '' : '-' + owner);
   const release = 'https://github.com/yeliang-wang/' + repository + '/releases/tag/v' + version;
-  assert(readme.includes(release), 'README must link the owning current release');
-  assert(current.includes(release), 'Current changelog must link the owning release');
+  if (sourceOnly) {
+    const index = 'https://github.com/yeliang-wang/' + repository + '/releases';
+    assert(readme.includes('](' + index + ')') && current.includes('](' + index + ')'), 'Source documentation must link the owning release index');
+    assert(!readme.includes(release) && !current.includes(release), 'Source documentation cannot imply a verified current download');
+    assert(/source changes/i.test(current.split('\n')[0]), 'Source changelog must label source changes');
+  } else {
+    assert(readme.includes(release), 'README must link the owning current release');
+    assert(current.includes(release), 'Current changelog must link the owning release');
+  }
 
   const packages = [...readme.matchAll(/evopilot-(?:next-(?:runtime|harness|ontology)-)?(\d+\.\d+\.\d+)(?:-preview)?\.(?:tgz|tar\.gz)/g)];
   assert(packages.length, 'README must name a versioned distribution');
@@ -47,7 +56,7 @@ export function validateDocumentation({ version, owner, documents }) {
   const staleRoadmap = new RegExp('IMPLEMENTATION_STARTED_ISOLATED v' + escape(version));
   for (const [name, full] of Object.entries(documents)) {
     const text = name === 'CHANGELOG.md' ? current : full;
-    assert(!staleVersion.test(text) && !staleStatus.test(text) && !staleRoadmap.test(text), 'Obsolete current-release status in ' + name);
+    if (!sourceOnly) assert(!staleVersion.test(text) && !staleStatus.test(text) && !staleRoadmap.test(text), 'Obsolete current-release status in ' + name);
   }
   const required = owner === 'stack' ? ['planning.md', 'readable-assets.md', 'preflight-maintenance.md']
     : ['readable-api.md', ...(owner === 'runtime' ? ['planning-api.md'] : [])];
@@ -55,7 +64,7 @@ export function validateDocumentation({ version, owner, documents }) {
     assert(documents['docs/' + name]?.trim(), 'Missing current feature guide: ' + name);
     assert(documents['docs/README.md'].includes('](' + name + ')'), 'Current guide missing from index: ' + name);
   }
-  return { owner, version, checkedDocuments: Object.keys(documents).length, authority: false };
+  return { owner, version, publicationClaim: sourceOnly ? 'NONE' : 'RELEASE_DOCUMENTATION', checkedDocuments: Object.keys(documents).length, authority: false };
 }
 
 export async function checkDocumentation(root = fileURLToPath(new URL('../', import.meta.url))) {

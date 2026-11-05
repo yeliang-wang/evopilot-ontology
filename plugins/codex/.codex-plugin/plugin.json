@@ -1,12 +1,12 @@
 {
   "name": "evopilot-ontology-preview",
-  "version": "0.9.0-dev.P1",
-  "description": "Independent Ontology Expert development package; installation and full v0.9 acceptance are pending.",
+  "version": "0.9.0",
+  "description": "Independent Ontology Expert: source-bound modeling, OWL 2 DL reasoning, SHACL validation and reviewed semantic delivery.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "requires_local_executor": true,
   "interface": {
-    "displayName": "EvoPilot-ontology v0.9 Development",
+    "displayName": "EvoPilot-ontology v0.9 Preview",
     "shortDescription": "Independent semantic modeling, retained drafts and recovery"
   }
 }

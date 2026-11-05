@@ -23,7 +23,7 @@ The input uses this exact shape, with absolute canonical paths substituted for e
 }
 ```
 
-Run the command from that exact installed runtime. Keep the artifact directory private and include exactly the thirteen flat files named in the packaged `governance/distribution-linux-arm64-v090.json`. The selected bundle includes the prebuilt DL payload, SHACL adapter, Java runtime/source/metadata, Python runtime/build material and pinned wheel payload. It contains no workspace or credentials. Roots must be separate; planned destination parents must already exist and be private. Inspection does not create them.
+Run the command from that exact installed runtime. Keep the artifact directory private and include exactly the thirteen flat files named in the selected packaged `governance/distribution-linux-arm64-v090-candidate4.json`. The selected bundle includes the prebuilt DL payload, SHACL adapter, Java runtime/source/metadata, Python runtime/build material and pinned wheel payload. It contains no workspace or credentials. Roots must be separate; planned destination parents must already exist and be private. Inspection does not create them.
 
 The report binds the runtime/Node and raw manifest identities, observed artifact hashes, declared execution platform, packaged worker/lock compatibility, proposed four component roots and a fresh capacity observation. `PLAN_VERIFIED` means these inspection conditions hold. `BLOCKED` lists a platform mismatch, package incompatibility, an occupied tool destination, insufficient byte capacity or a reported inode shortage. Malformed manifests, unexpected files, changed bytes, unsafe files and observed filesystem races produce structured errors. An unknown catalog ID returns `NO_DISTRIBUTION_CANDIDATE`.
 

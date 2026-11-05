@@ -11,9 +11,14 @@ const slug = text => text.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^\p{L}
 
 export function validateBilingualReadmes({ version, repository, en, zh }) {
   assert(en?.trim() && zh?.trim(), 'Both README languages are required');
+  const sourceOnly = en.includes('<!-- distribution-status: source -->');
+  assert.equal(zh.includes('<!-- distribution-status: source -->'), sourceOnly, 'Bilingual publication status differs');
+  if (sourceOnly) assert(repository === 'evopilot-ontology' && version === '0.9.0', 'Source status is scoped to independent Ontology');
   for (const [language, text] of [['en', en], ['zh', zh]]) {
     assert(text.split('\n')[0].includes('v' + version + ' Preview'), 'Stale bilingual heading: ' + language);
-    assert(text.includes('https://github.com/yeliang-wang/' + repository + '/releases/tag/v' + version), 'Missing exact owning release: ' + language);
+    const releaseIndex = 'https://github.com/yeliang-wang/' + repository + '/releases';
+    assert(text.includes(sourceOnly ? '](' + releaseIndex + ')' : releaseIndex + '/tag/v' + version), 'Missing exact owning release: ' + language);
+    if (sourceOnly) assert(!text.includes(releaseIndex + '/tag/v' + version), 'Source documentation cannot imply a verified current download');
     assert(text.includes('24.14.0'), 'Missing Node prerequisite: ' + language);
     for (const token of ['L1', 'L2', 'L3', 'standardVersion: "v2"', 'assetAssessment', 'reconstructionVerification', 'NOT_REQUESTED']) assert(text.includes(token), 'Missing content boundary token: ' + language + '/' + token);
     for (const m of text.matchAll(/evopilot-(?:next-(?:runtime|harness|ontology)-)?(\d+\.\d+\.\d+)(?:-preview)?\.(?:tgz|tar\.gz)/g)) assert.equal(m[1], version, 'Stale bilingual package');
