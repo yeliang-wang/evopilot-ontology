@@ -122,6 +122,9 @@ export async function collect(options){
 }
 
 if(process.argv[1]&&pathToFileURL(resolve(process.argv[1])).href===import.meta.url){
+  if(process.argv[2]==='--evidence'){
+    await (await import('./dl-public.mjs')).collectPublicDL(import.meta.url,{validateDataset,matchesExpected});
+  }else{
   const options={};
   for(let i=2;i<process.argv.length;i+=2){
     const name=process.argv[i]?.replace(/^--/,'');assert(['archive','python','toolchain','output','limit','case','timeoutMs'].includes(name),'Unknown argument');
@@ -129,4 +132,5 @@ if(process.argv[1]&&pathToFileURL(resolve(process.argv[1])).href===import.meta.u
     options[name]=['limit','timeoutMs'].includes(name)?Number(process.argv[i+1]):process.argv[i+1];
   }
   const result=await collect(options);process.exitCode=result.status==='PASS'?0:1;
+  }
 }

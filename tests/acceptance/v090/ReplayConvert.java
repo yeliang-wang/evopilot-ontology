@@ -1,5 +1,6 @@
 // Acceptance-only format conversion; not an Ontology product capability.
-// Its input is retained native explanation output, never an external ontology.
+// Its closed input is retained explanation output or a separately attributed
+// original Functional Syntax/normative acceptance fixture. No imports allowed.
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -24,6 +25,6 @@ class ReplayConvert {
     var second=OWLManager.createOWLOntologyManager().loadOntologyFromOntologyDocument(new StringDocumentSource(bytes.toString(java.nio.charset.StandardCharsets.UTF_8)));
     if(!new HashSet<>(ontology.getLogicalAxioms()).equals(new HashSet<>(second.getLogicalAxioms()))) throw new IllegalStateException("Serialization changed logical axioms");
     Files.write(Path.of(args[1]),bytes.toByteArray());
-    System.out.println("Logical axiom equality verified across replay serialization");
+    System.out.println("{\"logicalAxiomsEqual\":true,\"inputAxiomCount\":"+ontology.getAxiomCount()+",\"outputAxiomCount\":"+second.getAxiomCount()+",\"logicalAxiomCount\":"+ontology.getLogicalAxiomCount()+"}");
   }
 }

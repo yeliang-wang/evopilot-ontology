@@ -46,9 +46,10 @@ export async function openCollector(group,entry,args=process.argv.slice(2),depen
     assert.match(name,/^[a-z][a-z0-9-]+$/u);const directory=join(root,name);mkdirSync(directory,{mode:0o700});const installation=join(directory,'installation'),workspace=join(directory,'workspace');
     const selected=runtimeBase??{root:config.runtimeRoot,digest:config.runtimeDigest};if(runtimeBase){assert.notEqual(selected.digest,config.runtimeDigest);const inspected=ok(['runtime-inspect','--runtime-root',selected.root]);assert.equal(inspected.digest,selected.digest);assert.equal(inspected.version,'0.9.0');trace.push({kind:'EXPLICIT_UPGRADE_BASE',runtime:inspected});}
     ok(['install','--root',installation,'--workspace-root',workspace,'--workspace',name,'--project','demo','--principal','evaluator','--runtime-root',selected.root,'--runtime-digest',selected.digest,'--mode','create']);
-    if(native)ok(['toolchains-bind','--installation',installation,'--request-id','bind','--previous-binding','none','--dl-toolchain',config.dl.path,'--dl-digest',config.dl.digest,'--shacl-toolchain',config.shacl.path,'--shacl-digest',config.shacl.digest,'--systemd-digest',config.systemdDigest]);
+    const selectedTools=runtimeBase?.toolchains??config;
+    if(native)ok(['toolchains-bind','--installation',installation,'--request-id','bind','--previous-binding','none','--dl-toolchain',selectedTools.dl.path,'--dl-digest',selectedTools.dl.digest,'--shacl-toolchain',selectedTools.shacl.path,'--shacl-digest',selectedTools.shacl.digest,'--systemd-digest',config.systemdDigest]);
     const f={installation,workspace,connection:null,token:null,running:false,tasks:[],cleaned:false,
-      start(){ok(['start','--installation',installation]);this.running=true;this.connection=JSON.parse(readFileSync(join(installation,'connection.json')));this.token=readFileSync(this.connection.credentialFile,'utf8');},
+      start(){ok(['start','--installation',installation]);this.running=true;this.cleaned=false;this.connection=JSON.parse(readFileSync(join(installation,'connection.json')));this.token=readFileSync(this.connection.credentialFile,'utf8');},
       stop(){if(this.running){ok(['stop','--installation',installation]);this.running=false;}},
       async request(operation,input={},write=null,overrides={},credential=null){
         const c=this.connection;assert(c);const body={workspaceId:c.workspaceId,serviceId:c.serviceId,projectId:c.projectId,operation,input,...(write??{}),...overrides};
