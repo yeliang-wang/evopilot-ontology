@@ -90,7 +90,11 @@ test('current catalog binds corrected RDF and SHACL source closure while retaini
   const old=selectedDistribution(source,'linux-arm64-temurin21-pbs20260211-candidate1');
   const previous=selectedDistribution(source,'linux-arm64-temurin21-pbs20260211-candidate2');
   assert.equal(previous.manifestDigest,'sha256:907114f83a3d1db711e4cc66d8ad7387150d01f9d025297a9feceae008e069e6');
-  const current=selectedDistribution(source,'linux-arm64-temurin21-pbs20260211-candidate3'),m=current.manifest;
+  const retained=selectedDistribution(source,'linux-arm64-temurin21-pbs20260211-candidate3');
+  assert.equal(retained.manifestDigest,'sha256:a233094a462f4e290349ff79bdee97d1e34fe9f0ac1374dc868a8f90e3e19f19');
+  const current=selectedDistribution(source,'linux-arm64-temurin21-pbs20260211-candidate4');
+  assert.equal(current.manifest.components.find(c=>c.role==='dl').declaredExpandedBytes,36848364);
+  const m=current.manifest;
   assert.equal(old.manifestDigest,'sha256:3bfb22e341764e0995b9c3cbf3f788aee6377e9b74664c332b9008efa83afe78');
   assert.equal(current.manifestDigest,hashBytes(readFileSync(join(source,current.catalogEntry))));
   assert.equal(m.compatibility.workerSourceDigest,hashBytes(readFileSync(join(source,'toolchains/owl2-dl/Worker.java'))));

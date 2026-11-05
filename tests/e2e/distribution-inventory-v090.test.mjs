@@ -44,7 +44,7 @@ test('fixed payload recipes inventory all four real tar streams without creating
     assert.equal(row.inventory.fileCount,1);
   }
   assert.deepEqual(await inspectPayloadArchiveInventories(root,manifest),inventories);
-  for(const id of ['linux-arm64-temurin21-pbs20260211-candidate2','linux-arm64-temurin21-pbs20260211-candidate3'])assert.deepEqual(await inspectPayloadArchiveInventories(root,{...manifest,id}),inventories);
+  for(const id of ['linux-arm64-temurin21-pbs20260211-candidate2','linux-arm64-temurin21-pbs20260211-candidate3','linux-arm64-temurin21-pbs20260211-candidate4'])assert.deepEqual(await inspectPayloadArchiveInventories(root,{...manifest,id}),inventories);
   assert.deepEqual(snapshot(root),before);
 });
 
