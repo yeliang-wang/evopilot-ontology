@@ -55,7 +55,7 @@ export function createOntologyMcp(service: Service) {
       annotations:{readOnlyHint:true,openWorldHint:false}},()=>safeCall(()=>service.context(token)));
     for(const write of [false,true]){
       server.registerTool(write?'ontology_write':'ontology_read',{
-        description:write?'Apply a supported owner mutation with exact identity, project revision and durable request ID. Reconcile uncertain outcomes using receipt.read.':'Read scoped owner records using the exact connected service/workspace identity. No mutation or physical source access.',
+        description:write?'Apply a supported owner mutation with exact identity, project revision and durable request ID. First read guide.read with input {topic:"contract:<operation>"} for its exact input fields and native schemas. Reconcile uncertain outcomes using receipt.read.':'Read scoped owner records using the exact connected service/workspace identity. For guidance use operation:"guide.read", input:{topic:"first-use"}; for any operation input contract use topic:"contract:<operation>". No mutation or physical source access.',
         inputSchema:toolSchema(write),
         annotations:{readOnlyHint:!write,destructiveHint:write,idempotentHint:true,openWorldHint:false},
       },args=>safeCall(()=>{
