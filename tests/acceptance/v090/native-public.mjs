@@ -19,14 +19,16 @@ export async function openNativeCollector(group,entry){
       const content=JSON.stringify({upstreamId:job.upstreamId,caseKey:job.caseKey,originalTasks:job.tasks,originalDocuments:job.closure.documents.map(({content,...d})=>d)});
       const source={id:'upstream',locator:job.upstreamId,revision:'frozen-official-corpus',origin:'reference',format:'json',content,digest:hashBytes(content)};
       const {content:_,format:__,...binding}=source;
-      const definition={purpose:'Fixed public product acceptance on original W3C inputs',mode:'forward',scope:job.upstreamId,exclusions:['Semantic approval','Business delivery','Software release'],sources:[binding],requirements:[{id:'official',statement:'Retain original premises and upstream expectations; independently specified API probes do not modify the premises.'}]};
+      const definition={purpose:job.kind==='owl'?'Fixed public product acceptance on original W3C inputs':'Fixed synthetic public integration acceptance',mode:'forward',scope:job.upstreamId,exclusions:['Semantic approval','Business delivery','Software release'],sources:[binding],requirements:[{id:'official',statement:job.kind==='owl'?'Retain original premises and upstream expectations; independently specified API probes do not modify the premises.':'Retain the explicitly synthetic fixture and compare against its predeclared integration expectations.'}]};
       const intentDigest=(await f.write('intent.record',{definition,previousDigest:null})).result.intentDigest;
       const sourceSet={schema:'ontology-source-set/v2',sources:[source],fragments:[{id:'official',sourceId:source.id,sourceDigest:source.digest,selector:{kind:'document'},fragmentDigest:source.digest}]};
       const sourceSetDigest=(await f.write('source.admit',{intentDigest,sourceSet})).result.sourceSetDigest;
       const draft={schema:'ontology-model-draft/v2',assetId:'official',label:job.identifier,intentDigest,sourceSetDigest,previousDigest:null,closure:job.closure,shapes:[],mappings:[],openIssues:['Upstream semantics acceptance; business coverage and semantic review are not asserted.']};
       const modelDigest=(await f.write('model.record',{draft})).result.modelDigest;
-      f.reason=async task=>{
-        const receipt=await f.write('reasoning.start',{assetId:'official',modelDigest,task}),taskId=receipt.result.taskId;f.tasks.push(taskId);const end=performance.now()+180000;let inspected;
+      f.draft=draft;f.modelDigest=modelDigest;
+      f.reject=async(operation,input,code)=>{const r=await f.request(operation,input,{requestId:'refused-'+(++serial),expectedRevision:revision});assert.notEqual(r.status,200);assert.equal(r.body.ok,false);assert.equal(r.body.error.code,code);assert.equal((await f.read('project.inspect')).revision,revision);return r.body.error;};
+      f.reason=async(task,options={})=>{
+        const receipt=await f.write('reasoning.start',{assetId:'official',modelDigest,task,...options}),taskId=receipt.result.taskId;f.tasks.push(taskId);const end=performance.now()+180000;let inspected;
         for(;;){inspected=await f.read('reasoning.inspect',{taskId});if(inspected.state==='FINISHED')break;assert(performance.now()<end,'Original task did not finish; retain receipt and reconcile without redispatch');await delay(100);}
         let formal=inspected.result;if(!formal){let content='',offset=0;for(;;){const page=await f.read('reasoning.result.read',{taskId,offset,maxBytes:65536});content+=page.content;if(page.complete)break;offset=page.nextOffset;}formal=JSON.parse(content);}
         assert.deepEqual(await f.read('receipt.read',{requestId:receipt.requestId}),receipt);
