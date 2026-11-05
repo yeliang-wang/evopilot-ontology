@@ -32,7 +32,7 @@ export async function openNativeCollector(group,entry,dependencies=[]){
         for(;;){inspected=await f.read('reasoning.inspect',{taskId});if(inspected.state==='FINISHED')break;assert(performance.now()<end,'Original task did not finish; retain receipt and reconcile without redispatch');await delay(100);}
         let formal=inspected.result;if(!formal){let content='',offset=0;for(;;){const page=await f.read('reasoning.result.read',{taskId,offset,maxBytes:65536});content+=page.content;if(page.complete)break;offset=page.nextOffset;}formal=JSON.parse(content);}
         assert.deepEqual(await f.read('receipt.read',{requestId:receipt.requestId}),receipt);
-        return formal;
+        f.lastReasoning={taskId,receipt,inspected,formal};return formal;
       };
       f.official=async()=>{for(const t of job.tasks){const r=await f.reason(t.task),status={legality:'COMPLETED',consistent:'COMPLETED',inconsistent:'INCONSISTENT',entailed:'ENTAILED','not-entailed':'NOT_ENTAILED'}[t.expected];expectFormal(r,status);if(t.expected!=='legality')assert.equal(r.result.consistent,t.expected!=='inconsistent');}return {caseKey:job.caseKey,originalTaskIds:job.tasks.map(t=>t.id)};};
       return f;
