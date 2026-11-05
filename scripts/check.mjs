@@ -120,7 +120,8 @@ export async function checkSource() {
     'org/semanticweb/HermiT/structural/ExpressionManager.java',
     'org/semanticweb/HermiT/datatypes/rdfplainliteral/RDFPlainLiteralPatternValueSpaceSubset.java',
     'org/semanticweb/HermiT/datatypes/rdfplainliteral/RDFPlainLiteralLengthInterval.java',
-    'org/semanticweb/HermiT/datatypes/anyuri/AnyURIValueSpaceSubset.java',
+    'org/semanticweb/HermiT/datatypes/binarydata/BinaryData.java',
+  'org/semanticweb/HermiT/datatypes/anyuri/AnyURIValueSpaceSubset.java',
   ].sort());
   for(const file of patch.files){
     for(const value of [file.sourceSHA256,file.patchedSourceSHA256])assert.match(value,/^[a-f0-9]{64}$/);

@@ -505,7 +505,7 @@
   "releaseReview": "NOT_EVALUATED",
   "enginePatch": {
     "file": "engine-compat.json",
-    "sha256": "912dcba081458027431866b7cee07d5ddd76b2ca4ccb6e3e49fadb7c6e3420bd"
+    "sha256": "4efba1b30832977f0a8bed1031bf681de9488b755bd6e82e56d4ca3d38ff3398"
   },
   "parserPatch": {
     "file": "parser-compat.json",

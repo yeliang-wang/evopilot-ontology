@@ -74,4 +74,4 @@ npm run test:governance
 
 - [文档目录](docs/README.md)、[已接受方案](docs/ontology-v090-plan.md)、[路线图](docs/roadmap.md)与[变更记录](CHANGELOG.md)。
 - [安装维护](docs/installation-maintenance-v090.md)、[worker 恢复](docs/worker-recovery-v090.md)与[标准评测](docs/standards-evaluation-v090.md)。
-- [贡献指南](CONTRIBUTING.md)、[双语维护](docs/documentation-languages.md)、[安全](SECURITY.md)、[许可](LICENSE)与[声明](NOTICE)。
+- [贡献指南](CONTRIBUTING.md)、[双语维护](docs/zh-CN/documentation-languages.md)、[安全](SECURITY.md)、[许可](LICENSE)与[声明](NOTICE)。

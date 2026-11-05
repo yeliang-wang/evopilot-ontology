@@ -22,6 +22,7 @@ if(patch.schema!=='ontology-dl-engine-compat/v2'||patch.engine!=='org.semanticwe
 const expectedEntries=['org/semanticweb/HermiT/structural/ExpressionManager.java',
   'org/semanticweb/HermiT/datatypes/rdfplainliteral/RDFPlainLiteralPatternValueSpaceSubset.java',
   'org/semanticweb/HermiT/datatypes/rdfplainliteral/RDFPlainLiteralLengthInterval.java',
+  'org/semanticweb/HermiT/datatypes/binarydata/BinaryData.java',
   'org/semanticweb/HermiT/datatypes/anyuri/AnyURIValueSpaceSubset.java'];
 if(!Array.isArray(patch.files)||JSON.stringify(patch.files.map(f=>f.sourceEntry).sort())!==JSON.stringify(expectedEntries.sort()))throw new Error('Unknown patched source entries');
 if(!Array.isArray(patch.ownedSources)||patch.ownedSources.length!==1||patch.ownedSources[0].file!=='XmlSchemaAutomata.java')throw new Error('Unknown formal helper source');

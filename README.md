@@ -66,7 +66,7 @@ Historical v1 specifications, compatibility/vendor bytes and immutable records r
 
 The retained content-assessment API selects `standardVersion: "v2"`: L1 domain understanding, L2 implementation specifications, L3 reconstruction specifications. `assetAssessment` and `reconstructionVerification` remain separate; `L3 / NOT_REQUESTED` is valid. These content grades do not prove reconstruction, production readiness or release authority. See the [retained readiness API](docs/readiness-v2.md).
 
-Private workspaces and credentials are not release assets. The selected historical test-asset reset is a separate post-installation operation; business assets are rebuilt manually afterward. A Dashboard is outside this version.
+Private workspaces and credentials are not release assets. The selected historical test-asset reset is a separate operation after installation acceptance; business assets are rebuilt manually afterward. A Dashboard is outside this version.
 
 ## Documentation and contribution
 

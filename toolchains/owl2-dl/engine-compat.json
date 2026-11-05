@@ -156,6 +156,18 @@
         }
       ],
       "patchedSourceSHA256": "1ea24500f9824dbefb20ddfb04ef49b7836d4c4c485441d73fca6ea682a9b52b"
+    },
+    {
+      "sourceEntry": "org/semanticweb/HermiT/datatypes/binarydata/BinaryData.java",
+      "sourceSHA256": "9b38b89f2ffa3ae5b8d2f262e27f141b509280452031943fe6c4c03e17361da6",
+      "changes": [
+        {
+          "find": "byte[] data=Base64.getDecoder().decode(removeWhitespace(lexicalForm));\r\n            return new BinaryData(BinaryDataType.HEX_BINARY,data);",
+          "replace": "byte[] data=Base64.getDecoder().decode(removeWhitespace(lexicalForm));\r\n            return new BinaryData(BinaryDataType.BASE_64_BINARY,data);",
+          "occurrences": 1
+        }
+      ],
+      "patchedSourceSHA256": "01c405b4058fd9fcb870a0f63e2ae03baf1c97fb9ba37517595198eb9094b759"
     }
   ],
   "ownedSources": [
@@ -164,7 +176,7 @@
       "sha256": "5c4bf997e303b01feee01832fd102a04404ddef9fae37c2d2b0b63079df4f56a"
     }
   ],
-  "notice": "EvoPilot modified HermiT build: OWLAPI object-union compatibility; XML 1.0 Fifth Edition Unicode string/name automata; code-point length and enumeration; union of disjoint length intervals; XSD 1.1 regular-language compilation for string and anyURI pattern facets. Original Oxford University copyright and LGPL notices remain in modified upstream sources. XmlSchemaAutomata is an identified EvoPilot formal adapter. This is not an unmodified upstream release.",
+  "notice": "EvoPilot modified HermiT build: OWLAPI object-union compatibility; XML 1.0 Fifth Edition Unicode string/name automata; code-point length and enumeration; union of disjoint length intervals; XSD 1.1 regular-language compilation for string and anyURI pattern facets. Base64 decoding retains its own disjoint binary datatype value space. Original Oxford University copyright and LGPL notices remain in modified upstream sources. XmlSchemaAutomata is an identified EvoPilot formal adapter. This is not an unmodified upstream release.",
   "reason": "Repair observed standard-conformance failures without substituting expected answers, changing source literals, dropping legal constructs or reclassifying engine errors as conclusions. Java 21 pins Unicode 15.0 category/block data. Resource exhaustion remains incomplete.",
   "acceptance": "Complete standard, combination, datatype, task, resource and release dependency/license acceptance remains required."
 }

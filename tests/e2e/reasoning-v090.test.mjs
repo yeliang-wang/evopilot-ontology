@@ -110,6 +110,22 @@ test('invalid XML names and tokens are rejected in premises, queries and nested 
 });
 
 const literal=value=>'"'+value.replaceAll('\\','\\\\').replaceAll('"','\\"')+'"';
+test('binary datatypes preserve their own disjoint value spaces and octet length',async()=>{
+  // OWL 2 Structural Specification section 4.5: equal octet sequences do
+  // not identify values across the disjoint hexBinary/base64Binary spaces.
+  const decl=declaration({data:['p'],individuals:['a']});
+  for(const [type,value,other] of [['base64Binary','AQ==','hexBinary'],['hexBinary','01','base64Binary']]){
+    const body=decl+` DataPropertyAssertion(:p :a "${value}"^^xsd:${type})`;
+    await run(body,{kind:'entailment',query:query(`ClassAssertion(DataSomeValuesFrom(:p xsd:${type}) :a)`)},'ENTAILED');
+    await run(body,{kind:'entailment',query:query(`ClassAssertion(DataSomeValuesFrom(:p xsd:${other}) :a)`)},'NOT_ENTAILED');
+    await run(body+` DataPropertyRange(:p xsd:${type})`,{kind:'consistency'});
+    await run(body+` DataPropertyRange(:p xsd:${other})`,{kind:'consistency'},'INCONSISTENT');
+    await run(body+` DataPropertyRange(:p DatatypeRestriction(xsd:${type} xsd:length "1"^^xsd:integer))`,{kind:'consistency'});
+    await run(body+` DataPropertyRange(:p DatatypeRestriction(xsd:${type} xsd:length "2"^^xsd:integer))`,{kind:'consistency'},'INCONSISTENT');
+  }
+  await run(decl+' FunctionalDataProperty(:p) DataPropertyAssertion(:p :a "AQ=="^^xsd:base64Binary) DataPropertyAssertion(:p :a "01"^^xsd:hexBinary)',{kind:'consistency'},'INCONSISTENT');
+});
+
 test('supplementary XML strings and character length facets retain actual Unicode values',async()=>{
   const types=['Name','NCName','NMTOKEN','string','normalizedString','token'];
   const props=types.map((_,i)=>'p'+i),decl=declaration({data:props,individuals:['a']});
