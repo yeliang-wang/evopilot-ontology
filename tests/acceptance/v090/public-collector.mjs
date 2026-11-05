@@ -5,10 +5,23 @@ import {readFileSync,writeFileSync,mkdirSync,realpathSync,openSync,closeSync} fr
 import {join,resolve,isAbsolute} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import {preflightProductE2E} from '../../../scripts/formal-e2e.mjs';
 import {hashBytes,evidenceReader} from '../../../scripts/standards-gate.mjs';
 
 const repository=fileURLToPath(new URL('../../../',import.meta.url));
+// Native JDK/source archives exceed the standards reader's 32 MiB per-file
+// envelope. Preserve that bound and reconstruct their original digest from
+// ordered, independently retained chunks; never trust a declared digest alone.
+export function verifyArtifactChunks(manifest,read){
+  assert.equal(manifest.schema,'ontology-private-artifact-chunks/v1');
+  assert(Number.isSafeInteger(manifest.bytes)&&manifest.bytes>0&&manifest.bytes<=512*1024*1024);
+  assert.match(manifest.digest,/^sha256:[a-f0-9]{64}$/);assert(Array.isArray(manifest.chunks)&&manifest.chunks.length>0&&manifest.chunks.length<=64);
+  assert.equal(new Set(manifest.chunks.map(x=>x.path)).size,manifest.chunks.length);
+  const hash=createHash('sha256');let bytes=0;
+  for(const ref of manifest.chunks){const chunk=read(ref);assert(chunk.length>0&&chunk.length<=16*1024*1024);bytes+=chunk.length;assert(bytes<=manifest.bytes);hash.update(chunk);}
+  assert.equal(bytes,manifest.bytes);const digest='sha256:'+hash.digest('hex');assert.equal(digest,manifest.digest);return {bytes,digest};
+}
 export function collectorArguments(args){
   assert.equal(args.length,6,'Usage: --evidence ABS_STANDARDS --request REL_REQUEST --output ABS_NEW_OUTPUT');
   assert.deepEqual([args[0],args[2],args[4]],['--evidence','--request','--output']);
@@ -64,6 +77,7 @@ export async function openCollector(group,entry,args=process.argv.slice(2),depen
   }
   return {root,repository,admission,config,toolchains:tools,cases,put,command,ok,fixture,closeFixture,
     evidenceReference(ref){const bytes=reader.ref(ref);trace.push({kind:"REFERENCED_EVIDENCE",file:ref});return bytes;},
+    artifact(ref){const result=verifyArtifactChunks(reader.refJson(ref),chunk=>reader.ref(chunk));trace.push({kind:'COMPLETE_ARTIFACT_BYTES_VERIFIED',manifest:ref,...result});return result;},
     frozen(name){const ref=evaluator.files.find(f=>f.path===name);assert(ref,'Input must belong to the frozen evaluator inventory');return reader.refJson(ref);},
     support(name){const manifest=reader.json('product-inputs.json');assert.equal(manifest.schema,'ontology-private-product-support/v1');assert(Array.isArray(manifest.files)&&manifest.files.length<=1000);const refs=manifest.files.filter(f=>f.id===name);assert.equal(refs.length,1,'Exact supplemental evidence required');const value=reader.refJson(refs[0].file);trace.push({kind:'SUPPORTING_EVIDENCE',id:name,file:refs[0].file,value});return value;},
     observe(value){trace.push(value);},
