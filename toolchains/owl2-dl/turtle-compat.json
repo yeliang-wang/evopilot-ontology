@@ -241,9 +241,19 @@
           "find": "handler.handleTriple(subject, predicate, literal, XSDVocabulary.BOOLEAN.getIRI());",
           "replace": "if (locations == null) handler.handleTriple(subject, predicate, literal, XSDVocabulary.BOOLEAN.getIRI()); else locations.datatype(handler, subject, predicate, literal, XSDVocabulary.BOOLEAN.getIRI(), locatedSubject, locatedPredicate, locations.literal(locatedStart, token, locatedContexts), locatedKind);",
           "occurrences": 1
+        },
+        {
+          "find": "void parseDocument() throws ParseException {\n    label_1:",
+          "replace": "void parseDocument() throws ParseException {\n    if (getToken(1).kind == 0) { jj_consume_token(0); handler.handleEnd(); return; }\n    label_1:",
+          "occurrences": 1
+        },
+        {
+          "find": "return EscapeUtils.unescapeString(rawString);",
+          "replace": "return LocatedTurtleParser.decodeString(sourceContent, token);",
+          "occurrences": 1
         }
       ],
-      "patchedSourceSHA256": "6c72ced5aded699bf398c43aa69bb76a1e61af1345c0dc3d79e7cda7b8ca1d37"
+      "patchedSourceSHA256": "1db4d41c3979a9ed2245bc35baacd292ce3046a3d439b38a56d5392a18de0c12"
     },
     {
       "sourceEntry": "org/semanticweb/owlapi/rdf/turtle/parser/JavaCharStream.java",
@@ -340,7 +350,7 @@
   "ownedSources": [
     {
       "file": "LocatedTurtleParser.java",
-      "sha256": "0ecf4e5f2a108a6eff989ce596af0f5e886c107f30bc6dac1d5005fe51092ce1"
+      "sha256": "9c75c6ec6dcc2f5637c6940ea1b4124a2f15163eb3a3d26ef7f332c56324957c"
     },
     {
       "file": "RDFIRI.java",

@@ -58,6 +58,15 @@ export function createDLRunner(options:{toolchainFile:string;workRoot:string;sys
           if(actual.schema!=='ontology-dl-worker-result/v1'||actual.requestId!==request.requestId||actual.requestDigest!==requestDigest||actual.closureDigest!==closure||actual.configurationDigest!==configurationDigest||!statuses.includes(actual.status as DLStatus)||typeof actual.complete!=='boolean')throw new Error('Worker identity mismatch');
           if(['INVALID_INPUT','MISSING_IMPORT','TIMEOUT','CANCELLED','FAILED'].includes(actual.status as string)&&actual.complete)throw new Error('Failure marked complete');
           if(actual.error!==null){exact(actual.error,['code','message']);if(typeof actual.error.code!=='string'||typeof actual.error.message!=='string')throw new Error('Invalid diagnostic');}
+          if(request.task.kind==='rdfGraph'){
+            if(['ENTAILED','NOT_ENTAILED','INCONSISTENT'].includes(actual.status as string))throw new Error('RDF parsing cannot establish OWL conclusions');
+            if(actual.status==='COMPLETED'){
+              const result=actual.result;exact(result,['semantics','scope','documentId','documentDigest','documentIri','inputFormat','format','content','graphDigest','statementCount','tripleCount','importsFollowed','inferencePerformed']);
+              const selected=request.closure.documents.find(d=>d.id===(request.task as {documentId:string}).documentId)!;
+              if(actual.complete!==true||actual.error!==null||result.semantics!=='RDF_1_1_ASSERTED_GRAPH'||result.scope!=='SELECTED_DOCUMENT'||result.documentId!==selected.id||result.documentDigest!==selected.digest||result.documentIri!==selected.documentIri||result.inputFormat!==selected.format||result.format!=='ntriples'||typeof result.content!=='string'||result.graphDigest!==hashBytes(result.content)||result.importsFollowed!==false||result.inferencePerformed!==false)throw new Error('RDF graph result identity mismatch');
+              if(!Number.isSafeInteger(result.statementCount)||!Number.isSafeInteger(result.tripleCount)||(result.tripleCount as number)<0||(result.statementCount as number)<(result.tripleCount as number)||(result.statementCount as number)>DL_LIMITS.axioms||result.content.split('\n').length-1!==result.tripleCount||result.tripleCount!==0&&!result.content.endsWith('\n'))throw new Error('RDF graph result count mismatch');
+            }
+          }
           return {...envelope,status:actual.status as DLStatus,complete:actual.complete,elapsedMs:Math.ceil(performance.now()-started),result:actual.result as Json,error:actual.error as DLResponse['error']};
         }catch{return failure('FAILED','WORKER_PROTOCOL','Malformed or mismatched worker response; no logical conclusion established',diagnostic);}
       }finally{unlock();}

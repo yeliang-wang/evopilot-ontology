@@ -2,6 +2,12 @@
 
 This is an internal P2 implementation checkpoint under the [approved plan](ontology-v090-plan.md), not a full-conformance or release claim. The standalone service still reports `reasoningReady: false`: source admission, native v2 lifecycle, durable task receipts, SHACL, complete standards coverage and actual Expert journeys must be connected and accepted before that changes.
 
+## Asserted RDF graph inspection
+
+`reasoning.start` also accepts `task: {kind: "rdfGraph", documentId: "..."}` for one Turtle or RDF/XML document in the selected current model. The same durable request/task lifecycle, configured Java toolchain, 120-second deadline and cancellation/recovery rules apply. The existing syntax parsers emit their actual asserted graph before OWL mapping. The response identifies the exact input document and base IRI, returns N-Triples plus its byte digest, and distinguishes statement count from distinct graph triple count. Blank-node labels identify nodes only within that serialization.
+
+This task does not resolve imports, perform inference, establish OWL 2 DL legality, create a derived view or approve semantics. RDF-valid documents can have a completed graph result even when a separate OWL legality task rejects them. All originally admitted closure metadata remains bound to the task; only the explicitly selected document contributes graph triples. Original model bytes remain unchanged. Parsing is bounded by 100,000 emitted statements and the existing 8 MiB output envelope; limit/deadline failures never return a completed partial graph. An unrelated admission failure is not evidence of invalid RDF syntax.
+
 ## Responsibility and identity
 
 Strict TypeScript owns admission, input/digest validation, toolchain verification, single-worker lease, process deadlines/cancellation and response identity. A compiled Java process performs one formal task using OWLAPI 5.5.1, the explicitly modified HermiT `1.4.5.519+evopilot.2`, and JFact `5.0.3` for the structurally selected ALC acceleration described below. The toolchain names both engines and selection policy. It cannot read or mutate owner asset/review state. HTTP/MCP permission and project scope remain owner-service responsibilities; this internal executor is not an independently authorized business API.

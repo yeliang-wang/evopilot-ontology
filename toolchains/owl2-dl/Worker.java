@@ -370,8 +370,66 @@ public final class Worker {
     return r.isEntailed(new HashSet<>(axioms));
   }
   static List<String> names(Stream<? extends OWLEntity> values){return values.map(x->x.getIRI().toString()).distinct().sorted().toList();}
+  /** Capture the exact same syntax parsers' asserted RDF callbacks before OWL
+   * mapping. RDF parsing and OWL 2 DL legality are distinct public observations. */
+  static final class RDFGraphSink implements org.semanticweb.owlapi.rdf.turtle.parser.TripleHandler,org.semanticweb.owlapi.rdf.rdfxml.parser.RDFConsumer {
+    final long end;final Map<String,String> blankNodes=new LinkedHashMap<>();final TreeSet<String> triples=new TreeSet<>();int statements=0,bytes=0;
+    RDFGraphSink(long end){this.end=end;}
+    String resource(String value){
+      if(value.startsWith("_:"))return blankNodes.computeIfAbsent(value,k->"_:b"+blankNodes.size());
+      RDFIRI.validateAbsolute(value);StringBuilder s=new StringBuilder("<");
+      value.codePoints().forEach(c->{if(c<=32||c==127||"<>\"{}|^`\\".indexOf(c)>=0)s.append(String.format("\\u%04X",c));else s.appendCodePoint(c);});return s.append('>').toString();
+    }
+    void add(IRI s,IRI p,String object){
+      deadline(end);if(++statements>AXIOMS)throw new Refusal("FAILED","RDF_GRAPH_LIMIT","RDF graph statement budget exceeded");
+      require(!p.toString().startsWith("_:"),"RDF_PREDICATE","RDF predicate must be an IRI");
+      String line=resource(s.toString())+" "+resource(p.toString())+" "+object+" .\n";
+      if(triples.add(line)){bytes+=line.getBytes(StandardCharsets.UTF_8).length;if(bytes>OUTPUT_BYTES-16384)throw new Refusal("FAILED","OUTPUT_LIMIT","RDF graph output exceeds fixed byte budget");}
+    }
+    void literal(IRI s,IRI p,String value,String language,IRI datatype){
+      String lexical=TextNode.valueOf(value).toString();
+      if(datatype!=null)lexical+="^^"+resource(datatype.toString());
+      else if(language!=null&&!language.isEmpty())lexical+="@"+language.toLowerCase(Locale.ROOT);
+      else lexical+="^^"+resource("http://www.w3.org/2001/XMLSchema#string");
+      add(s,p,lexical);
+    }
+    public void handlePrefixDirective(String prefix,String iri){}
+    public void handleBaseDirective(IRI iri){}
+    public void handleComment(String comment){}
+    public void handleTriple(IRI s,IRI p,IRI o){add(s,p,resource(o.toString()));}
+    public void handleTriple(IRI s,IRI p,String value){literal(s,p,value,null,null);}
+    public void handleTriple(IRI s,IRI p,String value,String language){literal(s,p,value,language,null);}
+    public void handleTriple(IRI s,IRI p,String value,IRI datatype){literal(s,p,value,null,datatype);}
+    public void handleEnd(){deadline(end);}
+    public void startModel(IRI iri){deadline(end);}
+    public void endModel(){deadline(end);}
+    public void statementWithResourceValue(IRI s,IRI p,IRI o){handleTriple(s,p,o);}
+    public void statementWithResourceValue(String s,String p,String o){handleTriple(IRI.create(s),IRI.create(p),IRI.create(o));}
+    public void statementWithLiteralValue(IRI s,IRI p,String value,String language,IRI datatype){literal(s,p,value,language,datatype);}
+    public void statementWithLiteralValue(String s,String p,String value,String language,String datatype){literal(IRI.create(s),IRI.create(p),value,language,datatype==null?null:IRI.create(datatype));}
+    public void logicalURI(IRI iri){}
+    public void includeModel(String logical,String physical){}
+    public IRI remapIRI(IRI iri){return iri;}
+    public String remapOnlyIfRemapped(String iri){return iri;}
+    public void addPrefix(String prefix,String namespace){}
+    public OWLOntologyLoaderConfiguration getConfiguration(){return loader(List.of());}
+  }
+  static ObjectNode rdfGraph(JsonNode request,long end)throws Exception {
+    String id=str(request.get("task"),"documentId");JsonNode document=null;
+    for(JsonNode d:request.path("closure").path("documents"))if(str(d,"id").equals(id)){require(document==null,"INVALID_INPUT","Duplicate graph document");document=d;}
+    require(document!=null,"INVALID_INPUT","RDF graph document is missing");
+    String content=str(document,"content"),format=str(document,"format"),base=str(document,"documentIri");
+    require(sha(content).equals(str(document,"digest")),"DIGEST_MISMATCH","Graph input changed");RDFGraphSink sink=new RDFGraphSink(end);
+    if(format.equals("turtle"))LocatedTurtleParser.parseUnlocated(content,IRI.create(base),sink);
+    else if(format.equals("rdfxml"))new LocatedRDFXMLParser(content,IRI.create(base)).parseUnlocated(sink);
+    else throw invalid("INVALID_INPUT","RDF graph parsing requires Turtle or RDF/XML");
+    deadline(end);String graph=String.join("",sink.triples);ObjectNode out=JSON.createObjectNode();out.put("status","COMPLETED");out.put("complete",true);ObjectNode result=out.putObject("result");
+    result.put("semantics","RDF_1_1_ASSERTED_GRAPH");result.put("scope","SELECTED_DOCUMENT");result.put("documentId",id);result.put("documentDigest",str(document,"digest"));result.put("documentIri",base);result.put("inputFormat",format);
+    result.put("format","ntriples");result.put("content",graph);result.put("graphDigest",sha(graph));result.put("statementCount",sink.statements);result.put("tripleCount",sink.triples.size());result.put("importsFollowed",false);result.put("inferencePerformed",false);return out;
+  }
   static ObjectNode execute(JsonNode request,long end)throws Exception {
-    JsonNode task=request.get("task");String kind=str(task,"kind");Loaded loaded=load(request.get("closure"),end,kind.equals("explanation"));OWLOntology o=loaded.ontology();
+    JsonNode task=request.get("task");String kind=str(task,"kind");if(kind.equals("rdfGraph"))return rdfGraph(request,end);
+    Loaded loaded=load(request.get("closure"),end,kind.equals("explanation"));OWLOntology o=loaded.ontology();
     ObjectNode out=JSON.createObjectNode();ObjectNode result=out.putObject("result");out.put("status","COMPLETED");out.put("complete",true);
     result.put("semantics","OWL_2_DL_DIRECT");result.put("axiomCount",o.getAxiomCount());
     var profile=profileViolations(loaded.validationOntology());

@@ -46,6 +46,7 @@ put(['expectations.read'],object({...asset,expectationsDigest:digest,...page}));
 const query=object({format:enumeration('turtle','rdfxml','functional'),content:{type:'string',maxLength:8388608},digest});
 const entities={...array(text(4096),1,1000),uniqueItems:true};
 const task:Schema={oneOf:[object({kind:enumeration('legality','consistency')}),
+  object({kind:enumeration('rdfGraph'),documentId:identifier}),
   object({kind:enumeration('entailment','satisfiability'),query}),
   object({kind:enumeration('classHierarchy','objectPropertyHierarchy','dataPropertyHierarchy','realization'),entities,direct:{type:'boolean'}}),
   object({kind:enumeration('identity'),entities}),object({kind:enumeration('explanation'),target:enumeration('inconsistency')}),

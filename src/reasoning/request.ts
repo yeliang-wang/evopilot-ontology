@@ -57,9 +57,13 @@ export function validateDLRequest(value:unknown):asserts value is DLRequest {
   const reached=new Set<string>();let traversals=0;
   const visit=(at:string,path:Set<string>):void=>{if(++traversals>8192)fail('INPUT_LIMIT','Import traversal budget exceeded');if(path.has(at))return;if(path.size>=DL_LIMITS.importDepth)fail('INPUT_LIMIT','Import depth budget exceeded');reached.add(at);const next=new Set(path).add(at);for(const to of edges.get(at)??[])visit(to,next);};
   visit(c.rootDocumentId,new Set());if(reached.size!==documents.size)fail('INVALID_INPUT','Closure includes unreachable documents');
-  const task=value.task;exact(task,['kind'],['query','entities','direct','target']);
+  const task=value.task;exact(task,['kind'],['query','entities','direct','target','documentId']);
   switch(task.kind){
     case 'legality':case 'consistency':exact(task,['kind']);break;
+    case 'rdfGraph':{
+      exact(task,['kind','documentId']);id(task.documentId);const selected=documents.get(task.documentId);
+      if(!selected||!['turtle','rdfxml'].includes(selected.format as string))fail('INVALID_INPUT','RDF graph parsing requires an admitted Turtle or RDF/XML document');break;
+    }
     case 'entailment':case 'satisfiability':exact(task,['kind','query']);exact(task.query,['format','content','digest']);query(task.query);break;
     case 'classHierarchy':case 'objectPropertyHierarchy':case 'dataPropertyHierarchy':case 'realization':case 'identity':
       exact(task,task.kind==='identity'?['kind','entities']:['kind','entities','direct']);

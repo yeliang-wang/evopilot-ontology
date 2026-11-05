@@ -87,6 +87,58 @@ public final class LocatedTurtleParser {
         parser.parseDocument();
     }
 
+    /** RDF string escapes belong to the original lexical form, not Java's or
+     * OWLAPI EscapeUtils' escape language. Preserve Unicode scalar values. */
+    static String decodeString(String content, Token token) throws ParseException {
+        if (!(token instanceof LocatedToken value) || content == null
+                || value.sourceStart < 0 || value.sourceEnd > content.length())
+            throw new ParseException("Missing original Turtle string");
+        String raw = content.substring(value.sourceStart, value.sourceEnd);
+        if (raw.length() < 2 || raw.charAt(0) != '"' && raw.charAt(0) != '\'')
+            throw new ParseException("Invalid Turtle string delimiter");
+        char quote = raw.charAt(0);
+        int width = raw.length() >= 6 && raw.charAt(1) == quote && raw.charAt(2) == quote ? 3 : 1;
+        if (raw.length() < 2 * width || !raw.endsWith(String.valueOf(quote).repeat(width)))
+            throw new ParseException("Incomplete Turtle string");
+        StringBuilder decoded = new StringBuilder();
+        for (int i = width, end = raw.length() - width; i < end;) {
+            char c = raw.charAt(i++);
+            if (c == '\\') {
+                if (i == end) throw new ParseException("Incomplete Turtle string escape");
+                char escaped = raw.charAt(i++);
+                if (escaped == 'u' || escaped == 'U') {
+                    int digits = escaped == 'u' ? 4 : 8;
+                    if (end - i < digits) throw new ParseException("Incomplete Turtle string UCHAR");
+                    long scalar = 0;
+                    for (int n = 0; n < digits; n++) {
+                        char h = raw.charAt(i++);
+                        int digit = h >= '0' && h <= '9' ? h - '0' : h >= 'a' && h <= 'f' ? h - 'a' + 10 : h >= 'A' && h <= 'F' ? h - 'A' + 10 : -1;
+                        if (digit < 0) throw new ParseException("Invalid Turtle string UCHAR");
+                        scalar = scalar * 16 + digit;
+                    }
+                    if (scalar > 0x10FFFF || scalar >= 0xD800 && scalar <= 0xDFFF)
+                        throw new ParseException("Turtle string UCHAR is not a Unicode scalar");
+                    decoded.appendCodePoint((int) scalar);
+                } else decoded.append(switch (escaped) {
+                    case 't' -> '\t'; case 'b' -> '\b'; case 'n' -> '\n'; case 'r' -> '\r'; case 'f' -> '\f';
+                    case '"' -> '"'; case '\'' -> '\''; case '\\' -> '\\';
+                    default -> throw new ParseException("Invalid Turtle string ECHAR");
+                });
+            } else {
+                if (width == 1 && (c == '\n' || c == '\r' || c == quote))
+                    throw new ParseException("Unescaped short Turtle string delimiter or newline");
+                if (Character.isHighSurrogate(c)) {
+                    if (i == end || !Character.isLowSurrogate(raw.charAt(i))) throw new ParseException("Unpaired Turtle string surrogate");
+                    decoded.append(c).append(raw.charAt(i++));
+                } else {
+                    if (Character.isLowSurrogate(c)) throw new ParseException("Unpaired Turtle string surrogate");
+                    decoded.append(c);
+                }
+            }
+        }
+        return decoded.toString();
+    }
+
     /** Decode IRIREF UCHARs exactly once from the original input. JavaCharStream
      * already applies Java-style lowercase-u translation to token.image, so the
      * transformed image cannot establish either the original escape grammar or
