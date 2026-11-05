@@ -8,7 +8,14 @@ import {hashBytes} from '../../../scripts/standards-gate.mjs';
 
 const converter=new URL('./ReplayConvert.java',import.meta.url),c=await openNativeCollector('EXPLAIN',import.meta.url,[converter]);let problem=null;
 const chain='New-Feature-ObjectPropertyChain-001',conflict='DisjointClasses-002';
-const conclusion=job=>{const t=job.tasks.find(t=>t.expected==='entailed');assert(t,'Pre-existing upstream entailment required');return t.task.query;};
+const originalJobs=c.frozen('owl-inputs.json').jobs;
+const conclusion=job=>{
+  // Preserve the original premise. The upstream Functional conclusion carries
+  // explicit property declarations that its RDF/XML counterpart can omit.
+  // A vacuous RDF query cannot establish the required explanatory support.
+  const matches=originalJobs.filter(t=>t.case===job.identifier&&t.format==='functional'&&t.expected==='entailed');assert.equal(matches.length,1,'Exact original Functional conclusion required');
+  const t=matches[0];c.observe({kind:'ORIGINAL_FUNCTIONAL_EXPLANATION_TARGET',upstreamId:job.upstreamId,originalJobId:t.id,queryDigest:t.request.task.query.digest,premisesUnchanged:true,mixedOriginalSerializations:true,originalStandardJobsUnchanged:true});return structuredClone(t.request.task.query);
+};
 async function explain(name,original,target='entailment'){
   const job=c.original(original),f=await c.model(name,job),task={kind:'explanation',target,...(target==='entailment'?{query:conclusion(job)}:{})};
   const result=await f.reason(task);assert.equal(result.status,'COMPLETED');assert.equal(result.complete,true);assert.equal(result.error,null);
