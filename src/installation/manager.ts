@@ -10,7 +10,7 @@ import {initializeWorkspace} from './workspace.js';
 import {privatePath,privateRead,openWorkspace,requireMaintenanceAvailable} from '../standalone/workspace.js';
 import {createStandaloneService} from '../standalone/service.js';
 import {exact,id,digest,hash,hashBytes,validateIdentity} from '../standalone/validation.js';
-import {fail} from '../standalone/types.js';
+import {fail,ServiceError} from '../standalone/types.js';
 import {requireFreshRecoveryRequest} from '../standalone/recovery.js';
 import type {Json} from '../standalone/types.js';
 import {operatorRequest,processPresent,validateRun} from './control.js';
@@ -79,10 +79,21 @@ export function prepareInstallation(input:PrepareInput):Installation{
     plugin(installation);writePrivate(join(root,'installation.json'),installation);return installation;
   }finally{unlock();}
 }
+function readMutableRun(path:string):unknown{
+  // The daemon replaces its run record atomically while the operator observes
+  // startup/shutdown. A stat/open race can see a replaced inode or an unlinked
+  // old descriptor. Re-observe only this mutable record, with a fixed bound;
+  // every attempt still applies the complete privateRead ownership/link/mode
+  // and size checks. Immutable workspace/credential readers remain unchanged.
+  for(let attempt=0;;attempt++){
+    try{return readPrivate(path);}
+    catch(error){if(!(error instanceof ServiceError)||error.code!=='UNSAFE_PATH'||attempt>=2)throw error;}
+  }
+}
 export function currentRun(installation:Installation):RunRecord|null{
   const pointer=join(installation.root,'current-run.json');if(!existsSync(pointer))return null;
   const selected=readPrivate(pointer);exact(selected,['runId']);id(selected.runId);
-  const value=readPrivate(join(installation.root,'runs',selected.runId+'.json'));validateRun(value);
+  const value=readMutableRun(join(installation.root,'runs',selected.runId+'.json'));validateRun(value);
   if(value.installationId!==installation.installationId||value.runId!==selected.runId)fail('IDENTITY_MISMATCH','Managed run identity changed',403);
   if(value.schema==='ontology-managed-run/v3'&&!installationRuntimeBindings(installation).some(r=>runtimeBindingDigest(r)===value.runtimeBindingDigest))fail('RUNTIME_HISTORY_MISSING','Managed run requires its original runtime identity',409);return value;
 }
