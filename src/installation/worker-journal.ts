@@ -51,11 +51,16 @@ export function validateWorkerPlan(value:unknown):asserts value is WorkerPlan {
   for(const [key,min,max] of [['stdinBytes',1,50*1024*1024],['timeoutMs',1,120000],['outputBytes',1,17*1024*1024],['diagnosticBytes',1,65536]] as const){if(!Number.isSafeInteger(value[key])||(value[key] as number)<min||(value[key] as number)>max)fail('WORKER_PROTOCOL','Worker budget exceeds fixed envelope');}
   if(Buffer.byteLength(encoded(value))>32768)fail('WORKER_PROTOCOL','Worker intent byte budget exceeded');
 }
+/** SQLite DELETE-journal commits remove their sidecar. Its absence is valid;
+ * any observed object must still pass the full private-file checks. */
+function optionalPrivateSidecar(path:string):void {
+  try{privatePath(path);}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}
+}
 function openFile(root:string,file:string,create=false,expectedId?:string,readOnly=false){
   privatePath(root,true);if(outsideSource(root)!==root)fail('UNSAFE_PATH','Canonical worker root required');
   let fresh=false;
   if(!workerFilePresent(file)){if(!create)fail('WORKER_EVIDENCE_MISSING','Worker journal is absent',409);const fd=openSync(file,'wx',0o600);closeSync(fd);fresh=true;}
-  privatePath(file);for(const suffix of ['-journal','-wal','-shm'])if(workerFilePresent(file+suffix))privatePath(file+suffix);
+  privatePath(file);for(const suffix of ['-journal','-wal','-shm'])optionalPrivateSidecar(file+suffix);
   const anchor=lstatSync(file),db=new DatabaseSync(file,{timeout:1000,readOnly});
   try{
     db.exec('PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON;');
@@ -67,7 +72,7 @@ function openFile(root:string,file:string,create=false,expectedId?:string,readOn
     const identities=db.prepare('SELECT value FROM identity').all();if(identities.length!==1)fail('WORKER_EVIDENCE_INVALID','Worker journal identity is ambiguous',409);
     const identity:unknown=JSON.parse(String(identities[0].value));exact(identity,['schema','root','journalId']);id(identity.journalId);
     if(identity.schema!=='ontology-worker-journal/v1'||identity.root!==root||expectedId!==undefined&&identity.journalId!==expectedId)fail('WORKER_EVIDENCE_INVALID','Worker journal owner differs',409);
-    const guard=()=>{privatePath(file);const s=lstatSync(file);if(s.ino!==anchor.ino||s.dev!==anchor.dev)fail('WORKER_EVIDENCE_INVALID','Worker journal was replaced',409);if(workerFilePresent(file+'-journal'))privatePath(file+'-journal');};
+    const guard=()=>{privatePath(file);const s=lstatSync(file);if(s.ino!==anchor.ino||s.dev!==anchor.dev)fail('WORKER_EVIDENCE_INVALID','Worker journal was replaced',409);optionalPrivateSidecar(file+'-journal');};
     guard();return {db,journalId:identity.journalId,guard};
   }catch(e){db.close();throw e;}
 }

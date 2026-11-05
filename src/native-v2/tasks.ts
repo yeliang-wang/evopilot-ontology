@@ -111,7 +111,7 @@ export function reasoningTasks(db:DatabaseSync,guard:()=>void,configuration?:Rea
     }
     catch(e){
       if(e instanceof ServiceError&&['WORKER_OUTCOME_UNKNOWN','WORKER_RECOVERY_REQUIRED'].includes(e.code)){
-        tx(()=>{db.prepare("UPDATE native_reasoning_tasks SET state='INTERRUPTED',updated_at=? WHERE id=?").run(now(),String(r.id));event(String(r.id),'INTERRUPTED',{code:e.code,automaticRedispatch:false});});return;
+        tx(()=>{db.prepare("UPDATE native_reasoning_tasks SET state='INTERRUPTED',updated_at=? WHERE id=?").run(now(),String(r.id));event(String(r.id),'INTERRUPTED',{code:e.code,diagnostic:e.message.slice(0,512),automaticRedispatch:false});});return;
       }
       result=failure(r,'FAILED',e instanceof ServiceError?e.code:'EXECUTOR_FAILURE','Configured executor failed before establishing a formal result');
     }

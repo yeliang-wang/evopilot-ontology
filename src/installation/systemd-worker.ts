@@ -235,5 +235,11 @@ export async function runSystemdOwnedWorker(reference:WorkerReference,input:stri
       if(performance.now()>deadline+10000)fail('WORKER_OUTCOME_UNKNOWN','Unit terminal observation is incomplete',409);
       await delay(50);
     }
-  }catch(e){fail('WORKER_OUTCOME_UNKNOWN','Bound unit outcome is uncertain'+(e instanceof ServiceError?' ['+e.code+']':'')+'; retain its exact attempt and inspect manager evidence',409);}
+  }catch(e){
+    // Preserve bounded diagnostic codes without exposing arbitrary error text,
+    // paths or input. Observation failure never authorizes another dispatch.
+    const code=e&&typeof e==='object'&&'code' in e&&typeof e.code==='string'&&/^[A-Z0-9_]{1,64}$/.test(e.code)?e.code:'UNCLASSIFIED';
+    const sqlite=e&&typeof e==='object'&&'errcode' in e&&Number.isSafeInteger(e.errcode)?':'+e.errcode:'';
+    fail('WORKER_OUTCOME_UNKNOWN','Bound unit outcome is uncertain ['+code+sqlite+']; retain its exact attempt and inspect manager evidence',409);
+  }
 }
