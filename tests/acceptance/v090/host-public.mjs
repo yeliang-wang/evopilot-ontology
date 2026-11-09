@@ -10,12 +10,28 @@ import {hashBytes} from '../../../scripts/standards-gate.mjs';
 import {hash} from '../../../dist/standalone/validation.js';
 import {verifyPublishedInstallation} from './published-installation.mjs';
 
-export function validateCompletedHostCall(call){
+export function validateCompletedHostCall(call,recovery=null){
   assert(['completed','failed'].includes(call.status),'Actual Host call did not finish');
   assert.equal(call.error,null,'Host transport failure is not a domain refusal');
   if(call.status==='failed'){
     assert.equal(call.server,'evopilot-ontology');
     const value=call.result?.structured_content;
+    // MCP validates required scope before dispatching a guide read to the owner.
+    // Retain that rejected call, but accept recovery only when the next call is
+    // the identical read with the complete, correct owner scope and a result.
+    if(value===null&&call.tool==='ontology_read'&&call.arguments?.operation==='guide.read'){
+      const keys=['workspaceId','serviceId','projectId'],missing=keys.filter(k=>!Object.hasOwn(call.arguments,k));
+      assert(missing.length,'A protocol rejection must identify an actually missing scope');
+      assert.deepEqual(Object.keys(call.arguments).sort(),['operation','input',...keys.filter(k=>!missing.includes(k))].sort());
+      assert.deepEqual(call.result.content,[{type:'text',text:'Input validation error: Invalid arguments for tool ontology_read: '+missing.map(k=>"data must have required property '"+k+"'").join(', ')}]);
+      assert(recovery?.call&&recovery.scope,'A rejected guide read needs its original successful recovery');
+      const next=recovery.call;
+      assert.equal(next.server,call.server);assert.equal(next.tool,call.tool);assert.equal(next.status,'completed');
+      for(const k of keys){assert.equal(typeof recovery.scope[k],'string');assert(recovery.scope[k].length);if(!missing.includes(k))assert.equal(call.arguments[k],recovery.scope[k]);}
+      assert.deepEqual(next.arguments,{...call.arguments,...recovery.scope});
+      validateCompletedHostCall(next);
+      return 'RECOVERED_MCP_GUIDE_SCOPE_REJECTION';
+    }
     assert(value&&value.error&&!Object.hasOwn(value,'result'),'Failed Host call needs the original structured owner refusal');
     assert.equal(typeof value.error.code,'string');assert(value.error.code.length);
     assert.equal(typeof value.error.message,'string');
@@ -39,9 +55,14 @@ export async function openHostCollector(group,entry,dependencies=[]){
     const events=stdout.trim().split('\n').map(s=>JSON.parse(s));assert(events.some(e=>e.type==='thread.started'));assert(events.some(e=>e.type==='turn.completed'));assert(!events.some(e=>['error','turn.failed'].includes(e.type)));
     const threadIds=[...new Set(events.filter(e=>e.type==='thread.started').map(e=>e.thread_id))];assert.equal(threadIds.length,1);assert.equal(threadIds[0],record.threadId);
     const items=events.filter(e=>e.type==='item.completed').map(e=>e.item),calls=items.filter(i=>i.type==='mcp_tool_call'),writes=calls.filter(i=>i.tool==='ontology_write');
-    for(const call of calls){validateCompletedHostCall(call);if(call.tool!=='ontology_context'&&call.server==='evopilot-ontology'&&!call.result?.structured_content?.error){assert.equal(call.arguments.workspaceId,record.scope.workspaceId);assert.equal(call.arguments.serviceId,record.scope.serviceId);assert.equal(call.arguments.projectId,record.scope.projectId);}}
+    const protocolRejections=new Set();
+    for(const [index,call] of calls.entries()){
+      const classification=validateCompletedHostCall(call,{call:calls[index+1],scope:record.scope});
+      if(classification){protocolRejections.add(call);c.observe({kind:classification,sessionId:id,rejectedCall:call,recoveredCall:calls[index+1],ownerOperationExecutedByRejectedCall:false});continue;}
+      if(call.tool!=='ontology_context'&&call.server==='evopilot-ontology'&&!call.result?.structured_content?.error){assert.equal(call.arguments.workspaceId,record.scope.workspaceId);assert.equal(call.arguments.serviceId,record.scope.serviceId);assert.equal(call.arguments.projectId,record.scope.projectId);}
+    }
     const value=call=>{assert.equal(call.result?.is_error??false,false);const content=call.result?.structured_content;assert(content&&!content.error,'Actual MCP result required');assert(Object.hasOwn(content,'result'));return content.result;};
-    const results=operation=>calls.filter(i=>(i.tool==='ontology_context'?operation==='ontology_context':i.arguments?.operation===operation)&&!(i.result?.is_error||i.result?.structured_content?.error)).map(i=>({call:i,value:value(i)}));
+    const results=operation=>calls.filter(i=>!protocolRejections.has(i)&&(i.tool==='ontology_context'?operation==='ontology_context':i.arguments?.operation===operation)&&!(i.result?.is_error||i.result?.structured_content?.error)).map(i=>({call:i,value:value(i)}));
     const refused=(operation,code)=>{const matches=calls.filter(i=>i.arguments?.operation===operation&&i.result?.structured_content?.error?.code===code);assert(matches.length,'Actual refusal absent: '+operation+'/'+code);return matches.at(-1);};
     const contexts=results('ontology_context');if(record.selected){assert(contexts.length);for(const {value:v} of contexts){assert.equal(v.product,'evopilot-ontology');assert.equal(v.productVersion,'0.9.0');assert.equal(v.workspaceId,record.scope.workspaceId);assert.equal(v.serviceId,record.scope.serviceId);assert(v.projectIds.includes(record.scope.projectId));assert.equal(v.authority,false);if(record.requiresNative){assert.equal(v.toolchainDigest,hostConfig.dl.digest);assert.equal(v.shaclToolchainDigest,hostConfig.shacl.digest);}}}
     const answers=items.filter(i=>i.type==='agent_message').map(i=>i.text).join('\n');assert(answers.length);

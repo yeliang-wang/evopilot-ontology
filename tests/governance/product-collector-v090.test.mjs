@@ -17,6 +17,15 @@ test('formal collector refuses a missing report approval before creating an outp
   const root=realpathSync(mkdtempSync(join(tmpdir(),'ontology-collector-gate-')));t.after(()=>rmSync(root,{recursive:true,force:true}));const output=join(root,'must-not-exist');
   await assert.rejects(openCollector('AUTH',new URL('../acceptance/v090/auth.mjs',import.meta.url),['--evidence',root,'--request','product-e2e-request.json','--output',output]));assert.equal(existsSync(output),false);
 });
+test('an MCP guide scope rejection requires the identical successful scoped read and never substitutes for owner execution',()=>{
+  const scope={workspaceId:'isolated',serviceId:'owner',projectId:'demo'};
+  const rejected={server:'evopilot-ontology',tool:'ontology_read',status:'failed',error:null,arguments:{operation:'guide.read',input:{topic:'evolution'}},result:{structured_content:null,content:[{type:'text',text:"Input validation error: Invalid arguments for tool ontology_read: data must have required property 'workspaceId', data must have required property 'serviceId', data must have required property 'projectId'"}]}};
+  const recovered={...rejected,status:'completed',arguments:{...rejected.arguments,...scope},result:{structured_content:{result:{topic:'evolution'}}}};
+  assert.equal(validateCompletedHostCall(rejected,{call:recovered,scope}),'RECOVERED_MCP_GUIDE_SCOPE_REJECTION');
+  assert.throws(()=>validateCompletedHostCall(rejected));
+  for(const change of [{...rejected,tool:'ontology_write'},{...rejected,error:{message:'Connection lost'}},{...rejected,status:'in_progress'},{...rejected,arguments:{...rejected.arguments,operation:'delivery.inspect'}},{...rejected,result:{...rejected.result,content:[{type:'text',text:'Unknown failure'}]}},{...rejected,arguments:{...rejected.arguments,workspaceId:'foreign'}}])assert.throws(()=>validateCompletedHostCall(change,{call:recovered,scope}));
+  for(const next of [{...recovered,status:'failed'},{...recovered,error:{message:'Timeout'}},{...recovered,arguments:{...recovered.arguments,projectId:'foreign'}},{...recovered,arguments:{...recovered.arguments,input:{topic:'delivery'}}},{...recovered,result:{structured_content:{error:{code:'NOT_FOUND',message:'Missing guide'}}}}])assert.throws(()=>validateCompletedHostCall(rejected,{call:next,scope}));
+});
 test('formal collector command line cannot select traversal, implicit source or unknown switches',()=>{
   for(const args of [[],['--evidence','relative','--request','r.json','--output','/tmp/new'],['--evidence','/tmp/evidence','--request','../r.json','--output','/tmp/new'],['--evidence','/tmp/evidence','--request','r.json','--force','/tmp/new']])assert.throws(()=>collectorArguments(args));
 });
