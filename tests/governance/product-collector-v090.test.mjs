@@ -6,7 +6,7 @@ import {join,dirname} from 'node:path';
 import {collectorArguments,openCollector,verifyArtifactChunks} from '../acceptance/v090/public-collector.mjs';
 import {hashBytes} from '../../scripts/standards-gate.mjs';
 import {verifyRuntimePayload,verifyRelocatedPython} from '../acceptance/v090/published-installation.mjs';
-import {validateCompletedHostCall} from '../acceptance/v090/host-public.mjs';
+import {validateCompletedHostCall,selectModelEntailmentChange} from '../acceptance/v090/host-public.mjs';
 test('actual Host domain refusals retain structured errors while transport failures and unfinished calls cannot pass',()=>{
   const refused={server:'evopilot-ontology',status:'failed',error:null,result:{structured_content:{error:{code:'NOT_FOUND',message:'Project not initialized'}}}};
   assert.doesNotThrow(()=>validateCompletedHostCall(refused));
@@ -60,4 +60,14 @@ test('native relocation permits exact generated venv roots but rejects code chan
   assert.deepEqual(verifyRelocatedPython(reference,actual),['venv/bin/pyshacl']);
   assert.throws(()=>verifyRelocatedPython(reference,make(after,'#!'+after+'/venv/bin/python3.12\nprint("changed")\n')),/Only the exact Python installation root/);
   const left=make(before,'original native bytes','venv/lib/payload.py'),right=make(after,'changed native bytes','venv/lib/payload.py');assert.throws(()=>verifyRelocatedPython(left,right),/outside generated venv paths/);
+});
+
+
+test('alignment compares the same query across exact model revisions despite unrelated earlier positive results',()=>{
+  const make=(modelDigest,status,axiom,query=axiom)=>({value:{modelDigest,formalStatus:status,result:{result:{queryAxioms:[{axiom}]}}},start:{call:{arguments:{input:{task:{query:{format:'functional',content:query,digest:hashBytes(query)}}}}}}});
+  const originalA=make('before','ENTAILED','A(a)'),originalB=make('before','NOT_ENTAILED','B(a)'),mappedA=make('after','ENTAILED','A(a)'),mappedB=make('after','ENTAILED','B(a)');
+  const session=rows=>({task(kind,status,predicate){assert.equal(kind,'reasoning');const x=rows.find(x=>x.value.formalStatus===status&&predicate(x.value));assert(x,'No matching actual task');return x;}});
+  const result=selectModelEntailmentChange(session([originalA,originalB,mappedA,mappedB]),'before','after');
+  assert.equal(result.unknown,originalB);assert.equal(result.mapped,mappedB);
+  for(const rows of [[originalA,originalB,mappedA],[originalA,originalB,make('foreign','ENTAILED','B(a)')],[originalA,originalB,make('after','ENTAILED','B(a)','changed query bytes')]])assert.throws(()=>selectModelEntailmentChange(session(rows),'before','after'));
 });

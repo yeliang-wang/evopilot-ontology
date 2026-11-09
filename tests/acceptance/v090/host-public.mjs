@@ -5,10 +5,19 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {join,isAbsolute} from 'node:path';
+import {isDeepStrictEqual} from 'node:util';
 import {openCollector} from './public-collector.mjs';
 import {hashBytes} from '../../../scripts/standards-gate.mjs';
 import {hash} from '../../../dist/standalone/validation.js';
 import {verifyPublishedInstallation} from './published-installation.mjs';
+
+export function selectModelEntailmentChange(session,beforeModelDigest,afterModelDigest){
+  assert.notEqual(beforeModelDigest,afterModelDigest);
+  const unknown=session.task('reasoning','NOT_ENTAILED',v=>v.modelDigest===beforeModelDigest);
+  const mapped=session.task('reasoning','ENTAILED',v=>v.modelDigest===afterModelDigest&&isDeepStrictEqual(v.result?.result?.queryAxioms,unknown.value.result.result.queryAxioms));
+  assert.deepEqual(mapped.start.call.arguments.input.task.query,unknown.start.call.arguments.input.task.query);
+  return {unknown,mapped};
+}
 
 export function validateCompletedHostCall(call,recovery=null){
   assert(['completed','failed'].includes(call.status),'Actual Host call did not finish');

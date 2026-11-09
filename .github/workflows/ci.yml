@@ -32,6 +32,21 @@ jobs:
           process.exit(result.status??1);
           JS
       - run: npm run build
+      - name: Cache the complete fresh-install dependency resolution
+        run: |
+          node --input-type=module <<'JS'
+          import {mkdtempSync} from 'node:fs';
+          import {join} from 'node:path';
+          import {tmpdir} from 'node:os';
+          import {execFileSync} from 'node:child_process';
+          const root=mkdtempSync(join(tmpdir(),'ontology-ci-package-cache-'));
+          const packed=JSON.parse(execFileSync('npm',['pack','--ignore-scripts','--json','--pack-destination',root],{encoding:'utf8',timeout:60000}));
+          const archive=join(root,packed[0].filename);
+          // A package installed into an empty prefix has no repository lockfile.
+          // Cache its complete current resolution, including transitive ranges,
+          // then prove a separate empty prefix can install with networking off.
+          for(const offline of [false,true])execFileSync('npm',['install',...(offline?['--offline']:[]),'--ignore-scripts','--no-audit','--no-fund','--prefix',join(root,offline?'offline':'online'),archive],{stdio:'inherit',timeout:300000});
+          JS
       - run: npm run check
       - name: Verify frozen governance and review-gate refusal paths
         run: |

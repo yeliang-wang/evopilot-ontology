@@ -109,7 +109,7 @@ export async function checkSource() {
   assert.equal(await readFile(resolve(ROOT,'plugins/codex/skills/evopilot-ontology-expert/SKILL.md'),'utf8'),await readFile(resolve(ROOT,'src/expert/SKILL.md'),'utf8'),'Packaged Expert must be generated from its sole owner source');
   assert((await lstat(resolve(ROOT,'dist/standalone/cli.js'))).mode&0o111);
   const dl=JSON.parse(await readFile(resolve(ROOT,'toolchains/owl2-dl/dependencies.json'),'utf8'));
-  assert.equal(dl.schema,'ontology-dl-dependencies/v1');assert.equal(dl.engine,'hermit:1.4.5.519+evopilot.2;jfact:5.0.3;structural-alc:1');assert.equal(dl.owlapi,'owlapi-distribution:5.5.1');
+  assert.equal(dl.schema,'ontology-dl-dependencies/v1');assert.equal(dl.engine,'hermit:1.4.5.519+evopilot.2;jfact:5.0.3;structural-alc:2');assert.equal(dl.owlapi,'owlapi-distribution:5.5.1');
   assert.equal(dl.enginePatch.file,'engine-compat.json');
   const patchBytes=await readFile(resolve(ROOT,'toolchains/owl2-dl/engine-compat.json'));
   assert.equal(createHash('sha256').update(patchBytes).digest('hex'),dl.enginePatch.sha256);

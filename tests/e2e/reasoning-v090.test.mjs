@@ -39,7 +39,7 @@ test('actual DL classification retains open-world distinction after removing its
 test('engine selection covers the whole closure and query without dropping non-ALC semantics',async()=>{
   const optimized=await run(sensitive,{kind:'entailment',query:query('ClassAssertion(:SensitiveService :api)')},'ENTAILED');
   assert.equal(optimized.result.reasoningEngine,'JFACT_5_0_3_ALC');
-  assert.equal(optimized.result.engineSelectionPolicy,'STRUCTURAL_ALC_V1');
+  assert.equal(optimized.result.engineSelectionPolicy,'STRUCTURAL_ALC_V2');
   const keys=await run(keyed,{kind:'entailment',query:query('SameIndividual(:a :b)')},'ENTAILED');
   assert.equal(keys.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
   const imported=request('',{kind:'entailment',query:query('SameIndividual(:a :b)')});
@@ -58,6 +58,34 @@ test('engine selection covers the whole closure and query without dropping non-A
   assert.equal(queryOnly.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
   const projection=await run(sensitive,{kind:'classHierarchy',entities:[ns+'SensitiveService'],direct:false});
   assert.equal(projection.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
+});
+
+test('fresh query individuals preserve empty-class and open-world consequences with or without an existing ABox',async()=>{
+  const template=declaration({classes:['Service','ReadOnly','Writable','Impossible']})+
+    ' SubClassOf(:ReadOnly :Service) SubClassOf(:Writable :Service) DisjointClasses(:ReadOnly :Writable) EquivalentClasses(:Impossible ObjectIntersectionOf(:ReadOnly :Writable))';
+  for(const existing of ['',declaration({individuals:['other']})+' ClassAssertion(:Service :other)']){
+    const body=template+existing;
+    for(const [expression,status] of [[':Impossible','NOT_ENTAILED'],[':Service','NOT_ENTAILED'],['ObjectComplementOf(:Impossible)','ENTAILED'],['owl:Thing','ENTAILED']]){
+      const result=await run(body,{kind:'entailment',query:query(`ClassAssertion(${expression} :newService)`)},status);
+      assert.equal(result.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
+      assert.equal(result.result.engineSelectionPolicy,'STRUCTURAL_ALC_V2');
+      assert.equal(result.result.negationInferred,false);
+    }
+  }
+  const declared=await run(template+declaration({individuals:['newService']}),{kind:'entailment',query:query('ClassAssertion(:Impossible :newService)')},'NOT_ENTAILED');
+  assert.equal(declared.result.reasoningEngine,'JFACT_5_0_3_ALC');
+});
+
+test('fresh class and property queries use complete DL without asserting query premises',async()=>{
+  const body=declaration({classes:['Service'],individuals:['a','b']})+' ClassAssertion(:Service :a)';
+  for(const [axiom,status] of [
+    ['ClassAssertion(:UnknownClass :a)','NOT_ENTAILED'],
+    ['SubClassOf(:UnknownClass :UnknownClass)','ENTAILED'],
+    ['ObjectPropertyAssertion(:unknownProperty :a :b)','NOT_ENTAILED'],
+  ]){
+    const result=await run(body,{kind:'entailment',query:query(axiom)},status);
+    assert.equal(result.result.reasoningEngine,'HERMIT_1_4_5_519_EVOPILOT_2_DL');
+  }
 });
 
 test('empty logical conclusion is explicitly vacuous and is not a business coverage claim',async()=>{

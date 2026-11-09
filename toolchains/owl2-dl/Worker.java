@@ -365,12 +365,16 @@ public final class Worker {
     // individuals, for which conjunction of individual entailments is equivalent.
     // All other legal DL inputs/tasks retain HermiT; selection never follows an
     // error/timeout and is independent of case names, expected answers or sizes.
-    boolean alc=List.of("consistency","entailment").contains(kind)&&o.logicalAxioms().allMatch(Worker::alcAxiom)&&q.stream().allMatch(Worker::alcAxiom);
+    // JFact's fresh-individual path can throw or report a false entailment.
+    // Select complete DL before execution whenever a query extends the premise
+    // signature. Never add query assertions/declarations to the premise model.
+    boolean knownQuery=q.stream().flatMap(OWLAxiom::signature).allMatch(e->e.isBuiltIn()||o.containsEntityInSignature(e));
+    boolean alc=knownQuery&&List.of("consistency","entailment").contains(kind)&&o.logicalAxioms().allMatch(Worker::alcAxiom)&&q.stream().allMatch(Worker::alcAxiom);
     selectedEngine=alc?"JFACT_5_0_3_ALC":"HERMIT_1_4_5_519_EVOPILOT_2_DL";
     deadline(end);
     return alc?new uk.ac.manchester.cs.jfact.JFactFactory().createReasoner(o,new SimpleConfiguration(Math.max(1,(end-System.nanoTime())/1000000))):reasoner(o,end);
   }
-  static void engineEvidence(ObjectNode result){if(!XmlSchemaAutomata.unknownBlocks().isEmpty())result.set("unknownUnicodeBlocks",JSON.valueToTree(XmlSchemaAutomata.unknownBlocks()));if(selectedEngine!=null){result.put("reasoningEngine",selectedEngine);result.put("engineSelectionPolicy","STRUCTURAL_ALC_V1");}}
+  static void engineEvidence(ObjectNode result){if(!XmlSchemaAutomata.unknownBlocks().isEmpty())result.set("unknownUnicodeBlocks",JSON.valueToTree(XmlSchemaAutomata.unknownBlocks()));if(selectedEngine!=null){result.put("reasoningEngine",selectedEngine);result.put("engineSelectionPolicy","STRUCTURAL_ALC_V2");}}
   static boolean entailed(OWLReasoner r,List<OWLAxiom> axioms){
     for(OWLAxiom ax:axioms)if(!r.isEntailmentCheckingSupported(ax.getAxiomType()))throw new Refusal("FAILED","ENGINE_CAPABILITY_GAP","Engine does not support this entailment axiom type: "+ax.getAxiomType());
     // Shared anonymous individuals make a query a joint existential conjunction.

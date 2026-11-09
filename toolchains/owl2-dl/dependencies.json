@@ -1,6 +1,6 @@
 {
   "schema": "ontology-dl-dependencies/v1",
-  "engine": "hermit:1.4.5.519+evopilot.2;jfact:5.0.3;structural-alc:1",
+  "engine": "hermit:1.4.5.519+evopilot.2;jfact:5.0.3;structural-alc:2",
   "owlapi": "owlapi-distribution:5.5.1",
   "files": [
     {
