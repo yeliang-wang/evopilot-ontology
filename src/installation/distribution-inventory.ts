@@ -12,7 +12,7 @@ import {fail} from '../standalone/types.js';
 import type {Json} from '../standalone/types.js';
 
 const PACKAGE_ROOT=fileURLToPath(new URL('../../',import.meta.url));
-const BUNDLES=['linux-arm64-temurin21-pbs20260211-candidate1','linux-arm64-temurin21-pbs20260211-candidate2','linux-arm64-temurin21-pbs20260211-candidate3','linux-arm64-temurin21-pbs20260211-candidate4','linux-arm64-temurin21-pbs20260211-candidate5','linux-arm64-temurin21-pbs20260211-candidate6'];
+const BUNDLES=['linux-arm64-temurin21-pbs20260211-candidate1','linux-arm64-temurin21-pbs20260211-candidate2','linux-arm64-temurin21-pbs20260211-candidate3','linux-arm64-temurin21-pbs20260211-candidate4','linux-arm64-temurin21-pbs20260211-candidate5','linux-arm64-temurin21-pbs20260211-candidate6','linux-arm64-temurin21-pbs20260211-candidate7'];
 // These transforms are product code, never inferred from an archive or supplied
 // by an operator. The outer wheel tar is inventoried; its ZIP members are not.
 const RECIPES=Object.freeze([

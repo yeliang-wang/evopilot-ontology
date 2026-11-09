@@ -31,6 +31,10 @@ const CATALOG=Object.freeze([Object.freeze({
   id:'linux-arm64-temurin21-pbs20260211-candidate6',
   file:'governance/distribution-linux-arm64-v090-candidate6.json',
   digest:'sha256:fe8499867d13fd6b1217f4c5fdddd97272d4ba26d5a00246dd790fdaa20b1e6b',
+}),Object.freeze({
+  id:'linux-arm64-temurin21-pbs20260211-candidate7',
+  file:'governance/distribution-linux-arm64-v090-candidate7.json',
+  digest:'sha256:0fcc37aa3e3833b0a4b0042098f8412512ee01870b0e9cfd02397b556154c466',
 })]);
 
 export function selectedDistribution(packageRoot:string,id:string):{manifest:DistributionManifest;manifestDigest:string;catalogEntry:string} {
