@@ -1,5 +1,9 @@
 # Changelog
 
+**Independent v0.9.0 Limited Preview · 2026-11-23.** The independent Linux arm64 Preview ships native ontology modeling, reads, and standards validation. Publication includes 830 required standards cases, 35 documented exclusions, limited product checks, and isolated installation from the public assets. [GitHub pre-release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.9.0) · [Installation guide](docs/ontology-v090-limited-preview-install.md)
+
+The changelog entries below cover the source line on `main`.
+
 ## 0.8.3 Preview — 2026-10-27
 
 [Versioned Preview release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.3).

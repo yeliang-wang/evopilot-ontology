@@ -1,10 +1,14 @@
-# EvoPilot Ontology · v0.8.3 Preview source
+# EvoPilot Ontology · v0.9.0 Limited Preview
 
 English | [简体中文](README_CN.md)
 
-**Independent v0.9.0 Preview:** start with the [limited release and isolated installation guide](docs/ontology-v090-limited-preview-install.md). This Linux arm64 distribution covers native modeling, reads and declared validation, retaining the full OWL 2 DL commitment. Actual Desktop journeys, cross-component delivery, daily installation/plugin switching, old-installation upgrades and test-asset cleanup remain deferred.
+Start with the [limited release and isolated installation guide](docs/ontology-v090-limited-preview-install.md). This Linux arm64 distribution covers native modeling, reads and declared validation, retaining the full OWL 2 DL commitment. Actual Desktop journeys, cross-component delivery, daily installation/plugin switching, old-installation upgrades and test-asset cleanup remain deferred.
 
-**Source identity:** `main` still contains the `v0.8.3` source line; the independent `v0.9.0` release has its own exact source revision and distribution. The sections below describe this branch's APIs and installation. Building `main` does not produce the independent release. Use the versioned references in the limited guide for that release.
+[GitHub v0.9.0 pre-release and downloads](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.9.0)
+
+## v0.8.3 Preview source
+
+The APIs, commands, and source build instructions below apply to the v0.8.3 source on `main`. Use the release downloads above to install v0.9.0.
 
 Ontology defines domain concepts, relationships, constraints and provenance, then preserves reviewed immutable semantic assets. It works with [EvoPilot Expert](https://github.com/yeliang-wang/evopilot/blob/main/README.md), [Harness](https://github.com/yeliang-wang/evopilot-harness/blob/main/README.md) for quality and evidence, and [Runtime](https://github.com/yeliang-wang/evopilot-runtime/blob/main/README.md) for execution and project completion.
 

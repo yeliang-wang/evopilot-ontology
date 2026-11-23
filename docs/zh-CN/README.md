@@ -9,6 +9,7 @@
 | 任务 | 入口 |
 |---|---|
 | 安装独立 v0.9.0 限定 Preview | [发行身份、范围与隔离安装](../ontology-v090-limited-preview-install.md#中文安装与发行说明) |
+| 使用独立 v0.9.0 限定 Preview 建模、读取和验证 | [独立 CLI、HTTP 和 MCP](../ontology-v090-limited-preview-api.md#中文操作参考) |
 | 在 Codex 使用组合产品 | [总项目中文安装指南](https://github.com/yeliang-wang/evopilot/blob/main/docs/zh-CN/installation.md) |
 | 首次建模与选择等级 | [首次使用](https://github.com/yeliang-wang/evopilot/blob/main/docs/zh-CN/first-journey.md)、[内容等级 v2](https://github.com/yeliang-wang/evopilot/blob/main/docs/zh-CN/asset-readiness.md) |
 | 升级已有工作区 | [中文迁移指南](https://github.com/yeliang-wang/evopilot/blob/main/docs/zh-CN/migration.md) |

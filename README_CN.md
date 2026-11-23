@@ -1,10 +1,14 @@
-# EvoPilot Ontology · v0.8.3 Preview 源码
+# EvoPilot Ontology · v0.9.0 限定 Preview
 
 [English](README.md) | 简体中文
 
-**独立 v0.9.0 Preview：**请从[限定发行与隔离安装指南](docs/ontology-v090-limited-preview-install.md#中文安装与发行说明)开始。该 Linux arm64 分发覆盖原生建模、读取及声明标准验证，保留完整 OWL 2 DL 承诺。真实 Desktop 流程、跨组件交付、日常安装或插件切换、旧安装升级和测试资产清理仍暂缓。
+请从[限定发行与隔离安装指南](docs/ontology-v090-limited-preview-install.md#中文安装与发行说明)开始。该 Linux arm64 分发覆盖原生建模、读取及声明标准验证，保留完整 OWL 2 DL 承诺。真实 Desktop 流程、跨组件交付、日常安装或插件切换、旧安装升级和测试资产清理仍暂缓。
 
-**源码身份：**`main` 仍包含 `v0.8.3` 源码线；独立 `v0.9.0` 发行具有自己的精确源码版本和分发文件。以下章节描述本分支的 API 与安装方式，构建 `main` 不会生成独立发行。请使用限定指南中的固定版本参考安装该发行。
+[GitHub v0.9.0 预发行与下载](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.9.0)
+
+## v0.8.3 Preview 源码
+
+以下 API、命令和从源码构建的说明适用于 `main` 当前的 v0.8.3 源码。请使用上方的发行包安装 v0.9.0。
 
 Ontology 定义领域概念、关系、约束与来源，并保留经审阅的不可变语义资产。它与 [EvoPilot Expert](https://github.com/yeliang-wang/evopilot/blob/main/README_CN.md)、负责质量与证据的 [Harness](https://github.com/yeliang-wang/evopilot-harness/blob/main/README_CN.md)、负责执行与项目完成的 [Runtime](https://github.com/yeliang-wang/evopilot-runtime/blob/main/README_CN.md) 协作。
 

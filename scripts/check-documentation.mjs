@@ -1,4 +1,4 @@
-import { checkBilingualDocumentation } from './check-bilingual-documentation.mjs';
+import { checkBilingualDocumentation, validateReadmeSourceVersion } from './check-bilingual-documentation.mjs';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -15,7 +15,7 @@ export function validateDocumentation({ version, owner, documents }) {
     assert(typeof documents[name] === 'string' && documents[name].trim(), 'Missing current document: ' + name);
   }
   const readme = documents['README.md'];
-  assert(readme.split('\n')[0].includes('v' + version + ' Preview'), 'README heading must identify the current Preview');
+  validateReadmeSourceVersion(readme, version, 'README heading must identify the source Preview');
   const introduction = documents['docs/README.md'].split(/\n\s*\n/).find(p => !p.startsWith('#'));
   assert(introduction?.includes('v' + version + ' Preview'), 'Documentation introduction must identify the current Preview');
   const sections = documents['CHANGELOG.md'].split(/^## /m).slice(1);

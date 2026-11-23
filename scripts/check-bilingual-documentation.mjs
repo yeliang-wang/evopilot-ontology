@@ -9,15 +9,31 @@ const tokens = text => [...new Set([...text.replace(/^```[^\n]*\n[\s\S]*?^```\s*
 const links = text => [...text.matchAll(/!?\[[^\]]*\]\(([^\s)]+)(?:\s+"[^"]*")?\)/g)].map(m => m[1]);
 const slug = text => text.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^\p{L}\p{N}_\-\s]/gu, '').replace(/\s/g, '-');
 
+export function validateReadmeSourceVersion(text, version, message) {
+  const [heading, ...lines] = text.split('\n');
+  if (heading.includes('v' + version + ' Preview')) return null;
+  const published = /^# .+ · v(\d+\.\d+\.\d+) (?:Limited Preview|限定 Preview)$/.exec(heading);
+  assert(published && lines.some(line => line === '## v' + version + ' Preview source' ||
+    line === '## v' + version + ' Preview 源码'), message);
+  return published[1];
+}
+
 export function validateBilingualReadmes({ version, repository, en, zh }) {
   assert(en?.trim() && zh?.trim(), 'Both README languages are required');
+  const published = validateReadmeSourceVersion(en, version, 'Stale bilingual heading: en');
+  assert.equal(validateReadmeSourceVersion(zh, version, 'Stale bilingual heading: zh'), published, 'Bilingual Preview versions differ');
+  const release = 'https://github.com/yeliang-wang/' + repository + '/releases/tag/v';
   for (const [language, text] of [['en', en], ['zh', zh]]) {
-    assert(text.split('\n')[0].includes('v' + version + ' Preview'), 'Stale bilingual heading: ' + language);
-    assert(text.includes('https://github.com/yeliang-wang/' + repository + '/releases/tag/v' + version), 'Missing exact owning release: ' + language);
+    const destinations = links(text);
+    assert(destinations.includes(release + version), 'Missing exact owning release: ' + language);
+    if (published) assert(destinations.includes(release + published), 'Missing limited Preview release: ' + language);
     assert(text.includes('24.14.0'), 'Missing Node prerequisite: ' + language);
     for (const token of ['L1', 'L2', 'L3', 'standardVersion: "v2"', 'assetAssessment', 'reconstructionVerification', 'NOT_REQUESTED']) assert(text.includes(token), 'Missing content boundary token: ' + language + '/' + token);
     for (const m of text.matchAll(/evopilot-(?:next-(?:runtime|harness|ontology)-)?(\d+\.\d+\.\d+)(?:-preview)?\.(?:tgz|tar\.gz)/g)) assert.equal(m[1], version, 'Stale bilingual package');
-    for (const m of text.matchAll(/releases\/tag\/v(\d+\.\d+\.\d+)/g)) assert.equal(m[1], version, 'Stale bilingual release');
+    for (const link of destinations) {
+      const tagged = /releases\/tag\/v(\d+\.\d+\.\d+)/.exec(link);
+      if (tagged && !(published && link === release + published)) assert.equal(tagged[1], version, 'Stale bilingual release');
+    }
   }
   assert(en.split('\n').slice(0,5).join('\n').includes('[简体中文](README_CN.md)'), 'English language switch missing');
   assert(zh.split('\n').slice(0,5).join('\n').includes('[English](README.md)'), 'Chinese language switch missing');

@@ -45,3 +45,15 @@ test('documentation gate rejects missing required guides and package version dri
   const drift = sample(); drift.version = '0.8.0';
   assert.throws(() => validateDocumentation(drift), /README heading/);
 });
+
+test('documentation keeps the source version explicit beneath a limited Preview heading', () => {
+  const value = sample();
+  const readme = value.documents['README.md'].replace(
+    '# EvoPilot Runtime · v0.7.0 Preview',
+    '# EvoPilot Runtime · v0.9.0 Limited Preview\n\n## v0.7.0 Preview source',
+  );
+  value.documents['README.md'] = readme;
+  assert.equal(validateDocumentation(value).version, '0.7.0');
+  value.documents['README.md'] = readme.replace('## v0.7.0 Preview source', '## Source');
+  assert.throws(() => validateDocumentation(value), /README heading/);
+});
