@@ -4,10 +4,13 @@ EvoPilot Ontology v0.8.3 Preview provides readable model, constraint and compari
 
 English | [简体中文](zh-CN/README.md)
 
+The independent **v0.9.0 limited Preview** has a separate [release and isolated installation entry](ontology-v090-limited-preview-install.md). Its Linux arm64 modeling/read/validation scope and full OWL 2 DL commitment are documented at its exact source revision. This `main` branch remains the v0.8.3 source line; the references below describe that source. Do not apply its legacy installation commands to the independent distribution.
+
 ## Current workflows and references
 
 | Your task | Read |
 | --- | --- |
+| Install the independent v0.9.0 limited Preview | [Release identity, scope and isolated installation](ontology-v090-limited-preview-install.md) |
 | Understand concepts, relationships and constraints | [Asset overview](../README.md#what-is-an-ontology-asset), [v1 specification](../specifications/v1/README.md), [adopted standards](../specifications/v1/adoption.md) |
 | Model from requirements or extract an existing project | [Parent native workflow](https://github.com/yeliang-wang/evopilot/blob/main/docs/native-workflow.md), [source-based re-extraction](../specifications/v1/re-extraction.md) |
 | Author and validate a native package | [Native service](native-service.md), [package schema](../specifications/v1/package.schema.json), [Turtle example](../specifications/v1/examples/positive/model.ttl) |

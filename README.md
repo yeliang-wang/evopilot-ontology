@@ -1,10 +1,14 @@
-# EvoPilot Ontology · v0.8.3 Preview
+# EvoPilot Ontology · v0.8.3 Preview source
 
 English | [简体中文](README_CN.md)
 
+**Independent v0.9.0 Preview:** start with the [limited release and isolated installation guide](docs/ontology-v090-limited-preview-install.md). This Linux arm64 distribution covers native modeling, reads and declared validation, retaining the full OWL 2 DL commitment. Actual Desktop journeys, cross-component delivery, daily installation/plugin switching, old-installation upgrades and test-asset cleanup remain deferred.
+
+**Source identity:** `main` still contains the `v0.8.3` source line; the independent `v0.9.0` release has its own exact source revision and distribution. The sections below describe this branch's APIs and installation. Building `main` does not produce the independent release. Use the versioned references in the limited guide for that release.
+
 Ontology defines domain concepts, relationships, constraints and provenance, then preserves reviewed immutable semantic assets. It works with [EvoPilot Expert](https://github.com/yeliang-wang/evopilot/blob/main/README.md), [Harness](https://github.com/yeliang-wang/evopilot-harness/blob/main/README.md) for quality and evidence, and [Runtime](https://github.com/yeliang-wang/evopilot-runtime/blob/main/README.md) for execution and project completion.
 
-[Quickstart](#quickstart) · [Standards](specifications/README.md) · [Native API](docs/native-service.md) · [Documentation](docs/README.md) · [Release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.3)
+[Quickstart](#quickstart) · [Standards](specifications/README.md) · [Native API](docs/native-service.md) · [Documentation](docs/README.md) · [v0.8.3 source-line release](https://github.com/yeliang-wang/evopilot-ontology/releases/tag/v0.8.3)
 
 <a id="what-is-an-ontology-asset"></a>
 
@@ -24,6 +28,8 @@ Current `service.native()` operations perform package admission, validation, exa
 Read the [v1 specification](specifications/v1/README.md), [support matrix](specifications/v1/support-matrix.json), [tool versions](specifications/v1/standards.lock.json) and [re-extraction guide](specifications/v1/re-extraction.md). The same basis applies to forward/reverse modeling and public/private projects.
 
 ## Quickstart
+
+For the independent v0.9.0 distribution, use the [limited installation guide](docs/ontology-v090-limited-preview-install.md). The commands and parent integration below apply to this v0.8.3 source line.
 
 For Codex, start with the [parent installation](https://github.com/yeliang-wang/evopilot/blob/main/docs/installation.md) and unified Expert. It guides purpose, scope, modeling, validation and review; no separate Ontology plugin is required.
 
