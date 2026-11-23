@@ -4,11 +4,13 @@
 
 <!-- distribution-status: source -->
 
-EvoPilot-ontology 通过独立 Expert、CLI、MCP 服务和私有工作区开发并保存本体资产，覆盖需求正向建模、已接收来源的逆向建模、OWL 推理、SHACL 验证、解释、语义评审及不可变交付。Runtime 和 Harness 是可选消费者，使用 Ontology 不依赖它们。
+EvoPilot-ontology 通过独立 Expert、CLI、MCP 服务和私有工作区开发并保存本体资产。已批准的限定 Preview 发行范围为 **Linux arm64** 隔离环境中的原生资产建模、读取与声明标准验证。Runtime 和 Harness 是可选消费者，使用 Ontology 不依赖它们。完整源码还包含解释、语义评审与不可变交付；这些参考能力不代表完整流程已通过验收。
 
-[快速开始](#quickstart) · [原生 v2 标准](specifications/v2/models.md) · [文档](docs/README.md) · [发布列表](https://github.com/yeliang-wang/evopilot-ontology/releases)
+[限定安装](docs/ontology-v090-limited-preview-install.md) · [快速开始](#quickstart) · [原生 v2 标准](specifications/v2/models.md) · [文档](docs/README.md) · [发布列表](https://github.com/yeliang-wang/evopilot-ontology/releases)
 
-这些源码文档描述 v0.9.0 的范围。实际发布状态和下载标识以发布列表为准，源码存在或测试通过均不代表软件发布或业务验收。[发布流程](docs/release-v090.md)要求先完成安装后标准评测报告与用户评审，再执行原定完整产品验收，并另行取得发布决定。
+这些源码文档不宣称版本已发布或已通过验收。[限定范围](docs/ontology-v090-limited-preview.md)保留完整 OWL 2 DL 与全部六个标准族：`rdf11-turtle-syntax`、`rdf11-turtle-eval`、`rdfxml`、`owl2-dl`、`shacl-core` 和 `shacl-sparql-local`。[限定发布流程](docs/release-v090-limited.md)要求完整的安装后标准报告、精确用户报告批准、限定产品验收及单独的精确发布决定。发布后还必须完成公开下载与隔离重装读回。独立标签为 `v0.9.0`，设置 `prerelease=true`；这是拟发布标识，不表示下载物已可用。
+
+真实 Desktop Expert 流程、跨组件交付、日常安装或插件切换、测试资产清理及旧安装升级继续暂缓。既有范围权限仍然生效；这些排除项不表示服务已禁用完整目标的全部 API。[完整计划](docs/ontology-v090-plan.md)、原始 143 项用例及[完整发布流程](docs/release-v090.md)继续作为独立义务保留。
 
 <a id="what-is-an-ontology-asset"></a>
 
@@ -30,15 +32,17 @@ RDF/OWL 文档和 SHACL shapes 是语义来源。未知结果、不支持的扩�
 
 ## 快速开始
 
-使用 **Node 24.14.0**。独立入口为 `evopilot-ontology`，命令要求 `--json`。明确安装并连接插件后，在 Codex 选用独立 Ontology Expert。新的 v2 工作不再通过父项目 Expert 安装入口启动。
+使用 **Node 24.14.0** 与[限定安装指南](docs/ontology-v090-limited-preview-install.md)规定的 Linux arm64 隔离环境。独立入口为 `evopilot-ontology`，命令要求 `--json`。本发行不要求切换日常 Codex 插件；真实 Desktop 激活仍属于暂缓的完整目标流程，新的 v2 工作不通过父项目 Expert 安装入口启动。
 
 ### 安装 Preview 包
 
-产品归档名为 `evopilot-next-ontology-0.9.0.tgz`。从经过评审的分发中取得选定产品包、依赖锁、源码版本、校验和及原生组件、来源和声明材料，安装前验证全部所选材料。遵循[独立安装指南](docs/standalone-v090.md)和[离线工具链准备](docs/managed-toolchains-v090.md)；源码构建的测试包不代表已发布 Release。
+产品归档名为 `evopilot-next-ontology-0.9.0.tgz`。从经过评审的分发中取得选定产品包、依赖锁、源码版本、校验和及原生组件、来源和声明材料，安装前验证全部所选材料。遵循[限定安装指南](docs/ontology-v090-limited-preview-install.md)、[完整操作参考](docs/standalone-v090.md)和[离线工具链准备](docs/managed-toolchains-v090.md)；源码构建的测试包不代表已发布 Release。
 
 固定原生分发方案面向 Linux ARM64、glibc 2.28 或以上，并要求可用的 systemd 用户管理器约束 worker。其他开发宿主或手动准备的工具不能证明该分发的平台验收。npm runtime、原生工具、安装控制目录与业务工作区应分别位于 Git 外的私有目录。包内插件模板需要实际连接配置，不包含凭据。
 
-### 首次业务流程
+### 完整业务流程参考
+
+以下步骤描述完整源码流程。限定验收覆盖建模、读取及声明标准验证，不证明 Desktop 或跨组件交付旅程已通过验收。
 
 1. 检查连接身份、项目范围、权限及可用工具链。
 2. 记录目的、范围、排除项及来源版本，接收准确来源字节。
@@ -68,7 +72,7 @@ npm run test:governance
 
 保留的内容评估 API 选择 `standardVersion: "v2"`：L1 领域理解、L2 实现规格、L3 重建规格。`assetAssessment` 与 `reconstructionVerification` 保持独立，`L3 / NOT_REQUESTED` 有效。内容等级不证明实际重建、生产就绪或发布权限。参见[保留的内容就绪度 API](docs/readiness-v2.md)。
 
-私有工作区和凭据不属于发布资产。选定历史测试资产的清理在安装验收后单独执行，业务资产之后由用户手动重建。Dashboard 不在本版本范围内。
+私有工作区和凭据不属于发布资产。历史资产读取必须在隔离副本中使用明确受支持的只读路径。旧安装升级与选定历史测试资产清理继续暂缓；读取兼容性不授权上述操作或自动重建。Dashboard 不在本版本范围内。
 
 ## 文档与贡献
 

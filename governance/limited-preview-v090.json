@@ -1,0 +1,198 @@
+{
+  "schema": "ontology-limited-preview-policy/v1",
+  "id": "ontology-v090-limited-preview",
+  "owner": "ontology",
+  "version": "0.9.0",
+  "implementationStatus": "AUTHORIZED",
+  "acceptanceStatus": "NOT_EVALUATED",
+  "release": {
+    "repository": "yeliang-wang/evopilot-ontology",
+    "tag": "v0.9.0",
+    "prerelease": true,
+    "exactCandidateDecisionRequired": true,
+    "technicalPassIsApproval": false,
+    "releaseAuthorized": false
+  },
+  "platform": {
+    "os": "linux",
+    "arch": "arm64",
+    "isolationRequired": true
+  },
+  "scope": [
+    "native-asset-modeling",
+    "asset-read",
+    "declared-standards-validation",
+    "malformed-input-and-scope-permission-negatives",
+    "supported-historical-asset-read"
+  ],
+  "deferred": [
+    "actual-desktop-expert-journeys",
+    "cross-component-delivery",
+    "daily-installation-or-plugin-switch",
+    "test-asset-cleanup",
+    "old-installation-upgrade"
+  ],
+  "runtimePolicy": "EXISTING_SCOPED_RBAC; DEFERRED_PROMISES_ARE_NOT_GLOBAL_API_DISABLEMENT",
+  "sequence": [
+    "FREEZE",
+    "ISOLATED_INSTALL",
+    "STANDARDS_E2E",
+    "FULL_REPORT",
+    "USER_REPORT_APPROVAL",
+    "PRODUCT_E2E",
+    "RELEASE_REVIEW",
+    "DOWNLOADED_READBACK"
+  ],
+  "standards": {
+    "policy": "governance/standards-gate-v090.json",
+    "families": [
+      "rdf11-turtle-syntax",
+      "rdf11-turtle-eval",
+      "rdfxml",
+      "owl2-dl",
+      "shacl-core",
+      "shacl-sparql-local"
+    ],
+    "owlProfile": "OWL2_DL",
+    "completeReportRequired": true,
+    "allRequiredMustPass": true,
+    "zeroRequiredIsPass": false,
+    "decisionScope": "ENTER_LIMITED_PRODUCT_E2E_ONLY",
+    "decisionBindings": [
+      "candidateDigest",
+      "corpusDigest",
+      "toolchainDigest",
+      "reportDigest",
+      "freezeDigest",
+      "targetDigest",
+      "limitedPolicyDigest"
+    ],
+    "decisionSource": "EXPLICIT_USER_REVIEW_OF_COMPLETE_REPORT",
+    "decisionLedger": "limited-review-ledger.json",
+    "decisionSchema": "ontology-limited-standards-review/v1",
+    "decisionAction": "APPROVE_LIMITED_PRODUCT_E2E",
+    "decisionSourceSchema": "ontology-limited-user-review-source/v1"
+  },
+  "evidence": {
+    "allRequiredMustPass": true,
+    "zeroRequiredIsPass": false,
+    "sourceCasesMustRemainNotEvaluated": true,
+    "missingUnknownFailedStaleOrMismatchedBlocks": true,
+    "preApprovalProductRuns": "DIAGNOSTIC_ONLY",
+    "productCasesRequiringReportApproval": [
+      "OL02",
+      "OL03",
+      "OL05",
+      "OL06",
+      "OL07",
+      "OL08"
+    ],
+    "postReleaseCases": [
+      "OL09",
+      "OL10"
+    ]
+  },
+  "fullTarget": {
+    "acceptance": "governance/acceptance-v090.json",
+    "requiredVariants": 143,
+    "policy": "governance/standards-gate-v090.json",
+    "plan": "docs/ontology-v090-plan.md",
+    "adr": "docs/architecture/0001-ontology-v090-independence.md",
+    "unchanged": true,
+    "deferredIsPass": false
+  },
+  "document": "docs/ontology-v090-limited-preview.md",
+  "entry": "scripts/limited-preview-gate-v090.mjs",
+  "cases": [
+    {
+      "id": "OL01",
+      "phase": "admission",
+      "requirement": "SOURCE_CI_ARTIFACT",
+      "expected": "Exact source CI succeeds and the candidate archive, manifest and toolchains match the frozen source and artifact digests.",
+      "required": true,
+      "status": "NOT_EVALUATED",
+      "evidence": []
+    },
+    {
+      "id": "OL02",
+      "phase": "product",
+      "requirement": "ISOLATED_INSTALL_LIFECYCLE",
+      "expected": "Install the exact archive into a new isolated Linux arm64 root; start, inspect, read, stop and restart through the supported installed entries.",
+      "required": true,
+      "status": "NOT_EVALUATED",
+      "evidence": []
+    },
+    {
+      "id": "OL03",
+      "phase": "product",
+      "requirement": "NATIVE_MODELING_READ",
+      "expected": "Use the installed scoped APIs to admit native modeling inputs and read the retained model and source-bound state.",
+      "required": true,
+      "status": "NOT_EVALUATED",
+      "evidence": []
+    },
+    {
+      "id": "OL04",
+      "phase": "admission",
+      "requirement": "STANDARDS_COMPLETE_REPORT",
+      "expected": "All six standards families pass on the exact installed candidate, with the complete report and explicit user report approval bound to candidate, corpus, toolchain, report, freeze and Target digests.",
+      "required": true,
+      "status": "NOT_EVALUATED",
+      "evidence": []
+    },
+    {
+      "id": "OL05",
+      "phase": "product",
+      "requirement": "MALFORMED_INPUT_SCOPE_PERMISSIONS",
+      "expected": "Observe installed rejection of malformed inputs, absent or invalid credentials, insufficient grants and cross-project access; retain actual request/response evidence.",
+      "required": true,
+      "status": "NOT_EVALUATED",
+      "evidence": []
+    },
+    {
+      "id": "OL06",
+      "phase": "product",
+      "requirement": "HISTORICAL_ASSET_READ",
+      "expected": "Read unchanged historical asset bytes through an explicitly named supported read-only entry in an isolated copy; bind original and observed digests. This is not old-installation upgrade acceptance.",
+      "required": true,
+      "status": "NOT_EVALUATED",
+      "evidence": []
+    },
+    {
+      "id": "OL07",
+      "phase": "product",
+      "requirement": "DOCUMENTATION_PLUGIN_DECLARATIONS",
+      "expected": "Check packaged English and Chinese release documentation, plugin declarations, supported operations and permission claims against the actual package, including every deferred promise.",
+      "required": true,
+      "status": "NOT_EVALUATED",
+      "evidence": []
+    },
+    {
+      "id": "OL08",
+      "phase": "product",
+      "requirement": "EXACT_RELEASE_REFUSAL",
+      "expected": "Prove release review/publish refuses missing, failed, unknown, stale or mismatched required evidence and a missing exact publication decision; technical PASS never grants authority.",
+      "required": true,
+      "status": "NOT_EVALUATED",
+      "evidence": []
+    },
+    {
+      "id": "OL09",
+      "phase": "post",
+      "requirement": "PUBLIC_DOWNLOAD_DIGEST",
+      "expected": "Download every published v0.9.0 prerelease asset from the public release and verify exact approved asset names, sizes and digests.",
+      "required": true,
+      "status": "NOT_EVALUATED",
+      "evidence": []
+    },
+    {
+      "id": "OL10",
+      "phase": "post",
+      "requirement": "DOWNLOADED_REINSTALL_READ_VALIDATION",
+      "expected": "Install the publicly downloaded archive into a new isolated Linux arm64 root; repeat start/stop, modeling/read and declared validation checks against the same bound toolchains.",
+      "required": true,
+      "status": "NOT_EVALUATED",
+      "evidence": []
+    }
+  ]
+}

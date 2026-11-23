@@ -111,31 +111,32 @@ function inspectReport(report,corpus,reader,freeze,freezeDigest,policy){
   same(report.complexView,[...corpus.cases.filter(c=>c.complex).map(c=>c.key)].sort(),'Complex view duplicates or omits upstream IDs');
   return {families,passed:families.every(f=>f.required>0&&f.PASS===f.required&&f.FAIL===0&&f.ERROR===0&&f.NOT_RUN===0)};
 }
-function inspectReview(ledger,reader,bindings,report){
-  exact(ledger,['schema','records']);requireValue(ledger.schema==='ontology-standards-review-ledger/v1','INVALID_EVIDENCE','Unknown review ledger');array(ledger.records,1024);
+function inspectReview(ledger,reader,bindings,report,limited=false){
+  const prefix=limited?'ontology-limited-standards':'ontology-standards',sourceSchema=limited?'ontology-limited-user-review-source/v1':'ontology-user-review-source/v1',approve=limited?'APPROVE_LIMITED_PRODUCT_E2E':'APPROVE_PRODUCT_E2E';
+  exact(ledger,['schema','records']);requireValue(ledger.schema===prefix+'-review-ledger/v1','INVALID_EVIDENCE','Unknown review ledger');array(ledger.records,1024);
   if(!ledger.records.length)reject('USER_REVIEW_REQUIRED','Present full report and await explicit approval');
   let previousDigest=null,previousTime=-Infinity;const messages=new Set();
   for(const r of ledger.records){
     exact(r,['previousDigest','decision','digest']);same(r.previousDigest,previousDigest,'Review chain differs');digest(r.digest);
     same(r.digest,hashValue({previousDigest:r.previousDigest,decision:r.decision}),'Review record changed');
     const d=r.decision;exact(d,['schema','actor','action','bindings','reviewedAt','source']);
-    requireValue(d.schema==='ontology-standards-review/v1'&&d.actor==='USER'&&['APPROVE_PRODUCT_E2E','REJECT','REQUEST_CHANGES'].includes(d.action),'USER_REVIEW_REQUIRED','Explicit user decision required');
+    requireValue(d.schema===prefix+'-review/v1'&&d.actor==='USER'&&[approve,'REJECT','REQUEST_CHANGES'].includes(d.action),'USER_REVIEW_REQUIRED','Explicit user decision required');
     exact(d.bindings,Object.keys(bindings));Object.values(d.bindings).forEach(digest);
     const source=reader.refJson(d.source);exact(source,['schema','role','threadId','turnId','messageId','text','action','bindings','occurredAt']);
-    requireValue(source.schema==='ontology-user-review-source/v1'&&source.role==='user','USER_REVIEW_REQUIRED','Actual user message record required');
+    requireValue(source.schema===sourceSchema&&source.role==='user','USER_REVIEW_REQUIRED','Actual user message record required');
     for(const k of ['threadId','turnId','messageId','text'])text(source[k]);const key=[source.threadId,source.turnId,source.messageId].join('/');requireValue(!messages.has(key),'INVALID_EVIDENCE','Repeated user message');messages.add(key);
     same(source.action,d.action,'User action differs');same(source.bindings,d.bindings,'User reviewed different bindings');same(source.occurredAt,d.reviewedAt,'User review time differs');
     requireValue(time(d.reviewedAt)>=previousTime,'INVALID_EVIDENCE','Review order differs');previousTime=time(d.reviewedAt);previousDigest=r.digest;
   }
   const latest=ledger.records.at(-1);same(latest.decision.bindings,bindings,'Latest review is for changed basis');
   requireValue(time(latest.decision.reviewedAt)>=time(report.completedAt),'USER_REVIEW_REQUIRED','Approval predates full report');
-  requireValue(latest.decision.action==='APPROVE_PRODUCT_E2E','USER_REVIEW_BLOCKED','Latest user decision blocks progression');
+  requireValue(latest.decision.action===approve,'USER_REVIEW_BLOCKED','Latest user decision blocks progression');
   return {decisionDigest:latest.digest,reviewedAt:latest.decision.reviewedAt};
 }
 
 /** Read-only verification. Callers must independently verify the actual Host user
  * message before storing a source record; structured JSON cannot authenticate it. */
-export async function checkStandardsGate(root,requested,repositoryRoot=ROOT){
+async function checkGate(root,requested,repositoryRoot,limited){
   const governance=await inspectGovernance(repositoryRoot),reader=evidenceReader(root,repositoryRoot);
   const policy=JSON.parse(fileBytes(resolve(repositoryRoot,'governance/standards-gate-v090.json'))),freezeBytes=reader.read('freeze.json'),freeze=JSON.parse(freezeBytes);
   exact(freeze,['schema','createdAt','targetDigest','policyDigest','candidate','toolchain','corpus','evaluator']);
@@ -144,12 +145,18 @@ export async function checkStandardsGate(root,requested,repositoryRoot=ROOT){
   for(const k of ['candidate','toolchain','corpus','evaluator'])reader.ref(freeze[k]);
   const freezeDigest=hashBytes(freezeBytes),reportBytes=reader.read('report.json'),report=JSON.parse(reportBytes),corpus=reader.refJson(freeze.corpus);
   const bindings={candidateDigest:freeze.candidate.digest,corpusDigest:freeze.corpus.digest,toolchainDigest:freeze.toolchain.digest,reportDigest:hashBytes(reportBytes),freezeDigest,targetDigest:governance.targetDigest};
+  if(limited){requireValue(governance.limitedPreview?.standards?.decisionScope==='ENTER_LIMITED_PRODUCT_E2E_ONLY','INVALID_EVIDENCE','Limited Preview policy required');bindings.limitedPolicyDigest=governance.limitedPreviewDigest;}
   exact(requested,['candidateDigest','corpusDigest','toolchainDigest','reportDigest']);
   for(const k of Object.keys(requested)){digest(requested[k]);same(requested[k],bindings[k],'Requested '+k+' differs');}
   inspectCorpus(corpus,reader,policy);const technical=inspectReport(report,corpus,reader,freeze,freezeDigest,policy);
   requireValue(technical.passed,'TECHNICAL_BLOCKED','All frozen required families/cases need complete passing evidence');
-  requireValue(existsSync(resolve(root,'review-ledger.json')),'USER_REVIEW_REQUIRED','Present full report and await explicit approval');
-  const review=inspectReview(reader.json('review-ledger.json'),reader,bindings,report);reader.recheck();
+  const ledger=limited?'limited-review-ledger.json':'review-ledger.json';
+  requireValue(existsSync(resolve(root,ledger)),'USER_REVIEW_REQUIRED','Present full report and await explicit approval');
+  const review=inspectReview(reader.json(ledger),reader,bindings,report,limited);reader.recheck();
   const after=await inspectGovernance(repositoryRoot);same(after.targetDigest,governance.targetDigest,'Governance changed during check');
-  return {schema:'ontology-product-e2e-admission/v1',status:'ALLOW_PRODUCT_E2E',scope:policy.decisionScope,bindings,...review,families:technical.families,acceptance:'NOT_EVALUATED',releaseAuthorized:false};
+  return {schema:limited?'ontology-limited-product-e2e-admission/v1':'ontology-product-e2e-admission/v1',status:limited?'ALLOW_LIMITED_PRODUCT_E2E':'ALLOW_PRODUCT_E2E',scope:limited?governance.limitedPreview.standards.decisionScope:policy.decisionScope,bindings,...review,families:technical.families,acceptance:'NOT_EVALUATED',releaseAuthorized:false};
 }
+export async function checkStandardsGate(root,requested,repositoryRoot=ROOT){return checkGate(root,requested,repositoryRoot,false);}
+// A distinct action, schema, ledger and policy digest prevent a limited decision
+// from admitting the original full matrix, even for the same candidate/Target.
+export async function checkLimitedStandardsGate(root,requested,repositoryRoot=ROOT){return checkGate(root,requested,repositoryRoot,true);}

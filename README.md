@@ -4,11 +4,13 @@ English | [简体中文](README_CN.md)
 
 <!-- distribution-status: source -->
 
-EvoPilot-ontology develops and preserves semantic assets through its own Expert, CLI, MCP service and private workspace. It supports forward modeling from requirements, reverse modeling from admitted sources, OWL reasoning, SHACL validation, explanations, semantic review and immutable delivery. Runtime and Harness are optional consumers; neither is required to use Ontology.
+EvoPilot-ontology develops and preserves semantic assets through its own Expert, CLI, MCP service and private workspace. The approved limited Preview edition covers native asset modeling, reads and declared standards validation in an isolated **Linux arm64** environment. Runtime and Harness are optional consumers; neither is required to use Ontology. The complete source implementation also includes explanations, semantic review and immutable delivery; those references do not certify a complete accepted workflow.
 
-[Quickstart](#quickstart) · [Native v2 standards](specifications/v2/models.md) · [Documentation](docs/README.md) · [Release index](https://github.com/yeliang-wang/evopilot-ontology/releases)
+[Limited installation](docs/ontology-v090-limited-preview-install.md) · [Quickstart](#quickstart) · [Native v2 standards](specifications/v2/models.md) · [Documentation](docs/README.md) · [Release index](https://github.com/yeliang-wang/evopilot-ontology/releases)
 
-These source pages describe the v0.9.0 scope. Publication and downloadable identities are recorded in the release index; source presence or successful tests do not establish release or business acceptance. The [release sequence](docs/release-v090.md) requires an installed standards report, actual user review, the original full product acceptance and a separate release decision.
+These source pages do not claim a published or accepted release. The [limited profile](docs/ontology-v090-limited-preview.md) retains full OWL 2 DL and all six standards families: `rdf11-turtle-syntax`, `rdf11-turtle-eval`, `rdfxml`, `owl2-dl`, `shacl-core` and `shacl-sparql-local`. The [limited release sequence](docs/release-v090-limited.md) requires the complete installed standards report, exact user report approval, limited product acceptance and a separate exact publication decision. Public download and isolated reinstall/readback follow publication. The independent tag is `v0.9.0` with `prerelease=true`; this is the intended release identity, not a download claim.
+
+Actual Desktop Expert journeys, cross-component delivery, daily installation/plugin switching, test-asset cleanup and old-installation upgrades are deferred. Existing scoped permissions still apply; these exclusions do not assert that all full-target APIs are disabled. The [complete plan](docs/ontology-v090-plan.md), original 143 cases and [full release sequence](docs/release-v090.md) remain separate obligations.
 
 <a id="what-is-an-ontology-asset"></a>
 
@@ -28,15 +30,17 @@ For example, a service that accesses a sensitive dataset can be inferred to be a
 
 ## Quickstart
 
-Use **Node 24.14.0**. The independent entry is `evopilot-ontology`; its commands require `--json`. Select the independent Ontology Expert in Codex after explicitly installing and connecting its plugin. The parent Expert is not the installation entry for new v2 work.
+Use **Node 24.14.0** and the isolated Linux arm64 environment described in the [limited installation guide](docs/ontology-v090-limited-preview-install.md). The independent entry is `evopilot-ontology`; its commands require `--json`. This edition does not require switching the daily Codex plugin. Actual Desktop activation remains a deferred full-target journey; the parent Expert is not the installation entry for new v2 work.
 
 ### Install the Preview package
 
-The product archive is named `evopilot-next-ontology-0.9.0.tgz`. Obtain the selected package, dependency lock, source revision, checksums and native component/source/notice materials from the reviewed distribution. Verify every selected artifact before installation. Follow the [independent installation guide](docs/standalone-v090.md) and [offline toolchain preparation](docs/managed-toolchains-v090.md); a source-built test package is not evidence of a published Release.
+The product archive is named `evopilot-next-ontology-0.9.0.tgz`. Obtain the selected package, dependency lock, source revision, checksums and native component/source/notice materials from the reviewed distribution. Verify every selected artifact before installation. Follow the [limited installation guide](docs/ontology-v090-limited-preview-install.md), [complete operator reference](docs/standalone-v090.md) and [offline toolchain preparation](docs/managed-toolchains-v090.md); a source-built test package is not evidence of a published Release.
 
 The fixed native distribution recipe targets Linux ARM64 with glibc 2.28 or newer and a usable systemd user manager for bounded workers. Other development hosts or manually provisioned tools do not establish that distribution's supported-platform acceptance. Keep the installed npm runtime, native tools, installation controls and business workspace in separate private directories outside Git. The packaged plugin template requires real connection setup; it does not contain credentials.
 
-### First business workflow
+### Full business workflow reference
+
+The following sequence describes the complete source workflow. Limited acceptance covers modeling, reads and declared validation, not an accepted Desktop or cross-component delivery journey.
 
 1. Inspect the connected identity, project scope, permissions and available toolchains.
 2. Record purpose, scope, exclusions and source revisions; admit the exact source bytes.
@@ -66,7 +70,7 @@ Historical v1 specifications, compatibility/vendor bytes and immutable records r
 
 The retained content-assessment API selects `standardVersion: "v2"`: L1 domain understanding, L2 implementation specifications, L3 reconstruction specifications. `assetAssessment` and `reconstructionVerification` remain separate; `L3 / NOT_REQUESTED` is valid. These content grades do not prove reconstruction, production readiness or release authority. See the [retained readiness API](docs/readiness-v2.md).
 
-Private workspaces and credentials are not release assets. The selected historical test-asset reset is a separate operation after installation acceptance; business assets are rebuilt manually afterward. A Dashboard is outside this version.
+Private workspaces and credentials are not release assets. Historical asset reads require an explicitly supported read-only path in an isolated copy. Old-installation upgrades and selected historical test-asset cleanup remain deferred; reading compatibility does not authorize either operation or automatic rebuilding. A Dashboard is outside this version.
 
 ## Documentation and contribution
 

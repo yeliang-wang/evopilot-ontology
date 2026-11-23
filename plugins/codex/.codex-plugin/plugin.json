@@ -1,12 +1,12 @@
 {
   "name": "evopilot-ontology-preview",
   "version": "0.9.0",
-  "description": "Independent Ontology Expert: source-bound modeling, OWL 2 DL reasoning, SHACL validation and reviewed semantic delivery.",
+  "description": "Ontology v0.9 limited Preview scope: isolated Linux arm64 native modeling, reads and full OWL 2 DL/SHACL validation; acceptance and publication require separate evidence. Desktop journeys and cross-component delivery are deferred.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "requires_local_executor": true,
   "interface": {
     "displayName": "EvoPilot-ontology v0.9 Preview",
-    "shortDescription": "Independent semantic modeling, retained drafts and recovery"
+    "shortDescription": "Limited Preview: isolated modeling, reads and validation"
   }
 }

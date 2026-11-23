@@ -85,5 +85,12 @@
     "production database/SSH/performance load"
   ],
   "futureCandidate": "Business metric observation/computation/analysis deferred, parent coordination required; no implied acceptance",
-  "acceptance": "governance/acceptance-v090.json"
+  "acceptance": "governance/acceptance-v090.json",
+  "limitedPreview": {
+    "policy": "governance/limited-preview-v090.json",
+    "document": "docs/ontology-v090-limited-preview.md",
+    "target": "ontology-v090-limited-preview",
+    "requiredCases": 10,
+    "fullTargetUnchanged": true
+  }
 }

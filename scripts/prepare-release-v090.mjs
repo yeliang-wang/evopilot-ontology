@@ -29,8 +29,12 @@ export function validateCandidateFiles(files,input){
   const c=JSON.parse(files.get('candidate.json'));assert.equal(c.schema,'ontology-source-candidate/v1');assert.equal(c.sourceCommit,input.commit);assert.equal(c.package.filename,archive);assert.equal(c.package.bytes,files.get(archive).length);assert.equal(c.package.digest,'sha256:'+input.digest);assert.equal(c.acceptance,'NOT_EVALUATED');assert.equal(c.releaseAuthorized,false);
   return {sourceCommit:input.commit,candidateDigest:'sha256:'+input.digest,acceptance:'NOT_EVALUATED',releaseAuthorized:false};
 }
+export function sourcePreparationProfile(profile='original-v090'){
+  assert(['original-v090','limited-preview-v090'].includes(profile),'Unknown release preparation profile');
+  return {profile,requiredNextSteps:['Approved exact standards report',profile==='original-v090'?'Original complete pre-release product acceptance':'Complete limited Preview pre-release acceptance (original 143 cases remain separate)','Complete native distribution and license/source closure','Separate actual user release decision',profile==='original-v090'?'Published download and installation readback':'Published download and isolated installation readback']};
+}
 export function prepareSourceArtifact(input,output){
-  assert(isAbsolute(output));assert([undefined,'false'].includes(process.env.PUBLISH),'This preparer cannot publish');
+  assert(isAbsolute(output));assert([undefined,'false'].includes(process.env.PUBLISH),'This preparer cannot publish');const profile=sourcePreparationProfile(input.profile);
   const root=resolve(output);mkdirSync(root,{mode:0o700});const evidence=join(root,'evidence'),assets=join(root,'assets');mkdirSync(evidence);mkdirSync(assets);
   const save=(name,value)=>writeFileSync(join(evidence,name),JSON.stringify(value,null,2)+'\n',{flag:'wx'});
   const command=(name,args,options={})=>{const p=spawnSync(name,args,{encoding:'utf8',timeout:120000,maxBuffer:32*1024*1024,...options});assert.ifError(p.error);assert.equal(p.status,0,'Inspect retained evidence before retry: '+p.stderr);return p.stdout;};
@@ -43,10 +47,10 @@ export function prepareSourceArtifact(input,output){
   // Read exact allowlisted members; archive paths never write to disk.
   const files=new Map(candidateFiles.map(name=>[name,command('unzip',['-p',zip,name],{encoding:null,maxBuffer:8*1024*1024})]));
   const validated=validateCandidateFiles(files,input);for(const [name,bytes] of files)writeFileSync(join(assets,name),bytes,{flag:'wx'});
-  const result={schema:'ontology-release-source-preparation/v1',...validated,sourceRunId:run.id,sourceArtifactId:artifact.id,sourceArtifactDigest:artifact.digest,preparedAt:new Date().toISOString(),requiredNextSteps:['Approved exact standards report','Original complete pre-release product acceptance','Complete native distribution and license/source closure','Separate actual user release decision','Published download and installation readback'],publicationAttempted:false};
+  const result={schema:'ontology-release-source-preparation/v1',...validated,sourceRunId:run.id,sourceArtifactId:artifact.id,sourceArtifactDigest:artifact.digest,preparedAt:new Date().toISOString(),...profile,publicationAttempted:false};
   writeFileSync(join(assets,'preparation.json'),JSON.stringify(result,null,2)+'\n',{flag:'wx'});return result;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
   assert.equal(process.argv.length,3,'Usage: node scripts/prepare-release-v090.mjs ABS_NEW_OUTPUT');
-  console.log(JSON.stringify(prepareSourceArtifact({repository:process.env.GITHUB_REPOSITORY,commit:process.env.EXPECTED_COMMIT,runId:process.env.SOURCE_RUN_ID,digest:process.env.EXPECTED_DIGEST},process.argv[2])));
+  console.log(JSON.stringify(prepareSourceArtifact({repository:process.env.GITHUB_REPOSITORY,commit:process.env.EXPECTED_COMMIT,runId:process.env.SOURCE_RUN_ID,digest:process.env.EXPECTED_DIGEST,profile:process.env.RELEASE_PROFILE},process.argv[2])));
 }
