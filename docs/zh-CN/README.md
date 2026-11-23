@@ -2,14 +2,17 @@
 
 [English](../README.md) | 简体中文
 
-本分支源码文档适用 v0.8.3 Preview。先阅读[中文首页](../../README_CN.md)，了解该组件职责、安装方式与边界。
+## v0.9.0 限定 Preview
 
-独立 **v0.9.0 限定 Preview** 使用自己的精确源码和分发文件，面向 Linux arm64 隔离建模、读取及声明标准验证，保留完整 OWL 2 DL 承诺。请使用[限定发行与安装指南](../ontology-v090-limited-preview-install.md#中文安装与发行说明)及其中固定版本的技术参考；`main` 源码仍为 v0.8.3，不要混用下方旧版安装命令。
+- [安装 Linux arm64 隔离发行版并查看验收结果](../ontology-v090-limited-preview-install.md#中文安装与发行说明)。
+- [使用独立 CLI、HTTP 和 MCP 建模、读取和验证](../ontology-v090-limited-preview-api.md#中文操作参考)。
+
+## v0.8.3 源码文档
+
+下列入口适用于当前默认分支的 v0.8.3 源码。[中文首页](../../README_CN.md)
 
 | 任务 | 入口 |
 |---|---|
-| 安装独立 v0.9.0 限定 Preview | [发行身份、范围与隔离安装](../ontology-v090-limited-preview-install.md#中文安装与发行说明) |
-| 使用独立 v0.9.0 限定 Preview 建模、读取和验证 | [独立 CLI、HTTP 和 MCP](../ontology-v090-limited-preview-api.md#中文操作参考) |
 | 在 Codex 使用组合产品 | [总项目中文安装指南](https://github.com/yeliang-wang/evopilot/blob/main/docs/zh-CN/installation.md) |
 | 首次建模与选择等级 | [首次使用](https://github.com/yeliang-wang/evopilot/blob/main/docs/zh-CN/first-journey.md)、[内容等级 v2](https://github.com/yeliang-wang/evopilot/blob/main/docs/zh-CN/asset-readiness.md) |
 | 升级已有工作区 | [中文迁移指南](https://github.com/yeliang-wang/evopilot/blob/main/docs/zh-CN/migration.md) |

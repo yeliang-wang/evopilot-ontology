@@ -1,6 +1,8 @@
 # Ontology roadmap
 
-Current edition: [ONT-F06 / v0.7 readable assets and comparisons](#ont-f06--v07-readable-assets-and-comparisons). Implemented for the v0.7 edition; exact publication and download records remain on the versioned Release page.
+The published [v0.9.0 limited Preview](ontology-v090-limited-preview-install.md) covers standalone modeling, retained reads, and declared standards validation on Linux arm64. The independent complete plan retains the full v0.9 scope and acceptance obligations. [Tagged engineering plan](https://github.com/yeliang-wang/evopilot-ontology/blob/v0.9.0/docs/ontology-v090-plan.md)
+
+The roadmap below also records the earlier source line, including [ONT-F06 / v0.7 readable assets and comparisons](#ont-f06--v07-readable-assets-and-comparisons).
 
 ## v0.1.0 history
 
